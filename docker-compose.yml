@@ -1,0 +1,21 @@
+services:
+  crmfisio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oaranha/crmfisio:latest
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.crmfisio.rule=Host(`app.medicspro.com.br`)
+      - traefik.http.routers.crmfisio.entrypoints=websecure
+      - traefik.http.routers.crmfisio.tls=true
+      - traefik.http.routers.crmfisio.tls.certresolver=letsencrypt
+      - traefik.http.services.crmfisio.loadbalancer.server.port=80
+
+networks:
+  traefik-public:
+    external: true
