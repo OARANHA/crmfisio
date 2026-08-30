@@ -1,0 +1,234 @@
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useApp, type Toast } from '../lib/store';
+import { ROLE_META, type ModuleKey } from '../lib/types';
+import { PulseMark } from './Ecg';
+import {
+  IconDashboard, IconCalendar, IconUsers, IconWallet, IconTrend, IconSettings,
+  IconLogout, IconMenu, IconBell, Select, IconAlert,
+} from '../lib/ui';
+import { IconLock, IconX, IconShield, IconWhats, IconCheck } from './icons';
+
+const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: string }) => React.ReactNode }[] = [
+  { key: 'dashboard', to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
+  { key: 'agenda', to: '/agenda', label: 'Agenda', Icon: IconCalendar },
+  { key: 'pacientes', to: '/pacientes', label: 'Pacientes · PEP', Icon: IconUsers },
+  { key: 'financeiro', to: '/financeiro', label: 'Financeiro', Icon: IconWallet },
+  { key: 'crm', to: '/crm', label: 'CRM', Icon: IconTrend },
+  { key: 'mensagens', to: '/mensagens', label: 'Mensagens', Icon: IconWhats },
+  { key: 'relatorios', to: '/relatorios', label: 'Relatórios', Icon: IconTrend },
+  { key: 'config', to: '/config', label: 'Configurações', Icon: IconSettings },
+];
+
+function Login() {
+  const { users, login } = useApp();
+  return (
+    <div className="min-h-screen flex items-center justify-center p-5 relative">
+      <div className="fixed inset-0 bg-grid pointer-events-none" />
+      <div className="fixed inset-0 bg-vignette pointer-events-none" />
+      <div className="relative w-full max-w-md border border-line2 bg-panel shadow-2xl">
+        <div className="px-7 pt-7">
+          <div className="flex items-center gap-2.5">
+            <PulseMark className="w-8 h-7" />
+            <span className="font-display font-bold text-xl tracking-tight">CORAÇÃO<span className="text-pulse">.</span></span>
+          </div>
+          <h1 className="font-display text-2xl font-bold mt-4 leading-tight">Acesse o consultório</h1>
+          <p className="text-fog text-[13px] mt-1.5 leading-relaxed">
+            Autenticação simulada (JWT + refresh httpOnly em produção). Selecione um perfil para ver o RBAC em ação.
+          </p>
+        </div>
+        <div className="p-5 space-y-2.5">
+          {users.map((u) => {
+            const rm = ROLE_META[u.role];
+            return (
+              <button
+                key={u.id}
+                onClick={() => login(u.id)}
+                className="node-card w-full text-left border border-line bg-deep hover:border-mint/50 hover:bg-raise px-4 py-3 flex items-center gap-3.5 group"
+              >
+                <span
+                  className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[13px] text-ink shrink-0"
+                  style={{ background: u.cor }}
+                >
+                  {u.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display font-semibold text-[14px] leading-tight group-hover:text-mint transition-colors">{u.nome}</span>
+                  <span className={`block font-mono text-[10.5px] mt-0.5 ${rm.text}`}>{rm.label} · {u.registro}</span>
+                </span>
+                <IconLogout className="w-4 h-4 text-fog rotate-180 group-hover:text-mint transition-colors shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-7 pb-6 flex items-center gap-2 font-mono text-[10.5px] text-fog">
+          <IconLock className="w-3.5 h-3.5 text-pulse" />
+          Sessão auditada · dados sensíveis criptografados (AES-256-GCM) · LGPD
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Toasts() {
+  const { toasts } = useApp();
+  const meta: Record<Toast['kind'], { cls: string; Icon: (p: { className?: string }) => React.ReactNode }> = {
+    ok: { cls: 'border-mint/50 text-mint', Icon: IconCheck },
+    warn: { cls: 'border-amber/50 text-amber', Icon: IconAlert },
+    info: { cls: 'border-aqua/50 text-aqua', Icon: IconBell },
+  };
+  return (
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-[min(92vw,380px)]">
+      {toasts.map((t) => {
+        const m = meta[t.kind];
+        return (
+          <div key={t.id} className={`rv is-in border ${m.cls} bg-deep/95 backdrop-blur px-4 py-3 shadow-xl flex items-start gap-2.5`}>
+            <m.Icon className="w-4 h-4 shrink-0 mt-0.5" />
+            <p className="text-[12.5px] text-paper leading-snug">{t.msg}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Shell() {
+  const { user, canView, logout, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
+  const nav = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (user) setMobileOpen(false);
+  }, [user]);
+
+  if (!user) return <Login />;
+
+  const items = NAV.filter((n) => canView(n.key));
+  const pendencias =
+    transactions.filter((t) => t.status === 'atrasado').length +
+    consents.filter((c) => !c.assinado).length;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const rm = ROLE_META[user.role];
+
+  const navList = (
+    <nav className="flex flex-col gap-1 px-3">
+      {items.map((n) => (
+        <NavLink
+          key={n.key + n.to}
+          to={n.to}
+          onClick={() => setMobileOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 font-display font-semibold text-[13.5px] border-l-2 transition-colors ${
+              isActive
+                ? 'border-mint bg-raise text-mint'
+                : 'border-transparent text-fog hover:text-paper hover:bg-raise/50'
+            }`
+          }
+        >
+          <n.Icon className="w-4.5 h-4.5 shrink-0" />
+          {n.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+
+  return (
+    <div className="min-h-screen relative">
+      <div className="fixed inset-0 bg-grid pointer-events-none" />
+
+      {/* sidebar desktop */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-60 flex-col border-r border-line bg-deep/90 backdrop-blur-sm z-40">
+        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-line">
+          <PulseMark className="w-7 h-6" />
+          <span className="font-display font-bold tracking-tight">CORAÇÃO<span className="text-pulse">.</span></span>
+        </div>
+        <div className="py-5 flex-1 overflow-y-auto">{navList}</div>
+        <div className="border-t border-line p-4">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: user.cor }}>
+              {user.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{user.nome}</span>
+              <span className={`block font-mono text-[10px] mt-0.5 ${rm.text}`}>{rm.label}</span>
+            </span>
+            <button onClick={() => { logout(); nav('/'); }} className="text-fog hover:text-pulse transition-colors" title="Sair">
+              <IconLogout className="w-4.5 h-4.5" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* sidebar mobile */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-ink/70" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-64 flex flex-col border-r border-line bg-deep rv is-in">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-line">
+              <div className="flex items-center gap-2.5">
+                <PulseMark className="w-6 h-5" />
+                <span className="font-display font-bold text-[15px]">CORAÇÃO<span className="text-pulse">.</span></span>
+              </div>
+              <button onClick={() => setMobileOpen(false)} className="text-fog"><IconX className="w-5 h-5" /></button>
+            </div>
+            <div className="py-4 flex-1 overflow-y-auto">{navList}</div>
+            <div className="border-t border-line p-4">
+              <button onClick={() => { logout(); nav('/'); }} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors font-mono text-[12px]">
+                <IconLogout className="w-4 h-4" /> Encerrar sessão — {user.nome}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* conteúdo */}
+      <div className="lg:pl-60 relative">
+        <header className="sticky top-0 z-30 h-14 border-b border-line bg-ink/90 backdrop-blur-sm flex items-center gap-3 px-4 md:px-6">
+          <button className="lg:hidden text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu">
+            <IconMenu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2 font-mono text-[10.5px] text-fog uppercase tracking-[0.14em]">
+            <IconShield className="w-4 h-4 text-mint" />
+            <span className="hidden sm:inline">operação ao vivo</span>
+          </div>
+
+          {/* Fase 3 — seletor de unidade */}
+          <Select
+            value={unidadeSel}
+            onChange={(e) => setUnidadeSel(e.target.value)}
+            className="!w-auto !py-1 !text-[11.5px] !font-mono ml-1"
+            title="Filtrar por unidade (Fase 3)"
+          >
+            <option value="all">Todas as unidades</option>
+            {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+          </Select>
+
+          <div className="ml-auto flex items-center gap-4">
+            <span className="font-mono text-[11.5px] text-fog tabular-nums hidden sm:inline">
+              {pad(now.getHours())}:{pad(now.getMinutes())}<span className="text-fog/40">:{pad(now.getSeconds())}</span>
+            </span>
+            <span className="relative text-fog">
+              <IconBell className="w-4.5 h-4.5" />
+              {pendencias > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-ink font-mono text-[9px] font-semibold">{pendencias}</span>
+              )}
+            </span>
+            <span className="hidden md:inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.12em] uppercase text-pulse border border-pulse/40 bg-pulse/5 px-2 py-1">
+              <IconLock className="w-3 h-3" /> LGPD
+            </span>
+          </div>
+        </header>
+        <main className="px-4 md:px-6 py-6 max-w-[1400px] mx-auto">
+          <Outlet />
+        </main>
+      </div>
+      <Toasts />
+    </div>
+  );
+}

@@ -1,1 +1,70 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ink: #0a1512;
+  --color-deep: #0d1b17;
+  --color-panel: #10231e;
+  --color-raise: #17332b;
+  --color-line: #1e3a32;
+  --color-line2: #2d5548;
+  --color-paper: #e9f3ed;
+  --color-fog: #94b0a4;
+  --color-mint: #4fd1a5;
+  --color-amber: #f2b441;
+  --color-aqua: #6ec1e4;
+  --color-pulse: #f2545b;
+  --color-steel: #9ab8c9;
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+html { scroll-behavior: smooth; }
+body { @apply bg-ink text-paper font-body antialiased; }
+::selection { background: #4fd1a5; color: #0a1512; }
+
+* { scrollbar-width: thin; scrollbar-color: #2d5548 #0d1b17; }
+*::-webkit-scrollbar { height: 10px; width: 10px; }
+*::-webkit-scrollbar-track { background: #0d1b17; }
+*::-webkit-scrollbar-thumb { background: #2d5548; border-radius: 8px; }
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(79, 209, 165, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 209, 165, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.bg-vignette {
+  background:
+    radial-gradient(900px 480px at 12% -6%, rgba(242, 84, 91, 0.09), transparent 62%),
+    radial-gradient(1100px 620px at 88% 8%, rgba(79, 209, 165, 0.08), transparent 60%),
+    radial-gradient(900px 700px at 55% 118%, rgba(110, 193, 228, 0.06), transparent 60%);
+}
+
+.rv {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--rv-delay, 0ms);
+}
+.rv.is-in { opacity: 1; transform: none; }
+
+.ecg-base { stroke: rgba(79, 209, 165, 0.2); stroke-width: 1.5; }
+.ecg-run {
+  stroke: #f2545b; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 110 890;
+  animation: ecgrun 4.2s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(242, 84, 91, 0.65));
+}
+@keyframes ecgrun { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+
+.dot-live { animation: pulsedot 1.7s ease-in-out infinite; }
+@keyframes pulsedot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(242, 180, 65, 0.55); }
+  50%      { opacity: 0.55; box-shadow: 0 0 0 7px rgba(242, 180, 65, 0); }
+}
+
+.node-card { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease; }
+.node-card:hover { transform: translateY(-2px); }
+.bar-anim { transition: width 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
