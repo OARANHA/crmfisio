@@ -1,5 +1,6 @@
 services:
   crmfisio:
+    pull_policy: build
     build:
       context: .
       dockerfile: Dockerfile
