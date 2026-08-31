@@ -1,14 +1,24 @@
-# Build do frontend React/Vite
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS build
+
 WORKDIR /app
+
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+
 COPY package*.json ./
 RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Servidor estático de produção
 FROM nginx:1.27-alpine
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
+
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]
