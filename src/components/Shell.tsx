@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApp, type Toast } from '../lib/store';
+import { useAuth } from '../lib/useAuth';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
 import {
@@ -21,7 +22,24 @@ const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: 
 ];
 
 function Login() {
-  const { users, login } = useApp();
+  const { login: appLogin } = useApp();
+  const { signIn, loading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const { error: signInError } = await signIn(email, password);
+    if (signInError) {
+      setError(signInError.message);
+    } else {
+      // Após login bem-sucedido, o useAuth atualiza o user automaticamente
+      // O Shell detectará a mudança e renderizará a aplicação
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-5 relative">
       <div className="fixed inset-0 bg-grid pointer-events-none" />
@@ -30,37 +48,52 @@ function Login() {
         <div className="px-7 pt-7">
           <div className="flex items-center gap-2.5">
             <PulseMark className="w-8 h-7" />
-            <span className="font-display font-bold text-xl tracking-tight">CORAÇÃO<span className="text-pulse">.</span></span>
+            <span className="font-display font-bold text-xl tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>
           </div>
           <h1 className="font-display text-2xl font-bold mt-4 leading-tight">Acesse o consultório</h1>
           <p className="text-fog text-[13px] mt-1.5 leading-relaxed">
-            Autenticação simulada (JWT + refresh httpOnly em produção). Selecione um perfil para ver o RBAC em ação.
+            Autenticação segura com Supabase Auth. Use seu email e senha cadastrados.
           </p>
         </div>
-        <div className="p-5 space-y-2.5">
-          {users.map((u) => {
-            const rm = ROLE_META[u.role];
-            return (
-              <button
-                key={u.id}
-                onClick={() => login(u.id)}
-                className="node-card w-full text-left border border-line bg-deep hover:border-mint/50 hover:bg-raise px-4 py-3 flex items-center gap-3.5 group"
-              >
-                <span
-                  className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[13px] text-ink shrink-0"
-                  style={{ background: u.cor }}
-                >
-                  {u.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display font-semibold text-[14px] leading-tight group-hover:text-mint transition-colors">{u.nome}</span>
-                  <span className={`block font-mono text-[10.5px] mt-0.5 ${rm.text}`}>{rm.label} · {u.registro}</span>
-                </span>
-                <IconLogout className="w-4 h-4 text-fog rotate-180 group-hover:text-mint transition-colors shrink-0" />
-              </button>
-            );
-          })}
-        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="rv is-in border border-amber/50 text-amber bg-deep/95 backdrop-blur px-4 py-3 shadow-xl flex items-start gap-2.5">
+              <IconAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <p className="text-[12.5px] text-paper leading-snug">{error}</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="block text-[12px] font-mono text-fog uppercase">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-line bg-deep px-4 py-3 text-[14px] focus:border-mint focus:outline-none"
+              placeholder="seu@email.com"
+              required
+              disabled={loading}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-[12px] font-mono text-fog uppercase">Senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-line bg-deep px-4 py-3 text-[14px] focus:border-mint focus:outline-none"
+              placeholder="••••••••"
+              required
+              disabled={loading}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            className="w-full border border-mint bg-mint/10 hover:bg-mint/20 text-mint font-display font-semibold py-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
         <div className="px-7 pb-6 flex items-center gap-2 font-mono text-[10.5px] text-fog">
           <IconLock className="w-3.5 h-3.5 text-pulse" />
           Sessão auditada · dados sensíveis criptografados (AES-256-GCM) · LGPD
@@ -93,10 +126,14 @@ function Toasts() {
 }
 
 export function Shell() {
-  const { user, canView, logout, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
+  const { user: appUser, canView, logout: appLogout, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
+  const { user, session, signOut, loading } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+
+  // Integração: se useAuth tem usuário, usa; senão fallback para appUser (dados mockados)
+  const effectiveUser = user || appUser;
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -104,10 +141,19 @@ export function Shell() {
   }, []);
 
   useEffect(() => {
-    if (user) setMobileOpen(false);
-  }, [user]);
+    if (effectiveUser) setMobileOpen(false);
+  }, [effectiveUser]);
 
-  if (!user) return <Login />;
+  const handleLogout = async () => {
+    if (signOut) {
+      await signOut();
+    } else {
+      appLogout();
+    }
+    nav('/');
+  };
+
+  if (!effectiveUser || loading) return <Login />;
 
   const items = NAV.filter((n) => canView(n.key));
   const pendencias =
@@ -158,7 +204,7 @@ export function Shell() {
               <span className="block font-display font-semibold text-[13px] leading-tight truncate">{user.nome}</span>
               <span className={`block font-mono text-[10px] mt-0.5 ${rm.text}`}>{rm.label}</span>
             </span>
-            <button onClick={() => { logout(); nav('/'); }} className="text-fog hover:text-pulse transition-colors" title="Sair">
+            <button onClick={handleLogout} className="text-fog hover:text-pulse transition-colors" title="Sair">
               <IconLogout className="w-4.5 h-4.5" />
             </button>
           </div>
@@ -179,7 +225,7 @@ export function Shell() {
             </div>
             <div className="py-4 flex-1 overflow-y-auto">{navList}</div>
             <div className="border-t border-line p-4">
-              <button onClick={() => { logout(); nav('/'); }} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors font-mono text-[12px]">
+              <button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors font-mono text-[12px]">
                 <IconLogout className="w-4 h-4" /> Encerrar sessão — {user.nome}
               </button>
             </div>
