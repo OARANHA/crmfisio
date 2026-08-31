@@ -131,6 +131,9 @@ export function Shell() {
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [userName, setUserName] = useState<string>('Usuário');
+  const [userColor, setUserColor] = useState<string>('#cbd5e1');
+  const [currentRole, setCurrentRole] = useState<string>('fisio');
 
   // Integração: se useAuth tem usuário, usa; senão fallback para appUser (dados mockados)
   const effectiveUser = user || appUser;
@@ -143,6 +146,78 @@ export function Shell() {
   useEffect(() => {
     if (effectiveUser) setMobileOpen(false);
   }, [effectiveUser]);
+
+  // Busca o profile do usuário no banco quando o usuário autenticado mudar
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) {
+        // Fallback para appUser (mock)
+        if (appUser) {
+          setUserName(appUser.nome || 'Usuário');
+          setUserColor(appUser.cor || '#cbd5e1');
+          setCurrentRole(appUser.role || 'fisio');
+        }
+        return;
+      }
+      
+      try {
+        // Busca o profile do usuário no banco
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('nome, role, cor, clinic_id')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Erro ao buscar profile:', error);
+          // Se não encontrar profile, cria um básico (fallback)
+          if (error.code === 'PGRST116') { // Row not found
+            console.log('Profile não encontrado, criando fallback...');
+            const fallbackNome = user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário';
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: user.id,
+                email: user.email!,
+                nome: fallbackNome,
+                role: 'fisio', // Role padrão seguro
+                clinic_id: null // Será atribuído pelo admin depois
+              })
+              .select()
+              .single();
+            
+            if (newProfile) {
+              setUserName(newProfile.nome);
+              setUserColor(newProfile.cor || '#cbd5e1');
+              setCurrentRole(newProfile.role);
+            } else {
+              // Fallback local se insert falhar
+              setUserName(fallbackNome);
+              setCurrentRole('fisio');
+            }
+          } else {
+            // Outro erro - usa fallback local
+            const fallbackNome = user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário';
+            setUserName(fallbackNome);
+          }
+          return;
+        }
+
+        if (profile) {
+          setUserName(profile.nome);
+          setUserColor(profile.cor || '#cbd5e1');
+          setCurrentRole(profile.role);
+        }
+      } catch (err) {
+        console.error('Erro inesperado ao buscar profile:', err);
+        // Fallback extremo
+        const fallbackNome = user?.email?.split('@')[0] || 'Usuário';
+        setUserName(fallbackNome);
+      }
+    };
+
+    fetchProfile();
+  }, [user, appUser]);
 
   const handleLogout = async () => {
     if (signOut) {
@@ -160,7 +235,7 @@ export function Shell() {
     transactions.filter((t) => t.status === 'atrasado').length +
     consents.filter((c) => !c.assinado).length;
   const pad = (n: number) => String(n).padStart(2, '0');
-  const rm = ROLE_META[user.role];
+  const rm = ROLE_META[currentRole];
 
   const navList = (
     <nav className="flex flex-col gap-1 px-3">
@@ -197,11 +272,11 @@ export function Shell() {
         <div className="py-5 flex-1 overflow-y-auto">{navList}</div>
         <div className="border-t border-line p-4">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: user?.cor || '#cbd5e1' }}>
-              {user?.nome ? user.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
+            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: userColor }}>
+              {userName ? userName.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{user?.nome || 'Usuário'}</span>
+              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{userName}</span>
               <span className={`block font-mono text-[10px] mt-0.5 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span>
             </span>
             <button onClick={handleLogout} className="text-fog hover:text-pulse transition-colors" title="Sair">
@@ -226,7 +301,7 @@ export function Shell() {
             <div className="py-4 flex-1 overflow-y-auto">{navList}</div>
             <div className="border-t border-line p-4">
               <button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors font-mono text-[12px]">
-                <IconLogout className="w-4 h-4" /> Encerrar sessão — {user.nome}
+                <IconLogout className="w-4 h-4" /> Encerrar sessão — {userName}
               </button>
             </div>
           </aside>
