@@ -4,6 +4,7 @@ import { useApp, type Toast } from '../lib/store';
 import { useAuth } from '../lib/useAuth';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
+import { supabase } from '../lib/supabaseClient';
 import {
   IconDashboard, IconCalendar, IconUsers, IconWallet, IconTrend, IconSettings,
   IconLogout, IconMenu, IconBell, Select, IconAlert,
