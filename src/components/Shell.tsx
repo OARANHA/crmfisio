@@ -197,12 +197,12 @@ export function Shell() {
         <div className="py-5 flex-1 overflow-y-auto">{navList}</div>
         <div className="border-t border-line p-4">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: user.cor }}>
-              {user.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
+            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: user?.cor || '#cbd5e1' }}>
+              {user?.nome ? user.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{user.nome}</span>
-              <span className={`block font-mono text-[10px] mt-0.5 ${rm.text}`}>{rm.label}</span>
+              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{user?.nome || 'Usuário'}</span>
+              <span className={`block font-mono text-[10px] mt-0.5 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span>
             </span>
             <button onClick={handleLogout} className="text-fog hover:text-pulse transition-colors" title="Sair">
               <IconLogout className="w-4.5 h-4.5" />
