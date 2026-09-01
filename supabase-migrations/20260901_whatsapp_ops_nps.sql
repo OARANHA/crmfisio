@@ -84,8 +84,7 @@ BEGIN
 
   FOR r IN
     SELECT DISTINCT ON (a.paciente_id)
-      a.paciente_id,
-      p.telefone
+      a.paciente_id
     FROM public.appointments a
     JOIN public.patients p ON p.id = a.paciente_id AND p.clinic_id = a.clinic_id
     WHERE a.clinic_id = v_clinic
@@ -117,10 +116,10 @@ BEGIN
     );
 
     INSERT INTO public.wa_logs (
-      clinic_id, patient_id, template, mensagem, telefone,
+      clinic_id, patient_id, template, mensagem,
       enviado_em, status, scheduled_for, created_by
     ) VALUES (
-      v_clinic, r.paciente_id, 'nps', v_message, r.telefone,
+      v_clinic, r.paciente_id, 'nps', v_message,
       now(), 'fila', now(), auth.uid()
     );
 
