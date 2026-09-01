@@ -13,6 +13,13 @@ type ConsentTemplate = {
   ativo: boolean;
 };
 
+const DYNAMIC_FIELDS = [
+  '{{PACIENTE_NOME}}', '{{PACIENTE_CPF}}', '{{PACIENTE_NASCIMENTO}}',
+  '{{PACIENTE_TELEFONE}}', '{{PACIENTE_EMAIL}}', '{{QUEIXA_PRINCIPAL}}',
+  '{{CID10}}', '{{OBJETIVOS_TERAPEUTICOS}}', '{{PLANO_TERAPEUTICO}}',
+  '{{PROFISSIONAL_NOME}}', '{{PROFISSIONAL_REGISTRO}}', '{{DATA_ATUAL}}',
+];
+
 export function ConsentTemplatesAdmin() {
   const { user, toast } = useApp();
   const [clinicId, setClinicId] = useState('');
@@ -81,6 +88,17 @@ export function ConsentTemplatesAdmin() {
             <Field label="Nome do termo"><Input value={nome} onChange={(e) => setNome(e.target.value)} /></Field>
             <Field label="Versão"><Input value={versao} onChange={(e) => setVersao(e.target.value)} placeholder="1.0" /></Field>
             <Field label="Conteúdo"><Textarea value={conteudo} onChange={(e) => setConteudo(e.target.value)} placeholder="Texto integral que o paciente irá aceitar. Cada nova versão deve preservar o conteúdo anterior." /></Field>
+            <div className="border border-mint/25 bg-mint/[0.03] p-3">
+              <p className="font-display font-semibold text-[12px]">Campos preenchidos automaticamente</p>
+              <p className="text-[10.5px] text-fog mt-1">Ao gerar o documento o MedicsPro sempre vincula os dados reais do paciente e do profissional. Se quiser posicioná-los dentro do texto, use os campos abaixo.</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {DYNAMIC_FIELDS.map((field) => (
+                  <button key={field} type="button" onClick={() => setConteudo((prev) => `${prev}${prev ? '\n' : ''}${field}`)} className="font-mono text-[9px] border border-line px-2 py-1 text-mint hover:border-mint/50">
+                    {field}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Btn onClick={save} disabled={saving || !nome.trim() || !versao.trim() || !conteudo.trim()}>{saving ? 'Salvando…' : 'Criar modelo versionado'}</Btn>
           </div>
           <div>
