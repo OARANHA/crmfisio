@@ -6,6 +6,8 @@ export type MessageStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido
 export interface MessageOutboxRow {
   id: string;
   patientId: string;
+  appointmentId: string | null;
+  waitlistId: string | null;
   template: MessageTemplate;
   message: string;
   status: MessageStatus;
@@ -13,6 +15,13 @@ export interface MessageOutboxRow {
   scheduledFor: string;
   provider: string | null;
   errorMessage: string | null;
+  replyText: string | null;
+  repliedAt: string | null;
+  responseAction: string | null;
+  needsHuman: boolean;
+  reviewResolution: string | null;
+  reviewNote: string | null;
+  reviewResolvedAt: string | null;
 }
 
 export interface MessageTemplateRow {
@@ -31,6 +40,8 @@ export interface MessageDispatchResult {
 const mapLog = (row: Record<string, unknown>): MessageOutboxRow => ({
   id: String(row.id),
   patientId: String(row.patient_id),
+  appointmentId: row.appointment_id ? String(row.appointment_id) : null,
+  waitlistId: row.waitlist_id ? String(row.waitlist_id) : null,
   template: row.template as MessageTemplate,
   message: String(row.mensagem ?? ''),
   status: row.status as MessageStatus,
@@ -38,6 +49,13 @@ const mapLog = (row: Record<string, unknown>): MessageOutboxRow => ({
   scheduledFor: String(row.scheduled_for ?? row.enviado_em),
   provider: row.provider ? String(row.provider) : null,
   errorMessage: row.error_message ? String(row.error_message) : null,
+  replyText: row.reply_text ? String(row.reply_text) : null,
+  repliedAt: row.replied_at ? String(row.replied_at) : null,
+  responseAction: row.response_action ? String(row.response_action) : null,
+  needsHuman: Boolean(row.needs_human),
+  reviewResolution: row.review_resolution ? String(row.review_resolution) : null,
+  reviewNote: row.review_note ? String(row.review_note) : null,
+  reviewResolvedAt: row.review_resolved_at ? String(row.review_resolved_at) : null,
 });
 
 export async function ensureMessageTemplates(): Promise<void> {
@@ -81,9 +99,7 @@ export async function loadMessageOutbox(clinicId: string): Promise<MessageOutbox
 }
 
 export async function flushMessageOutbox(limit = 20): Promise<MessageDispatchResult> {
-  const { data, error } = await supabase.functions.invoke('evolution-worker', {
-    body: { limit },
-  });
+  const { data, error } = await supabase.functions.invoke('evolution-worker', { body: { limit } });
   if (error) throw error;
   const result = (data ?? {}) as Partial<MessageDispatchResult> & { error?: string };
   if (result.error) throw new Error(result.error);
@@ -98,6 +114,21 @@ export async function queueAppointmentConfirmations(hours = 48): Promise<number>
   const { data, error } = await (supabase.rpc as Function)('queue_appointment_confirmations', { p_hours: hours });
   if (error) throw error;
   return Number(data ?? 0);
+}
+
+export async function queueNpsSurveys(days = 7): Promise<number> {
+  const { data, error } = await (supabase.rpc as Function)('queue_nps_surveys', { p_days: days });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
+export async function resolveWhatsappReview(logId: string, resolution: string, note?: string): Promise<void> {
+  const { error } = await (supabase.rpc as Function)('resolve_whatsapp_review', {
+    p_wa_log_id: logId,
+    p_resolution: resolution,
+    p_note: note ?? null,
+  });
+  if (error) throw error;
 }
 
 export async function queueWaitlistOffer(waitlistId: string, cancelledAppointmentId: string): Promise<string> {
