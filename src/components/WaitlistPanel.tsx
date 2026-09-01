@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format, getISODay, parseISO } from 'date-fns';
 import { resolveClinicId } from '../lib/repository';
 import {
+  claimWaitlistSlot,
   createWaitlistEntry,
   loadWaitlist,
   updateWaitlistStatus,
@@ -10,12 +11,13 @@ import {
   type WaitlistPeriod,
 } from '../lib/waitlist';
 import { useApp, patientName, userName } from '../lib/store';
-import type { Appointment, Unidade } from '../lib/types';
+import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Select, Input } from '../lib/ui';
 
 interface Props {
   unidades: Unidade[];
-  onFillSlot: (entry: WaitlistEntry, slot: Appointment) => void;
+  rooms: Room[];
+  onRecovered: () => void;
 }
 
 const dayLabels = [
@@ -30,7 +32,7 @@ const periodForHour = (value: string): WaitlistPeriod => {
   return 'noite';
 };
 
-export function WaitlistPanel({ unidades, onFillSlot }: Props) {
+export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
   const { user, users, patients, appointments, toast } = useApp();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [clinicId, setClinicId] = useState('');
@@ -69,6 +71,14 @@ export function WaitlistPanel({ unidades, onFillSlot }: Props) {
     const today = format(new Date(), 'yyyy-MM-dd');
     return appointments
       .filter((item) => item.status === 'cancelado' && item.data >= today)
+      .filter((cancelled) => !appointments.some((active) =>
+        active.status !== 'cancelado'
+        && active.id !== cancelled.id
+        && active.data === cancelled.data
+        && active.inicio === cancelled.inicio
+        && active.fisioId === cancelled.fisioId
+        && active.roomId === cancelled.roomId
+      ))
       .sort((a, b) => `${a.data}${a.inicio}`.localeCompare(`${b.data}${b.inicio}`))
       .slice(0, 8);
   }, [appointments]);
@@ -76,9 +86,11 @@ export function WaitlistPanel({ unidades, onFillSlot }: Props) {
   const matchesSlot = (entry: WaitlistEntry, slot: Appointment) => {
     const isoDay = getISODay(parseISO(slot.data));
     const slotPeriod = periodForHour(slot.inicio);
+    const slotUnitId = rooms.find((room) => room.id === slot.roomId)?.unidadeId ?? null;
     if (entry.preferredDays.length > 0 && !entry.preferredDays.includes(isoDay)) return false;
     if (entry.period !== 'qualquer' && entry.period !== slotPeriod) return false;
     if (entry.professionalId && entry.professionalId !== slot.fisioId) return false;
+    if (entry.unitId && entry.unitId !== slotUnitId) return false;
     return true;
   };
 
@@ -113,6 +125,24 @@ export function WaitlistPanel({ unidades, onFillSlot }: Props) {
       await updateWaitlistStatus(id, 'cancelado');
       await refresh();
       toast('Entrada removida da lista de espera.');
+    } catch (error) {
+      console.error('[MedicsPro] remover lista de espera:', error);
+      toast('Não foi possível remover a entrada.', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const recoverSlot = async (entry: WaitlistEntry, slot: Appointment) => {
+    setBusy(true);
+    try {
+      await claimWaitlistSlot(entry.id, slot.id);
+      toast(`Vaga preenchida com ${patientName(patients, entry.patientId)}.`);
+      await refresh();
+      onRecovered();
+    } catch (error) {
+      console.error('[MedicsPro] recuperar vaga:', error);
+      toast('A vaga não pôde ser preenchida. Ela pode ter sido ocupada por outro usuário.', 'warn');
     } finally {
       setBusy(false);
     }
@@ -186,7 +216,7 @@ export function WaitlistPanel({ unidades, onFillSlot }: Props) {
                   <p className="font-mono text-[10px] text-fog">{userName(users, slot.fisioId)} · {slot.tipo}</p>
                 </div>
                 <div className="flex-1 text-[11px] text-fog">{best ? `${patientName(patients, best.patientId)} é o melhor encaixe entre ${candidates.length} candidato(s).` : 'Nenhum paciente da espera combina com esse horário.'}</div>
-                {best && <Btn onClick={() => onFillSlot(best, slot)}>Preencher vaga</Btn>}
+                {best && <Btn onClick={() => recoverSlot(best, slot)} disabled={busy}>Preencher vaga</Btn>}
               </div>
             );
           })}
