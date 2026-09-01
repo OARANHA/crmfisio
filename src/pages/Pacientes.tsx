@@ -14,6 +14,7 @@ import {
 import { IconLock } from '../components/icons';
 import { Reveal } from '../components/Reveal';
 import { ClinicalWorkspace } from '../components/ClinicalWorkspace';
+import { PatientJourneyControl } from '../components/PatientJourneyControl';
 
 export function Pacientes() {
   const { id } = useParams();
@@ -161,12 +162,11 @@ function NewPatientModal({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function Pep({ id }: { id: string }) {
-  const { patients, setFunilStage, user } = useApp();
+  const { patients } = useApp();
   const p = patients.find((x) => x.id === id);
   if (!p) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
   const sm = STAGE_META[p.funilStage];
-  const canAdvanceJourney = user?.role === 'fisio' || user?.role === 'admin' || user?.role === 'recep';
 
   return (
     <div className="space-y-4">
@@ -184,6 +184,7 @@ function Pep({ id }: { id: string }) {
                 <h1 className="font-display text-2xl font-bold tracking-tight">{p.nome}</h1>
                 <Chip className={sm.chip}>{sm.label}</Chip>
                 {p.status === 'inativo' && <Chip className="border-pulse/40 text-pulse">inativo · oportunidade de reativação</Chip>}
+                {p.status === 'alta' && <Chip className="border-aqua/40 text-aqua">alta registrada · histórico preservado</Chip>}
               </div>
               <p className="font-mono text-[11.5px] text-fog mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span>{ageFrom(p.nascimento)} anos</span>
@@ -193,7 +194,7 @@ function Pep({ id }: { id: string }) {
                 <span className={p.optInWhats ? 'text-mint' : 'text-fog/60'}>WhatsApp: {p.optInWhats ? 'opt-in ✓' : 'sem opt-in'}</span>
               </p>
             </div>
-            {canAdvanceJourney && sm.next && <Btn variant="subtle" onClick={() => setFunilStage(p.id, sm.next!)}>Avançar para {STAGE_META[sm.next].label}</Btn>}
+            <PatientJourneyControl patient={p} />
           </div>
         </Card>
       </Reveal>
