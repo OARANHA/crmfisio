@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void;
   onStatus: (status: AppointmentStatus) => void;
   onOpenPatient: () => void;
+  onReschedule: () => void;
+  onCancel: () => void;
 }
 
 export function AppointmentActionModal({
@@ -22,8 +24,13 @@ export function AppointmentActionModal({
   onClose,
   onStatus,
   onOpenPatient,
+  onReschedule,
+  onCancel,
 }: Props) {
-  const actions = appointment ? appointmentActions(role, appointment) : [];
+  const actions = appointment ? appointmentActions(role, appointment).filter((action) => action.status !== 'cancelado') : [];
+  const operationalEditable = !!appointment && ['agendado', 'confirmado'].includes(appointment.status);
+  const canReschedule = operationalEditable && (role === 'admin' || role === 'recep');
+  const canCancel = operationalEditable && (role === 'admin' || role === 'recep' || role === 'fisio');
 
   return (
     <Modal open={!!appointment} onClose={onClose} title="Atendimento">
@@ -59,6 +66,13 @@ export function AppointmentActionModal({
             {appointmentStatusGuidance(appointment.status)}
           </div>
 
+          {(canReschedule || canCancel) && (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {canReschedule && <Btn variant="ghost" onClick={onReschedule}>Remarcar sessão</Btn>}
+              {canCancel && <Btn variant="ghost" onClick={onCancel}>Cancelar com motivo</Btn>}
+            </div>
+          )}
+
           {actions.length > 0 ? (
             <div className="space-y-2">
               {actions.map((action) => (
@@ -76,7 +90,7 @@ export function AppointmentActionModal({
               ))}
             </div>
           ) : (
-            <p className="font-mono text-[10.5px] text-fog">Nenhuma ação operacional disponível para este status.</p>
+            !operationalEditable && <p className="font-mono text-[10.5px] text-fog">Nenhuma ação operacional disponível para este status.</p>
           )}
 
           <Btn className="w-full" variant="ghost" onClick={onOpenPatient}>
