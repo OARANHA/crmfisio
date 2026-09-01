@@ -62,6 +62,9 @@ export interface Appointment {
   pacoteId: string | null;
   serieId: string | null;
   notas: string;
+  isFitIn?: boolean;
+  cancellationReason?: string | null;
+  rescheduledFromId?: string | null;
 }
 
 export interface RecurrenceRule {
