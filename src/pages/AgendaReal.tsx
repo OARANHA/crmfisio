@@ -5,10 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { loadInfrastructure } from '../lib/infrastructure';
 import { resolveClinicId } from '../lib/repository';
 import { useApp, patientName } from '../lib/store';
-import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Room, type Unidade } from '../lib/types';
-import { Btn, Card, Chip, Modal, Select } from '../lib/ui';
+import { STATUS_META, type Appointment, type AppointmentStatus, type Room, type Unidade } from '../lib/types';
+import { Btn, Card, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { AppointmentCreateModal, type CreateAt } from '../components/AppointmentCreateModal';
+import { AppointmentActionModal } from '../components/AppointmentActionModal';
 
 const DAY_START = 7 * 60;
 const DAY_END = 19 * 60;
@@ -89,7 +90,7 @@ export function AgendaReal() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1>
-            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos de profissional, paciente e sala bloqueados</p>
+            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos e fluxo operacional protegidos</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
             <Btn variant="ghost" onClick={() => setAnchor((date) => addDays(date, -7))}>← semana</Btn>
@@ -179,28 +180,16 @@ export function AgendaReal() {
         }}
       />
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} title="Atendimento">
-        {selected && (
-          <div className="space-y-4">
-            <div>
-              <p className="font-display font-bold text-lg">{patientName(patients, selected.pacienteId)}</p>
-              <p className="font-mono text-[11px] text-fog">{selected.data} · {selected.inicio}–{selected.fim} · {selected.tipo}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-[12px]">
-              <div className="border border-line bg-deep p-3"><span className="block font-mono text-[9px] text-fog uppercase">Unidade</span>{unitLabel(selected.roomId) || '—'}</div>
-              <div className="border border-line bg-deep p-3"><span className="block font-mono text-[9px] text-fog uppercase">Sala/Recurso</span>{roomLabel(selected.roomId)}</div>
-              <div className="border border-line bg-deep p-3"><span className="block font-mono text-[9px] text-fog uppercase">Valor</span>{fmtBRL(selected.valor)}</div>
-              <div className="border border-line bg-deep p-3"><span className="block font-mono text-[9px] text-fog uppercase">Status</span><Chip className={STATUS_META[selected.status].chip}>{STATUS_META[selected.status].label}</Chip></div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(['agendado', 'confirmado', 'em_atendimento', 'finalizado'] as AppointmentStatus[]).map((status) => <Btn key={status} variant="ghost" onClick={() => manageStatus(status)}>{STATUS_META[status].label}</Btn>)}
-              <Btn variant="ghost" onClick={() => manageStatus('faltou')}>Faltou</Btn>
-              <Btn variant="ghost" onClick={() => manageStatus('cancelado')}>Cancelar</Btn>
-            </div>
-            <Btn className="w-full" onClick={() => nav(`/pacientes/${selected.pacienteId}`)}>Abrir prontuário do paciente</Btn>
-          </div>
-        )}
-      </Modal>
+      <AppointmentActionModal
+        appointment={selected}
+        role={user?.role ?? 'recep'}
+        patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'}
+        unitLabel={selected ? unitLabel(selected.roomId) : ''}
+        roomLabel={selected ? roomLabel(selected.roomId) : ''}
+        onClose={() => setSelected(null)}
+        onStatus={manageStatus}
+        onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)}
+      />
     </div>
   );
 }
