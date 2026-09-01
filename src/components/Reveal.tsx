@@ -25,28 +25,39 @@ export function Reveal({ children, className = '', delay = 0 }: { children: Reac
 export function CountUp({ to, suffix = '', duration = 1000, className = '' }: { to: number; suffix?: string; duration?: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [val, setVal] = useState(0);
-  const started = useRef(false);
+  const frameRef = useRef<number | null>(null);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !started.current) {
-          started.current = true;
-          const t0 = performance.now();
-          const tick = (t: number) => {
-            const p = Math.min(1, (t - t0) / duration);
-            setVal(Math.round(to * (1 - Math.pow(1 - p, 3))));
-            if (p < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.4 }
-    );
+
+    let cancelled = false;
+    const startAnimation = () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      const from = val;
+      const delta = to - from;
+      if (delta === 0) return;
+      const t0 = performance.now();
+      const tick = (t: number) => {
+        if (cancelled) return;
+        const p = Math.min(1, (t - t0) / duration);
+        setVal(Math.round(from + delta * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) frameRef.current = requestAnimationFrame(tick);
+      };
+      frameRef.current = requestAnimationFrame(tick);
+    };
+
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) startAnimation();
+    }, { threshold: 0.4 });
     io.observe(el);
-    return () => io.disconnect();
+
+    return () => {
+      cancelled = true;
+      io.disconnect();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
   }, [to, duration]);
+
   return <span ref={ref} className={className}>{val}{suffix}</span>;
 }
