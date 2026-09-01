@@ -2,13 +2,13 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/store';
 import { Shell } from './components/Shell';
 import { Dashboard } from './pages/Dashboard';
-import { Agenda } from './pages/Agenda';
+import { AgendaReal } from './pages/AgendaReal';
 import { Pacientes } from './pages/Pacientes';
 import { Financeiro } from './pages/Financeiro';
 import { Crm } from './pages/Crm';
 import { Mensagens } from './pages/Mensagens';
 import { Relatorios } from './pages/Relatorios';
-import { Config } from './pages/Config';
+import { ConfigPremium } from './pages/ConfigPremium';
 
 function Home() {
   const { user, canView } = useApp();
@@ -31,14 +31,14 @@ export default function App() {
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/agenda" element={<Agenda />} />
+            <Route path="/agenda" element={<AgendaReal />} />
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/:id" element={<Pacientes />} />
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/crm" element={<Crm />} />
             <Route path="/mensagens" element={<Mensagens />} />
             <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/config" element={<Config />} />
+            <Route path="/config" element={<ConfigPremium />} />
             <Route path="*" element={<Home />} />
           </Route>
         </Routes>
