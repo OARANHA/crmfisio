@@ -52,10 +52,11 @@ BEGIN
   WITH picked AS (
     SELECT w.id
     FROM public.wa_logs w
+    JOIN public.patients p ON p.id = w.patient_id AND p.clinic_id = w.clinic_id
     WHERE w.status = 'fila'
       AND w.scheduled_for <= now()
     ORDER BY w.scheduled_for, w.created_at
-    FOR UPDATE SKIP LOCKED
+    FOR UPDATE OF w SKIP LOCKED
     LIMIT greatest(1, least(coalesce(p_limit,20),100))
   ), claimed AS (
     UPDATE public.wa_logs w
@@ -71,9 +72,7 @@ BEGIN
   SELECT c.id, c.clinic_id, c.patient_id, c.appointment_id, c.waitlist_id,
          c.template, c.mensagem, p.telefone
     FROM claimed c
-    JOIN public.patients p ON p.id = c.patient_id AND p.clinic_id = c.clinic_id
-   WHERE p.opt_in_whats = true
-     AND coalesce(trim(p.telefone),'') <> '';
+    JOIN public.patients p ON p.id = c.patient_id AND p.clinic_id = c.clinic_id;
 END;
 $$;
 REVOKE ALL ON FUNCTION public.claim_message_outbox(integer) FROM PUBLIC;
