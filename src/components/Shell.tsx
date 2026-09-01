@@ -213,7 +213,7 @@ export function Shell() {
       <aside className="hidden lg:flex fixed inset-y-0 left-0 w-60 flex-col border-r border-line bg-deep/90 backdrop-blur-sm z-40">
         <div className="flex items-center gap-2.5 px-5 h-16 border-b border-line">
           <PulseMark className="w-7 h-6" />
-          <span className="font-display font-bold tracking-tight">CORAÇÃO<span className="text-pulse">.</span></span>
+          <span className="font-display font-bold tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>
         </div>
         <div className="py-5 flex-1 overflow-y-auto">{navList}</div>
         <div className="border-t border-line p-4">
@@ -239,7 +239,7 @@ export function Shell() {
             <div className="flex items-center justify-between px-5 h-14 border-b border-line">
               <div className="flex items-center gap-2.5">
                 <PulseMark className="w-6 h-5" />
-                <span className="font-display font-bold text-[15px]">CORAÇÃO<span className="text-pulse">.</span></span>
+                <span className="font-display font-bold text-[15px]">MEDICSPRO<span className="text-pulse">.</span></span>
               </div>
               <button onClick={() => setMobileOpen(false)} className="text-fog"><IconX className="w-5 h-5" /></button>
             </div>
