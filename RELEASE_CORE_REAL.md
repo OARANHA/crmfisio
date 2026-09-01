@@ -12,17 +12,27 @@ Esta release remove os dados simulados do núcleo operacional e passa a usar o S
 - pacotes já existentes;
 - logs de comunicação e auditoria.
 
-## Ordem segura de implantação
+## Implantação
 
-1. Aplicar `supabase-migrations/20260831_core_rls.sql` no banco `postgres` do Supabase.
-2. Validar que o usuário administrador consegue consultar `profiles`, `patients`, `appointments` e `payments` via API.
-3. Fazer merge de `feature/real-supabase-core` em `main`.
-4. O Portainer/GitOps fará o redeploy da aplicação a partir de `main`.
-5. Fazer login e validar Dashboard, Pacientes, Agenda e Financeiro.
+O frontend continua sendo implantado exclusivamente pelo Portainer/GitOps a partir da branch `main`.
+A stack do CRM recebe apenas `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`; ela não recebe credenciais administrativas do PostgreSQL e não executa DDL.
+
+A camada de dados foi preparada para tratar Pacientes, Agenda e Financeiro como núcleo obrigatório e carregar módulos acessórios de forma tolerante caso uma política RLS ainda não os disponibilize.
+
+A migração `supabase-migrations/20260831_core_rls.sql` permanece versionada como hardening recomendado da infraestrutura Supabase. Ela padroniza as políticas multi-tenant e elimina dependência de políticas recursivas, mas não é executada pelo container web.
+
+## Validação pós-deploy
+
+1. Login deve continuar autenticando via Supabase Auth.
+2. O dashboard deve deixar de exibir os pacientes e valores de `seed.ts`.
+3. Em banco vazio, KPIs operacionais devem aparecer zerados, não preenchidos com dados de demonstração.
+4. Cadastrar paciente deve persistir após recarregar a página.
+5. Agenda e Financeiro devem ler/escrever no Supabase.
+6. Revenue Recovery deve ser calculado somente a partir dos dados reais carregados.
 
 ## Rollback
 
-Em caso de erro de frontend, reverter o merge na `main`. A migração de RLS pode permanecer aplicada: ela é compatível com o modelo multi-tenant e não depende do frontend novo.
+Em caso de erro de frontend, reverter o merge na `main`. Nenhuma credencial administrativa do banco é armazenada na stack do CRM.
 
 ## Dados ainda temporários
 
