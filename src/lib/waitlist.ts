@@ -80,16 +80,19 @@ export async function createWaitlistEntry(input: CreateWaitlistEntryInput): Prom
   return mapEntry(data as Record<string, unknown>);
 }
 
-export async function updateWaitlistStatus(
-  entryId: string,
-  status: WaitlistStatus,
-  bookedAppointmentId?: string,
-): Promise<void> {
+export async function updateWaitlistStatus(entryId: string, status: WaitlistStatus): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (status === 'ofertado') patch.offered_at = new Date().toISOString();
-  if (bookedAppointmentId) patch.booked_appointment_id = bookedAppointmentId;
 
   const { error } = await supabase.from('waitlist_entries').update(patch).eq('id', entryId);
+  if (error) throw error;
+}
+
+export async function claimWaitlistSlot(entryId: string, cancelledAppointmentId: string): Promise<void> {
+  const { error } = await (supabase.rpc as Function)('claim_waitlist_slot', {
+    p_waitlist_id: entryId,
+    p_cancelled_appointment_id: cancelledAppointmentId,
+  });
   if (error) throw error;
 }
 
