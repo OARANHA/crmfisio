@@ -12,7 +12,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS nps_surveys_one_per_appointment_idx
   ON public.nps_surveys (clinic_id, appointment_id)
   WHERE appointment_id IS NOT NULL;
 
-CREATE OR REPLACE FUNCTION public.queue_selected_nps_surveys(p_appointment_ids uuid[], p_days integer DEFAULT 7)
+-- A assinatura SQL continua uuid[],integer, mas o significado agora é appointment_ids.
+-- O DROP é necessário porque PostgreSQL não permite renomear parâmetro de entrada via CREATE OR REPLACE.
+DROP FUNCTION IF EXISTS public.queue_selected_nps_surveys(uuid[],integer);
+
+CREATE FUNCTION public.queue_selected_nps_surveys(p_appointment_ids uuid[], p_days integer DEFAULT 7)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
