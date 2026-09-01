@@ -62,35 +62,25 @@ export function Mensagens() {
     const today = new Date();
     const todayKey = format(today, 'yyyy-MM-dd');
     const cutoffKey = format(subDays(today, 7), 'yyyy-MM-dd');
-    const recentLogsCutoff = subDays(today, 7).getTime();
-    const latestByPatient = new Map<string, typeof appointments[number]>();
     const stats = { noOptin: 0, noPhone: 0, alreadySent: 0 };
+    const candidates: MessageRecipientCandidate[] = [];
 
     appointments
       .filter((appointment) => appointment.status === 'finalizado')
       .filter((appointment) => appointment.data >= cutoffKey && appointment.data <= todayKey)
-      .forEach((appointment) => {
-        const current = latestByPatient.get(appointment.pacienteId);
-        if (!current || appointmentDateTime(appointment.data, appointment.inicio).getTime() > appointmentDateTime(current.data, current.inicio).getTime()) {
-          latestByPatient.set(appointment.pacienteId, appointment);
-        }
-      });
-
-    const candidates: MessageRecipientCandidate[] = [];
-    [...latestByPatient.values()]
       .sort((a, b) => appointmentDateTime(b.data, b.inicio).getTime() - appointmentDateTime(a.data, a.inicio).getTime())
       .forEach((appointment) => {
         const patient = patients.find((item) => item.id === appointment.pacienteId);
         if (!patient || patient.anonimizado) return;
         if (!patient.optInWhats) { stats.noOptin += 1; return; }
         if (!patient.telefone?.trim()) { stats.noPhone += 1; return; }
-        const duplicate = logs.some((log) => log.patientId === patient.id && log.template === 'nps' && OPEN_MESSAGE_STATUS.has(log.status) && new Date(log.createdAt).getTime() >= recentLogsCutoff);
+        const duplicate = logs.some((log) => log.appointmentId === appointment.id && log.template === 'nps' && OPEN_MESSAGE_STATUS.has(log.status));
         if (duplicate) { stats.alreadySent += 1; return; }
         candidates.push({
-          id: patient.id,
+          id: appointment.id,
           patientId: patient.id,
           patientName: patient.nome,
-          primary: `Último atendimento: ${format(parseISO(appointment.data), 'dd/MM/yyyy', { locale: ptBR })} · ${appointment.tipo}`,
+          primary: `Atendimento ${format(parseISO(appointment.data), 'dd/MM/yyyy', { locale: ptBR })} às ${appointment.inicio.slice(0, 5)} · ${appointment.tipo}`,
           secondary: patient.telefone,
         });
       });
@@ -113,7 +103,7 @@ export function Mensagens() {
     const parts = [
       stats.noOptin ? `${stats.noOptin} sem opt-in` : '',
       stats.noPhone ? `${stats.noPhone} sem telefone` : '',
-      stats.alreadySent ? `${stats.alreadySent} já enviado(s)` : '',
+      stats.alreadySent ? `${stats.alreadySent} atendimento(s) já pesquisado(s)` : '',
     ].filter(Boolean);
     return parts.length ? `Fora da seleção: ${parts.join(' · ')}` : '';
   };
@@ -133,12 +123,12 @@ export function Mensagens() {
   const sendNps = async (ids: string[]) => {
     try {
       const { queued: count, dispatch } = await queueSelectedNps(ids);
-      if (!count) return toast('Nenhum dos pacientes selecionados continua elegível para NPS.', 'info');
+      if (!count) return toast('Nenhum dos atendimentos selecionados continua elegível para NPS.', 'info');
       if (dispatch.failed) toast(`${dispatch.sent} NPS enviado(s) e ${dispatch.failed} falhou(aram).`, 'warn');
       else toast(`${dispatch.sent} pesquisa${dispatch.sent === 1 ? '' : 's'} NPS enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
     } catch (error) {
       console.error('[MedicsPro] NPS selecionado:', error);
-      toast('Não foi possível enviar o NPS aos pacientes selecionados.', 'warn');
+      toast('Não foi possível enviar o NPS dos atendimentos selecionados.', 'warn');
     }
   };
 
@@ -179,7 +169,7 @@ export function Mensagens() {
 
     <div className="grid xl:grid-cols-2 gap-4 items-start">
       <Reveal delay={110}><MessageRecipientSelector title="Confirmação de sessões — próximas 48h" sub="Escolha uma, várias ou todas as sessões elegíveis. O backend revalida as regras antes do envio." candidates={confirmationSelection.candidates} blockedSummary={blockedText(confirmationSelection.stats)} busy={loading} canSend={canSend} accent="mint" onSend={sendConfirmations} /></Reveal>
-      <Reveal delay={130}><MessageRecipientSelector title="Pesquisa NPS — últimos 7 dias" sub="Escolha quais pacientes receberão a pesquisa. Um paciente não recebe NPS repetido dentro da janela." candidates={npsSelection.candidates} blockedSummary={blockedText(npsSelection.stats)} busy={loading} canSend={canSend} accent="aqua" onSend={sendNps} /></Reveal>
+      <Reveal delay={130}><MessageRecipientSelector title="Pesquisa NPS — atendimentos dos últimos 7 dias" sub="Cada atendimento finalizado pode gerar sua própria pesquisa. Um NPS anterior do mesmo paciente não bloqueia uma nova sessão." candidates={npsSelection.candidates} blockedSummary={blockedText(npsSelection.stats)} busy={loading} canSend={canSend} accent="aqua" onSend={sendNps} /></Reveal>
     </div>
 
     <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 items-start">
