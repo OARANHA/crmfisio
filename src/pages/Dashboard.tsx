@@ -7,6 +7,7 @@ import { fmtBRL, STATUS_META, dayOf } from '../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../lib/ui';
 import { Reveal, CountUp } from '../components/Reveal';
 import { Ecg } from '../components/Ecg';
+import { RevenueRecovery } from '../components/RevenueRecovery';
 
 export function Dashboard() {
   const { user, appointments, transactions, patients, surveys, consents, users, unidadeSel, unidades } = useApp();
@@ -101,6 +102,10 @@ export function Dashboard() {
         </div>
       </Reveal>
 
+      <Reveal delay={95}>
+        <RevenueRecovery />
+      </Reveal>
+
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <Reveal delay={120}>
           <Card className="lg:col-span-2">
@@ -147,6 +152,9 @@ export function Dashboard() {
         <Card>
           <CardHead title="Produtividade por fisioterapeuta" sub={`competência ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })} · ${unidade ? unidade.nome : 'todas as unidades'}`} />
           <div className="p-5 space-y-4">
+            {prod.length === 0 && (
+              <p className="font-mono text-[11px] text-fog py-5 text-center">Nenhum fisioterapeuta ativo com produção no período.</p>
+            )}
             {prod.map((p) => (
               <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-2.5 min-w-0">
