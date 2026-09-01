@@ -1,8 +1,0 @@
-FROM postgres:17-alpine
-
-COPY supabase-migrations /migrations
-COPY scripts/migrate-db.sh /usr/local/bin/medicspro-migrate
-
-RUN chmod +x /usr/local/bin/medicspro-migrate
-
-ENTRYPOINT ["/usr/local/bin/medicspro-migrate"]
