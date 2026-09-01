@@ -1,4 +1,20 @@
 services:
+  migrate:
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    image: oaranha/crmfisio-migrate:latest
+    restart: "no"
+    environment:
+      PGHOST: supabase-db
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${SUPABASE_DB_PASSWORD}
+    networks:
+      - supabase-internal
+
   crmfisio:
     pull_policy: build
     build:
@@ -9,6 +25,9 @@ services:
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     image: oaranha/crmfisio:latest
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     networks:
       - traefik-public
     labels:
@@ -23,3 +42,6 @@ services:
 networks:
   traefik-public:
     external: true
+  supabase-internal:
+    external: true
+    name: supabase_default
