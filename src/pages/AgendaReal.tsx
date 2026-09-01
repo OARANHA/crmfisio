@@ -4,12 +4,15 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { loadInfrastructure } from '../lib/infrastructure';
 import { resolveClinicId } from '../lib/repository';
+import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appointmentOperations';
 import { useApp, patientName } from '../lib/store';
 import { STATUS_META, type Appointment, type AppointmentStatus, type Room, type Unidade } from '../lib/types';
 import { Btn, Card, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { AppointmentCreateModal, type CreateAt } from '../components/AppointmentCreateModal';
 import { AppointmentActionModal } from '../components/AppointmentActionModal';
+import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
+import { AppointmentRescheduleModal } from '../components/AppointmentRescheduleModal';
 
 const DAY_START = 7 * 60;
 const DAY_END = 19 * 60;
@@ -27,6 +30,9 @@ export function AgendaReal() {
   const [fisioFilter, setFisioFilter] = useState(user?.role === 'fisio' ? user.id : 'all');
   const [creating, setCreating] = useState<CreateAt>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
+  const [cancelling, setCancelling] = useState<Appointment | null>(null);
+  const [operationBusy, setOperationBusy] = useState(false);
   const [loadingInfra, setLoadingInfra] = useState(true);
   const [prefillPatientId] = useState(() => {
     const query = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
@@ -84,13 +90,47 @@ export function AgendaReal() {
     setSelected({ ...selected, status });
   };
 
+  const reloadAgenda = () => window.setTimeout(() => window.location.reload(), 450);
+
+  const confirmCancellation = async (reason: string) => {
+    if (!cancelling) return;
+    setOperationBusy(true);
+    try {
+      await cancelAppointmentWithReason(cancelling.id, reason);
+      toast('Sessão cancelada e motivo registrado.');
+      setCancelling(null);
+      reloadAgenda();
+    } catch (error) {
+      console.error('[MedicsPro] cancelamento operacional:', error);
+      toast('Não foi possível cancelar a sessão.', 'warn');
+    } finally {
+      setOperationBusy(false);
+    }
+  };
+
+  const confirmReschedule = async (payload: { data: string; inicio: string; fim: string; fisioId: string; roomId: string; reason: string; isFitIn: boolean }) => {
+    if (!rescheduling) return;
+    setOperationBusy(true);
+    try {
+      await rescheduleAppointment({ appointmentId: rescheduling.id, ...payload });
+      toast('Sessão remarcada com histórico preservado.');
+      setRescheduling(null);
+      reloadAgenda();
+    } catch (error) {
+      console.error('[MedicsPro] remarcação operacional:', error);
+      toast('Não foi possível remarcar a sessão.', 'warn');
+    } finally {
+      setOperationBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Reveal>
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1>
-            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos e fluxo operacional protegidos</p>
+            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos, remarcações e histórico operacional protegidos</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
             <Btn variant="ghost" onClick={() => setAnchor((date) => addDays(date, -7))}>← semana</Btn>
@@ -188,7 +228,25 @@ export function AgendaReal() {
         roomLabel={selected ? roomLabel(selected.roomId) : ''}
         onClose={() => setSelected(null)}
         onStatus={manageStatus}
+        onReschedule={() => { if (selected) setRescheduling(selected); setSelected(null); }}
+        onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }}
         onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)}
+      />
+
+      <AppointmentCancelModal
+        appointment={cancelling}
+        onClose={() => setCancelling(null)}
+        onConfirm={confirmCancellation}
+        busy={operationBusy}
+      />
+
+      <AppointmentRescheduleModal
+        appointment={rescheduling}
+        rooms={rooms}
+        unidades={unidades}
+        onClose={() => setRescheduling(null)}
+        onConfirm={confirmReschedule}
+        busy={operationBusy}
       />
     </div>
   );
