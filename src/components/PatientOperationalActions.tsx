@@ -20,6 +20,8 @@ type ConsentRow = {
   assinado: boolean;
   data_assinatura: string | null;
   conteudo_snapshot: string | null;
+  canceled_at: string | null;
+  cancel_reason: string | null;
 };
 
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
@@ -35,7 +37,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const load = async () => {
     const [templateResult, consentResult] = await Promise.all([
       db.from('consent_templates').select('id,nome,versao,conteudo,obrigatorio').eq('ativo', true).order('nome'),
-      db.from('consent_terms').select('id,nome,versao,assinado,data_assinatura,conteudo_snapshot').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+      db.from('consent_terms').select('id,nome,versao,assinado,data_assinatura,conteudo_snapshot,canceled_at,cancel_reason').eq('patient_id', patient.id).order('created_at', { ascending: false }),
     ]);
     if (templateResult.error) throw templateResult.error;
     if (consentResult.error) throw consentResult.error;
@@ -50,8 +52,9 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     });
   }, [patient.id]);
 
-  const pending = useMemo(() => consents.find((c) => !c.assinado), [consents]);
-  const signed = useMemo(() => consents.find((c) => c.assinado), [consents]);
+  const pending = useMemo(() => consents.find((c) => !c.assinado && !c.canceled_at), [consents]);
+  const signed = useMemo(() => consents.find((c) => c.assinado && !c.canceled_at), [consents]);
+  const canceled = useMemo(() => consents.filter((c) => !!c.canceled_at), [consents]);
 
   const createConsent = async () => {
     if (!templateId) return;
@@ -93,6 +96,25 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     }
   };
 
+  const cancelConsent = async (id: string) => {
+    if (!window.confirm('Cancelar este consentimento pendente? O registro ficará preservado como cancelado.')) return;
+    setBusy(true);
+    try {
+      const { error } = await db.rpc('cancel_patient_consent', {
+        p_consent_id: id,
+        p_reason: 'Substituído por nova versão ou corrigido operacionalmente',
+      });
+      if (error) throw error;
+      await load();
+      toast('Consentimento pendente cancelado. Agora você pode gerar a versão correta.');
+    } catch (error) {
+      console.error('[MedicsPro] cancelar consentimento:', error);
+      toast('Não foi possível cancelar o consentimento pendente.', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const scheduleNext = () => {
     nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`);
   };
@@ -126,10 +148,26 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
                 <p className="font-display font-semibold text-[12.5px]">{pending.nome} · v{pending.versao}</p>
                 <p className="text-[11px] text-fog mt-2 whitespace-pre-wrap max-h-28 overflow-auto">{pending.conteudo_snapshot || 'Conteúdo versionado vinculado ao documento.'}</p>
               </div>
-              {canCollect && <Btn variant="subtle" onClick={() => acceptConsent(pending.id)} disabled={busy}>Registrar aceite</Btn>}
+              {canCollect && (
+                <div className="flex flex-wrap gap-2">
+                  <Btn variant="subtle" onClick={() => acceptConsent(pending.id)} disabled={busy}>Registrar aceite</Btn>
+                  <Btn variant="ghost" onClick={() => cancelConsent(pending.id)} disabled={busy}>Cancelar pendência</Btn>
+                </div>
+              )}
             </div>
           ) : signed ? (
-            <p className="font-mono text-[10.5px] text-mint">Último aceite: {signed.nome} · versão {signed.versao}</p>
+            <div className="space-y-2">
+              <p className="font-mono text-[10.5px] text-mint">Último aceite: {signed.nome} · versão {signed.versao}</p>
+              {templates.length > 0 && canCollect && (
+                <div className="space-y-2 border-t border-line/60 pt-3">
+                  <p className="text-[10.5px] text-fog">Precisa coletar uma nova versão? Selecione o modelo vigente.</p>
+                  <Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.nome} · v{t.versao}</option>)}
+                  </Select>
+                  <Btn variant="ghost" onClick={createConsent} disabled={busy || !templateId}>Gerar nova versão para aceite</Btn>
+                </div>
+              )}
+            </div>
           ) : templates.length === 0 ? (
             <p className="font-mono text-[10.5px] text-amber">Nenhum modelo ativo. O administrador deve criar um em Configurações.</p>
           ) : (
@@ -139,6 +177,10 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
               </Select>
               {canCollect && <Btn variant="subtle" onClick={createConsent} disabled={busy || !templateId}>{busy ? 'Processando…' : 'Gerar consentimento'}</Btn>}
             </div>
+          )}
+
+          {canceled.length > 0 && (
+            <p className="font-mono text-[9.5px] text-fog">Histórico: {canceled.length} consentimento(s) cancelado(s) preservado(s).</p>
           )}
         </div>
       </div>
