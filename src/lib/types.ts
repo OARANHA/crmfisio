@@ -127,11 +127,12 @@ export interface ConsentTerm {
 
 export interface NpsSurvey { id: string; pacienteId: string; nota: number | null; comentario: string; data: string }
 
-export type WaStatus = 'enviando' | 'enviado' | 'entregue' | 'lido';
+export type WaStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';
+export type WaTemplate = 'confirmacao' | 'nps' | 'reativacao' | 'vaga_espera';
 export interface WaLog {
   id: string;
   pacienteId: string;
-  template: 'confirmacao' | 'nps' | 'reativacao';
+  template: WaTemplate;
   mensagem: string;
   enviadoEm: string;
   status: WaStatus;
