@@ -15,6 +15,7 @@ import { IconLock } from '../components/icons';
 import { Reveal } from '../components/Reveal';
 import { ClinicalWorkspace } from '../components/ClinicalWorkspace';
 import { PatientJourneyControl } from '../components/PatientJourneyControl';
+import { PatientOperationalActions } from '../components/PatientOperationalActions';
 
 export function Pacientes() {
   const { id } = useParams();
@@ -197,6 +198,10 @@ function Pep({ id }: { id: string }) {
             <PatientJourneyControl patient={p} />
           </div>
         </Card>
+      </Reveal>
+
+      <Reveal delay={60}>
+        <PatientOperationalActions patient={p} />
       </Reveal>
 
       <Reveal delay={80}>
