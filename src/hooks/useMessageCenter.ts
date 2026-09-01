@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  flushMessageOutbox,
   loadMessageOutbox,
   loadMessageTemplates,
   queueAppointmentConfirmations,
   saveMessageTemplate,
+  type MessageDispatchResult,
   type MessageOutboxRow,
   type MessageTemplateRow,
 } from '../lib/messageOutbox';
@@ -45,12 +47,24 @@ export function useMessageCenter(userId?: string) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  const queueConfirmations = async () => {
+  const queueConfirmations = async (): Promise<{ queued: number; dispatch: MessageDispatchResult }> => {
     setLoading(true);
     try {
-      const count = await queueAppointmentConfirmations(48);
+      const queued = await queueAppointmentConfirmations(48);
+      const dispatch = queued > 0 ? await flushMessageOutbox(Math.min(Math.max(queued, 1), 100)) : { processed: 0, sent: 0, failed: 0 };
       await refresh();
-      return count;
+      return { queued, dispatch };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const flush = async (limit = 20) => {
+    setLoading(true);
+    try {
+      const dispatch = await flushMessageOutbox(limit);
+      await refresh();
+      return dispatch;
     } finally {
       setLoading(false);
     }
@@ -66,5 +80,5 @@ export function useMessageCenter(userId?: string) {
     }
   };
 
-  return { clinicId, logs, templates, loading, refresh, queueConfirmations, saveTemplate };
+  return { clinicId, logs, templates, loading, refresh, queueConfirmations, flush, saveTemplate };
 }
