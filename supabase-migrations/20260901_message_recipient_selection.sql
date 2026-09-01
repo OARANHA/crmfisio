@@ -11,6 +11,7 @@ DECLARE
   v_clinic uuid := public.current_clinic_id();
   v_role text := public.current_app_role();
   v_count integer := 0;
+  v_now_local timestamp := timezone('America/Sao_Paulo', now());
   r record;
   v_message text;
 BEGIN
@@ -31,8 +32,8 @@ BEGIN
       AND p.opt_in_whats = true
       AND p.anonimizado = false
       AND coalesce(trim(p.telefone), '') <> ''
-      AND (a.data + a.inicio) >= localtimestamp
-      AND (a.data + a.inicio) <= localtimestamp + make_interval(hours => greatest(1,p_hours))
+      AND (a.data + a.inicio) >= v_now_local
+      AND (a.data + a.inicio) <= v_now_local + make_interval(hours => greatest(1,p_hours))
       AND NOT EXISTS (
         SELECT 1 FROM public.wa_logs w
         WHERE w.appointment_id = a.id
