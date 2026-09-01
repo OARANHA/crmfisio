@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { flushMessageOutbox, loadMessageOutbox, loadMessageTemplates, queueAppointmentConfirmations, queueSelectedAppointmentConfirmations, queueNpsSurveys, queueSelectedNpsSurveys, resolveWhatsappReview, saveMessageTemplate, type MessageDispatchResult, type MessageOutboxRow, type MessageTemplateRow } from '../lib/messageOutbox';
+import { flushMessageOutbox, loadMessageOutbox, loadMessageTemplates, queueAppointmentConfirmations, queueSelectedAppointmentConfirmations, queueNpsSurveys, queueSelectedNpsSurveys, queueSelectedReactivationCampaign, resolveWhatsappReview, saveMessageTemplate, type MessageDispatchResult, type MessageOutboxRow, type MessageTemplateRow } from '../lib/messageOutbox';
 import { resolveClinicId } from '../lib/repository';
 export function useMessageCenter(userId?:string){
  const[clinicId,setClinicId]=useState('');const[logs,setLogs]=useState<MessageOutboxRow[]>([]);const[templates,setTemplates]=useState<MessageTemplateRow[]>([]);const[loading,setLoading]=useState(false);
@@ -11,8 +11,9 @@ export function useMessageCenter(userId?:string){
  const queueSelectedConfirmations=(ids:string[])=>execute(()=>queueSelectedAppointmentConfirmations(ids,48));
  const queueNps=()=>execute(()=>queueNpsSurveys(7));
  const queueSelectedNps=(ids:string[])=>execute(()=>queueSelectedNpsSurveys(ids,7));
+ const queueSelectedReactivation=(ids:string[])=>execute(()=>queueSelectedReactivationCampaign(ids,30));
  const resolveReview=async(logId:string,resolution:string,note?:string)=>{setLoading(true);try{await resolveWhatsappReview(logId,resolution,note);await refresh();}finally{setLoading(false);}};
  const flush=async(limit=20)=>{setLoading(true);try{const dispatch=await flushMessageOutbox(limit);await refresh();return dispatch;}finally{setLoading(false);}};
  const saveTemplate=async(id:string,body:string)=>{setLoading(true);try{await saveMessageTemplate(id,body);await refresh();}finally{setLoading(false);}};
- return{clinicId,logs,templates,loading,refresh,queueConfirmations,queueSelectedConfirmations,queueNps,queueSelectedNps,resolveReview,flush,saveTemplate};
+ return{clinicId,logs,templates,loading,refresh,queueConfirmations,queueSelectedConfirmations,queueNps,queueSelectedNps,queueSelectedReactivation,resolveReview,flush,saveTemplate};
 }
