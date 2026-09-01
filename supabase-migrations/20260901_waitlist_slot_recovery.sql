@@ -25,6 +25,10 @@ CREATE INDEX IF NOT EXISTS waitlist_entries_clinic_status_idx
 CREATE INDEX IF NOT EXISTS waitlist_entries_patient_idx
   ON public.waitlist_entries (patient_id, status);
 
+CREATE UNIQUE INDEX IF NOT EXISTS waitlist_one_open_entry_per_patient_idx
+  ON public.waitlist_entries (clinic_id, patient_id)
+  WHERE status IN ('aguardando', 'ofertado');
+
 ALTER TABLE public.waitlist_entries ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS waitlist_select_tenant ON public.waitlist_entries;
@@ -40,6 +44,22 @@ FOR INSERT TO authenticated
 WITH CHECK (
   clinic_id = public.current_clinic_id()
   AND public.current_app_role() IN ('owner', 'admin', 'recep')
+  AND EXISTS (
+    SELECT 1 FROM public.patients p
+    WHERE p.id = patient_id AND p.clinic_id = clinic_id
+  )
+  AND (
+    professional_id IS NULL OR EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = professional_id AND p.clinic_id = clinic_id
+    )
+  )
+  AND (
+    unit_id IS NULL OR EXISTS (
+      SELECT 1 FROM public.units u
+      WHERE u.id = unit_id AND u.clinic_id = clinic_id
+    )
+  )
 );
 
 DROP POLICY IF EXISTS waitlist_update_operational ON public.waitlist_entries;
@@ -50,7 +70,13 @@ USING (
   clinic_id = public.current_clinic_id()
   AND public.current_app_role() IN ('owner', 'admin', 'recep')
 )
-WITH CHECK (clinic_id = public.current_clinic_id());
+WITH CHECK (
+  clinic_id = public.current_clinic_id()
+  AND EXISTS (
+    SELECT 1 FROM public.patients p
+    WHERE p.id = patient_id AND p.clinic_id = clinic_id
+  )
+);
 
 GRANT SELECT, INSERT, UPDATE ON public.waitlist_entries TO authenticated;
 
