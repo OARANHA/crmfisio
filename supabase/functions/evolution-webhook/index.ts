@@ -17,6 +17,11 @@ const pickText = (item: Record<string, unknown>) => {
   return null;
 };
 
+const normalizeEventType = (value: unknown) => String(value ?? 'UNKNOWN')
+  .trim()
+  .toUpperCase()
+  .replace(/[.\-\s]+/g, '_');
+
 const statusUpdate = (raw: unknown) => {
   if (typeof raw === 'number') {
     if (raw >= 4) return { status: 'lido', field: 'read_at' };
@@ -50,12 +55,15 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const eventType = String(payload.event ?? payload.type ?? 'UNKNOWN').toUpperCase();
+  const rawEventType = payload.event ?? payload.type ?? 'UNKNOWN';
+  const eventType = normalizeEventType(rawEventType);
   const instanceName = String(payload.instance ?? payload.instanceName ?? 'medicspro');
   const rawData = payload.data ?? payload;
   const items = Array.isArray(rawData) ? rawData : [rawData];
   let recorded = 0;
   let updated = 0;
+  let inboundProcessed = 0;
+  const inboundActions: string[] = [];
 
   for (const rawItem of items) {
     if (!rawItem || typeof rawItem !== 'object') continue;
@@ -64,6 +72,7 @@ Deno.serve(async (req) => {
     const providerMessageId = key.id ? String(key.id) : item.messageId ? String(item.messageId) : null;
     const remoteJid = key.remoteJid ? String(key.remoteJid) : item.remoteJid ? String(item.remoteJid) : null;
     const fromMe = typeof key.fromMe === 'boolean' ? key.fromMe : null;
+    const messageText = pickText(item);
 
     let log: { id: string; clinic_id: string; status: string } | null = null;
     if (providerMessageId) {
@@ -76,7 +85,7 @@ Deno.serve(async (req) => {
     }
 
     const rawStatus = item.status ?? (item.update as Record<string, unknown> | undefined)?.status ?? item.messageStatus;
-    const { error: eventError } = await admin.from('wa_events').insert({
+    const { data: eventRow, error: eventError } = await admin.from('wa_events').insert({
       clinic_id: log?.clinic_id ?? null,
       wa_log_id: log?.id ?? null,
       provider: 'evolution',
@@ -85,10 +94,45 @@ Deno.serve(async (req) => {
       provider_message_id: providerMessageId,
       remote_jid: remoteJid,
       from_me: fromMe,
-      message_text: pickText(item),
-      payload: { event: eventType, instance: instanceName, data: item },
-    });
+      message_text: messageText,
+      payload: { event: eventType, provider_event: rawEventType, instance: instanceName, data: item },
+    }).select('id').maybeSingle();
     if (!eventError) recorded += 1;
+
+    if (eventType === 'MESSAGES_UPSERT' && fromMe === false && remoteJid && messageText) {
+      const { data: inbound, error: inboundError } = await admin.rpc('process_whatsapp_inbound', {
+        p_remote_jid: remoteJid,
+        p_message_text: messageText,
+      });
+      if (!inboundError && inbound) {
+        inboundProcessed += 1;
+        const action = String((inbound as Record<string, unknown>).action ?? 'unknown');
+        inboundActions.push(action);
+        if (eventRow?.id) {
+          const linkedLogId = (inbound as Record<string, unknown>).wa_log_id;
+          const patientId = (inbound as Record<string, unknown>).patient_id;
+          let clinicId: string | null = null;
+          if (linkedLogId) {
+            const { data: linked } = await admin.from('wa_logs').select('clinic_id').eq('id', linkedLogId).maybeSingle();
+            clinicId = linked?.clinic_id ?? null;
+          }
+          await admin.from('wa_events').update({
+            wa_log_id: linkedLogId ?? null,
+            clinic_id: clinicId,
+            payload: {
+              event: eventType,
+              provider_event: rawEventType,
+              instance: instanceName,
+              data: item,
+              inbound_action: action,
+              patient_id: patientId ?? null,
+            },
+          }).eq('id', eventRow.id);
+        }
+      } else if (inboundError) {
+        console.error('[evolution-webhook] inbound:', inboundError);
+      }
+    }
 
     if (!log) continue;
     const now = new Date().toISOString();
@@ -114,5 +158,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, event: eventType, recorded, updated });
+  return json({ ok: true, event: eventType, recorded, updated, inboundProcessed, inboundActions });
 });
