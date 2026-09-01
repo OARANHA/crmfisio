@@ -189,6 +189,14 @@ export async function resolveClinicId(userId: string): Promise<string> {
   return data.clinic_id;
 }
 
+const optionalRows = <T>(label: string, result: { data: T[] | null; error: unknown }): T[] => {
+  if (result.error) {
+    console.warn(`[MedicsPro] ${label} indisponível por enquanto:`, result.error);
+    return [];
+  }
+  return result.data ?? [];
+};
+
 export async function loadClinicData(userId: string): Promise<ClinicData> {
   const clinicId = await resolveClinicId(userId);
   const [profiles, patients, appointments, payments, evolutions, consents, surveys, patientPackages, packages, waLogs, audit] = await Promise.all([
@@ -205,10 +213,8 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     supabase.from('audit_log').select('*').eq('clinic_id', clinicId).order('ts', { ascending: false }).limit(250),
   ]);
 
-  const failures = [profiles, patients, appointments, payments, evolutions, consents, surveys, patientPackages, packages, waLogs, audit]
-    .map((r) => r.error)
-    .filter(Boolean);
-  if (failures.length) throw failures[0];
+  const requiredFailure = [profiles.error, patients.error, appointments.error, payments.error].find(Boolean);
+  if (requiredFailure) throw requiredFailure;
 
   return {
     clinicId,
@@ -216,13 +222,13 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     patients: (patients.data ?? []).map(mapPatient),
     appointments: (appointments.data ?? []).map(mapAppointment),
     transactions: (payments.data ?? []).map(mapPayment),
-    evolutions: (evolutions.data ?? []).map(mapEvolution),
-    consents: (consents.data ?? []).map(mapConsent),
-    surveys: (surveys.data ?? []).map(mapNps),
-    patientPackages: (patientPackages.data ?? []).map(mapPatientPackage),
-    packages: (packages.data ?? []).map(mapSessionPackage),
-    waLogs: (waLogs.data ?? []).map(mapWaLog),
-    audit: (audit.data ?? []).map(mapAudit),
+    evolutions: optionalRows('evoluções', evolutions).map(mapEvolution),
+    consents: optionalRows('consentimentos', consents).map(mapConsent),
+    surveys: optionalRows('NPS', surveys).map(mapNps),
+    patientPackages: optionalRows('pacotes de pacientes', patientPackages).map(mapPatientPackage),
+    packages: optionalRows('catálogo de pacotes', packages).map(mapSessionPackage),
+    waLogs: optionalRows('logs de comunicação', waLogs).map(mapWaLog),
+    audit: optionalRows('auditoria', audit).map(mapAudit),
   };
 }
 
