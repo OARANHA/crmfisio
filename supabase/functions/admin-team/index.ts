@@ -170,7 +170,6 @@ Deno.serve(async (req) => {
     if (payload.action === 'set_active') {
       const { error } = await admin.from('profiles').update({ ativo: !!payload.ativo }).eq('id', target.id).eq('clinic_id', caller.clinic_id);
       if (error) throw error;
-      if (!payload.ativo) await admin.auth.admin.signOut(target.id, 'global').catch(() => undefined);
       return json({ id: target.id, ativo: !!payload.ativo });
     }
 
