@@ -13,6 +13,7 @@ import { AppointmentCreateModal, type CreateAt } from '../components/Appointment
 import { AppointmentActionModal } from '../components/AppointmentActionModal';
 import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
 import { AppointmentRescheduleModal } from '../components/AppointmentRescheduleModal';
+import { WaitlistPanel } from '../components/WaitlistPanel';
 
 const DAY_START = 7 * 60;
 const DAY_END = 19 * 60;
@@ -90,7 +91,7 @@ export function AgendaReal() {
     setSelected({ ...selected, status });
   };
 
-  const reloadAgenda = () => window.setTimeout(() => window.location.reload(), 450);
+  const reloadAgenda = () => window.setTimeout(() => window.location.reload(), 350);
 
   const confirmCancellation = async (reason: string) => {
     if (!cancelling) return;
@@ -130,7 +131,7 @@ export function AgendaReal() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1>
-            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos, remarcações e histórico operacional protegidos</p>
+            <p className="text-fog text-[13px] mt-0.5">agenda clínica real · conflitos, remarcações e recuperação de vagas protegidos</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
             <Btn variant="ghost" onClick={() => setAnchor((date) => addDays(date, -7))}>← semana</Btn>
@@ -164,6 +165,8 @@ export function AgendaReal() {
           ))}
         </div>
       </Reveal>
+
+      {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
 
       <Reveal delay={120}>
         <Card className="overflow-x-auto">
