@@ -42,22 +42,25 @@ CREATE POLICY waitlist_insert_operational
 ON public.waitlist_entries
 FOR INSERT TO authenticated
 WITH CHECK (
-  clinic_id = public.current_clinic_id()
+  waitlist_entries.clinic_id = public.current_clinic_id()
   AND public.current_app_role() IN ('owner', 'admin', 'recep')
   AND EXISTS (
     SELECT 1 FROM public.patients p
-    WHERE p.id = patient_id AND p.clinic_id = clinic_id
+    WHERE p.id = waitlist_entries.patient_id
+      AND p.clinic_id = waitlist_entries.clinic_id
   )
   AND (
-    professional_id IS NULL OR EXISTS (
+    waitlist_entries.professional_id IS NULL OR EXISTS (
       SELECT 1 FROM public.profiles p
-      WHERE p.id = professional_id AND p.clinic_id = clinic_id
+      WHERE p.id = waitlist_entries.professional_id
+        AND p.clinic_id = waitlist_entries.clinic_id
     )
   )
   AND (
-    unit_id IS NULL OR EXISTS (
+    waitlist_entries.unit_id IS NULL OR EXISTS (
       SELECT 1 FROM public.units u
-      WHERE u.id = unit_id AND u.clinic_id = clinic_id
+      WHERE u.id = waitlist_entries.unit_id
+        AND u.clinic_id = waitlist_entries.clinic_id
     )
   )
 );
@@ -67,14 +70,15 @@ CREATE POLICY waitlist_update_operational
 ON public.waitlist_entries
 FOR UPDATE TO authenticated
 USING (
-  clinic_id = public.current_clinic_id()
+  waitlist_entries.clinic_id = public.current_clinic_id()
   AND public.current_app_role() IN ('owner', 'admin', 'recep')
 )
 WITH CHECK (
-  clinic_id = public.current_clinic_id()
+  waitlist_entries.clinic_id = public.current_clinic_id()
   AND EXISTS (
     SELECT 1 FROM public.patients p
-    WHERE p.id = patient_id AND p.clinic_id = clinic_id
+    WHERE p.id = waitlist_entries.patient_id
+      AND p.clinic_id = waitlist_entries.clinic_id
   )
 );
 
