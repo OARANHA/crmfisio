@@ -12,7 +12,15 @@ const toMin = (hhmm: string) => {
 const toHHMM = (min: number) =>
   `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-export type CreateAt = { dia: string; hora: string } | null;
+export type CreateAt = {
+  dia: string;
+  hora: string;
+  patientId?: string;
+  fisioId?: string;
+  roomId?: string;
+  duracaoMin?: number;
+  isFitIn?: boolean;
+} | null;
 
 interface Props {
   creating: CreateAt;
@@ -35,18 +43,26 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   const [hora, setHora] = useState('08:00');
   const [duracao, setDuracao] = useState(50);
   const [valor, setValor] = useState(120);
+  const [isFitIn, setIsFitIn] = useState(false);
   const [key, setKey] = useState('');
 
-  const createKey = creating ? `${creating.dia}-${creating.hora}` : '';
+  const createKey = creating
+    ? [creating.dia, creating.hora, creating.patientId, creating.fisioId, creating.roomId, creating.isFitIn ? 'fit' : 'normal'].join('-')
+    : '';
+
   if (creating && createKey !== key) {
     setKey(createKey);
     setDia(creating.dia);
     setHora(creating.hora);
-    setPacienteId(prefillPatientId ?? '');
-    const firstUnit = unidades[0]?.id ?? '';
+    setPacienteId(creating.patientId ?? prefillPatientId ?? '');
+    const initialRoomId = creating.roomId ?? '';
+    const initialRoom = rooms.find((r) => r.id === initialRoomId);
+    const firstUnit = initialRoom?.unidadeId ?? unidades[0]?.id ?? '';
     setUnitId(firstUnit);
-    setRoomId(rooms.find((r) => r.unidadeId === firstUnit)?.id ?? '');
-    if (user?.role === 'fisio') setFisioId(user.id);
+    setRoomId(initialRoomId || rooms.find((r) => r.unidadeId === firstUnit)?.id || '');
+    setFisioId(user?.role === 'fisio' ? user.id : (creating.fisioId ?? ''));
+    setDuracao(creating.duracaoMin ?? 50);
+    setIsFitIn(Boolean(creating.isFitIn));
   }
 
   const fim = toHHMM(toMin(hora) + duracao);
@@ -82,11 +98,18 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
       pacoteId: null,
       serieId: null,
       notas: '',
+      isFitIn,
     });
   };
 
   return (
-    <Modal open={!!creating} onClose={onClose} title="Nova sessão" wide>
+    <Modal open={!!creating} onClose={onClose} title={isFitIn ? 'Novo encaixe' : 'Nova sessão'} wide>
+      {isFitIn && (
+        <div className="mb-4 border border-mint/35 bg-mint/[0.06] p-3 text-[12px] text-mint">
+          Vaga recuperada da lista de espera. Confirme os dados antes de agendar.
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Paciente">
           <Select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)}>
@@ -142,7 +165,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
 
       <div className="mt-5 flex justify-end gap-2">
         <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn onClick={save} disabled={!pacienteId || !fisioId || !roomId || conflicts.length > 0}>Agendar sessão</Btn>
+        <Btn onClick={save} disabled={!pacienteId || !fisioId || !roomId || conflicts.length > 0}>{isFitIn ? 'Confirmar encaixe' : 'Agendar sessão'}</Btn>
       </div>
     </Modal>
   );
