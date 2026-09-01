@@ -70,6 +70,99 @@ BEFORE UPDATE ON public.waitlist_entries
 FOR EACH ROW
 EXECUTE FUNCTION public.touch_waitlist_updated_at();
 
+CREATE OR REPLACE FUNCTION public.claim_waitlist_slot(
+  p_waitlist_id uuid,
+  p_cancelled_appointment_id uuid
+)
+RETURNS public.appointments
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role text;
+  v_clinic uuid;
+  v_wait public.waitlist_entries%ROWTYPE;
+  v_slot public.appointments%ROWTYPE;
+  v_new public.appointments%ROWTYPE;
+BEGIN
+  v_role := public.current_app_role();
+  v_clinic := public.current_clinic_id();
+
+  IF v_role NOT IN ('owner', 'admin', 'recep') THEN
+    RAISE EXCEPTION 'Perfil sem permissão para preencher vaga da lista de espera'
+      USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_wait
+  FROM public.waitlist_entries
+  WHERE id = p_waitlist_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_wait.clinic_id IS DISTINCT FROM v_clinic THEN
+    RAISE EXCEPTION 'Entrada da lista de espera não encontrada';
+  END IF;
+
+  IF v_wait.status NOT IN ('aguardando', 'ofertado') THEN
+    RAISE EXCEPTION 'Entrada da lista de espera não está disponível';
+  END IF;
+
+  SELECT * INTO v_slot
+  FROM public.appointments
+  WHERE id = p_cancelled_appointment_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_slot.clinic_id IS DISTINCT FROM v_clinic THEN
+    RAISE EXCEPTION 'Vaga liberada não encontrada';
+  END IF;
+
+  IF v_slot.status <> 'cancelado' THEN
+    RAISE EXCEPTION 'O horário selecionado não está mais liberado';
+  END IF;
+
+  INSERT INTO public.appointments (
+    clinic_id,
+    paciente_id,
+    fisio_id,
+    room_id,
+    data,
+    inicio,
+    fim,
+    status,
+    tipo,
+    valor,
+    pacote_id,
+    serie_id,
+    notas,
+    is_fit_in
+  ) VALUES (
+    v_slot.clinic_id,
+    v_wait.patient_id,
+    v_slot.fisio_id,
+    v_slot.room_id,
+    v_slot.data,
+    v_slot.inicio,
+    v_slot.fim,
+    'agendado',
+    v_slot.tipo,
+    v_slot.valor,
+    NULL,
+    NULL,
+    concat_ws(E'\n', NULLIF(v_wait.notes, ''), 'Encaixe originado da lista de espera.'),
+    true
+  )
+  RETURNING * INTO v_new;
+
+  UPDATE public.waitlist_entries
+  SET status = 'agendado', booked_appointment_id = v_new.id
+  WHERE id = v_wait.id;
+
+  RETURN v_new;
+END;
+$$;
+
 REVOKE ALL ON FUNCTION public.touch_waitlist_updated_at() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_waitlist_slot(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_waitlist_slot(uuid, uuid) TO authenticated;
 
 COMMIT;
