@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
@@ -54,6 +55,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
 
   const pending = useMemo(() => consents.find((c) => !c.assinado && !c.canceled_at), [consents]);
   const signed = useMemo(() => consents.find((c) => c.assinado && !c.canceled_at), [consents]);
+  const signedHistory = useMemo(() => consents.filter((c) => c.assinado && !c.canceled_at), [consents]);
   const canceled = useMemo(() => consents.filter((c) => !!c.canceled_at), [consents]);
 
   const createConsent = async () => {
@@ -115,6 +117,14 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     }
   };
 
+  const viewConsent = (document: ConsentRow) => {
+    try {
+      openConsentDocument(document);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Não foi possível abrir o documento.', 'warn');
+    }
+  };
+
   const scheduleNext = () => {
     nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`);
   };
@@ -156,8 +166,29 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
               )}
             </div>
           ) : signed ? (
-            <div className="space-y-2">
-              <p className="font-mono text-[10.5px] text-mint">Último aceite: {signed.nome} · versão {signed.versao}</p>
+            <div className="space-y-3">
+              <div className="border border-mint/25 bg-mint/[0.03] p-3">
+                <p className="font-mono text-[10.5px] text-mint">Último aceite: {signed.nome} · versão {signed.versao}</p>
+                <p className="font-mono text-[9.5px] text-fog mt-1">{signed.data_assinatura ? new Date(signed.data_assinatura).toLocaleString('pt-BR') : 'Data não informada'}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Btn variant="subtle" onClick={() => viewConsent(signed)}>Visualizar documento</Btn>
+                  <Btn variant="ghost" onClick={() => viewConsent(signed)}>Imprimir / salvar PDF</Btn>
+                </div>
+              </div>
+              {signedHistory.length > 1 && (
+                <div className="space-y-2">
+                  <p className="font-display font-semibold text-[11.5px]">Histórico de documentos assinados</p>
+                  {signedHistory.map((document) => (
+                    <div key={document.id} className="flex flex-wrap items-center gap-2 border border-line/70 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] truncate">{document.nome} · v{document.versao}</p>
+                        <p className="font-mono text-[9px] text-fog">{document.data_assinatura ? new Date(document.data_assinatura).toLocaleString('pt-BR') : 'Data não informada'}</p>
+                      </div>
+                      <Btn variant="ghost" onClick={() => viewConsent(document)}>Abrir</Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
               {templates.length > 0 && canCollect && (
                 <div className="space-y-2 border-t border-line/60 pt-3">
                   <p className="text-[10.5px] text-fog">Precisa coletar uma nova versão? Selecione o modelo vigente.</p>
