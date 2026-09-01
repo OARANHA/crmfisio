@@ -32,6 +32,7 @@ export interface SeriePatch {
 interface AppState {
   user: User | null;
   users: User[];
+  setAuthenticatedUser: (user: User | null) => void;
   unidades: Unidade[];
   unidadeSel: string; // 'all' | unidadeId
   setUnidadeSel: (v: string) => void;
@@ -166,6 +167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return {
       user,
+      setAuthenticatedUser: setUser,
       users: seedUsers,
       unidades: seedUnidades,
       unidadeSel,
