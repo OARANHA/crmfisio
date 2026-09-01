@@ -69,19 +69,26 @@ Deno.serve(async (req) => {
     if (!rawItem || typeof rawItem !== 'object') continue;
     const item = rawItem as Record<string, unknown>;
     const key = (item.key ?? {}) as Record<string, unknown>;
-    const providerMessageId = key.id ? String(key.id) : item.messageId ? String(item.messageId) : null;
+    const eventMessageId = key.id ? String(key.id) : item.messageId ? String(item.messageId) : null;
+    // Evolution 2.3.x usa messageId como ID interno do registro de mensagem nos eventos
+    // messages.update e keyId como o ID real retornado pelo WhatsApp no sendText.
+    const whatsappMessageId = item.keyId ? String(item.keyId) : key.id ? String(key.id) : null;
     const remoteJid = key.remoteJid ? String(key.remoteJid) : item.remoteJid ? String(item.remoteJid) : null;
-    const fromMe = typeof key.fromMe === 'boolean' ? key.fromMe : null;
+    const fromMe = typeof key.fromMe === 'boolean' ? key.fromMe : typeof item.fromMe === 'boolean' ? item.fromMe : null;
     const messageText = pickText(item);
 
     let log: { id: string; clinic_id: string; status: string } | null = null;
-    if (providerMessageId) {
+    const correlationIds = [...new Set([whatsappMessageId, eventMessageId].filter(Boolean))] as string[];
+    for (const correlationId of correlationIds) {
       const { data } = await admin
         .from('wa_logs')
         .select('id,clinic_id,status')
-        .eq('provider_message_id', providerMessageId)
+        .eq('provider_message_id', correlationId)
         .maybeSingle();
-      log = data as typeof log;
+      if (data) {
+        log = data as typeof log;
+        break;
+      }
     }
 
     const rawStatus = item.status ?? (item.update as Record<string, unknown> | undefined)?.status ?? item.messageStatus;
@@ -91,11 +98,11 @@ Deno.serve(async (req) => {
       provider: 'evolution',
       instance_name: instanceName,
       event_type: eventType,
-      provider_message_id: providerMessageId,
+      provider_message_id: whatsappMessageId ?? eventMessageId,
       remote_jid: remoteJid,
       from_me: fromMe,
       message_text: messageText,
-      payload: { event: eventType, provider_event: rawEventType, instance: instanceName, data: item },
+      payload: { event: eventType, provider_event: rawEventType, instance: instanceName, data: item, event_message_id: eventMessageId },
     }).select('id').maybeSingle();
     if (!eventError) recorded += 1;
 
@@ -126,6 +133,7 @@ Deno.serve(async (req) => {
               data: item,
               inbound_action: action,
               patient_id: patientId ?? null,
+              event_message_id: eventMessageId,
             },
           }).eq('id', eventRow.id);
         }
