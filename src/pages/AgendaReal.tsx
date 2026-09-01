@@ -28,6 +28,11 @@ export function AgendaReal() {
   const [creating, setCreating] = useState<CreateAt>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [loadingInfra, setLoadingInfra] = useState(true);
+  const [prefillPatientId] = useState(() => {
+    const query = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+    return new URLSearchParams(query).get('patient') ?? '';
+  });
+  const [prefillConsumed, setPrefillConsumed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +51,12 @@ export function AgendaReal() {
       .finally(() => active && setLoadingInfra(false));
     return () => { active = false; };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (prefillConsumed || loadingInfra || !prefillPatientId || rooms.length === 0) return;
+    setCreating({ dia: format(new Date(), 'yyyy-MM-dd'), hora: '08:00' });
+    setPrefillConsumed(true);
+  }, [prefillConsumed, loadingInfra, prefillPatientId, rooms.length]);
 
   const fisios = users.filter((u) => u.role === 'fisio');
   const week = useMemo(() => {
@@ -156,7 +167,7 @@ export function AgendaReal() {
         </Card>
       </Reveal>
 
-      <AppointmentModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} onSave={(a) => { addAppointment(a); setCreating(null); }} />
+      <AppointmentModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={(a) => { addAppointment(a); setCreating(null); nav('/agenda', { replace: true }); }} />
 
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Atendimento">
         {selected && (
@@ -184,7 +195,7 @@ export function AgendaReal() {
   );
 }
 
-function AppointmentModal({ creating, onClose, rooms, unidades, onSave }: { creating: CreateAt; onClose: () => void; rooms: Room[]; unidades: Unidade[]; onSave: (a: Omit<Appointment,'id'>) => void }) {
+function AppointmentModal({ creating, onClose, rooms, unidades, prefillPatientId, onSave }: { creating: CreateAt; onClose: () => void; rooms: Room[]; unidades: Unidade[]; prefillPatientId?: string; onSave: (a: Omit<Appointment,'id'>) => void }) {
   const { user, users, patients } = useApp();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [pacienteId, setPacienteId] = useState('');
@@ -203,6 +214,7 @@ function AppointmentModal({ creating, onClose, rooms, unidades, onSave }: { crea
     setKey(createKey);
     setDia(creating.dia);
     setHora(creating.hora);
+    setPacienteId(prefillPatientId ?? '');
     const firstUnit = unidades[0]?.id ?? '';
     setUnitId(firstUnit);
     setRoomId(rooms.find((r) => r.unidadeId === firstUnit)?.id ?? '');
