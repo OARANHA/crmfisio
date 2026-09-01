@@ -4,6 +4,8 @@ import {
   loadMessageOutbox,
   loadMessageTemplates,
   queueAppointmentConfirmations,
+  queueNpsSurveys,
+  resolveWhatsappReview,
   saveMessageTemplate,
   type MessageDispatchResult,
   type MessageOutboxRow,
@@ -47,13 +49,40 @@ export function useMessageCenter(userId?: string) {
     return () => { cancelled = true; };
   }, [userId]);
 
+  const dispatchQueued = async (queued: number): Promise<MessageDispatchResult> =>
+    queued > 0
+      ? flushMessageOutbox(Math.min(Math.max(queued, 1), 100))
+      : { processed: 0, sent: 0, failed: 0 };
+
   const queueConfirmations = async (): Promise<{ queued: number; dispatch: MessageDispatchResult }> => {
     setLoading(true);
     try {
       const queued = await queueAppointmentConfirmations(48);
-      const dispatch = queued > 0 ? await flushMessageOutbox(Math.min(Math.max(queued, 1), 100)) : { processed: 0, sent: 0, failed: 0 };
+      const dispatch = await dispatchQueued(queued);
       await refresh();
       return { queued, dispatch };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const queueNps = async (): Promise<{ queued: number; dispatch: MessageDispatchResult }> => {
+    setLoading(true);
+    try {
+      const queued = await queueNpsSurveys(7);
+      const dispatch = await dispatchQueued(queued);
+      await refresh();
+      return { queued, dispatch };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resolveReview = async (logId: string, resolution: string, note?: string) => {
+    setLoading(true);
+    try {
+      await resolveWhatsappReview(logId, resolution, note);
+      await refresh();
     } finally {
       setLoading(false);
     }
@@ -80,5 +109,16 @@ export function useMessageCenter(userId?: string) {
     }
   };
 
-  return { clinicId, logs, templates, loading, refresh, queueConfirmations, flush, saveTemplate };
+  return {
+    clinicId,
+    logs,
+    templates,
+    loading,
+    refresh,
+    queueConfirmations,
+    queueNps,
+    resolveReview,
+    flush,
+    saveTemplate,
+  };
 }
