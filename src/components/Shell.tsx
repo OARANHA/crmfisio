@@ -4,7 +4,6 @@ import { useApp, type Toast } from '../lib/store';
 import { useAuth } from '../lib/useAuth';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
-import { supabase } from '../lib/supabaseClient';
 import {
   IconDashboard, IconCalendar, IconUsers, IconWallet, IconTrend, IconSettings,
   IconLogout, IconMenu, IconBell, Select, IconAlert,
@@ -23,7 +22,6 @@ const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: 
 ];
 
 function Login() {
-  const { login: appLogin } = useApp();
   const { signIn, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,9 +33,6 @@ function Login() {
     const { error: signInError } = await signIn(email, password);
     if (signInError) {
       setError(signInError.message);
-    } else {
-      // Após login bem-sucedido, o useAuth atualiza o user automaticamente
-      // O Shell detectará a mudança e renderizará a aplicação
     }
   };
 
@@ -128,7 +123,7 @@ function Toasts() {
 
 export function Shell() {
   const { user: appUser, canView, logout: appLogout, setAuthenticatedUser, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
-  const { user, profile, session, signOut, loading } = useAuth();
+  const { user, profile, signOut, loading } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -142,11 +137,11 @@ export function Shell() {
 
     // Mapeia roles do Supabase para roles do sistema legado
     const roleMap: Record<string, string> = {
-      'owner': 'admin',
-      'admin': 'admin',
-      'fisio': 'fisio',
-      'recep': 'recep',
-      'financeiro': 'recep', // financeiro usa permissões de recepção no sistema antigo
+      owner: 'admin',
+      admin: 'admin',
+      fisio: 'fisio',
+      recep: 'recep',
+      financeiro: 'recep', // financeiro usa permissões de recepção no sistema antigo
     };
 
     const mappedRole = roleMap[profile.role] || 'fisio';
@@ -162,7 +157,6 @@ export function Shell() {
     });
   }, [user?.id, profile?.id, profile?.role, profile?.nome, profile?.cor, setAuthenticatedUser]);
 
-  // Usuário efetivo (já sincronizado via setAuthenticatedUser)
   const effectiveUser = appUser;
 
   useEffect(() => {
@@ -190,7 +184,7 @@ export function Shell() {
     transactions.filter((t) => t.status === 'atrasado').length +
     consents.filter((c) => !c.assinado).length;
   const pad = (n: number) => String(n).padStart(2, '0');
-  const rm = ROLE_META[currentRole];
+  const rm = ROLE_META[effectiveUser.role];
 
   const navList = (
     <nav className="flex flex-col gap-1 px-3">
@@ -227,11 +221,11 @@ export function Shell() {
         <div className="py-5 flex-1 overflow-y-auto">{navList}</div>
         <div className="border-t border-line p-4">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: effectiveUser?.cor || '#cbd5e1' }}>
-              {effectiveUser?.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
+            <span className="w-9 h-9 rounded-full grid place-items-center font-display font-bold text-[12px] text-ink shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>
+              {effectiveUser.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{effectiveUser?.nome || 'Usuário'}</span>
+              <span className="block font-display font-semibold text-[13px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span>
               <span className={`block font-mono text-[10px] mt-0.5 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span>
             </span>
             <button onClick={handleLogout} className="text-fog hover:text-pulse transition-colors" title="Sair">
@@ -256,7 +250,7 @@ export function Shell() {
             <div className="py-4 flex-1 overflow-y-auto">{navList}</div>
             <div className="border-t border-line p-4">
               <button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors font-mono text-[12px]">
-                <IconLogout className="w-4 h-4" /> Encerrar sessão — {userName}
+                <IconLogout className="w-4 h-4" /> Encerrar sessão — {effectiveUser.nome}
               </button>
             </div>
           </aside>
