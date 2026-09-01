@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { queueWaitlistOffer } from '../lib/messageOutbox';
 import { resolveClinicId } from '../lib/repository';
 import {
   claimWaitlistSlot, createWaitlistEntry, loadWaitlist, updateWaitlistEntry, updateWaitlistStatus,
@@ -82,6 +83,18 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
     finally { setBusy(false); }
   };
 
+  const offerSlot = async (entry: WaitlistEntry, slot: Appointment) => {
+    setBusy(true);
+    try {
+      await queueWaitlistOffer(entry.id, slot.id);
+      await refresh();
+      toast(`Oferta enfileirada para ${patientName(patients, entry.patientId)}. O envio será feito pelo canal configurado.`);
+    } catch (error) {
+      console.error('[MedicsPro] ofertar vaga:', error);
+      toast('Não foi possível enfileirar a oferta. Verifique opt-in e disponibilidade da vaga.', 'warn');
+    } finally { setBusy(false); }
+  };
+
   if (!canManage) return null;
   return (
     <Card className="overflow-hidden">
@@ -107,7 +120,10 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
         </div>
 
         <div className="space-y-2">
-          {entries.map((entry) => <WaitlistEntryCard key={entry.id} entry={entry} patientName={patientName(patients, entry.patientId)} users={users} unidades={unidades} matchingSlot={matchFor(entry)} busy={busy} onEdit={() => startEdit(entry)} onRemove={() => removeEntry(entry.id)} onClaim={(slot) => recoverSlot(entry, slot)} />)}
+          {entries.map((entry) => {
+            const patient = patients.find((item) => item.id === entry.patientId);
+            return <WaitlistEntryCard key={entry.id} entry={entry} patientName={patientName(patients, entry.patientId)} patientOptIn={!!patient?.optInWhats} users={users} unidades={unidades} matchingSlot={matchFor(entry)} busy={busy} onEdit={() => startEdit(entry)} onRemove={() => removeEntry(entry.id)} onClaim={(slot) => recoverSlot(entry, slot)} onOffer={(slot) => offerSlot(entry, slot)} />;
+          })}
           {entries.length === 0 && <div className="border border-dashed border-line p-6 text-center"><p className="text-[12px] text-paper">Nenhum paciente aguardando encaixe.</p><p className="text-[10px] text-fog mt-1">Adicione apenas quem realmente aceita antecipação ou horários alternativos.</p></div>}
         </div>
 
