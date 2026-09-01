@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, subDays } from 'date-fns';
+import { addHours, format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useMemo } from 'react';
 import { MessageActivity } from '../components/messages/MessageActivity';
@@ -27,7 +27,7 @@ export function Mensagens() {
 
   const confirmationSelection = useMemo(() => {
     const now = new Date();
-    const limit = addDays(now, 2);
+    const limit = addHours(now, 48);
     const stats = { noOptin: 0, noPhone: 0, alreadySent: 0 };
     const candidates: MessageRecipientCandidate[] = [];
 
@@ -60,20 +60,18 @@ export function Mensagens() {
 
   const npsSelection = useMemo(() => {
     const today = new Date();
-    const cutoff = subDays(today, 7);
+    const todayKey = format(today, 'yyyy-MM-dd');
+    const cutoffKey = format(subDays(today, 7), 'yyyy-MM-dd');
     const recentLogsCutoff = subDays(today, 7).getTime();
     const latestByPatient = new Map<string, typeof appointments[number]>();
     const stats = { noOptin: 0, noPhone: 0, alreadySent: 0 };
 
     appointments
       .filter((appointment) => appointment.status === 'finalizado')
-      .filter((appointment) => {
-        const day = parseISO(appointment.data);
-        return day >= cutoff && day <= today;
-      })
+      .filter((appointment) => appointment.data >= cutoffKey && appointment.data <= todayKey)
       .forEach((appointment) => {
         const current = latestByPatient.get(appointment.pacienteId);
-        if (!current || appointmentDateTime(appointment.data, appointment.inicio) > appointmentDateTime(current.data, current.inicio)) {
+        if (!current || appointmentDateTime(appointment.data, appointment.inicio).getTime() > appointmentDateTime(current.data, current.inicio).getTime()) {
           latestByPatient.set(appointment.pacienteId, appointment);
         }
       });
