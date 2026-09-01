@@ -12,7 +12,7 @@ import { IconSend, IconWhats } from '../components/icons';
 export function Mensagens() {
   const { user, patients, appointments, surveys, access, toast } = useApp();
   const canSend = access('mensagens') === 'full';
-  const { logs, templates, loading, queueConfirmations, saveTemplate } = useMessageCenter(user?.id);
+  const { logs, templates, loading, queueConfirmations, flush, saveTemplate } = useMessageCenter(user?.id);
 
   const counts = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -48,11 +48,28 @@ export function Mensagens() {
 
   const runConfirmations = async () => {
     try {
-      const count = await queueConfirmations();
-      toast(count ? `${count} confirmação${count > 1 ? 'ões' : ''} adicionada${count > 1 ? 's' : ''} à fila.` : 'Nenhuma confirmação nova para enfileirar.', count ? 'ok' : 'info');
+      const { queued: count, dispatch } = await queueConfirmations();
+      if (!count) {
+        toast('Nenhuma confirmação nova para enviar.', 'info');
+        return;
+      }
+      if (dispatch.failed) toast(`${dispatch.sent} enviada(s) e ${dispatch.failed} falhou(aram). Veja a atividade recente.`, 'warn');
+      else toast(`${dispatch.sent} confirmação${dispatch.sent === 1 ? '' : 'ões'} enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
     } catch (error) {
-      console.error('[MedicsPro] enfileirar confirmações:', error);
-      toast('Não foi possível enfileirar as confirmações.', 'warn');
+      console.error('[MedicsPro] enviar confirmações:', error);
+      toast('Não foi possível enviar as confirmações.', 'warn');
+    }
+  };
+
+  const runPendingQueue = async () => {
+    try {
+      const dispatch = await flush(50);
+      if (!dispatch.processed) toast('Não há mensagens pendentes para enviar.', 'info');
+      else if (dispatch.failed) toast(`${dispatch.sent} enviada(s) e ${dispatch.failed} falhou(aram).`, 'warn');
+      else toast(`${dispatch.sent} mensagem${dispatch.sent === 1 ? '' : 'ens'} enviada${dispatch.sent === 1 ? '' : 's'} pela Evolution.`);
+    } catch (error) {
+      console.error('[MedicsPro] processar fila:', error);
+      toast('Não foi possível processar a fila de mensagens.', 'warn');
     }
   };
 
@@ -72,9 +89,10 @@ export function Mensagens() {
         <div className="flex flex-wrap items-center gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1>
-            <p className="text-fog text-[13px] mt-0.5">fila persistente de comunicação · preparada para Evolution API sem acoplar regra de negócio ao provedor</p>
+            <p className="text-fog text-[13px] mt-0.5">fila persistente · envio server-side · eventos de entrega e leitura auditáveis</p>
           </div>
-          <Chip className="border-amber/45 text-amber ml-auto">Evolution: aguardando worker</Chip>
+          <Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>
+          {canSend && queued > 0 && <Btn variant="subtle" disabled={loading} onClick={runPendingQueue}>Processar fila ({queued})</Btn>}
         </div>
       </Reveal>
 
@@ -98,21 +116,21 @@ export function Mensagens() {
         <div className="space-y-4">
           <Reveal delay={120}>
             <Card>
-              <CardHead title="Gatilhos operacionais" sub={canSend ? 'ações criam registros reais na fila' : 'seu perfil é somente leitura'} />
+              <CardHead title="Gatilhos operacionais" sub={canSend ? 'ações enfileiram e despacham pelo worker seguro' : 'seu perfil é somente leitura'} />
               <div className="divide-y divide-line/70">
                 <div className="px-5 py-4 flex items-start gap-3.5">
                   <span className="w-9 h-9 grid place-items-center border border-mint/40 text-mint bg-mint/5 shrink-0"><IconWhats className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Confirmação de sessões (48h)</p><p className="text-[12px] text-fog mt-1">Enfileira somente sessões elegíveis, com opt-in e sem confirmação já aberta.</p><p className="font-mono text-[10.5px] text-amber mt-1.5">{counts.confirmations} potencial{counts.confirmations === 1 ? '' : 'is'}</p></div>
-                  <Btn disabled={!canSend || loading || counts.confirmations === 0} onClick={runConfirmations}><IconWhats className="w-3.5 h-3.5" /> Enfileirar</Btn>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Confirmação de sessões (48h)</p><p className="text-[12px] text-fog mt-1">Envia somente sessões elegíveis, com opt-in e sem confirmação já aberta.</p><p className="font-mono text-[10.5px] text-amber mt-1.5">{counts.confirmations} potencial{counts.confirmations === 1 ? '' : 'is'}</p></div>
+                  <Btn disabled={!canSend || loading || counts.confirmations === 0} onClick={runConfirmations}><IconWhats className="w-3.5 h-3.5" /> Enviar</Btn>
                 </div>
                 <div className="px-5 py-4 flex items-start gap-3.5 opacity-70">
                   <span className="w-9 h-9 grid place-items-center border border-line text-fog shrink-0"><IconSend className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Pesquisa NPS pós-atendimento</p><p className="text-[12px] text-fog mt-1">Pronta para entrar na mesma outbox após o worker Evolution.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.nps} pendência{counts.nps === 1 ? '' : 's'}</p></div>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Pesquisa NPS pós-atendimento</p><p className="text-[12px] text-fog mt-1">Usará a mesma outbox e o mesmo canal auditável.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.nps} pendência{counts.nps === 1 ? '' : 's'}</p></div>
                   <Btn disabled>Em preparação</Btn>
                 </div>
                 <div className="px-5 py-4 flex items-start gap-3.5 opacity-70">
                   <span className="w-9 h-9 grid place-items-center border border-line text-fog shrink-0"><IconAlert className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Reativação de pacientes inativos</p><p className="text-[12px] text-fog mt-1">Entrará como campanha controlada depois que o canal estiver conectado.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.inactive} elegível{counts.inactive === 1 ? '' : 'is'}</p></div>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Reativação de pacientes inativos</p><p className="text-[12px] text-fog mt-1">Entrará como campanha controlada após fecharmos respostas e opt-out.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.inactive} elegível{counts.inactive === 1 ? '' : 'is'}</p></div>
                   <Btn disabled>Em preparação</Btn>
                 </div>
               </div>

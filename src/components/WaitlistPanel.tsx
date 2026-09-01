@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { queueWaitlistOffer } from '../lib/messageOutbox';
+import { flushMessageOutbox, queueWaitlistOffer } from '../lib/messageOutbox';
 import { resolveClinicId } from '../lib/repository';
 import {
   claimWaitlistSlot, createWaitlistEntry, loadWaitlist, updateWaitlistEntry, updateWaitlistStatus,
@@ -87,11 +87,13 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
     setBusy(true);
     try {
       await queueWaitlistOffer(entry.id, slot.id);
+      const dispatch = await flushMessageOutbox(1);
       await refresh();
-      toast(`Oferta enfileirada para ${patientName(patients, entry.patientId)}. O envio será feito pelo canal configurado.`);
+      if (dispatch.sent === 1) toast(`Oferta enviada via WhatsApp para ${patientName(patients, entry.patientId)}.`);
+      else toast('A oferta foi registrada, mas o provedor não confirmou o envio. Verifique a central de Mensagens.', 'warn');
     } catch (error) {
       console.error('[MedicsPro] ofertar vaga:', error);
-      toast('Não foi possível enfileirar a oferta. Verifique opt-in e disponibilidade da vaga.', 'warn');
+      toast('Não foi possível enviar a oferta. Verifique opt-in, telefone e conexão do WhatsApp.', 'warn');
     } finally { setBusy(false); }
   };
 
