@@ -13,7 +13,7 @@ import { IconLock, IconX, IconShield, IconWhats, IconCheck } from './icons';
 const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: string }) => React.ReactNode }[] = [
   { key: 'dashboard', to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
   { key: 'agenda', to: '/agenda', label: 'Agenda', Icon: IconCalendar },
-  { key: 'pacientes', to: '/pacientes', label: 'Pacientes · PEP', Icon: IconUsers },
+  { key: 'pacientes', to: '/pacientes', label: 'Pacientes', Icon: IconUsers },
   { key: 'financeiro', to: '/financeiro', label: 'Financeiro', Icon: IconWallet },
   { key: 'crm', to: '/crm', label: 'CRM', Icon: IconTrend },
   { key: 'mensagens', to: '/mensagens', label: 'Mensagens', Icon: IconWhats },
@@ -128,20 +128,18 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  // Sincroniza usuário do Supabase Auth com o store legado
   useEffect(() => {
     if (!user || !profile) {
       setAuthenticatedUser(null);
       return;
     }
 
-    // Mapeia roles do Supabase para roles do sistema legado
     const roleMap: Record<string, string> = {
       owner: 'admin',
       admin: 'admin',
       fisio: 'fisio',
       recep: 'recep',
-      financeiro: 'recep', // financeiro usa permissões de recepção no sistema antigo
+      financeiro: 'recep',
     };
 
     const mappedRole = roleMap[profile.role] || 'fisio';
@@ -179,7 +177,7 @@ export function Shell() {
 
   if (!effectiveUser || loading) return <Login />;
 
-  const items = NAV.filter((n) => canView(n.key));
+  const items = NAV.filter((n) => canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'));
   const pendencias =
     transactions.filter((t) => t.status === 'atrasado').length +
     consents.filter((c) => !c.assinado).length;
@@ -212,7 +210,6 @@ export function Shell() {
     <div className="min-h-screen relative">
       <div className="fixed inset-0 bg-grid pointer-events-none" />
 
-      {/* sidebar desktop */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 w-60 flex-col border-r border-line bg-deep/90 backdrop-blur-sm z-40">
         <div className="flex items-center gap-2.5 px-5 h-16 border-b border-line">
           <PulseMark className="w-7 h-6" />
@@ -235,7 +232,6 @@ export function Shell() {
         </div>
       </aside>
 
-      {/* sidebar mobile */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-ink/70" onClick={() => setMobileOpen(false)} />
@@ -257,7 +253,6 @@ export function Shell() {
         </div>
       )}
 
-      {/* conteúdo */}
       <div className="lg:pl-60 relative">
         <header className="sticky top-0 z-30 h-14 border-b border-line bg-ink/90 backdrop-blur-sm flex items-center gap-3 px-4 md:px-6">
           <button className="lg:hidden text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu">
@@ -268,12 +263,11 @@ export function Shell() {
             <span className="hidden sm:inline">operação ao vivo</span>
           </div>
 
-          {/* Fase 3 — seletor de unidade */}
           <Select
             value={unidadeSel}
             onChange={(e) => setUnidadeSel(e.target.value)}
             className="!w-auto !py-1 !text-[11.5px] !font-mono ml-1"
-            title="Filtrar por unidade (Fase 3)"
+            title="Filtrar por unidade"
           >
             <option value="all">Todas as unidades</option>
             {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}

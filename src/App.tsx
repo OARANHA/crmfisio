@@ -1,9 +1,9 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/store';
 import { Shell } from './components/Shell';
-import { Dashboard } from './pages/Dashboard';
+import { DashboardRoleAware } from './pages/DashboardRoleAware';
 import { AgendaReal } from './pages/AgendaReal';
-import { Pacientes } from './pages/Pacientes';
+import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { Financeiro } from './pages/Financeiro';
 import { Crm } from './pages/Crm';
 import { Mensagens } from './pages/Mensagens';
@@ -13,6 +13,7 @@ import { ConfigPremium } from './pages/ConfigPremium';
 function Home() {
   const { user, canView } = useApp();
   if (!user) return <Navigate to="/" replace />;
+  if (user.role === 'recep') return <Navigate to="/dashboard" replace />;
   const first = canView('dashboard')
     ? '/dashboard'
     : canView('agenda')
@@ -30,10 +31,10 @@ export default function App() {
         <Routes>
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<DashboardRoleAware />} />
             <Route path="/agenda" element={<AgendaReal />} />
-            <Route path="/pacientes" element={<Pacientes />} />
-            <Route path="/pacientes/:id" element={<Pacientes />} />
+            <Route path="/pacientes" element={<PatientsRoleAware />} />
+            <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/crm" element={<Crm />} />
             <Route path="/mensagens" element={<Mensagens />} />
