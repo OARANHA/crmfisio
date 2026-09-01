@@ -1,0 +1,89 @@
+import { appointmentActions, appointmentStatusGuidance } from '../lib/appointmentWorkflow';
+import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Role } from '../lib/types';
+import { Btn, Chip, Modal } from '../lib/ui';
+
+interface Props {
+  appointment: Appointment | null;
+  role: Role;
+  patientLabel: string;
+  unitLabel: string;
+  roomLabel: string;
+  onClose: () => void;
+  onStatus: (status: AppointmentStatus) => void;
+  onOpenPatient: () => void;
+}
+
+export function AppointmentActionModal({
+  appointment,
+  role,
+  patientLabel,
+  unitLabel,
+  roomLabel,
+  onClose,
+  onStatus,
+  onOpenPatient,
+}: Props) {
+  const actions = appointment ? appointmentActions(role, appointment) : [];
+
+  return (
+    <Modal open={!!appointment} onClose={onClose} title="Atendimento">
+      {appointment && (
+        <div className="space-y-4">
+          <div>
+            <p className="font-display font-bold text-lg">{patientLabel}</p>
+            <p className="font-mono text-[11px] text-fog">
+              {appointment.data} · {appointment.inicio}–{appointment.fim} · {appointment.tipo}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-[12px]">
+            <div className="border border-line bg-deep p-3">
+              <span className="block font-mono text-[9px] text-fog uppercase">Unidade</span>
+              {unitLabel || '—'}
+            </div>
+            <div className="border border-line bg-deep p-3">
+              <span className="block font-mono text-[9px] text-fog uppercase">Sala/Recurso</span>
+              {roomLabel}
+            </div>
+            <div className="border border-line bg-deep p-3">
+              <span className="block font-mono text-[9px] text-fog uppercase">Valor</span>
+              {fmtBRL(appointment.valor)}
+            </div>
+            <div className="border border-line bg-deep p-3">
+              <span className="block font-mono text-[9px] text-fog uppercase">Status</span>
+              <Chip className={STATUS_META[appointment.status].chip}>{STATUS_META[appointment.status].label}</Chip>
+            </div>
+          </div>
+
+          <div className="border border-line bg-deep/60 p-3 text-[11.5px] text-fog">
+            {appointmentStatusGuidance(appointment.status)}
+          </div>
+
+          {actions.length > 0 ? (
+            <div className="space-y-2">
+              {actions.map((action) => (
+                <div key={action.status}>
+                  <Btn
+                    className="w-full"
+                    variant={action.tone === 'primary' ? undefined : 'ghost'}
+                    disabled={action.disabled}
+                    onClick={() => onStatus(action.status)}
+                  >
+                    {action.label}
+                  </Btn>
+                  {action.hint && <p className="font-mono text-[10px] text-amber mt-1">{action.hint}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="font-mono text-[10.5px] text-fog">Nenhuma ação operacional disponível para este status.</p>
+          )}
+
+          <Btn className="w-full" variant="ghost" onClick={onOpenPatient}>
+            {role === 'recep' ? 'Abrir paciente' : 'Abrir prontuário do paciente'}
+          </Btn>
+        </div>
+      )}
+    </Modal>
+  );
+}
