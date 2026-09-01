@@ -17,6 +17,11 @@ const pickText = (item: Record<string, unknown>) => {
   return null;
 };
 
+const normalizeEventType = (value: unknown) => String(value ?? 'UNKNOWN')
+  .trim()
+  .toUpperCase()
+  .replace(/[.\-\s]+/g, '_');
+
 const statusUpdate = (raw: unknown) => {
   if (typeof raw === 'number') {
     if (raw >= 4) return { status: 'lido', field: 'read_at' };
@@ -50,7 +55,8 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const eventType = String(payload.event ?? payload.type ?? 'UNKNOWN').toUpperCase();
+  const rawEventType = payload.event ?? payload.type ?? 'UNKNOWN';
+  const eventType = normalizeEventType(rawEventType);
   const instanceName = String(payload.instance ?? payload.instanceName ?? 'medicspro');
   const rawData = payload.data ?? payload;
   const items = Array.isArray(rawData) ? rawData : [rawData];
@@ -89,7 +95,7 @@ Deno.serve(async (req) => {
       remote_jid: remoteJid,
       from_me: fromMe,
       message_text: messageText,
-      payload: { event: eventType, instance: instanceName, data: item },
+      payload: { event: eventType, provider_event: rawEventType, instance: instanceName, data: item },
     }).select('id').maybeSingle();
     if (!eventError) recorded += 1;
 
@@ -113,9 +119,18 @@ Deno.serve(async (req) => {
           await admin.from('wa_events').update({
             wa_log_id: linkedLogId ?? null,
             clinic_id: clinicId,
-            payload: { event: eventType, instance: instanceName, data: item, inbound_action: action, patient_id: patientId ?? null },
+            payload: {
+              event: eventType,
+              provider_event: rawEventType,
+              instance: instanceName,
+              data: item,
+              inbound_action: action,
+              patient_id: patientId ?? null,
+            },
           }).eq('id', eventRow.id);
         }
+      } else if (inboundError) {
+        console.error('[evolution-webhook] inbound:', inboundError);
       }
     }
 
