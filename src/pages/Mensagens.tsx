@@ -1,6 +1,7 @@
 import { addDays, format } from 'date-fns';
 import { useMemo } from 'react';
 import { MessageActivity } from '../components/messages/MessageActivity';
+import { MessageReviewQueue } from '../components/messages/MessageReviewQueue';
 import { MessageTemplatesEditor } from '../components/messages/MessageTemplatesEditor';
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
@@ -12,7 +13,9 @@ import { IconSend, IconWhats } from '../components/icons';
 export function Mensagens() {
   const { user, patients, appointments, surveys, access, toast } = useApp();
   const canSend = access('mensagens') === 'full';
-  const { logs, templates, loading, queueConfirmations, flush, saveTemplate } = useMessageCenter(user?.id);
+  const {
+    logs, templates, loading, queueConfirmations, queueNps, resolveReview, flush, saveTemplate,
+  } = useMessageCenter(user?.id);
 
   const counts = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -43,21 +46,31 @@ export function Mensagens() {
   const sending = logs.filter((log) => log.status === 'enviando').length;
   const delivered = logs.filter((log) => log.status === 'entregue' || log.status === 'lido').length;
   const read = logs.filter((log) => log.status === 'lido').length;
+  const humanReview = logs.filter((log) => log.needsHuman).length;
   const deliveryRate = logs.length ? Math.round((delivered / logs.length) * 100) : 0;
   const readRate = logs.length ? Math.round((read / logs.length) * 100) : 0;
 
   const runConfirmations = async () => {
     try {
       const { queued: count, dispatch } = await queueConfirmations();
-      if (!count) {
-        toast('Nenhuma confirmação nova para enviar.', 'info');
-        return;
-      }
+      if (!count) return toast('Nenhuma confirmação nova para enviar.', 'info');
       if (dispatch.failed) toast(`${dispatch.sent} enviada(s) e ${dispatch.failed} falhou(aram). Veja a atividade recente.`, 'warn');
       else toast(`${dispatch.sent} confirmação${dispatch.sent === 1 ? '' : 'ões'} enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
     } catch (error) {
       console.error('[MedicsPro] enviar confirmações:', error);
       toast('Não foi possível enviar as confirmações.', 'warn');
+    }
+  };
+
+  const runNps = async () => {
+    try {
+      const { queued: count, dispatch } = await queueNps();
+      if (!count) return toast('Nenhuma pesquisa NPS nova para enviar.', 'info');
+      if (dispatch.failed) toast(`${dispatch.sent} NPS enviado(s) e ${dispatch.failed} falhou(aram).`, 'warn');
+      else toast(`${dispatch.sent} pesquisa${dispatch.sent === 1 ? '' : 's'} NPS enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
+    } catch (error) {
+      console.error('[MedicsPro] enviar NPS:', error);
+      toast('Não foi possível enviar as pesquisas NPS.', 'warn');
     }
   };
 
@@ -70,6 +83,16 @@ export function Mensagens() {
     } catch (error) {
       console.error('[MedicsPro] processar fila:', error);
       toast('Não foi possível processar a fila de mensagens.', 'warn');
+    }
+  };
+
+  const handleReview = async (logId: string, resolution: string) => {
+    try {
+      await resolveReview(logId, resolution);
+      toast('Revisão concluída e registrada.');
+    } catch (error) {
+      console.error('[MedicsPro] concluir revisão WhatsApp:', error);
+      toast('Não foi possível concluir a revisão.', 'warn');
     }
   };
 
@@ -89,9 +112,10 @@ export function Mensagens() {
         <div className="flex flex-wrap items-center gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1>
-            <p className="text-fog text-[13px] mt-0.5">fila persistente · envio server-side · eventos de entrega e leitura auditáveis</p>
+            <p className="text-fog text-[13px] mt-0.5">fila persistente · respostas auditáveis · automação com revisão humana</p>
           </div>
           <Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>
+          {humanReview > 0 && <Chip className="border-amber/45 text-amber">{humanReview} para revisar</Chip>}
           {canSend && queued > 0 && <Btn variant="subtle" disabled={loading} onClick={runPendingQueue}>Processar fila ({queued})</Btn>}
         </div>
       </Reveal>
@@ -102,7 +126,7 @@ export function Mensagens() {
             { value: queued + sending, suffix: '', label: 'na fila agora', className: 'text-amber' },
             { value: deliveryRate, suffix: '%', label: 'taxa de entrega', className: 'text-aqua' },
             { value: readRate, suffix: '%', label: 'taxa de leitura', className: 'text-mint' },
-            { value: logs.length, suffix: '', label: 'mensagens registradas', className: 'text-paper' },
+            { value: humanReview, suffix: '', label: 'revisões humanas', className: humanReview ? 'text-amber' : 'text-paper' },
           ].map((item) => (
             <div key={item.label} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
               <CountUp to={item.value} suffix={item.suffix} className={`font-display text-3xl font-bold ${item.className}`} />
@@ -112,6 +136,8 @@ export function Mensagens() {
         </div>
       </Reveal>
 
+      {humanReview > 0 && <Reveal delay={90}><MessageReviewQueue logs={logs} patients={patients} busy={loading || !canSend} onResolve={handleReview} /></Reveal>}
+
       <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 items-start">
         <div className="space-y-4">
           <Reveal delay={120}>
@@ -120,31 +146,27 @@ export function Mensagens() {
               <div className="divide-y divide-line/70">
                 <div className="px-5 py-4 flex items-start gap-3.5">
                   <span className="w-9 h-9 grid place-items-center border border-mint/40 text-mint bg-mint/5 shrink-0"><IconWhats className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Confirmação de sessões (48h)</p><p className="text-[12px] text-fog mt-1">Envia somente sessões elegíveis, com opt-in e sem confirmação já aberta.</p><p className="font-mono text-[10.5px] text-amber mt-1.5">{counts.confirmations} potencial{counts.confirmations === 1 ? '' : 'is'}</p></div>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Confirmação de sessões (48h)</p><p className="text-[12px] text-fog mt-1">SIM confirma automaticamente; recusas e respostas ambíguas entram em revisão humana.</p><p className="font-mono text-[10.5px] text-amber mt-1.5">{counts.confirmations} potencial{counts.confirmations === 1 ? '' : 'is'}</p></div>
                   <Btn disabled={!canSend || loading || counts.confirmations === 0} onClick={runConfirmations}><IconWhats className="w-3.5 h-3.5" /> Enviar</Btn>
                 </div>
-                <div className="px-5 py-4 flex items-start gap-3.5 opacity-70">
-                  <span className="w-9 h-9 grid place-items-center border border-line text-fog shrink-0"><IconSend className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Pesquisa NPS pós-atendimento</p><p className="text-[12px] text-fog mt-1">Usará a mesma outbox e o mesmo canal auditável.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.nps} pendência{counts.nps === 1 ? '' : 's'}</p></div>
-                  <Btn disabled>Em preparação</Btn>
+                <div className="px-5 py-4 flex items-start gap-3.5">
+                  <span className="w-9 h-9 grid place-items-center border border-aqua/40 text-aqua bg-aqua/5 shrink-0"><IconSend className="w-4.5 h-4.5" /></span>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Pesquisa NPS pós-atendimento</p><p className="text-[12px] text-fog mt-1">Envia para atendimentos finalizados recentes e persiste automaticamente notas de 0 a 10.</p><p className="font-mono text-[10.5px] text-aqua mt-1.5">{counts.nps} potencial{counts.nps === 1 ? '' : 'is'}</p></div>
+                  <Btn disabled={!canSend || loading || counts.nps === 0} onClick={runNps}><IconSend className="w-3.5 h-3.5" /> Enviar</Btn>
                 </div>
                 <div className="px-5 py-4 flex items-start gap-3.5 opacity-70">
                   <span className="w-9 h-9 grid place-items-center border border-line text-fog shrink-0"><IconAlert className="w-4.5 h-4.5" /></span>
-                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Reativação de pacientes inativos</p><p className="text-[12px] text-fog mt-1">Entrará como campanha controlada após fecharmos respostas e opt-out.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.inactive} elegível{counts.inactive === 1 ? '' : 'is'}</p></div>
+                  <div className="flex-1"><p className="font-display font-semibold text-[14px]">Reativação de pacientes inativos</p><p className="text-[12px] text-fog mt-1">Entrará como campanha controlada após fecharmos opt-out e frequência de contato.</p><p className="font-mono text-[10.5px] text-fog mt-1.5">{counts.inactive} elegível{counts.inactive === 1 ? '' : 'is'}</p></div>
                   <Btn disabled>Em preparação</Btn>
                 </div>
               </div>
             </Card>
           </Reveal>
 
-          <Reveal delay={180}>
-            <MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} />
-          </Reveal>
+          <Reveal delay={180}><MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} /></Reveal>
         </div>
 
-        <Reveal delay={140}>
-          <MessageActivity logs={logs} patients={patients} />
-        </Reveal>
+        <Reveal delay={140}><MessageActivity logs={logs} patients={patients} /></Reveal>
       </div>
     </div>
   );
