@@ -15,6 +15,8 @@ const actionLabel: Record<string, string> = {
   waitlist_interest_yes: 'Paciente quer a vaga',
   waitlist_interest_no: 'Paciente recusou a vaga',
   waitlist_needs_human: 'Resposta sobre vaga precisa de revisão',
+  reactivation_interest_yes: 'Paciente quer retomar o tratamento',
+  reactivation_needs_human: 'Resposta de reativação precisa de revisão',
   needs_human: 'Resposta precisa de revisão',
 };
 
