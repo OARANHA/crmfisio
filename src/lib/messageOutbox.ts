@@ -22,6 +22,12 @@ export interface MessageTemplateRow {
   active: boolean;
 }
 
+export interface MessageDispatchResult {
+  processed: number;
+  sent: number;
+  failed: number;
+}
+
 const mapLog = (row: Record<string, unknown>): MessageOutboxRow => ({
   id: String(row.id),
   patientId: String(row.patient_id),
@@ -72,6 +78,20 @@ export async function loadMessageOutbox(clinicId: string): Promise<MessageOutbox
     .limit(250);
   if (error) throw error;
   return ((data ?? []) as unknown as Record<string, unknown>[]).map(mapLog);
+}
+
+export async function flushMessageOutbox(limit = 20): Promise<MessageDispatchResult> {
+  const { data, error } = await supabase.functions.invoke('evolution-worker', {
+    body: { limit },
+  });
+  if (error) throw error;
+  const result = (data ?? {}) as Partial<MessageDispatchResult> & { error?: string };
+  if (result.error) throw new Error(result.error);
+  return {
+    processed: Number(result.processed ?? 0),
+    sent: Number(result.sent ?? 0),
+    failed: Number(result.failed ?? 0),
+  };
 }
 
 export async function queueAppointmentConfirmations(hours = 48): Promise<number> {
