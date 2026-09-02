@@ -4,6 +4,7 @@ import type { AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { Btn, Chip, Modal } from '../lib/ui';
 import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
 import { AppointmentHistoryTimeline } from './AppointmentHistoryTimeline';
+import { TreatmentJourneyContext } from './TreatmentJourneyContext';
 
 interface Props {
   appointment: Appointment | null;
@@ -53,6 +54,7 @@ export function AppointmentActionModal({
           </div>
 
           <AppointmentPatientSnapshot patient={patient} appointment={appointment} appointments={appointments} whatsapp={whatsapp} />
+          <TreatmentJourneyContext patient={patient} appointment={appointment} />
 
           <div className="grid grid-cols-2 gap-3 text-[12px]">
             <div className="border border-line bg-deep p-3">
