@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/store';
 import { Shell } from './components/Shell';
 import { DashboardRoleAware } from './pages/DashboardRoleAware';
-import { AgendaReal } from './pages/AgendaReal';
+import { AgendaOperational } from './pages/AgendaOperational';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { Financeiro } from './pages/Financeiro';
 import { Crm } from './pages/Crm';
@@ -32,7 +32,7 @@ export default function App() {
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
-            <Route path="/agenda" element={<AgendaReal />} />
+            <Route path="/agenda" element={<AgendaOperational />} />
             <Route path="/pacientes" element={<PatientsRoleAware />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<Financeiro />} />
