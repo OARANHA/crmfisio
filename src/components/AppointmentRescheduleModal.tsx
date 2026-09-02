@@ -11,16 +11,23 @@ const toMin = (value: string) => {
 
 const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
+export interface ReschedulePreset {
+  data: string;
+  inicio: string;
+  reason?: string;
+}
+
 interface Props {
   appointment: Appointment | null;
   rooms: Room[];
   unidades: Unidade[];
+  preset?: ReschedulePreset | null;
   onClose: () => void;
   onConfirm: (payload: { data: string; inicio: string; fim: string; fisioId: string; roomId: string; reason: string; isFitIn: boolean }) => void;
   busy?: boolean;
 }
 
-export function AppointmentRescheduleModal({ appointment, rooms, unidades, onClose, onConfirm, busy = false }: Props) {
+export function AppointmentRescheduleModal({ appointment, rooms, unidades, preset, onClose, onConfirm, busy = false }: Props) {
   const { users, patients, appointments } = useApp();
   const [key, setKey] = useState('');
   const [data, setData] = useState('');
@@ -32,17 +39,18 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, onClo
   const [reason, setReason] = useState('Solicitação do paciente');
   const [isFitIn, setIsFitIn] = useState(false);
 
-  if (appointment && appointment.id !== key) {
-    setKey(appointment.id);
-    setData(appointment.data);
-    setInicio(appointment.inicio);
+  const stateKey = appointment ? `${appointment.id}:${preset?.data ?? ''}:${preset?.inicio ?? ''}` : '';
+  if (appointment && stateKey !== key) {
+    setKey(stateKey);
+    setData(preset?.data ?? appointment.data);
+    setInicio(preset?.inicio ?? appointment.inicio);
     setDuracao(Math.max(15, toMin(appointment.fim) - toMin(appointment.inicio)));
     setFisioId(appointment.fisioId);
     const room = rooms.find((item) => item.id === appointment.roomId);
     setUnitId(room?.unidadeId ?? '');
     setRoomId(appointment.roomId);
-    setReason('Solicitação do paciente');
-    setIsFitIn(false);
+    setReason(preset?.reason ?? 'Solicitação do paciente');
+    setIsFitIn(Boolean(appointment.isFitIn));
   }
 
   const fim = toHHMM(toMin(inicio) + duracao);
@@ -67,6 +75,7 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, onClo
           <div className="border border-line bg-deep p-3 text-[12px]">
             <span className="font-mono text-[9px] uppercase text-fog block">Paciente</span>
             {patientName(patients, appointment.pacienteId)}
+            {preset && <p className="font-mono text-[10px] text-mint mt-1">Movido pela agenda para {preset.data} às {preset.inicio}. Revise antes de confirmar.</p>}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
