@@ -548,6 +548,14 @@ export interface Database {
         Args: { p_commission_id: string }
         Returns: Database['public']['Tables']['commission_settlements']['Row']
       }
+      log_patient_data_export: {
+        Args: { p_patient_id: string }
+        Returns: undefined
+      }
+      anonymize_patient_lgpd: {
+        Args: { p_patient_id: string }
+        Returns: undefined
+      }
     }
   }
 }
