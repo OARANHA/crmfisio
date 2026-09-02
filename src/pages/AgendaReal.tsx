@@ -13,6 +13,7 @@ import { AppointmentCreateModal, type CreateAt } from '../components/Appointment
 import { AppointmentActionModal } from '../components/AppointmentActionModal';
 import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
 import { AppointmentRescheduleModal } from '../components/AppointmentRescheduleModal';
+import { AppointmentFinderPanel } from '../components/AppointmentFinderPanel';
 import { WaitlistPanel } from '../components/WaitlistPanel';
 
 const DAY_START = 7 * 60;
@@ -34,6 +35,7 @@ export function AgendaReal() {
   const [fisioFilter, setFisioFilter] = useState(user?.role === 'fisio' ? user.id : 'all');
   const [roomFilter, setRoomFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [finderOpen, setFinderOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [creating, setCreating] = useState<CreateAt>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -84,7 +86,6 @@ export function AgendaReal() {
   const gridSlots = useMemo(() => Array.from({ length: ((DAY_END - DAY_START) / SLOT_MINUTES) + 1 }, (_, i) => DAY_START + i * SLOT_MINUTES), []);
   const labelSlots = useMemo(() => gridSlots.filter((minute) => minute % 60 === 0), [gridSlots]);
   const todayIso = format(new Date(), 'yyyy-MM-dd');
-
   const roomsForFilter = useMemo(() => rooms.filter((room) => unitFilter === 'all' || room.unidadeId === unitFilter), [rooms, unitFilter]);
 
   useEffect(() => {
@@ -219,72 +220,42 @@ export function AgendaReal() {
     <div className="space-y-4">
       <Reveal>
         <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1>
-            <p className="text-fog text-[13px] mt-0.5">operação clínica · conflitos, remarcações e recuperação de vagas protegidos</p>
-          </div>
+          <div><h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1><p className="text-fog text-[13px] mt-0.5">operação clínica · conflitos, remarcações e recuperação de vagas protegidos</p></div>
           <div className="ml-auto flex flex-wrap gap-2">
-            <div className="flex border border-line">
-              {(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 font-mono text-[10px] uppercase ${view === item ? 'bg-mint text-ink font-semibold' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}
-            </div>
-            <Btn variant="ghost" onClick={() => moveAnchor(-1)}>←</Btn>
-            <Btn variant="ghost" onClick={() => setAnchor(new Date())}>Hoje</Btn>
-            <Btn variant="ghost" onClick={() => moveAnchor(1)}>→</Btn>
+            <div className="flex border border-line">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 font-mono text-[10px] uppercase ${view === item ? 'bg-mint text-ink font-semibold' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
+            <Btn variant="ghost" onClick={() => moveAnchor(-1)}>←</Btn><Btn variant="ghost" onClick={() => setAnchor(new Date())}>Hoje</Btn><Btn variant="ghost" onClick={() => moveAnchor(1)}>→</Btn>
+            <Btn variant="ghost" onClick={() => setFinderOpen((value) => !value)}>Encontrar horário</Btn>
             <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Nova sessão</Btn>
           </div>
         </div>
       </Reveal>
 
-      <Reveal delay={40}>
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-          {[
-            ['Sessões hoje', todaySummary.total], ['Confirmadas', todaySummary.confirmed], ['Pendentes', todaySummary.pending],
-            ['Em atendimento', todaySummary.inService], ['Finalizadas', todaySummary.finished], ['Faltas', todaySummary.missed], ['Previsto', fmtBRL(todaySummary.revenue)],
-          ].map(([label, value]) => <Card key={String(label)} className="!p-3"><p className="font-mono text-[9px] uppercase text-fog">{label}</p><p className="font-display text-xl font-bold mt-1">{value}</p></Card>)}
-        </div>
-      </Reveal>
+      <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={fisios} defaultFisioId={fisioFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
-      <Reveal delay={60}>
-        <Card className="!p-3">
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="min-w-[220px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" /></div>
-            <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)} className="!w-auto"><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
-            <Select value={fisioFilter} onChange={(event) => setFisioFilter(event.target.value)} className="!w-auto">{user?.role !== 'fisio' && <option value="all">Todos os profissionais</option>}{fisios.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
-            <Select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)} className="!w-auto"><option value="all">Todas as salas/recursos</option>{roomsForFilter.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select>
-          </div>
-        </Card>
-      </Reveal>
+      <Reveal delay={40}><div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">{[
+        ['Sessões hoje', todaySummary.total], ['Confirmadas', todaySummary.confirmed], ['Pendentes', todaySummary.pending], ['Em atendimento', todaySummary.inService], ['Finalizadas', todaySummary.finished], ['Faltas', todaySummary.missed], ['Previsto', fmtBRL(todaySummary.revenue)],
+      ].map(([label, value]) => <Card key={String(label)} className="!p-3"><p className="font-mono text-[9px] uppercase text-fog">{label}</p><p className="font-display text-xl font-bold mt-1">{value}</p></Card>)}</div></Reveal>
+
+      <Reveal delay={60}><Card className="!p-3"><div className="flex flex-wrap gap-2 items-center">
+        <div className="min-w-[220px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" /></div>
+        <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)} className="!w-auto"><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
+        <Select value={fisioFilter} onChange={(event) => setFisioFilter(event.target.value)} className="!w-auto">{user?.role !== 'fisio' && <option value="all">Todos os profissionais</option>}{fisios.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
+        <Select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)} className="!w-auto"><option value="all">Todas as salas/recursos</option>{roomsForFilter.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select>
+      </div></Card></Reveal>
 
       {!loadingInfra && rooms.length === 0 && <div className="border border-amber/40 bg-amber/[0.05] p-4 text-[12.5px] text-amber">A agenda ainda não possui sala/recurso real. Um administrador deve cadastrar a estrutura em Configurações → Estrutura da clínica.</div>}
-
-      <Reveal delay={80}>
-        <div className="flex flex-wrap gap-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="font-mono text-[10.5px] text-fog flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div>
-      </Reveal>
-
+      <Reveal delay={80}><div className="flex flex-wrap gap-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="font-mono text-[10.5px] text-fog flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
       {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
 
-      <Reveal delay={120}>
-        {view === 'mes' ? (
-          <Card className="overflow-hidden">
-            <div className="grid grid-cols-7 border-b border-line">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="px-2 py-2 text-center font-mono text-[10px] uppercase text-fog border-l border-line/60 first:border-l-0">{label}</div>)}</div>
-            <div className="grid grid-cols-7">{monthCells.map((date, index) => {
-              if (!date) return <div key={`empty-${index}`} className="min-h-[96px] border-l border-t border-line/40 bg-deep/30" />;
-              const iso = format(date, 'yyyy-MM-dd');
-              const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso);
-              const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado');
-              const isToday = iso === todayIso;
-              return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[96px] border-l border-t border-line/40 p-2 text-left hover:bg-raise/50 ${isToday ? 'bg-mint/[0.06]' : ''}`}><span className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{active.length > 0 && <div className="mt-2 space-y-1"><span className="inline-block font-mono text-[9px] text-mint border border-mint/30 px-1.5 py-0.5">{active.length} sessão{active.length > 1 ? 'ões' : ''}</span><p className="font-mono text-[9px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmadas</p></div>}</button>;
-            })}</div>
-          </Card>
-        ) : (
-          <Card className="overflow-x-auto">
-            <div className={`flex ${view === 'semana' ? 'min-w-[950px]' : 'min-w-[420px]'}`}>
-              <div className="w-14 shrink-0"><div className="h-[52px] border-b border-line" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>
-              {(view === 'semana' ? week : [anchor]).map(renderDayColumn)}
-            </div>
-          </Card>
-        )}
-      </Reveal>
+      <Reveal delay={120}>{view === 'mes' ? (
+        <Card className="overflow-hidden"><div className="grid grid-cols-7 border-b border-line">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="px-2 py-2 text-center font-mono text-[10px] uppercase text-fog border-l border-line/60 first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
+          if (!date) return <div key={`empty-${index}`} className="min-h-[96px] border-l border-t border-line/40 bg-deep/30" />;
+          const iso = format(date, 'yyyy-MM-dd'); const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso); const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado'); const isToday = iso === todayIso;
+          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[96px] border-l border-t border-line/40 p-2 text-left hover:bg-raise/50 ${isToday ? 'bg-mint/[0.06]' : ''}`}><span className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{active.length > 0 && <div className="mt-2 space-y-1"><span className="inline-block font-mono text-[9px] text-mint border border-mint/30 px-1.5 py-0.5">{active.length} sessão{active.length > 1 ? 'ões' : ''}</span><p className="font-mono text-[9px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmadas</p></div>}</button>;
+        })}</div></Card>
+      ) : (
+        <Card className="overflow-x-auto"><div className={`flex ${view === 'semana' ? 'min-w-[950px]' : 'min-w-[420px]'}`}><div className="w-14 shrink-0"><div className="h-[52px] border-b border-line" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
+      )}</Reveal>
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={(appointment) => { addAppointment(appointment); setCreating(null); nav('/agenda', { replace: true }); }} />
       <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) setRescheduling(selected); setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
