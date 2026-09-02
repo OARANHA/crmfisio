@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
 import { fmtBRL, dayOf, type FinancialTransaction } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Select, Field, Modal, Input, Bar, IconDollar } from '../lib/ui';
-import { IconPlug, IconWhats, IconCardPay } from '../components/icons';
+import { IconPlug, IconCardPay } from '../components/icons';
 import { Reveal, CountUp } from '../components/Reveal';
 
 const STATUS_TX: Record<FinancialTransaction['status'], { label: string; chip: string }> = {
@@ -34,11 +34,6 @@ export function Financeiro() {
   }, [transactions]);
 
   const list = transactions.filter((t) => t.tipo === tab).sort((a, b) => (a.vencimento < b.vencimento ? -1 : 1));
-
-  const cobrarWhats = (t: FinancialTransaction) => {
-    const p = t.pacienteId ? patients.find((x) => x.id === t.pacienteId) : null;
-    toast(`Cobrança de ${fmtBRL(t.valor)} enviada via WhatsApp para ${p?.nome ?? 'paciente'}`);
-  };
 
   return (
     <div className="space-y-4">
@@ -123,7 +118,6 @@ export function Financeiro() {
                         <td className="px-4 py-3 text-right">
                           {t.status !== 'pago' ? (
                             <div className="inline-flex gap-1.5">
-                              {tab === 'receber' && <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]" onClick={() => cobrarWhats(t)} title="Cobrar via WhatsApp"><IconWhats className="w-3.5 h-3.5" /></Btn>}
                               <Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => { setTxStatus(t.id, 'pago', tab === 'receber' ? 'pix' : 'boleto'); toast(`${tab === 'receber' ? 'Recebimento' : 'Pagamento'} baixado: ${fmtBRL(t.valor)}`); }}>
                                 Baixar ({tab === 'receber' ? 'Pix' : 'Boleto'})
                               </Btn>
