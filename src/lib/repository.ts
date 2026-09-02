@@ -3,6 +3,7 @@ import type { Database, Json } from './database.types';
 import type {
   Appointment,
   AuditEntry,
+  Commission,
   ConsentTerm,
   Evolution,
   FinancialTransaction,
@@ -25,6 +26,7 @@ type PatientPackageRow = Database['public']['Tables']['patient_packages']['Row']
 type SessionPackageRow = Database['public']['Tables']['session_packages']['Row'];
 type WaLogRow = Database['public']['Tables']['wa_logs']['Row'];
 type AuditRow = Database['public']['Tables']['audit_log']['Row'];
+type CommissionRow = Database['public']['Tables']['commission_settlements']['Row'];
 
 const emptyAnamnese: Patient['anamnese'] = {
   historia: '',
@@ -168,12 +170,22 @@ const mapAudit = (row: AuditRow): AuditEntry => ({
   detalhe: row.detalhe,
 });
 
+const mapCommission = (row: CommissionRow): Commission => ({
+  id: row.id,
+  fisioId: row.professional_id,
+  periodo: row.period.slice(0, 7),
+  base: row.base_amount,
+  percentual: Number(row.percentage),
+  status: row.status,
+});
+
 export interface ClinicData {
   clinicId: string;
   users: User[];
   patients: Patient[];
   appointments: Appointment[];
   transactions: FinancialTransaction[];
+  commissions: Commission[];
   evolutions: Evolution[];
   consents: ConsentTerm[];
   surveys: NpsSurvey[];
@@ -199,11 +211,12 @@ const optionalRows = <T>(label: string, result: { data: T[] | null; error: unkno
 
 export async function loadClinicData(userId: string): Promise<ClinicData> {
   const clinicId = await resolveClinicId(userId);
-  const [profiles, patients, appointments, payments, evolutions, consents, surveys, patientPackages, packages, waLogs, audit] = await Promise.all([
+  const [profiles, patients, appointments, payments, commissions, evolutions, consents, surveys, patientPackages, packages, waLogs, audit] = await Promise.all([
     supabase.from('profiles').select('*').eq('clinic_id', clinicId).eq('ativo', true).order('nome'),
     supabase.from('patients').select('*').eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('appointments').select('*').eq('clinic_id', clinicId).order('data', { ascending: false }),
     supabase.from('payments').select('*').eq('clinic_id', clinicId).order('vencimento', { ascending: false }),
+    supabase.from('commission_settlements').select('*').eq('clinic_id', clinicId).order('period', { ascending: false }),
     supabase.from('physiotherapy_evolutions').select('*').eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('consent_terms').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }),
     supabase.from('nps_surveys').select('*').eq('clinic_id', clinicId).order('data', { ascending: false }),
@@ -222,6 +235,7 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     patients: (patients.data ?? []).map(mapPatient),
     appointments: (appointments.data ?? []).map(mapAppointment),
     transactions: (payments.data ?? []).map(mapPayment),
+    commissions: optionalRows('repasses', commissions).map(mapCommission),
     evolutions: optionalRows('evoluções', evolutions).map(mapEvolution),
     consents: optionalRows('consentimentos', consents).map(mapConsent),
     surveys: optionalRows('NPS', surveys).map(mapNps),
@@ -230,6 +244,18 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     waLogs: optionalRows('logs de comunicação', waLogs).map(mapWaLog),
     audit: optionalRows('auditoria', audit).map(mapAudit),
   };
+}
+
+export async function closeMonthlyCommissions(period: string): Promise<Commission[]> {
+  const { data, error } = await supabase.rpc('close_monthly_commissions', { p_period: period });
+  if (error) throw error;
+  return (data ?? []).map(mapCommission);
+}
+
+export async function markCommissionPaid(id: string): Promise<Commission> {
+  const { data, error } = await supabase.rpc('mark_commission_paid', { p_commission_id: id });
+  if (error || !data) throw error ?? new Error('Repasse pago sem retorno do banco');
+  return mapCommission(data);
 }
 
 export async function insertPatient(clinicId: string, patient: Omit<Patient, 'id' | 'createdAt'>): Promise<Patient> {
