@@ -13,6 +13,7 @@ import {
   insertPatient,
   insertPayment,
   loadClinicData,
+  logPatientDataExport,
   markCommissionPaid,
   updateAppointmentStatus,
   updateConsent,
@@ -70,8 +71,8 @@ interface AppState {
   fecharRepasse: (periodo: string) => Promise<number>;
   setCommissionStatus: (id: string, status: Commission['status']) => Promise<void>;
 
-  exportarTitular: (pacienteId: string) => Record<string, unknown>;
-  anonimizarPaciente: (pacienteId: string) => void;
+  exportarTitular: (pacienteId: string) => Promise<Record<string, unknown>>;
+  anonimizarPaciente: (pacienteId: string) => Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -308,7 +309,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCommissions((prev) => prev.map((item) => item.id === id ? paid : item));
       },
 
-      exportarTitular: (pacienteId) => {
+      exportarTitular: async (pacienteId) => {
+        await logPatientDataExport(pacienteId);
+        setAudit((prev) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...prev]);
         const p = patients.find((x) => x.id === pacienteId);
         return {
           formato: 'LGPD-portabilidade-v1',
@@ -324,18 +327,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         };
       },
 
-      anonimizarPaciente: (pacienteId) => {
-        const anterior = patients.find((p) => p.id === pacienteId);
+      anonimizarPaciente: async (pacienteId) => {
+        await anonymizePatient(pacienteId);
+        setAudit((prev) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...prev]);
         setPatients((prev) => prev.map((x) => x.id === pacienteId ? {
           ...x,
           nome: 'Paciente Anonizado', cpf: '', telefone: '', email: '', queixaPrincipal: '', convenio: null,
           cid10: [], ultimaVisita: null, optInWhats: false, status: 'inativo', anonimizado: true,
           anamnese: { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
         } : x));
-        void anonymizePatient(pacienteId).catch((error) => {
-          if (anterior) setPatients((prev) => prev.map((p) => p.id === pacienteId ? anterior : p));
-          persistError('Falha ao anonimizar paciente', error);
-        });
       },
     };
   }, [user, clinicId, users, unidades, rooms, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast]);
