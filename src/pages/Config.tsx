@@ -43,9 +43,16 @@ export function Config() {
   const elegiveis = patients.filter((p) => !p.anonimizado);
   const isAdmin = access('config') === 'full';
 
-  const baixarExport = () => {
+  const baixarExport = async () => {
     const p = patients.find((x) => x.id === exportando);
-    const pacote = exportarTitular(exportando);
+    let pacote: Record<string, unknown>;
+    try {
+      pacote = await exportarTitular(exportando);
+    } catch (error) {
+      console.error('[MedicsPro] exportação LGPD:', error);
+      toast('Não foi possível autorizar e registrar a exportação.', 'warn');
+      return;
+    }
     const blob = new Blob([JSON.stringify(pacote, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -57,13 +64,18 @@ export function Config() {
     setExportando('');
   };
 
-  const confirmarAnon = () => {
+  const confirmarAnon = async () => {
     if (!anon) return;
     if (!armed) { setArmed(true); return; }
     const p = patients.find((x) => x.id === anon);
-    anonimizarPaciente(anon);
-    toast(`Registro de ${p?.nome ?? 'paciente'} anonimizado de forma irreversível`, 'warn');
-    setAnon(null); setArmed(false);
+    try {
+      await anonimizarPaciente(anon);
+      toast(`Registro de ${p?.nome ?? 'paciente'} anonimizado de forma irreversível`, 'warn');
+      setAnon(null); setArmed(false);
+    } catch (error) {
+      console.error('[MedicsPro] anonimização LGPD:', error);
+      toast('Não foi possível anonimizar e auditar o registro.', 'warn');
+    }
   };
 
   return (
@@ -187,7 +199,7 @@ export function Config() {
                       <option value="">Selecionar paciente…</option>
                       {elegiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} · {maskCpf(p.cpf)}</option>)}
                     </Select>
-                    <Btn onClick={baixarExport} disabled={!exportando || !isAdmin}>
+                    <Btn onClick={() => void baixarExport()} disabled={!exportando || !isAdmin}>
                       <IconDb className="w-4 h-4" /> Baixar JSON
                     </Btn>
                   </div>
@@ -203,7 +215,7 @@ export function Config() {
                       <option value="">Selecionar paciente…</option>
                       {elegiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} · {maskCpf(p.cpf)}</option>)}
                     </Select>
-                    <Btn variant={armed ? 'danger' : 'ghost'} className={armed ? '' : '!border-pulse/40 !text-pulse hover:!bg-pulse/10'} onClick={confirmarAnon} disabled={!anon || !isAdmin}>
+                    <Btn variant={armed ? 'danger' : 'ghost'} className={armed ? '' : '!border-pulse/40 !text-pulse hover:!bg-pulse/10'} onClick={() => void confirmarAnon()} disabled={!anon || !isAdmin}>
                       {armed ? 'Confirmar — irreversível' : 'Anonimizar'}
                     </Btn>
                   </div>
