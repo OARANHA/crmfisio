@@ -3,6 +3,7 @@ import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Pat
 import type { AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { Btn, Chip, Modal } from '../lib/ui';
 import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
+import { AppointmentHistoryTimeline } from './AppointmentHistoryTimeline';
 
 interface Props {
   appointment: Appointment | null;
@@ -75,6 +76,8 @@ export function AppointmentActionModal({
           <div className="border border-line bg-deep/60 p-3 text-[11.5px] text-fog">
             {appointmentStatusGuidance(appointment.status)}
           </div>
+
+          <AppointmentHistoryTimeline appointmentId={appointment.id} />
 
           {(canReschedule || canCancel) && (
             <div className="grid sm:grid-cols-2 gap-2">
