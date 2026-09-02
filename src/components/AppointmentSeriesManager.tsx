@@ -40,10 +40,15 @@ export function AppointmentSeriesManager() {
     void load();
   }, []);
 
+  const scopedSeries = useMemo(
+    () => user?.role === 'fisio' ? series.filter((item) => item.fisioId === user.id) : series,
+    [series, user?.id, user?.role],
+  );
+
   const visible = useMemo(() => {
-    const sorted = [...series].sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
+    const sorted = [...scopedSeries].sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
     return expanded ? sorted : sorted.slice(0, 6);
-  }, [series, expanded]);
+  }, [scopedSeries, expanded]);
 
   const countFuture = (seriesId: string) => appointments.filter((appointment) => (
     appointment.serieId === seriesId
@@ -69,16 +74,16 @@ export function AppointmentSeriesManager() {
     }
   };
 
-  if (user?.role === 'fisio') return null;
-
-  const activeCount = series.filter((item) => item.status === 'ativa').length;
+  const activeCount = scopedSeries.filter((item) => item.status === 'ativa').length;
 
   return (
     <Card className="!p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-display font-semibold">Séries recorrentes</p>
-          <p className="font-mono text-[10px] text-fog mt-0.5">{activeCount} ativa(s) · gerencie sequências já persistidas no banco.</p>
+          <p className="font-mono text-[10px] text-fog mt-0.5">
+            {activeCount} ativa(s) · {user?.role === 'fisio' ? 'suas séries clínicas recorrentes.' : 'gerencie sequências já persistidas no banco.'}
+          </p>
         </div>
         <Btn variant="ghost" onClick={() => void load()} disabled={loading}>{loading ? 'Atualizando…' : 'Atualizar'}</Btn>
       </div>
@@ -123,9 +128,9 @@ export function AppointmentSeriesManager() {
         </div>
       )}
 
-      {series.length > 6 && (
+      {scopedSeries.length > 6 && (
         <div className="mt-3 flex justify-end">
-          <Btn variant="ghost" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Mostrar menos' : `Ver todas (${series.length})`}</Btn>
+          <Btn variant="ghost" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Mostrar menos' : `Ver todas (${scopedSeries.length})`}</Btn>
         </div>
       )}
     </Card>
