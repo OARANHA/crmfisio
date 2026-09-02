@@ -1,11 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { addDays, addWeeks, format, getDay } from 'date-fns';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  RecurrenceRule, Role, SessionPackage, Unidade, User, WaLog,
+  Role, SessionPackage, Unidade, User, WaLog,
 } from './types';
-import { seedUnidades, seedRooms, seedRecurrence } from './seed';
+import { seedUnidades, seedRooms } from './seed';
 import {
   anonymizePatient,
   closeMonthlyCommissions,
@@ -30,15 +29,6 @@ const ACCESS: Record<Role, Record<ModuleKey, Access>> = {
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
-export interface SeriePatch {
-  diasSemana: number[];
-  hora: string;
-  duracaoMin: number;
-  semanas: number;
-  fisioId: string;
-  roomId: string;
-}
-
 interface AppState {
   user: User | null;
   users: User[];
@@ -56,7 +46,6 @@ interface AppState {
   evolutions: Evolution[];
   consents: ConsentTerm[];
   surveys: NpsSurvey[];
-  recurrence: RecurrenceRule[];
   waLogs: WaLog[];
   audit: AuditEntry[];
   toasts: Toast[];
@@ -75,12 +64,7 @@ interface AppState {
   signConsent: (id: string, assinaturaUrl?: string) => void;
   setTxStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => void;
   addTransaction: (t: Omit<FinancialTransaction, 'id'>) => void;
-  venderPacote: (pacienteId: string, pacoteId: string) => void;
   answerNps: (id: string, nota: number) => void;
-
-  upsertRegra: (r: RecurrenceRule) => void;
-  editarSerie: (serieId: string, patch: SeriePatch) => number;
-  cancelarSerie: (serieId: string) => number;
 
   fecharRepasse: (periodo: string) => Promise<number>;
   setCommissionStatus: (id: string, status: Commission['status']) => Promise<void>;
@@ -93,44 +77,6 @@ const Ctx = createContext<AppState | null>(null);
 
 let seq = 1000;
 const nid = (p: string) => `${p}${++seq}`;
-const hojeIso = () => format(new Date(), 'yyyy-MM-dd');
-const DATA_KEY = 'data';
-const toMin = (hhmm: string) => {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-};
-const toHHMM = (min: number) =>
-  `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-
-export function expandSerie(rule: RecurrenceRule, fromDate: string, semanas: number): Omit<Appointment, 'id'>[] {
-  const out: Omit<Appointment, 'id'>[] = [];
-  const start = new Date(fromDate + 'T12:00');
-  const fim = toHHMM(toMin(rule.hora) + rule.duracaoMin);
-  for (let w = 0; w < semanas; w++) {
-    for (const dw of rule.diasSemana) {
-      const weekBase = addWeeks(start, w);
-      const day = addDays(weekBase, dw - getDay(weekBase));
-      if (day < start) continue;
-      const quando = format(day, 'yyyy-MM-dd');
-      out.push({
-        pacienteId: rule.pacienteId,
-        fisioId: rule.fisioId,
-        roomId: rule.roomId,
-        inicio: rule.hora,
-        fim,
-        status: 'agendado',
-        tipo: rule.tipo,
-        valor: rule.valor,
-        pacoteId: null,
-        serieId: rule.id,
-        notas: '',
-        [DATA_KEY]: quando,
-      } as Omit<Appointment, 'id'>);
-    }
-  }
-  return out;
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
@@ -144,7 +90,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
   const [packages, setPackages] = useState<SessionPackage[]>([]);
   const [patientPackages, setPatientPackages] = useState<PatientPackage[]>([]);
-  const [recurrence, setRecurrence] = useState<RecurrenceRule[]>(seedRecurrence);
   const [waLogs, setWaLogs] = useState<WaLog[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -228,7 +173,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evolutions,
       consents,
       surveys,
-      recurrence,
       waLogs,
       audit,
       toasts,
@@ -322,13 +266,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .catch((error) => persistError('Falha ao salvar lançamento financeiro', error));
       },
 
-      venderPacote: (pacienteId, pacoteId) => {
-        const pk = packages.find((x) => x.id === pacoteId);
-        const p = patients.find((x) => x.id === pacienteId);
-        if (!pk || !p || !clinicId) return;
-        pushToast('Venda de pacote será persistida na próxima etapa do core.', 'info');
-      },
-
       answerNps: (id, nota) => {
         const anterior = surveys.find((s) => s.id === id)?.nota ?? null;
         setSurveys((prev) => prev.map((s) => (s.id === id ? { ...s, nota } : s)));
@@ -336,49 +273,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setSurveys((prev) => prev.map((s) => (s.id === id ? { ...s, nota: anterior } : s)));
           persistError('Falha ao registrar NPS', error);
         });
-      },
-
-      upsertRegra: (r) => setRecurrence((prev) => [...prev.filter((x) => x.id !== r.id), r]),
-
-      editarSerie: (serieId, patch) => {
-        const hoje = hojeIso();
-        let geradas = 0;
-        setAppointments((prev) => {
-          const any = prev.find((a) => a.serieId === serieId);
-          if (!any) return prev;
-          const rule: RecurrenceRule = {
-            id: serieId,
-            pacienteId: any.pacienteId,
-            fisioId: patch.fisioId,
-            roomId: patch.roomId,
-            tipo: any.tipo,
-            diasSemana: patch.diasSemana,
-            hora: patch.hora,
-            duracaoMin: patch.duracaoMin,
-            inicio: hoje,
-            fim: format(addWeeks(new Date(hoje + 'T12:00'), patch.semanas), 'yyyy-MM-dd'),
-            valor: any.valor,
-          };
-          const kept = prev.filter((a) => !(a.serieId === serieId && a.data >= hoje));
-          const novas: Appointment[] = expandSerie(rule, hoje, patch.semanas).map((x) => ({ ...x, id: nid('a') }));
-          geradas = novas.length;
-          setRecurrence((rs) => [...rs.filter((x) => x.id !== serieId), rule]);
-          pushToast('Série editada localmente; persistência de recorrência entra na próxima etapa.', 'info');
-          return [...kept, ...novas];
-        });
-        return geradas;
-      },
-
-      cancelarSerie: (serieId) => {
-        const hoje = hojeIso();
-        let removidas = 0;
-        setAppointments((prev) => {
-          removidas = prev.filter((a) => a.serieId === serieId && a.data >= hoje).length;
-          return prev.filter((a) => !(a.serieId === serieId && a.data >= hoje));
-        });
-        setRecurrence((rs) => rs.filter((x) => x.id !== serieId));
-        pushToast('Série cancelada localmente; persistência de recorrência entra na próxima etapa.', 'info');
-        return removidas;
       },
 
       fecharRepasse: async (periodo) => {
@@ -427,7 +321,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [user, clinicId, users, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, recurrence, waLogs, audit, toasts, unidadeSel, pushToast]);
+  }, [user, clinicId, users, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
