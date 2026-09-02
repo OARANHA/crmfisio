@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './lib/store';
 import { Shell } from './components/Shell';
 import { DashboardRoleAware } from './pages/DashboardRoleAware';
 import { AgendaOperational } from './pages/AgendaOperational';
+import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { Financeiro } from './pages/Financeiro';
 import { Crm } from './pages/Crm';
@@ -14,13 +15,7 @@ function Home() {
   const { user, canView } = useApp();
   if (!user) return <Navigate to="/" replace />;
   if (user.role === 'recep') return <Navigate to="/dashboard" replace />;
-  const first = canView('dashboard')
-    ? '/dashboard'
-    : canView('agenda')
-      ? '/agenda'
-      : canView('pacientes')
-        ? '/pacientes'
-        : '/crm';
+  const first = canView('dashboard') ? '/dashboard' : canView('agenda') ? '/agenda' : canView('pacientes') ? '/pacientes' : '/crm';
   return <Navigate to={first} replace />;
 }
 
@@ -33,6 +28,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
             <Route path="/agenda" element={<AgendaOperational />} />
+            <Route path="/hoje" element={<RecepcaoHoje />} />
             <Route path="/pacientes" element={<PatientsRoleAware />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<Financeiro />} />
