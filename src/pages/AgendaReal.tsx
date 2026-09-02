@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadInfrastructure } from '../lib/infrastructure';
 import { resolveClinicId } from '../lib/repository';
 import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appointmentOperations';
+import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { useApp, patientName } from '../lib/store';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Room, type Unidade } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
@@ -23,6 +24,16 @@ const PPM = 1.08;
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
 const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 type View = 'dia' | 'semana' | 'mes';
+
+const compactWhatsapp = (state?: AppointmentWhatsappState) => {
+  if (!state) return '';
+  if (state.replyText) return 'WA respondido';
+  if (state.status === 'lido' || state.readAt) return 'WA ✓✓';
+  if (state.status === 'entregue' || state.deliveredAt) return 'WA entregue';
+  if (state.status === 'enviado') return 'WA enviado';
+  if (state.status === 'falhou') return 'WA falhou';
+  return 'WA fila';
+};
 
 export function AgendaReal() {
   const { user, users, patients, appointments, addAppointment, setAppointmentStatus, toast } = useApp();
@@ -43,6 +54,7 @@ export function AgendaReal() {
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
   const [operationBusy, setOperationBusy] = useState(false);
   const [loadingInfra, setLoadingInfra] = useState(true);
+  const [whatsappByAppointment, setWhatsappByAppointment] = useState<Map<string, AppointmentWhatsappState>>(new Map());
   const [prefillPatientId] = useState(() => {
     const query = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
     return new URLSearchParams(query).get('patient') ?? '';
@@ -71,6 +83,14 @@ export function AgendaReal() {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    loadAppointmentWhatsappStates(appointments.map((item) => item.id))
+      .then((states) => active && setWhatsappByAppointment(states))
+      .catch((error) => console.error('[MedicsPro] agenda/status WhatsApp:', error));
+    return () => { active = false; };
+  }, [appointments]);
 
   useEffect(() => {
     if (prefillConsumed || loadingInfra || !prefillPatientId || rooms.length === 0) return;
@@ -201,13 +221,14 @@ export function AgendaReal() {
           {showNow && <div className="absolute z-20 inset-x-0 border-t border-pulse pointer-events-none" style={{ top: (nowMinute - DAY_START) * PPM }}><span className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-pulse" /></div>}
           {dayAppointments.map((appointment) => {
             const meta = STATUS_META[appointment.status];
+            const whatsapp = whatsappByAppointment.get(appointment.id);
             const top = (toMin(appointment.inicio) - DAY_START) * PPM;
             const height = Math.max((toMin(appointment.fim) - toMin(appointment.inicio)) * PPM, 28);
             return (
               <button key={appointment.id} onClick={() => setSelected(appointment)} className="absolute z-10 left-1 right-1 bg-panel/95 hover:bg-raise border-l-[3px] text-left px-2 py-1 overflow-hidden transition-colors" style={{ top, height, borderColor: meta.dot }}>
                 <p className="font-mono text-[9px] text-fog">{appointment.inicio}–{appointment.fim}{appointment.isFitIn ? ' · ENCAIXE' : ''}</p>
                 <p className="text-[11px] font-semibold truncate" style={{ color: meta.dot }}>{patientName(patients, appointment.pacienteId)}</p>
-                <p className="font-mono text-[9px] text-fog truncate">{roomLabel(appointment.roomId)}</p>
+                <p className="font-mono text-[9px] text-fog truncate">{roomLabel(appointment.roomId)}{compactWhatsapp(whatsapp) ? ` · ${compactWhatsapp(whatsapp)}` : ''}</p>
               </button>
             );
           })}
@@ -258,7 +279,7 @@ export function AgendaReal() {
       )}</Reveal>
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={(appointment) => { addAppointment(appointment); setCreating(null); nav('/agenda', { replace: true }); }} />
-      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) setRescheduling(selected); setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
+      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) setRescheduling(selected); setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
       <AppointmentCancelModal appointment={cancelling} onClose={() => setCancelling(null)} onConfirm={confirmCancellation} busy={operationBusy} />
       <AppointmentRescheduleModal appointment={rescheduling} rooms={rooms} unidades={unidades} onClose={() => setRescheduling(null)} onConfirm={confirmReschedule} busy={operationBusy} />
     </div>
