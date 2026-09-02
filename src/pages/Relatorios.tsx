@@ -38,7 +38,7 @@ export function Relatorios() {
 
     const porCategoria = new Map<string, number>();
     transactions
-      .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.vencimento.startsWith(mes))
+      .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.paidAt?.startsWith(mes))
       .forEach((t) => porCategoria.set(t.categoria, (porCategoria.get(t.categoria) ?? 0) + t.valor));
 
     const notas = surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number);
@@ -156,7 +156,7 @@ export function Relatorios() {
 
           <Reveal delay={200}>
             <Card>
-              <CardHead title="Títulos pagos por categoria" sub={`vencimento na competência · consolidado da clínica${unidade ? ' (não filtrado por unidade)' : ''}`} />
+              <CardHead title="Recebimentos por categoria" sub={`data efetiva da baixa · consolidado da clínica${unidade ? ' (não filtrado por unidade)' : ''}`} />
               <div className="p-5 space-y-3">
                 {dados.porCategoria.length === 0 && <p className="font-mono text-[11.5px] text-fog">Sem recebimentos baixados neste mês.</p>}
                 {dados.porCategoria.map(([cat, v]) => (
