@@ -77,6 +77,16 @@ export function FinanceiroOperational() {
 
   const list = transactions.filter((t) => t.tipo === tab).sort((a, b) => (a.vencimento < b.vencimento ? -1 : 1));
 
+  const payCommission = async (id: string) => {
+    try {
+      await setCommissionStatus(id, 'pago');
+      toast('Repasse marcado como pago.');
+    } catch (error) {
+      console.error('[MedicsPro] pagar repasse:', error);
+      toast('Não foi possível baixar o repasse.', 'warn');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Reveal>
@@ -210,7 +220,7 @@ export function FinanceiroOperational() {
           <Card className="overflow-x-auto">
             <CardHead title="Repasse / comissão" sub="40% sobre sessões finalizadas" right={isAdmin ? <Btn className="!px-3 !py-1.5 !text-[12px]" onClick={() => setRepasse(true)}><IconDollar className="w-3.5 h-3.5" /> Fechar mês</Btn> : undefined} />
             <table className="w-full min-w-[700px] text-[13px]"><thead><tr className="bg-deep border-b border-line font-mono text-[10.5px] uppercase tracking-[0.12em] text-fog"><th className="text-left px-4 py-3">Profissional</th><th className="text-left px-4 py-3">Período</th><th className="text-right px-4 py-3">Base</th><th className="text-right px-4 py-3">Comissão</th><th className="text-left px-4 py-3">Status</th>{isAdmin && <th className="px-4 py-3" />}</tr></thead>
-              <tbody>{commissions.filter((c) => !isFisio || c.fisioId === user?.id).map((c) => <tr key={c.id} className="border-b border-line/60 last:border-0"><td className="px-4 py-3 font-semibold">{userName(users, c.fisioId)}</td><td className="px-4 py-3 font-mono text-fog">{c.periodo}</td><td className="px-4 py-3 text-right font-mono">{fmtBRL(c.base)}</td><td className="px-4 py-3 text-right font-mono text-mint">{fmtBRL(Math.round(c.base * c.percentual / 100))}</td><td className="px-4 py-3"><Chip className={c.status === 'pago' ? STATUS_TX.pago.chip : STATUS_TX.pendente.chip}>{c.status}</Chip></td>{isAdmin && <td className="px-4 py-3 text-right">{c.status === 'aberto' && <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]" onClick={() => setCommissionStatus(c.id, 'pago')}>Marcar pago</Btn>}</td>}</tr>)}</tbody>
+              <tbody>{commissions.filter((c) => !isFisio || c.fisioId === user?.id).map((c) => <tr key={c.id} className="border-b border-line/60 last:border-0"><td className="px-4 py-3 font-semibold">{userName(users, c.fisioId)}</td><td className="px-4 py-3 font-mono text-fog">{c.periodo}</td><td className="px-4 py-3 text-right font-mono">{fmtBRL(c.base)}</td><td className="px-4 py-3 text-right font-mono text-mint">{fmtBRL(Math.round(c.base * c.percentual / 100))}</td><td className="px-4 py-3"><Chip className={c.status === 'pago' ? STATUS_TX.pago.chip : STATUS_TX.pendente.chip}>{c.status}</Chip></td>{isAdmin && <td className="px-4 py-3 text-right">{c.status === 'aberto' && <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]" onClick={() => void payCommission(c.id)}>Marcar pago</Btn>}</td>}</tr>)}</tbody>
             </table>
           </Card>
         )}
@@ -295,6 +305,6 @@ function RepasseModal({ onClose }: { onClose: () => void }) {
   });
   const fechaveis = linhas.filter((l) => !l.jaFechado && l.base > 0);
   const total = fechaveis.reduce((s, l) => s + l.comissao, 0);
-  const fechar = () => { const n = fecharRepasse(mes); toast(n ? `Repasse fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info'); onClose(); };
+  const fechar = async () => { try { const n = await fecharRepasse(mes); toast(n ? `Repasse fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info'); onClose(); } catch (error) { console.error('[MedicsPro] fechar repasse:', error); toast('Não foi possível fechar os repasses.', 'warn'); } };
   return <Modal open onClose={onClose} title="Fechar repasse do mês" wide><div className="space-y-4"><Field label="Período"><Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="!w-44" /></Field><div className="border border-line overflow-x-auto"><table className="w-full min-w-[560px] text-[12.5px]"><thead><tr className="bg-deep border-b border-line font-mono text-[10px] uppercase text-fog"><th className="text-left px-3.5 py-2.5">Profissional</th><th className="text-right px-3.5 py-2.5">Sessões</th><th className="text-right px-3.5 py-2.5">Base</th><th className="text-right px-3.5 py-2.5">Comissão</th></tr></thead><tbody>{linhas.map((l) => <tr key={l.f.id} className="border-b border-line/60 last:border-0"><td className="px-3.5 py-2.5 font-semibold">{l.f.nome}</td><td className="px-3.5 py-2.5 text-right font-mono">{l.n}</td><td className="px-3.5 py-2.5 text-right font-mono">{fmtBRL(l.base)}</td><td className="px-3.5 py-2.5 text-right font-mono text-mint">{fmtBRL(l.comissao)}</td></tr>)}</tbody></table></div><div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={fechar} disabled={!fechaveis.length}>Gerar {fechaveis.length} comissão(ões)</Btn></div></div></Modal>;
 }
