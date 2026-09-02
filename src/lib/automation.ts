@@ -10,6 +10,10 @@ export interface AutomationSettings {
   waitlistAutoEnabled: boolean;
   waitlistOfferLimit: number;
   waitlistExpiryMinutes: number;
+  reactivationEnabled: boolean;
+  reactivationInactiveDays: number;
+  reactivationCooldownDays: number;
+  reactivationLimitPerRun: number;
   sendWindowStart: string;
   sendWindowEnd: string;
   timezone: string;
@@ -24,6 +28,7 @@ export interface AutomationRun {
   queuedConfirmations: number;
   queuedNps: number;
   queuedWaitlistOffers: number;
+  queuedReactivations: number;
   expiredWaitlistOffers: number;
   workerProcessed: number;
   workerSent: number;
@@ -43,6 +48,10 @@ const mapSettings = (row: Record<string, unknown>): AutomationSettings => ({
   waitlistAutoEnabled: Boolean(row.waitlist_auto_enabled ?? true),
   waitlistOfferLimit: Number(row.waitlist_offer_limit ?? 3),
   waitlistExpiryMinutes: Number(row.waitlist_expiry_minutes ?? 30),
+  reactivationEnabled: Boolean(row.reactivation_enabled ?? false),
+  reactivationInactiveDays: Number(row.reactivation_inactive_days ?? 30),
+  reactivationCooldownDays: Number(row.reactivation_cooldown_days ?? 30),
+  reactivationLimitPerRun: Number(row.reactivation_limit_per_run ?? 10),
   sendWindowStart: String(row.send_window_start ?? '08:00'),
   sendWindowEnd: String(row.send_window_end ?? '20:00'),
   timezone: String(row.timezone ?? 'America/Sao_Paulo'),
@@ -57,6 +66,7 @@ const mapRun = (row: Record<string, unknown>): AutomationRun => ({
   queuedConfirmations: Number(row.queued_confirmations ?? 0),
   queuedNps: Number(row.queued_nps ?? 0),
   queuedWaitlistOffers: Number(row.queued_waitlist_offers ?? 0),
+  queuedReactivations: Number(row.queued_reactivations ?? 0),
   expiredWaitlistOffers: Number(row.expired_waitlist_offers ?? 0),
   workerProcessed: Number(row.worker_processed ?? 0),
   workerSent: Number(row.worker_sent ?? 0),
@@ -82,6 +92,10 @@ export async function saveAutomationSettings(settings: AutomationSettings) {
     waitlist_auto_enabled: settings.waitlistAutoEnabled,
     waitlist_offer_limit: settings.waitlistOfferLimit,
     waitlist_expiry_minutes: settings.waitlistExpiryMinutes,
+    reactivation_enabled: settings.reactivationEnabled,
+    reactivation_inactive_days: settings.reactivationInactiveDays,
+    reactivation_cooldown_days: settings.reactivationCooldownDays,
+    reactivation_limit_per_run: settings.reactivationLimitPerRun,
     send_window_start: settings.sendWindowStart,
     send_window_end: settings.sendWindowEnd,
     timezone: settings.timezone,

@@ -47,13 +47,13 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
   return <Card>
     <CardHead
       title="Automação operacional"
-      sub="confirmações, NPS e recuperação de vagas sem depender de disparo manual"
+      sub="confirmações, NPS, recuperação de vagas e continuidade do tratamento"
       right={<div className="flex items-center gap-2"><Chip className={lastTone}>{!last ? 'sem execução' : last.status === 'completed' ? 'saudável' : last.status === 'failed' ? 'falha' : 'executando'}</Chip><Btn variant="ghost" className="!px-3 !py-1.5 !text-[11px]" disabled={loading} onClick={() => void refresh()}>Atualizar</Btn></div>}
     />
     <div className="p-5 space-y-4">
       {!settings && !loading && <p className="font-mono text-[11px] text-fog">A configuração será disponibilizada após a migration da automação.</p>}
       {settings && <>
-        <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3">
           <label className="border border-line bg-deep/50 p-3 flex items-start gap-2">
             <input type="checkbox" className="mt-0.5" checked={settings.active} onChange={(e) => setSettings({ ...settings, active: e.target.checked })} />
             <span><strong className="block text-[12px]">Automação ativa</strong><span className="text-[10.5px] text-fog">pausa todos os novos disparos automáticos</span></span>
@@ -68,7 +68,11 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
           </label>
           <label className="border border-line bg-deep/50 p-3 flex items-start gap-2">
             <input type="checkbox" className="mt-0.5" checked={settings.waitlistAutoEnabled} onChange={(e) => setSettings({ ...settings, waitlistAutoEnabled: e.target.checked })} />
-            <span><strong className="block text-[12px]">Recuperar vagas</strong><span className="text-[10.5px] text-fog">oferta para até {settings.waitlistOfferLimit} pacientes compatíveis</span></span>
+            <span><strong className="block text-[12px]">Recuperar vagas</strong><span className="text-[10.5px] text-fog">até {settings.waitlistOfferLimit} pacientes por vaga</span></span>
+          </label>
+          <label className="border border-line bg-deep/50 p-3 flex items-start gap-2">
+            <input type="checkbox" className="mt-0.5" checked={settings.reactivationEnabled} onChange={(e) => setSettings({ ...settings, reactivationEnabled: e.target.checked })} />
+            <span><strong className="block text-[12px]">Reativação automática</strong><span className="text-[10.5px] text-fog">desligada por padrão · após {settings.reactivationInactiveDays} dias sem continuidade</span></span>
           </label>
           <div className="border border-line bg-deep/50 p-3">
             <strong className="block text-[12px]">Janela de envio</strong>
@@ -76,15 +80,21 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <label className="font-mono text-[10.5px] text-fog">Confirmação (horas antes)<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={1} max={168} value={settings.confirmationHours} onChange={(e) => setSettings({ ...settings, confirmationHours: Number(e.target.value) })} /></label>
           <label className="font-mono text-[10.5px] text-fog">NPS (min após finalizar)<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={0} max={1440} value={settings.npsDelayMinutes} onChange={(e) => setSettings({ ...settings, npsDelayMinutes: Number(e.target.value) })} /></label>
           <label className="font-mono text-[10.5px] text-fog">Pacientes por vaga<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={1} max={10} value={settings.waitlistOfferLimit} onChange={(e) => setSettings({ ...settings, waitlistOfferLimit: Number(e.target.value) })} /></label>
           <label className="font-mono text-[10.5px] text-fog">Reserva da vaga (min)<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={5} max={120} value={settings.waitlistExpiryMinutes} onChange={(e) => setSettings({ ...settings, waitlistExpiryMinutes: Number(e.target.value) })} /></label>
+          <label className="font-mono text-[10.5px] text-fog">Reativar após (dias)<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={7} max={180} value={settings.reactivationInactiveDays} onChange={(e) => setSettings({ ...settings, reactivationInactiveDays: Number(e.target.value) })} /></label>
+          <label className="font-mono text-[10.5px] text-fog">Cooldown reativação (dias)<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={7} max={180} value={settings.reactivationCooldownDays} onChange={(e) => setSettings({ ...settings, reactivationCooldownDays: Number(e.target.value) })} /></label>
+          <label className="font-mono text-[10.5px] text-fog">Máx. reativações/ciclo<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="number" min={1} max={100} value={settings.reactivationLimitPerRun} onChange={(e) => setSettings({ ...settings, reactivationLimitPerRun: Number(e.target.value) })} /></label>
           <label className="font-mono text-[10.5px] text-fog">Enviar a partir de<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="time" value={settings.sendWindowStart.slice(0,5)} onChange={(e) => setSettings({ ...settings, sendWindowStart: e.target.value })} /></label>
           <label className="font-mono text-[10.5px] text-fog">Enviar até<input className="mt-1 w-full border border-line bg-deep px-3 py-2 text-paper" type="time" value={settings.sendWindowEnd.slice(0,5)} onChange={(e) => setSettings({ ...settings, sendWindowEnd: e.target.value })} /></label>
         </div>
-        <p className="font-mono text-[10.5px] text-fog">Ao cancelar uma vaga futura, o próximo ciclo procura pacientes compatíveis da lista de espera. Cada paciente recebe no máximo uma oferta por vaga; o primeiro SIM válido ocupa o horário.</p>
+        <div className="space-y-1 font-mono text-[10.5px] text-fog">
+          <p>Vaga cancelada: o próximo ciclo procura pacientes compatíveis da lista de espera; o primeiro SIM válido ocupa o horário.</p>
+          <p>Reativação: só considera paciente com sessão finalizada antiga, sem próxima sessão, com opt-in e telefone válido. Paciente em alta é sempre excluído. A automação vem desligada por padrão para permitir ativação consciente pela clínica.</p>
+        </div>
         <div className="flex justify-end"><Btn disabled={saving || loading} onClick={() => void save()}>{saving ? 'Salvando…' : 'Salvar automação'}</Btn></div>
       </>}
 
@@ -94,7 +104,7 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
           {runs.length === 0 && <p className="font-mono text-[10.5px] text-fog">Nenhuma execução registrada ainda.</p>}
           {runs.slice(0, 5).map((run) => <div key={run.id} className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-2 items-center border border-line px-3 py-2 text-[10.5px]">
             <span className={`w-2 h-2 rounded-full ${run.status === 'completed' ? 'bg-mint' : run.status === 'failed' ? 'bg-pulse' : 'bg-amber'}`} />
-            <span className="font-mono text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.queuedConfirmations} confirmação(ões) · {run.queuedNps} NPS · {run.queuedWaitlistOffers} oferta(s) de vaga · {run.workerSent}/{run.workerProcessed} enviados</span>
+            <span className="font-mono text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.queuedConfirmations} confirmação(ões) · {run.queuedNps} NPS · {run.queuedWaitlistOffers} vaga(s) · {run.queuedReactivations} reativação(ões) · {run.workerSent}/{run.workerProcessed} enviados</span>
             <span className="font-mono text-fog">{run.workerFailed ? `${run.workerFailed} falha(s)` : run.status}</span>
             {run.errorMessage && <span className="md:col-start-2 md:col-span-2 text-pulse">{run.errorMessage}</span>}
           </div>)}
