@@ -97,7 +97,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.close_monthly_commissions(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.close_monthly_commissions(text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.close_monthly_commissions(text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.mark_commission_paid(p_commission_id uuid)
@@ -133,7 +133,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.mark_commission_paid(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mark_commission_paid(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_commission_paid(uuid) TO authenticated;
 
 COMMIT;
