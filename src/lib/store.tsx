@@ -3,7 +3,7 @@ import { addDays, addWeeks, format, getDay } from 'date-fns';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  RecurrenceRule, Role, SessionPackage, Unidade, User, WaLog, WaStatus,
+  RecurrenceRule, Role, SessionPackage, Unidade, User, WaLog,
 } from './types';
 import { seedUnidades, seedRooms, seedCommissions, seedRecurrence } from './seed';
 import {
@@ -79,10 +79,6 @@ interface AppState {
   upsertRegra: (r: RecurrenceRule) => void;
   editarSerie: (serieId: string, patch: SeriePatch) => number;
   cancelarSerie: (serieId: string) => number;
-
-  enviarLembretes: () => number;
-  enviarNps: () => number;
-  reativarInativos: () => number;
 
   fecharRepasse: (periodo: string) => number;
   setCommissionStatus: (id: string, status: Commission['status']) => void;
@@ -206,28 +202,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const access = (m: ModuleKey): Access => (user ? ACCESS[user.role][m] : 'none');
     const canView = (m: ModuleKey) => access(m) !== 'none';
 
-    const logLocal = (acao: string, detalhe: string) => {
-      setAudit((prev) => [
-        { id: nid('log'), ts: new Date().toISOString(), usuarioId: user?.id ?? 'system', acao, detalhe },
-        ...prev,
-      ]);
-    };
-
     const persistError = (label: string, error: unknown) => {
       console.error(`[MedicsPro] ${label}:`, error);
       pushToast(`${label}. Tente novamente.`, 'warn');
-    };
-
-    const pushWa = (pacienteId: string, template: WaLog['template'], mensagem: string) => {
-      const id = nid('w');
-      const entry: WaLog = { id, pacienteId, template, mensagem, enviadoEm: new Date().toISOString(), status: 'enviando' };
-      setWaLogs((prev) => [entry, ...prev]);
-      const t1 = 500 + Math.random() * 500;
-      const advance = (status: WaStatus, delay: number) =>
-        window.setTimeout(() => setWaLogs((prev) => prev.map((w) => (w.id === id ? { ...w, status } : w))), delay);
-      advance('enviado', t1);
-      advance('entregue', t1 + 1100 + Math.random() * 700);
-      if (template !== 'nps') advance('lido', t1 + 2800 + Math.random() * 1400);
     };
 
     return {
@@ -398,41 +375,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRecurrence((rs) => rs.filter((x) => x.id !== serieId));
         pushToast('Série cancelada localmente; persistência de recorrência entra na próxima etapa.', 'info');
         return removidas;
-      },
-
-      enviarLembretes: () => {
-        const hoje = hojeIso();
-        const limite = format(addDays(new Date(), 2), 'yyyy-MM-dd');
-        const alvos = appointments
-          .filter((a) => (a.status === 'agendado' || a.status === 'confirmado') && a.data >= hoje && a.data <= limite)
-          .map((a) => ({ a, p: patients.find((p) => p.id === a.pacienteId) }))
-          .filter((x) => x.p?.optInWhats);
-        alvos.forEach(({ a, p }) => pushWa(p!.id, 'confirmacao', `Olá, ${p!.nome.split(' ')[0]}! Sua sessão de ${a.tipo} está marcada para ${format(new Date(a.data + 'T12:00'), 'dd/MM')} às ${a.inicio}. Responda *SIM* para confirmar. 💚`));
-        if (alvos.length) logLocal('DISPARO_WHATSAPP', `${alvos.length} confirmação(ões) simulada(s)`);
-        return alvos.length;
-      },
-
-      enviarNps: () => {
-        const corte = format(addDays(new Date(), -7), 'yyyy-MM-dd');
-        const hoje = hojeIso();
-        const recentes = appointments.filter((a) => a.status === 'finalizado' && a.data >= corte && a.data <= hoje);
-        const vistos = new Set<string>();
-        let n = 0;
-        recentes.forEach((a) => {
-          if (vistos.has(a.pacienteId)) return;
-          vistos.add(a.pacienteId);
-          const p = patients.find((x) => x.id === a.pacienteId);
-          if (!p?.optInWhats) return;
-          pushWa(p.id, 'nps', `Olá, ${p.nome.split(' ')[0]}! Como você avalia seu atendimento recente? Responda de 0 a 10.`);
-          n++;
-        });
-        return n;
-      },
-
-      reativarInativos: () => {
-        const inativos = patients.filter((p) => p.status === 'inativo' && p.optInWhats && !p.anonimizado);
-        inativos.forEach((p) => pushWa(p.id, 'reativacao', `Olá, ${p.nome.split(' ')[0]}! Sentimos sua falta. Que tal retomar seu tratamento?`));
-        return inativos.length;
       },
 
       fecharRepasse: (periodo) => {
