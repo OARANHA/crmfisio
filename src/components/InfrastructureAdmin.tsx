@@ -16,7 +16,7 @@ import type { Room } from '../lib/types';
 import { Btn, Card, CardHead, Field, Input, Select } from '../lib/ui';
 
 export function InfrastructureAdmin() {
-  const { user, toast } = useApp();
+  const { user, toast, refreshInfrastructure: refreshAppInfrastructure } = useApp();
   const [clinicId, setClinicId] = useState('');
   const [units, setUnits] = useState<UnitAdminRow[]>([]);
   const [rooms, setRooms] = useState<RoomAdminRow[]>([]);
@@ -86,6 +86,7 @@ export function InfrastructureAdmin() {
       }
       resetUnit();
       await refresh(clinicId);
+      await refreshAppInfrastructure();
     } catch (error) {
       console.error('[MedicsPro] salvar unidade:', error);
       toast('Falha ao salvar unidade.', 'warn');
@@ -107,6 +108,7 @@ export function InfrastructureAdmin() {
       }
       resetRoom();
       await refresh(clinicId);
+      await refreshAppInfrastructure();
     } catch (error) {
       console.error('[MedicsPro] salvar sala:', error);
       toast('Falha ao salvar sala/recurso.', 'warn');
@@ -136,6 +138,7 @@ export function InfrastructureAdmin() {
     try {
       await setUnitActive(clinicId, unit.id, !unit.ativo);
       await refresh(clinicId);
+      await refreshAppInfrastructure();
       toast(unit.ativo ? 'Unidade desativada.' : 'Unidade reativada.');
     } catch (error) {
       console.error('[MedicsPro] status unidade:', error);
@@ -147,6 +150,7 @@ export function InfrastructureAdmin() {
     try {
       await setRoomActive(clinicId, room.id, !room.ativo);
       await refresh(clinicId);
+      await refreshAppInfrastructure();
       toast(room.ativo ? 'Sala/recurso desativado.' : 'Sala/recurso reativado.');
     } catch (error) {
       console.error('[MedicsPro] status sala:', error);
