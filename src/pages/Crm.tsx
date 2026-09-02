@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../lib/store';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
 import { Card, CardHead, Btn, Chip, IconStar, IconPhone, IconAlert } from '../lib/ui';
@@ -11,7 +11,8 @@ import { Reveal, CountUp } from '../components/Reveal';
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
-  const { patients, appointments, setFunilStage, surveys, toast, enviarLembretes, enviarNps, reativarInativos } = useApp();
+  const { patients, appointments, setFunilStage, surveys, toast } = useApp();
+  const navigate = useNavigate();
   const [dragId, setDragId] = useState<string | null>(null);
 
   const byStage = useMemo(() => {
@@ -32,15 +33,6 @@ export function Crm() {
 
   const inativos = patients.filter((p) => p.status === 'inativo' && !p.anonimizado);
 
-  const confirmarPendentes = () => {
-    const n = enviarLembretes();
-    toast(n ? `${n} confirmação(ões) enfileiradas no WhatsApp` : 'Nenhuma confirmação pendente', n ? 'ok' : 'info');
-  };
-  const dispararNps = () => {
-    const n = enviarNps();
-    toast(n ? `${n} pesquisa(s) NPS disparada(s)` : 'Nenhuma pesquisa pendente', n ? 'ok' : 'info');
-  };
-
   return (
     <div className="space-y-4">
       <Reveal>
@@ -50,8 +42,8 @@ export function Crm() {
             <p className="text-fog text-[13px] mt-0.5">funil de captação, retenção e satisfação</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
-            <Btn variant="subtle" onClick={confirmarPendentes}><IconWhats className="w-4 h-4" /> Confirmar sessões</Btn>
-            <Btn variant="subtle" onClick={dispararNps}><IconSend className="w-4 h-4" /> Disparar NPS</Btn>
+            <Btn variant="subtle" onClick={() => navigate('/mensagens')}><IconWhats className="w-4 h-4" /> Selecionar confirmações</Btn>
+            <Btn variant="subtle" onClick={() => navigate('/mensagens')}><IconSend className="w-4 h-4" /> Selecionar NPS</Btn>
           </div>
         </div>
       </Reveal>
@@ -178,8 +170,8 @@ export function Crm() {
                         {dias !== null ? `${dias} dias sem vir` : 'nunca compareceu'} · última visita {p.ultimaVisita ? format(new Date(p.ultimaVisita + 'T12:00'), 'dd/MM/yy', { locale: ptBR }) : '—'}
                       </p>
                     </div>
-                    <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => { reativarInativos(); toast(`Mensagem de reativação enviada para ${p.nome}`); }}>
-                      <IconWhats className="w-3.5 h-3.5" /> Reativar
+                    <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => navigate('/mensagens')}>
+                      <IconWhats className="w-3.5 h-3.5" /> Ver reativação
                     </Btn>
                   </li>
                 );
@@ -188,8 +180,8 @@ export function Crm() {
             {inativos.length > 0 && (
               <div className="px-5 py-3 border-t border-line flex items-center justify-between">
                 <span className="font-mono text-[10.5px] text-fog">{inativos.length} paciente(s) em risco de perda</span>
-                <Btn variant="ghost" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => { const n = reativarInativos(); toast(`${n} mensagem(ns) de reativação disparada(s)`); }}>
-                  Campanha para todos
+                <Btn variant="ghost" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => navigate('/mensagens')}>
+                  Selecionar campanha
                 </Btn>
               </div>
             )}
