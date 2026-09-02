@@ -13,7 +13,7 @@ import { Reveal } from '../components/Reveal';
 import { AppointmentCreateModal, type CreateAt } from '../components/AppointmentCreateModal';
 import { AppointmentActionModal } from '../components/AppointmentActionModal';
 import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
-import { AppointmentRescheduleModal } from '../components/AppointmentRescheduleModal';
+import { AppointmentRescheduleModal, type ReschedulePreset } from '../components/AppointmentRescheduleModal';
 import { AppointmentFinderPanel } from '../components/AppointmentFinderPanel';
 import { WaitlistPanel } from '../components/WaitlistPanel';
 
@@ -51,7 +51,10 @@ export function AgendaReal() {
   const [creating, setCreating] = useState<CreateAt>(null);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
+  const [reschedulePreset, setReschedulePreset] = useState<ReschedulePreset | null>(null);
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
+  const [dragging, setDragging] = useState<Appointment | null>(null);
+  const [dragTarget, setDragTarget] = useState<string | null>(null);
   const [operationBusy, setOperationBusy] = useState(false);
   const [loadingInfra, setLoadingInfra] = useState(true);
   const [whatsappByAppointment, setWhatsappByAppointment] = useState<Map<string, AppointmentWhatsappState>>(new Map());
@@ -64,18 +67,14 @@ export function AgendaReal() {
   useEffect(() => {
     let active = true;
     if (!user?.id) return;
-    resolveClinicId(user.id)
-      .then(loadInfrastructure)
-      .then((data) => {
-        if (!active) return;
-        setUnidades(data.unidades);
-        setRooms(data.rooms);
-      })
-      .catch((error) => {
-        console.error('[MedicsPro] agenda/infraestrutura:', error);
-        toast('Não foi possível carregar unidades e salas.', 'warn');
-      })
-      .finally(() => active && setLoadingInfra(false));
+    resolveClinicId(user.id).then(loadInfrastructure).then((data) => {
+      if (!active) return;
+      setUnidades(data.unidades);
+      setRooms(data.rooms);
+    }).catch((error) => {
+      console.error('[MedicsPro] agenda/infraestrutura:', error);
+      toast('Não foi possível carregar unidades e salas.', 'warn');
+    }).finally(() => active && setLoadingInfra(false));
     return () => { active = false; };
   }, [user?.id]);
 
@@ -107,6 +106,7 @@ export function AgendaReal() {
   const labelSlots = useMemo(() => gridSlots.filter((minute) => minute % 60 === 0), [gridSlots]);
   const todayIso = format(new Date(), 'yyyy-MM-dd');
   const roomsForFilter = useMemo(() => rooms.filter((room) => unitFilter === 'all' || room.unidadeId === unitFilter), [rooms, unitFilter]);
+  const canDrag = (appointment: Appointment) => (user?.role === 'admin' || user?.role === 'recep') && ['agendado', 'confirmado'].includes(appointment.status);
 
   useEffect(() => {
     if (roomFilter !== 'all' && !roomsForFilter.some((room) => room.id === roomFilter)) setRoomFilter('all');
@@ -193,11 +193,30 @@ export function AgendaReal() {
       await rescheduleAppointment({ appointmentId: rescheduling.id, ...payload });
       toast('Sessão remarcada com histórico preservado.');
       setRescheduling(null);
+      setReschedulePreset(null);
       reloadAgenda();
     } catch (error) {
       console.error('[MedicsPro] remarcação operacional:', error);
       toast('Não foi possível remarcar a sessão.', 'warn');
     } finally { setOperationBusy(false); }
+  };
+
+  const startDrag = (appointment: Appointment) => {
+    if (!canDrag(appointment)) return;
+    setDragging(appointment);
+  };
+
+  const dropAppointment = (dia: string, minuto: number) => {
+    if (!dragging) return;
+    const inicio = toHHMM(minuto);
+    setDragTarget(null);
+    if (dragging.data === dia && dragging.inicio === inicio) {
+      setDragging(null);
+      return;
+    }
+    setReschedulePreset({ data: dia, inicio, reason: 'Remarcação pela agenda' });
+    setRescheduling(dragging);
+    setDragging(null);
   };
 
   const renderDayColumn = (date: Date) => {
@@ -213,19 +232,33 @@ export function AgendaReal() {
           <p className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</p>
         </div>
         <div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>
-          {gridSlots.slice(0, -1).map((minute) => (
-            <button key={minute} aria-label={`Agendar ${toHHMM(minute)}`} onClick={() => rooms.length && setCreating({ dia: iso, hora: toHHMM(minute) })}
-              className={`absolute inset-x-0 border-t hover:bg-mint/[0.04] ${minute % 60 === 0 ? 'border-line/35' : 'border-line/15'}`}
-              style={{ top: (minute - DAY_START) * PPM, height: SLOT_MINUTES * PPM }} />
-          ))}
+          {gridSlots.slice(0, -1).map((minute) => {
+            const targetKey = `${iso}-${minute}`;
+            return (
+              <button key={minute} aria-label={`Agendar ${toHHMM(minute)}`}
+                onClick={() => !dragging && rooms.length && setCreating({ dia: iso, hora: toHHMM(minute) })}
+                onDragOver={(event) => { if (dragging) { event.preventDefault(); setDragTarget(targetKey); } }}
+                onDragLeave={() => dragTarget === targetKey && setDragTarget(null)}
+                onDrop={(event) => { event.preventDefault(); dropAppointment(iso, minute); }}
+                className={`absolute inset-x-0 border-t transition-colors ${minute % 60 === 0 ? 'border-line/35' : 'border-line/15'} ${dragTarget === targetKey ? 'bg-mint/15' : 'hover:bg-mint/[0.04]'}`}
+                style={{ top: (minute - DAY_START) * PPM, height: SLOT_MINUTES * PPM }} />
+            );
+          })}
           {showNow && <div className="absolute z-20 inset-x-0 border-t border-pulse pointer-events-none" style={{ top: (nowMinute - DAY_START) * PPM }}><span className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-pulse" /></div>}
           {dayAppointments.map((appointment) => {
             const meta = STATUS_META[appointment.status];
             const whatsapp = whatsappByAppointment.get(appointment.id);
             const top = (toMin(appointment.inicio) - DAY_START) * PPM;
             const height = Math.max((toMin(appointment.fim) - toMin(appointment.inicio)) * PPM, 28);
+            const draggable = canDrag(appointment);
             return (
-              <button key={appointment.id} onClick={() => setSelected(appointment)} className="absolute z-10 left-1 right-1 bg-panel/95 hover:bg-raise border-l-[3px] text-left px-2 py-1 overflow-hidden transition-colors" style={{ top, height, borderColor: meta.dot }}>
+              <button key={appointment.id} draggable={draggable}
+                onDragStart={(event) => { if (!draggable) { event.preventDefault(); return; } event.dataTransfer.effectAllowed = 'move'; startDrag(appointment); }}
+                onDragEnd={() => { setDragging(null); setDragTarget(null); }}
+                onClick={() => !dragging && setSelected(appointment)}
+                title={draggable ? 'Arraste para outro horário. A remarcação só ocorre após sua confirmação.' : undefined}
+                className={`absolute z-10 left-1 right-1 bg-panel/95 hover:bg-raise border-l-[3px] text-left px-2 py-1 overflow-hidden transition-all ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === appointment.id ? 'opacity-50' : ''}`}
+                style={{ top, height, borderColor: meta.dot }}>
                 <p className="font-mono text-[9px] text-fog">{appointment.inicio}–{appointment.fim}{appointment.isFitIn ? ' · ENCAIXE' : ''}</p>
                 <p className="text-[11px] font-semibold truncate" style={{ color: meta.dot }}>{patientName(patients, appointment.pacienteId)}</p>
                 <p className="font-mono text-[9px] text-fog truncate">{roomLabel(appointment.roomId)}{compactWhatsapp(whatsapp) ? ` · ${compactWhatsapp(whatsapp)}` : ''}</p>
@@ -250,6 +283,8 @@ export function AgendaReal() {
           </div>
         </div>
       </Reveal>
+
+      {(user?.role === 'admin' || user?.role === 'recep') && view !== 'mes' && <p className="font-mono text-[10px] text-fog">Dica: arraste atendimentos agendados ou confirmados para outro horário. Nada é salvo antes da confirmação da remarcação.</p>}
 
       <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={fisios} defaultFisioId={fisioFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
@@ -279,9 +314,9 @@ export function AgendaReal() {
       )}</Reveal>
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={(appointment) => { addAppointment(appointment); setCreating(null); nav('/agenda', { replace: true }); }} />
-      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) setRescheduling(selected); setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
+      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
       <AppointmentCancelModal appointment={cancelling} onClose={() => setCancelling(null)} onConfirm={confirmCancellation} busy={operationBusy} />
-      <AppointmentRescheduleModal appointment={rescheduling} rooms={rooms} unidades={unidades} onClose={() => setRescheduling(null)} onConfirm={confirmReschedule} busy={operationBusy} />
+      <AppointmentRescheduleModal appointment={rescheduling} preset={reschedulePreset} rooms={rooms} unidades={unidades} onClose={() => { setRescheduling(null); setReschedulePreset(null); }} onConfirm={confirmReschedule} busy={operationBusy} />
     </div>
   );
 }
