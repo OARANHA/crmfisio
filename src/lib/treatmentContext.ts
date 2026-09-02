@@ -67,7 +67,8 @@ export function buildTreatmentContext(params: {
   const pendingAmount = patientTransactions.filter((item) => item.status === 'pendente').reduce((sum, item) => sum + item.valor, 0);
   const financialState: TreatmentContext['financialState'] = overdueAmount > 0 ? 'atrasado' : pendingAmount > 0 ? 'pendente' : 'ok';
 
-  const lastCompleted = patientAppointments.filter((item) => item.status === 'finalizado').at(-1);
+  const completedAppointments = patientAppointments.filter((item) => item.status === 'finalizado');
+  const lastCompleted = completedAppointments.length > 0 ? completedAppointments[completedAppointments.length - 1] : undefined;
   const hasFuture = future > 0 || ['agendado', 'confirmado', 'em_atendimento'].includes(appointment.status);
   const daysSinceLast = lastCompleted ? Math.floor((Date.now() - new Date(`${lastCompleted.data}T12:00:00`).getTime()) / 86_400_000) : 0;
   const interruptionRisk = patient?.funilStage === 'tratamento' && !hasFuture && completed > 0 && daysSinceLast >= 21;
