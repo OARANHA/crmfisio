@@ -6,14 +6,14 @@ CREATE TABLE IF NOT EXISTS public.appointment_series (
   clinic_id uuid NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
   paciente_id uuid NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   fisio_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-  room_id uuid,
+  room_id uuid REFERENCES public.rooms(id) ON DELETE RESTRICT,
   tipo text NOT NULL,
   dias_semana smallint[] NOT NULL,
   hora time NOT NULL,
   duracao_min integer NOT NULL CHECK (duracao_min BETWEEN 15 AND 240),
   data_inicio date NOT NULL,
   data_fim date NOT NULL,
-  valor integer NOT NULL DEFAULT 0,
+  valor integer NOT NULL DEFAULT 0 CHECK (valor >= 0),
   status text NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa', 'cancelada', 'concluida')),
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS public.appointment_series (
   cancelled_at timestamptz,
   cancellation_reason text,
   CHECK (data_fim >= data_inicio),
-  CHECK (cardinality(dias_semana) BETWEEN 1 AND 7)
+  CHECK (cardinality(dias_semana) BETWEEN 1 AND 7),
+  CHECK (dias_semana <@ ARRAY[1,2,3,4,5,6,7]::smallint[])
 );
 
 CREATE INDEX IF NOT EXISTS appointment_series_clinic_idx
@@ -140,14 +141,20 @@ BEGIN
   IF v_clinic IS NULL THEN RAISE EXCEPTION 'Clínica não identificada' USING ERRCODE = '42501'; END IF;
   IF p_data_fim < p_data_inicio THEN RAISE EXCEPTION 'Período inválido' USING ERRCODE = '22023'; END IF;
   IF p_duracao_min < 15 OR p_duracao_min > 240 THEN RAISE EXCEPTION 'Duração inválida' USING ERRCODE = '22023'; END IF;
-  IF cardinality(p_dias_semana) IS NULL OR cardinality(p_dias_semana) = 0 THEN RAISE EXCEPTION 'Selecione ao menos um dia da semana' USING ERRCODE = '22023'; END IF;
+  IF nullif(trim(p_tipo), '') IS NULL THEN RAISE EXCEPTION 'Tipo de atendimento obrigatório' USING ERRCODE = '22023'; END IF;
+  IF p_valor < 0 THEN RAISE EXCEPTION 'Valor inválido' USING ERRCODE = '22023'; END IF;
+  IF cardinality(p_dias_semana) IS NULL OR cardinality(p_dias_semana) = 0 OR NOT (p_dias_semana <@ ARRAY[1,2,3,4,5,6,7]::smallint[]) THEN
+    RAISE EXCEPTION 'Dias da semana inválidos' USING ERRCODE = '22023';
+  END IF;
 
-  -- Garante que paciente, profissional e sala pertencem ao tenant atual antes de persistir.
   IF NOT EXISTS (SELECT 1 FROM public.patients WHERE id = p_paciente_id AND clinic_id = v_clinic AND deleted_at IS NULL) THEN
     RAISE EXCEPTION 'Paciente inválido para esta clínica' USING ERRCODE = '42501';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_fisio_id AND clinic_id = v_clinic AND ativo = true) THEN
     RAISE EXCEPTION 'Profissional inválido para esta clínica' USING ERRCODE = '42501';
+  END IF;
+  IF p_room_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rooms WHERE id = p_room_id AND clinic_id = v_clinic AND ativo = true) THEN
+    RAISE EXCEPTION 'Sala/recurso inválido para esta clínica' USING ERRCODE = '42501';
   END IF;
 
   INSERT INTO public.appointment_series (
