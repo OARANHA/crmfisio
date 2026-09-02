@@ -56,6 +56,13 @@ Deno.serve(async (req) => {
     const tick = (data ?? {}) as TickResult;
     runId = tick.run_id ?? null;
 
+    let queuedWaitlistOffers = 0;
+    if (runId) {
+      const { data: waitlistData, error: waitlistError } = await admin.rpc('run_waitlist_auto_recovery_tick', { p_run_id: runId });
+      if (waitlistError) throw waitlistError;
+      queuedWaitlistOffers = Number(waitlistData ?? 0);
+    }
+
     const workerResponse = await fetch(`${supabaseUrl}/functions/v1/evolution-worker`, {
       method: 'POST',
       headers: {
@@ -74,6 +81,7 @@ Deno.serve(async (req) => {
     if (runId) {
       await admin.from('automation_runs').update({
         finished_at: new Date().toISOString(),
+        queued_waitlist_offers: queuedWaitlistOffers,
         worker_processed: Number(workerPayload.processed ?? 0),
         worker_sent: Number(workerPayload.sent ?? 0),
         worker_failed: Number(workerPayload.failed ?? 0),
@@ -85,6 +93,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       ...tick,
+      queued_waitlist_offers: queuedWaitlistOffers,
       worker: {
         processed: Number(workerPayload.processed ?? 0),
         sent: Number(workerPayload.sent ?? 0),
