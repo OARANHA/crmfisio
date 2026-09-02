@@ -8,6 +8,7 @@ import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../lib/ui';
 import { Reveal, CountUp } from '../components/Reveal';
 import { Ecg } from '../components/Ecg';
 import { RevenueRecovery } from '../components/RevenueRecovery';
+import { OperationalHealthCard } from '../components/dashboards/OperationalHealthCard';
 
 export function Dashboard() {
   const { user, appointments, transactions, patients, surveys, consents, users, unidadeSel, unidades } = useApp();
@@ -106,6 +107,10 @@ export function Dashboard() {
         <RevenueRecovery />
       </Reveal>
 
+      <Reveal delay={110}>
+        <OperationalHealthCard />
+      </Reveal>
+
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <Reveal delay={120}>
           <Card className="lg:col-span-2">
@@ -117,10 +122,7 @@ export function Dashboard() {
                     <span className="font-mono text-[9.5px] text-fog opacity-0 group-hover:opacity-100 transition-opacity">
                       {s.valor ? fmtBRL(s.valor) : '—'}
                     </span>
-                    <div
-                      className="w-full bg-mint/70 group-hover:bg-mint transition-colors bar-anim"
-                      style={{ height: `${Math.max((s.valor / maxSemana) * 100, 3)}%` }}
-                    />
+                    <div className="w-full bg-mint/70 group-hover:bg-mint transition-colors bar-anim" style={{ height: `${Math.max((s.valor / maxSemana) * 100, 3)}%` }} />
                     <span className="font-mono text-[10px] text-fog uppercase">{s.label}</span>
                   </div>
                 ))}
@@ -152,9 +154,7 @@ export function Dashboard() {
         <Card>
           <CardHead title="Produtividade por fisioterapeuta" sub={`competência ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })} · ${unidade ? unidade.nome : 'todas as unidades'}`} />
           <div className="p-5 space-y-4">
-            {prod.length === 0 && (
-              <p className="font-mono text-[11px] text-fog py-5 text-center">Nenhum fisioterapeuta ativo com produção no período.</p>
-            )}
+            {prod.length === 0 && <p className="font-mono text-[11px] text-fog py-5 text-center">Nenhum fisioterapeuta ativo com produção no período.</p>}
             {prod.map((p) => (
               <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -169,14 +169,10 @@ export function Dashboard() {
                 <div className="col-span-2 sm:col-span-1">
                   <div className="h-5 bg-deep border border-line relative overflow-hidden">
                     <div className="h-full bar-anim" style={{ width: `${(p.valor / maxProd) * 100}%`, background: `${p.f.cor}cc` }} />
-                    <span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">
-                      {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''} · {fmtBRL(p.valor)}
-                    </span>
+                    <span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">{p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''} · {fmtBRL(p.valor)}</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Chip className={p.comp >= 85 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{p.comp}% pres.</Chip>
-                </div>
+                <div className="text-right"><Chip className={p.comp >= 85 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{p.comp}% pres.</Chip></div>
               </div>
             ))}
           </div>
@@ -187,20 +183,13 @@ export function Dashboard() {
         <div className="flex flex-wrap gap-2">
           {(Object.keys(STATUS_META) as (keyof typeof STATUS_META)[]).map((s) => {
             const n = appointments.filter((a) => a.status === s && dayOf(a) === hoje && inUnit(a)).length;
-            return (
-              <Chip key={s} className={STATUS_META[s].chip}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_META[s].dot }} />
-                {STATUS_META[s].label}: {n} hoje
-              </Chip>
-            );
+            return <Chip key={s} className={STATUS_META[s].chip}><span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_META[s].dot }} />{STATUS_META[s].label}: {n} hoje</Chip>;
           })}
         </div>
       </Reveal>
 
       <Reveal delay={260}>
-        <div className="h-16 overflow-hidden opacity-70 border-y border-line/50">
-          <Ecg className="w-full h-full" />
-        </div>
+        <div className="h-16 overflow-hidden opacity-70 border-y border-line/50"><Ecg className="w-full h-full" /></div>
       </Reveal>
     </div>
   );
