@@ -92,7 +92,7 @@ function Login() {
         </form>
         <div className="px-7 pb-6 flex items-center gap-2 font-mono text-[10.5px] text-fog">
           <IconLock className="w-3.5 h-3.5 text-pulse" />
-          Sessão auditada · dados sensíveis criptografados (AES-256-GCM) · LGPD
+          Sessão autenticada · acesso protegido por perfil e clínica · LGPD
         </div>
       </div>
     </div>

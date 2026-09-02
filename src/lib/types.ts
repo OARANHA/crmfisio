@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Projeto Coração — camada de domínio (espelha o ERD aprovado no Passo 2).
+// MedicsPro — tipos de domínio consumidos pela aplicação.
 // Valores monetários em CENTAVOS (inteiros), nunca float.
 // ---------------------------------------------------------------------------
 
