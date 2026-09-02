@@ -207,7 +207,7 @@ export function Financeiro() {
                           <td className="px-4 py-3 text-right">
                             {c.status === 'aberto' ? (
                               <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]"
-                                onClick={() => { setCommissionStatus(c.id, 'pago'); toast(`Repasse de ${fmtBRL(valor)} pago a ${userName(users, c.fisioId)}`); }}>
+                                onClick={() => void setCommissionStatus(c.id, 'pago').then(() => toast(`Repasse de ${fmtBRL(valor)} pago a ${userName(users, c.fisioId)}`)).catch((error) => { console.error('[MedicsPro] pagar repasse:', error); toast('Não foi possível baixar o repasse.', 'warn'); })}>
                                 Marcar pago
                               </Btn>
                             ) : (
@@ -282,10 +282,15 @@ function RepasseModal({ onClose }: { onClose: () => void }) {
   const fechaveis = linhas.filter((l) => !l.jaFechado && l.base > 0);
   const total = fechaveis.reduce((s, l) => s + l.comissao, 0);
 
-  const fechar = () => {
-    const n = fecharRepasse(mes);
-    toast(n ? `Repasse de ${format(new Date(mes + '-01T12:00'), 'MMMM/yyyy', { locale: ptBR })} fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info');
-    onClose();
+  const fechar = async () => {
+    try {
+      const n = await fecharRepasse(mes);
+      toast(n ? `Repasse de ${format(new Date(mes + '-01T12:00'), 'MMMM/yyyy', { locale: ptBR })} fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info');
+      onClose();
+    } catch (error) {
+      console.error('[MedicsPro] fechar repasse:', error);
+      toast('Não foi possível fechar os repasses.', 'warn');
+    }
   };
 
   return (
