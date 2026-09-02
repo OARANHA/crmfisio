@@ -44,8 +44,9 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
     setLoading(true);
     setError(null);
 
-    supabase.rpc('get_recovery_roi', { p_from: from, p_to: to })
-      .then(({ data, error: rpcError }) => {
+    const loadRoi = async () => {
+      try {
+        const { data, error: rpcError } = await supabase.rpc('get_recovery_roi', { p_from: from, p_to: to });
         if (cancelled) return;
         if (rpcError) {
           setError('ROI atribuído indisponível para esta competência.');
@@ -64,8 +65,18 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
           reactivations: Number(raw.reactivations ?? 0),
           package_renewals: Number(raw.package_renewals ?? 0),
         });
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      } catch (requestError) {
+        console.error('[MedicsPro] relatório de ROI:', requestError);
+        if (!cancelled) {
+          setError('Não foi possível carregar o ROI desta competência.');
+          setRoi({ ...emptyRoi, from, to });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadRoi();
 
     return () => { cancelled = true; };
   }, [month]);
