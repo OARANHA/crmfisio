@@ -31,7 +31,7 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 export function FinanceiroOperational() {
   const {
     user, access, transactions, setTxStatus, patientPackages, patients, packages,
-    commissions, users, setCommissionStatus, fecharRepasse, toast,
+    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, toast,
   } = useApp();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);
@@ -40,6 +40,8 @@ export function FinanceiroOperational() {
   const [packageModal, setPackageModal] = useState<PackageCatalogItem | 'new' | null>(null);
   const [sellModal, setSellModal] = useState<{ patientId?: string; renewedFromId?: string; packageId?: string } | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
+  const [transactionModal, setTransactionModal] = useState<'receber' | 'pagar' | null>(null);
+  const [settling, setSettling] = useState<FinancialTransaction | null>(null);
 
   const isRecep = user?.role === 'recep';
   const isFisio = user?.role === 'fisio';
@@ -98,7 +100,8 @@ export function FinanceiroOperational() {
             </p>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Chip className="border-aqua/40 text-aqua"><IconPlug className="w-3.5 h-3.5" /> PIX · cartão · boleto</Chip>
+            <Chip className="border-aqua/40 text-aqua"><IconPlug className="w-3.5 h-3.5" /> Baixa manual · PIX · cartão · boleto</Chip>
+            {(tab === 'receber' || tab === 'pagar') && canWriteTipo(tab) && <Btn variant="subtle" onClick={() => setTransactionModal(tab)}><IconDollar className="w-4 h-4" /> Novo lançamento</Btn>}
             {canOperatePackages && <Btn variant="subtle" onClick={() => { setTab('pacotes'); setSellModal({}); }}><IconDollar className="w-4 h-4" /> Vender pacote</Btn>}
             {isAdmin && <Btn onClick={() => { setTab('pacotes'); setPackageModal('new'); }}>Novo pacote</Btn>}
           </div>
@@ -157,7 +160,7 @@ export function FinanceiroOperational() {
                     <td className="px-4 py-3 font-mono text-[11px] text-fog uppercase"><span className="inline-flex items-center gap-1.5">{t.metodo === 'cartao' && <IconCardPay className="w-3.5 h-3.5" />}{t.metodo ?? '—'}</span></td>
                     <td className="px-4 py-3"><Chip className={st.chip}>{st.label}</Chip></td>
                     {canWriteTipo(tab) && <td className="px-4 py-3 text-right">{t.status !== 'pago' ? <div className="inline-flex gap-1.5">
-                      <Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => setTxStatus(t.id, 'pago', tab === 'receber' ? 'pix' : 'boleto')}>Baixar</Btn>
+                      <Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => setSettling(t)}>Baixar</Btn>
                     </div> : <span className="font-mono text-[10.5px] text-fog/60">liquidado ✓</span>}</td>}
                   </tr>;
                 })}
@@ -227,10 +230,51 @@ export function FinanceiroOperational() {
       </Reveal>
 
       {packageModal && <PackageCatalogModal initial={packageModal === 'new' ? null : packageModal} onClose={() => setPackageModal(null)} onSaved={async () => { setPackageModal(null); await refreshPackages(); toast('Catálogo de pacotes atualizado.'); }} />}
+      {transactionModal && <TransactionModal tipo={transactionModal} patients={patients} onClose={() => setTransactionModal(null)} onSave={(transaction) => { addTransaction(transaction); setTransactionModal(null); }} />}
+      {settling && <SettleTransactionModal transaction={settling} onClose={() => setSettling(null)} onConfirm={(method) => { setTxStatus(settling.id, 'pago', method); setSettling(null); }} />}
       {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={() => { toast(sellModal.renewedFromId ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); window.location.reload(); }} />}
       {repasse && <RepasseModal onClose={() => setRepasse(false)} />}
     </div>
   );
+}
+
+type PaymentMethod = Exclude<FinancialTransaction['metodo'], null>;
+
+function TransactionModal({ tipo, patients, onClose, onSave }: { tipo: 'receber' | 'pagar'; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSave: (transaction: Omit<FinancialTransaction, 'id'>) => void }) {
+  const [descricao, setDescricao] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [valor, setValor] = useState('');
+  const [vencimento, setVencimento] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [pacienteId, setPacienteId] = useState('');
+  const cents = Math.round(Number(valor.replace(',', '.')) * 100);
+  const valid = descricao.trim() && categoria.trim() && vencimento && Number.isFinite(cents) && cents > 0;
+
+  const save = () => {
+    if (!valid) return;
+    onSave({ tipo, descricao: descricao.trim(), categoria: categoria.trim(), valor: cents, vencimento, status: 'pendente', pacienteId: tipo === 'receber' && pacienteId ? pacienteId : null, metodo: null });
+  };
+
+  return <Modal open onClose={onClose} title={tipo === 'receber' ? 'Nova conta a receber' : 'Nova conta a pagar'}>
+    <div className="space-y-4">
+      <Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder={tipo === 'receber' ? 'Ex.: Avaliação fisioterapêutica' : 'Ex.: Aluguel da unidade'} /></Field>
+      <div className="grid grid-cols-2 gap-3"><Field label="Categoria"><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex.: Sessões" /></Field><Field label="Valor (R$)"><Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" /></Field></div>
+      <Field label="Vencimento"><Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} /></Field>
+      {tipo === 'receber' && <Field label="Paciente (opcional)"><Select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)}><option value="">Sem vínculo</option>{patients.filter((p) => !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>}
+      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={save} disabled={!valid}>Salvar lançamento</Btn></div>
+    </div>
+  </Modal>;
+}
+
+function SettleTransactionModal({ transaction, onClose, onConfirm }: { transaction: FinancialTransaction; onClose: () => void; onConfirm: (method: PaymentMethod) => void }) {
+  const [method, setMethod] = useState<PaymentMethod>(transaction.tipo === 'receber' ? 'pix' : 'boleto');
+  return <Modal open onClose={onClose} title="Confirmar baixa manual">
+    <div className="space-y-4">
+      <div className="border border-line bg-deep p-3"><p className="font-semibold text-[13px]">{transaction.descricao}</p><p className="font-mono text-[12px] text-mint mt-1">{fmtBRL(transaction.valor)}</p></div>
+      <Field label="Método utilizado"><Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option></Select></Field>
+      <p className="text-[11.5px] text-fog">Esta ação apenas registra a liquidação no sistema; ela não processa o pagamento no banco ou na operadora.</p>
+      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => onConfirm(method)}>Confirmar baixa</Btn></div>
+    </div>
+  </Modal>;
 }
 
 function PackageCatalogModal({ initial, onClose, onSaved }: { initial: PackageCatalogItem | null; onClose: () => void; onSaved: () => Promise<void> }) {
