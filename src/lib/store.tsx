@@ -2,9 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  Role, SessionPackage, Unidade, User, WaLog,
+  Role, Room, SessionPackage, Unidade, User, WaLog,
 } from './types';
-import { seedUnidades, seedRooms } from './seed';
+import { loadInfrastructure } from './infrastructure';
 import {
   anonymizePatient,
   closeMonthlyCommissions,
@@ -36,7 +36,8 @@ interface AppState {
   unidades: Unidade[];
   unidadeSel: string;
   setUnidadeSel: (v: string) => void;
-  rooms: typeof seedRooms;
+  rooms: Room[];
+  refreshInfrastructure: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
   patients: Patient[];
@@ -81,6 +82,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
@@ -106,6 +109,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user?.id) {
       setClinicId(null);
       setUsers([]);
+      setUnidades([]);
+      setRooms([]);
+      setUnidadeSel('all');
       setPatients([]);
       setAppointments([]);
       setTransactions([]);
@@ -121,10 +127,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     loadClinicData(user.id)
-      .then((data) => {
+      .then(async (data) => ({ data, infrastructure: await loadInfrastructure(data.clinicId) }))
+      .then(({ data, infrastructure }) => {
         if (cancelled) return;
         setClinicId(data.clinicId);
         setUsers(data.users);
+        setUnidades(infrastructure.unidades);
+        setRooms(infrastructure.rooms);
+        setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
         setPatients(data.patients);
         setAppointments(data.appointments);
         setTransactions(data.transactions);
@@ -160,10 +170,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user,
       setAuthenticatedUser: setUser,
       users,
-      unidades: seedUnidades,
+      unidades,
       unidadeSel,
       setUnidadeSel,
-      rooms: seedRooms,
+      rooms,
+      refreshInfrastructure: async () => {
+        if (!clinicId) throw new Error('Clínica não identificada');
+        const infrastructure = await loadInfrastructure(clinicId);
+        setUnidades(infrastructure.unidades);
+        setRooms(infrastructure.rooms);
+        setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
+      },
       packages,
       patientPackages,
       patients,
@@ -321,7 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [user, clinicId, users, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast]);
+  }, [user, clinicId, users, unidades, rooms, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
