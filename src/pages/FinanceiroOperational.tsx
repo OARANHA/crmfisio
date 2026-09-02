@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
 import { dayOf, fmtBRL, type FinancialTransaction } from '../lib/types';
 import { Bar, Btn, Card, CardHead, Chip, Field, IconDollar, Input, Modal, Select } from '../lib/ui';
-import { IconCardPay, IconPlug, IconWhats } from '../components/icons';
+import { IconCardPay, IconPlug } from '../components/icons';
 import { CountUp, Reveal } from '../components/Reveal';
 import {
   loadPackageCatalog,
@@ -77,11 +77,6 @@ export function FinanceiroOperational() {
 
   const list = transactions.filter((t) => t.tipo === tab).sort((a, b) => (a.vencimento < b.vencimento ? -1 : 1));
 
-  const cobrarWhats = (t: FinancialTransaction) => {
-    const p = t.pacienteId ? patients.find((x) => x.id === t.pacienteId) : null;
-    toast(`Cobrança de ${fmtBRL(t.valor)} enviada via WhatsApp para ${p?.nome ?? 'paciente'}`);
-  };
-
   return (
     <div className="space-y-4">
       <Reveal>
@@ -152,7 +147,6 @@ export function FinanceiroOperational() {
                     <td className="px-4 py-3 font-mono text-[11px] text-fog uppercase"><span className="inline-flex items-center gap-1.5">{t.metodo === 'cartao' && <IconCardPay className="w-3.5 h-3.5" />}{t.metodo ?? '—'}</span></td>
                     <td className="px-4 py-3"><Chip className={st.chip}>{st.label}</Chip></td>
                     {canWriteTipo(tab) && <td className="px-4 py-3 text-right">{t.status !== 'pago' ? <div className="inline-flex gap-1.5">
-                      {tab === 'receber' && <Btn variant="subtle" className="!px-2.5 !py-1" onClick={() => cobrarWhats(t)}><IconWhats className="w-3.5 h-3.5" /></Btn>}
                       <Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => setTxStatus(t.id, 'pago', tab === 'receber' ? 'pix' : 'boleto')}>Baixar</Btn>
                     </div> : <span className="font-mono text-[10.5px] text-fog/60">liquidado ✓</span>}</td>}
                   </tr>;
