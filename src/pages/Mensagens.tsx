@@ -5,12 +5,14 @@ import { MessageActivity } from '../components/messages/MessageActivity';
 import { MessageRecipientSelector, type MessageRecipientCandidate } from '../components/messages/MessageRecipientSelector';
 import { MessageReviewQueue } from '../components/messages/MessageReviewQueue';
 import { MessageTemplatesEditor } from '../components/messages/MessageTemplatesEditor';
+import { buildReactivationSelection } from '../components/messages/reactivationEligibility';
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
 import { useApp } from '../lib/store';
 import { Btn, Chip } from '../lib/ui';
 
 const OPEN_MESSAGE_STATUS = new Set(['fila', 'enviando', 'enviado', 'entregue', 'lido']);
+const REACTIVATION_INACTIVITY_DAYS = 30;
 const REACTIVATION_COOLDOWN_DAYS = 30;
 
 function appointmentDateTime(data: string, inicio: string) {
@@ -89,44 +91,13 @@ export function Mensagens() {
     return { candidates, stats };
   }, [appointments, patients, logs]);
 
-  const reactivationSelection = useMemo(() => {
-    const now = new Date();
-    const cooldown = subDays(now, REACTIVATION_COOLDOWN_DAYS);
-    const stats = { noOptin: 0, noPhone: 0, cooldown: 0, futureAppointment: 0 };
-    const candidates: MessageRecipientCandidate[] = [];
-
-    patients
-      .filter((patient) => patient.status === 'inativo' && !patient.anonimizado)
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-      .forEach((patient) => {
-        if (!patient.optInWhats) { stats.noOptin += 1; return; }
-        if (!patient.telefone?.trim()) { stats.noPhone += 1; return; }
-        const hasFutureAppointment = appointments.some((appointment) =>
-          appointment.pacienteId === patient.id
-          && ['agendado', 'confirmado', 'em_atendimento'].includes(appointment.status)
-          && appointmentDateTime(appointment.data, appointment.inicio) >= now
-        );
-        if (hasFutureAppointment) { stats.futureAppointment += 1; return; }
-        const contactedRecently = logs.some((log) =>
-          log.patientId === patient.id
-          && log.template === 'reativacao'
-          && OPEN_MESSAGE_STATUS.has(log.status)
-          && new Date(log.createdAt) >= cooldown
-        );
-        if (contactedRecently) { stats.cooldown += 1; return; }
-        candidates.push({
-          id: patient.id,
-          patientId: patient.id,
-          patientName: patient.nome,
-          primary: patient.ultimaVisita
-            ? `Última visita ${format(parseISO(patient.ultimaVisita), 'dd/MM/yyyy', { locale: ptBR })}`
-            : 'Sem última visita registrada',
-          secondary: `${patient.telefone} · inativo`,
-        });
-      });
-
-    return { candidates, stats };
-  }, [appointments, patients, logs]);
+  const reactivationSelection = useMemo(() => buildReactivationSelection({
+    patients,
+    appointments,
+    logs,
+    inactivityDays: REACTIVATION_INACTIVITY_DAYS,
+    cooldownDays: REACTIVATION_COOLDOWN_DAYS,
+  }), [appointments, patients, logs]);
 
   const queued = logs.filter((log) => log.status === 'fila').length;
   const sending = logs.filter((log) => log.status === 'enviando').length;
@@ -150,10 +121,12 @@ export function Mensagens() {
   const reactivationBlockedText = () => {
     const s = reactivationSelection.stats;
     const parts = [
+      s.recentlyActive ? `${s.recentlyActive} ainda dentro de ${REACTIVATION_INACTIVITY_DAYS} dias` : '',
+      s.futureAppointment ? `${s.futureAppointment} já com sessão futura` : '',
+      s.cooldown ? `${s.cooldown} em cooldown de ${REACTIVATION_COOLDOWN_DAYS} dias` : '',
       s.noOptin ? `${s.noOptin} sem opt-in` : '',
       s.noPhone ? `${s.noPhone} sem telefone` : '',
-      s.cooldown ? `${s.cooldown} em cooldown de ${REACTIVATION_COOLDOWN_DAYS} dias` : '',
-      s.futureAppointment ? `${s.futureAppointment} já com sessão futura` : '',
+      s.noHistory ? `${s.noHistory} sem atendimento finalizado` : '',
     ].filter(Boolean);
     return parts.length ? `Fora da seleção: ${parts.join(' · ')}` : '';
   };
@@ -234,7 +207,7 @@ export function Mensagens() {
       <Reveal delay={130}><MessageRecipientSelector title="Pesquisa NPS — atendimentos dos últimos 7 dias" sub="Cada atendimento finalizado pode gerar sua própria pesquisa. Um NPS anterior do mesmo paciente não bloqueia uma nova sessão." candidates={npsSelection.candidates} blockedSummary={blockedText(npsSelection.stats)} busy={loading} canSend={canSend} accent="aqua" onSend={sendNps} /></Reveal>
     </div>
 
-    <Reveal delay={150}><MessageRecipientSelector title="Reativação de pacientes inativos" sub={`Campanha controlada: seleção manual, sem pacientes já agendados e com intervalo mínimo de ${REACTIVATION_COOLDOWN_DAYS} dias entre contatos. Respostas positivas vão para a revisão da recepção; PARAR/SAIR aplica opt-out.`} candidates={reactivationSelection.candidates} blockedSummary={reactivationBlockedText()} busy={loading} canSend={canSend} accent="amber" onSend={sendReactivation} /></Reveal>
+    <Reveal delay={150}><MessageRecipientSelector title="Oportunidades de reativação" sub={`Classificação automática: entram pacientes cuja última sessão finalizada ocorreu há pelo menos ${REACTIVATION_INACTIVITY_DAYS} dias e que não possuem sessão futura. Não é necessário marcar o paciente manualmente como inativo. Novo contato só após ${REACTIVATION_COOLDOWN_DAYS} dias; PARAR/SAIR aplica opt-out.`} candidates={reactivationSelection.candidates} blockedSummary={reactivationBlockedText()} busy={loading} canSend={canSend} accent="amber" onSend={sendReactivation} /></Reveal>
 
     <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 items-start">
       <Reveal delay={180}><MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} /></Reveal>
