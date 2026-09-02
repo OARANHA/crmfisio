@@ -1,89 +1,111 @@
 import { useMemo } from 'react';
-import { differenceInDays, format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
-import { Card, CardHead, Btn, IconAlert } from '../lib/ui';
+import { buildChurnRiskList } from '../lib/churnRisk';
+import { fmtBRL } from '../lib/types';
+import { Card, CardHead, Btn, Chip, IconAlert } from '../lib/ui';
 
-type ContinuityRisk = {
-  patientId: string;
-  patientName: string;
-  lastVisit: string;
-  daysWithoutVisit: number;
-  completed: number;
-  missed: number;
-  packageRemaining: number | null;
-};
+const LEVEL_META = {
+  alto: { label: 'alto risco', cls: 'border-pulse/45 text-pulse bg-pulse/10' },
+  medio: { label: 'atenção', cls: 'border-amber/45 text-amber bg-amber/10' },
+  baixo: { label: 'baixo risco', cls: 'border-aqua/35 text-aqua bg-aqua/10' },
+} as const;
 
 export function TreatmentContinuityWatch() {
-  const { patients, appointments, patientPackages } = useApp();
+  const { patients, appointments, patientPackages, transactions } = useApp();
 
-  const risks = useMemo<ContinuityRisk[]>(() => {
-    const now = new Date();
-    return patients
-      .filter((patient) => patient.funilStage === 'tratamento' && !patient.anonimizado && patient.status !== 'alta')
-      .map((patient) => {
-        const appts = appointments
-          .filter((item) => item.pacienteId === patient.id && item.status !== 'cancelado')
-          .sort((a, b) => `${a.data}T${a.inicio}`.localeCompare(`${b.data}T${b.inicio}`));
-        const completed = appts.filter((item) => item.status === 'finalizado');
-        const last = completed.length ? completed[completed.length - 1] : null;
-        const hasFuture = appts.some((item) => ['agendado', 'confirmado', 'em_atendimento'].includes(item.status) && `${item.data}T${item.inicio}` >= format(now, "yyyy-MM-dd'T'HH:mm"));
-        const daysWithoutVisit = last ? differenceInDays(now, new Date(`${last.data}T12:00:00`)) : 0;
-        const activePackage = patientPackages.find((item) => item.pacienteId === patient.id && item.status === 'ativo');
-        const packageRemaining = activePackage ? Math.max(0, activePackage.sessoesTotais - activePackage.sessoesUsadas) : null;
-        if (!last || hasFuture || daysWithoutVisit < 21) return null;
-        return {
-          patientId: patient.id,
-          patientName: patient.nome,
-          lastVisit: last.data,
-          daysWithoutVisit,
-          completed: completed.length,
-          missed: appts.filter((item) => item.status === 'faltou').length,
-          packageRemaining,
-        };
-      })
-      .filter((item): item is ContinuityRisk => item !== null)
-      .sort((a, b) => b.daysWithoutVisit - a.daysWithoutVisit);
-  }, [patients, appointments, patientPackages]);
+  const risks = useMemo(
+    () => buildChurnRiskList(patients, appointments, patientPackages, transactions),
+    [patients, appointments, patientPackages, transactions],
+  );
+
+  const high = risks.filter((item) => item.level === 'alto').length;
+  const medium = risks.filter((item) => item.level === 'medio').length;
 
   return (
     <Card>
       <CardHead
-        title="Continuidade do tratamento"
-        sub="pacientes em tratamento sem próxima sessão há 21 dias ou mais"
-        right={risks.length ? <IconAlert className="w-4.5 h-4.5 text-amber" /> : undefined}
+        title="Risco de interrupção / churn"
+        sub="score transparente baseado em continuidade, faltas, pacote e financeiro — não é modelo de IA"
+        right={high || medium ? <IconAlert className="w-4.5 h-4.5 text-amber" /> : undefined}
       />
+
+      {risks.length > 0 && (
+        <div className="grid grid-cols-3 gap-px bg-line border-b border-line">
+          <div className="bg-panel px-4 py-3">
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">alto risco</p>
+            <p className="font-display text-xl font-bold text-pulse mt-1">{high}</p>
+          </div>
+          <div className="bg-panel px-4 py-3">
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">atenção</p>
+            <p className="font-display text-xl font-bold text-amber mt-1">{medium}</p>
+          </div>
+          <div className="bg-panel px-4 py-3">
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">monitorados</p>
+            <p className="font-display text-xl font-bold text-aqua mt-1">{risks.length}</p>
+          </div>
+        </div>
+      )}
+
       {risks.length === 0 ? (
         <div className="px-5 py-8 text-center font-mono text-[11.5px] text-fog">
-          Nenhuma interrupção de tratamento identificada.
+          Nenhum sinal relevante de risco de interrupção identificado.
         </div>
       ) : (
         <ul className="divide-y divide-line/70">
-          {risks.map((risk) => (
-            <li key={risk.patientId} className="px-5 py-3.5 flex flex-wrap items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <Link to={`/pacientes/${risk.patientId}`} className="font-display font-semibold text-[13.5px] hover:text-mint transition-colors">
-                  {risk.patientName}
-                </Link>
-                <p className="font-mono text-[10.5px] text-fog mt-0.5">
-                  {risk.daysWithoutVisit} dias sem sessão · {risk.completed} realizada(s) · {risk.missed} falta(s)
-                  {risk.packageRemaining !== null ? ` · ${risk.packageRemaining} sessão(ões) restantes no pacote` : ''}
-                </p>
-                <p className="font-mono text-[9.5px] text-fog/70 mt-1">Última sessão: {risk.lastVisit}</p>
-              </div>
-              <div className="flex gap-2">
-                <Link to={`/pacientes/${risk.patientId}`}><Btn variant="ghost" className="!px-3 !py-1.5 !text-[11.5px]">Ver paciente</Btn></Link>
-                <Link to={`/agenda?patient=${risk.patientId}`}><Btn variant="subtle" className="!px-3 !py-1.5 !text-[11.5px]">Agendar continuidade</Btn></Link>
-              </div>
-            </li>
-          ))}
+          {risks.map((risk) => {
+            const meta = LEVEL_META[risk.level];
+            return (
+              <li key={risk.patientId} className="px-5 py-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link to={`/pacientes/${risk.patientId}`} className="font-display font-semibold text-[13.5px] hover:text-mint transition-colors">
+                        {risk.patientName}
+                      </Link>
+                      <Chip className={meta.cls}>{meta.label} · {risk.score}/100</Chip>
+                    </div>
+
+                    <p className="font-mono text-[10.5px] text-fog mt-1">
+                      {risk.completed} realizada(s) · {risk.missed} falta(s)
+                      {risk.packageRemaining !== null ? ` · ${risk.packageRemaining} sessão(ões) restantes` : ''}
+                      {risk.overdueAmount > 0 ? ` · ${fmtBRL(risk.overdueAmount)} em atraso` : ''}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {risk.reasons.map((reason) => (
+                        <span key={reason} className="font-mono text-[9.5px] px-2 py-1 border border-line text-fog bg-deep">
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className="font-mono text-[9.5px] text-fog/70 mt-2">
+                      {risk.lastVisit ? `Última sessão: ${risk.lastVisit}` : 'Sem sessão finalizada'}
+                      {risk.hasFutureAppointment ? ' · já possui próxima sessão' : ' · sem próxima sessão'}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Link to={`/pacientes/${risk.patientId}`}>
+                      <Btn variant="ghost" className="!px-3 !py-1.5 !text-[11.5px]">Ver paciente</Btn>
+                    </Link>
+                    {!risk.hasFutureAppointment && (
+                      <Link to={`/agenda?patient=${risk.patientId}`}>
+                        <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11.5px]">Agendar continuidade</Btn>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
-      {risks.length > 0 && (
-        <div className="px-5 py-3 border-t border-line font-mono text-[10.5px] text-fog">
-          {risks.length} paciente(s) exigem decisão de continuidade clínica antes de uma reativação automática.
-        </div>
-      )}
+
+      <div className="px-5 py-3 border-t border-line font-mono text-[10.5px] text-fog">
+        O score é uma regra operacional explicável. Serve para priorizar contato humano e renovação; não substitui decisão clínica.
+      </div>
     </Card>
   );
 }
