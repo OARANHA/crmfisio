@@ -7,6 +7,9 @@ export interface AutomationSettings {
   npsEnabled: boolean;
   npsDelayMinutes: number;
   npsLookbackDays: number;
+  waitlistAutoEnabled: boolean;
+  waitlistOfferLimit: number;
+  waitlistExpiryMinutes: number;
   sendWindowStart: string;
   sendWindowEnd: string;
   timezone: string;
@@ -20,6 +23,7 @@ export interface AutomationRun {
   finishedAt: string | null;
   queuedConfirmations: number;
   queuedNps: number;
+  queuedWaitlistOffers: number;
   expiredWaitlistOffers: number;
   workerProcessed: number;
   workerSent: number;
@@ -36,6 +40,9 @@ const mapSettings = (row: Record<string, unknown>): AutomationSettings => ({
   npsEnabled: Boolean(row.nps_enabled),
   npsDelayMinutes: Number(row.nps_delay_minutes ?? 15),
   npsLookbackDays: Number(row.nps_lookback_days ?? 7),
+  waitlistAutoEnabled: Boolean(row.waitlist_auto_enabled ?? true),
+  waitlistOfferLimit: Number(row.waitlist_offer_limit ?? 3),
+  waitlistExpiryMinutes: Number(row.waitlist_expiry_minutes ?? 30),
   sendWindowStart: String(row.send_window_start ?? '08:00'),
   sendWindowEnd: String(row.send_window_end ?? '20:00'),
   timezone: String(row.timezone ?? 'America/Sao_Paulo'),
@@ -49,6 +56,7 @@ const mapRun = (row: Record<string, unknown>): AutomationRun => ({
   finishedAt: row.finished_at ? String(row.finished_at) : null,
   queuedConfirmations: Number(row.queued_confirmations ?? 0),
   queuedNps: Number(row.queued_nps ?? 0),
+  queuedWaitlistOffers: Number(row.queued_waitlist_offers ?? 0),
   expiredWaitlistOffers: Number(row.expired_waitlist_offers ?? 0),
   workerProcessed: Number(row.worker_processed ?? 0),
   workerSent: Number(row.worker_sent ?? 0),
@@ -71,6 +79,9 @@ export async function saveAutomationSettings(settings: AutomationSettings) {
     nps_enabled: settings.npsEnabled,
     nps_delay_minutes: settings.npsDelayMinutes,
     nps_lookback_days: settings.npsLookbackDays,
+    waitlist_auto_enabled: settings.waitlistAutoEnabled,
+    waitlist_offer_limit: settings.waitlistOfferLimit,
+    waitlist_expiry_minutes: settings.waitlistExpiryMinutes,
     send_window_start: settings.sendWindowStart,
     send_window_end: settings.sendWindowEnd,
     timezone: settings.timezone,
