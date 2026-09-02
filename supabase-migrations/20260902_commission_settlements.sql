@@ -35,7 +35,7 @@ USING (
   )
 );
 
-REVOKE ALL ON public.commission_settlements FROM PUBLIC;
+REVOKE ALL ON public.commission_settlements FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.commission_settlements TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.commission_settlements TO service_role;
 
