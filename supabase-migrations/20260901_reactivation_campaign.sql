@@ -1,4 +1,5 @@
 -- MEDICSPRO — campanha controlada de reativação via WhatsApp
+-- Elegibilidade operacional: última sessão finalizada antiga + nenhuma sessão futura.
 BEGIN;
 
 ALTER TABLE public.patients
@@ -8,8 +9,13 @@ CREATE INDEX IF NOT EXISTS wa_logs_reactivation_patient_idx
   ON public.wa_logs (clinic_id, patient_id, created_at DESC)
   WHERE template = 'reativacao';
 
-CREATE OR REPLACE FUNCTION public.queue_selected_reactivation_campaign(
+-- Remove a assinatura inicial do PR caso esta migration já tenha sido executada.
+DROP FUNCTION IF EXISTS public.queue_selected_reactivation_campaign(uuid[],integer);
+DROP FUNCTION IF EXISTS public.queue_selected_reactivation_campaign(uuid[],integer,integer);
+
+CREATE FUNCTION public.queue_selected_reactivation_campaign(
   p_patient_ids uuid[],
+  p_inactive_days integer DEFAULT 30,
   p_cooldown_days integer DEFAULT 30
 )
 RETURNS integer
@@ -23,6 +29,7 @@ DECLARE
   v_count integer := 0;
   r record;
   v_message text;
+  v_now timestamp := now() AT TIME ZONE 'America/Sao_Paulo';
 BEGIN
   IF v_role NOT IN ('owner','admin','recep') THEN
     RAISE EXCEPTION 'Perfil sem permissão' USING ERRCODE='42501';
@@ -32,21 +39,37 @@ BEGIN
   PERFORM public.ensure_default_message_templates();
 
   FOR r IN
-    SELECT p.id AS patient_id
+    WITH last_sessions AS (
+      SELECT
+        a.clinic_id,
+        a.paciente_id,
+        max(a.data + a.fim) AS last_finished_at
+      FROM public.appointments a
+      WHERE a.clinic_id = v_clinic
+        AND a.status = 'finalizado'
+      GROUP BY a.clinic_id, a.paciente_id
+    )
+    SELECT p.id AS patient_id, ls.last_finished_at
     FROM public.patients p
+    JOIN last_sessions ls
+      ON ls.clinic_id = p.clinic_id
+     AND ls.paciente_id = p.id
     WHERE p.id = ANY(p_patient_ids)
       AND p.clinic_id = v_clinic
-      AND p.status = 'inativo'
+      -- Alta é decisão clínica explícita e nunca entra automaticamente em campanha.
+      AND p.status <> 'alta'
       AND p.opt_in_whats = true
       AND p.anonimizado = false
       AND coalesce(trim(p.telefone), '') <> ''
+      -- O paciente não precisa ser marcado manualmente como inativo.
+      AND ls.last_finished_at <= v_now - make_interval(days => greatest(1, p_inactive_days))
       AND NOT EXISTS (
         SELECT 1
         FROM public.appointments a
         WHERE a.clinic_id = v_clinic
           AND a.paciente_id = p.id
           AND a.status IN ('agendado','confirmado','em_atendimento')
-          AND (a.data + a.inicio) >= (now() AT TIME ZONE 'America/Sao_Paulo')
+          AND (a.data + a.inicio) >= v_now
       )
       AND NOT EXISTS (
         SELECT 1
@@ -57,7 +80,7 @@ BEGIN
           AND w.created_at >= now() - make_interval(days => greatest(1, p_cooldown_days))
           AND w.status IN ('fila','enviando','enviado','entregue','lido')
       )
-    ORDER BY p.nome
+    ORDER BY ls.last_finished_at, p.nome
   LOOP
     v_message := public.render_message_template(v_clinic, 'reativacao', r.patient_id, NULL, NULL);
 
@@ -76,8 +99,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.queue_selected_reactivation_campaign(uuid[],integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.queue_selected_reactivation_campaign(uuid[],integer) TO authenticated;
+REVOKE ALL ON FUNCTION public.queue_selected_reactivation_campaign(uuid[],integer,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.queue_selected_reactivation_campaign(uuid[],integer,integer) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.apply_reactivation_reply_policy()
 RETURNS trigger
