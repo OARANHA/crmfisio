@@ -1,17 +1,16 @@
 import { useMemo, useState } from 'react';
-import { differenceInDays, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../lib/store';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
 import { Card, CardHead, Btn, Chip, IconStar, IconPhone, IconAlert } from '../lib/ui';
 import { IconWhats, IconSend, IconArrow } from '../components/icons';
 import { Reveal, CountUp } from '../components/Reveal';
+import { buildChurnRiskList } from '../lib/churnRisk';
 
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
-  const { patients, appointments, setFunilStage, surveys, toast } = useApp();
+  const { patients, appointments, patientPackages, transactions, setFunilStage, surveys, toast } = useApp();
   const navigate = useNavigate();
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -31,7 +30,21 @@ export function Crm() {
     return { prom, neut, det, score, total: notas.length };
   }, [surveys]);
 
-  const inativos = patients.filter((p) => p.status === 'inativo' && !p.anonimizado);
+  const latestNpsByPatient = useMemo(() => {
+    const latest = new Map<string, number | null>();
+    [...surveys]
+      .sort((a, b) => b.data.localeCompare(a.data))
+      .forEach((survey) => {
+        if (!latest.has(survey.pacienteId)) latest.set(survey.pacienteId, survey.nota);
+      });
+    return latest;
+  }, [surveys]);
+
+  const churnRisks = useMemo(
+    () => buildChurnRiskList(patients, appointments, patientPackages, transactions)
+      .filter((risk) => risk.level !== 'baixo'),
+    [patients, appointments, patientPackages, transactions],
+  );
 
   return (
     <div className="space-y-4">
@@ -75,7 +88,7 @@ export function Crm() {
                 <div className="p-2.5 space-y-2 min-h-[120px]">
                   {list.length === 0 && <p className="font-mono text-[10.5px] text-fog/60 text-center py-6">vazio</p>}
                   {list.map((p) => {
-                    const nota = surveys.find((x) => x.pacienteId === p.id)?.nota;
+                    const nota = latestNpsByPatient.get(p.id);
                     return (
                       <div
                         key={p.id}
@@ -88,7 +101,7 @@ export function Crm() {
                         <div className="flex items-center gap-2 mt-2">
                           {p.optInWhats ? <IconWhats className="w-3.5 h-3.5 text-mint" /> : <IconPhone className="w-3.5 h-3.5 text-fog/60" />}
                           <span className="font-mono text-[10px] text-fog truncate">{p.telefone}</span>
-                          {nota !== undefined && (
+                          {nota !== undefined && nota !== null && (
                             <span className="ml-auto flex items-center gap-1 font-mono text-[10.5px] text-amber">
                               <IconStar className="w-3 h-3" filled />{nota}
                             </span>
@@ -122,7 +135,7 @@ export function Crm() {
           <Card>
             <CardHead
               title="Pesquisa de satisfação (NPS)"
-              sub={`${nps.total} resposta(s) · disparo automático pós-atendimento`}
+              sub={`${nps.total} resposta(s) registrada(s) pós-atendimento`}
               right={
                 <span className={`font-display text-2xl font-bold ${nps.score >= 50 ? 'text-mint' : nps.score >= 0 ? 'text-amber' : 'text-pulse'}`}>
                   {nps.score}
@@ -154,20 +167,21 @@ export function Crm() {
         <Reveal delay={180}>
           <Card>
             <CardHead
-              title="Alerta de pacientes inativos"
-              sub="abandono de tratamento · reativação via WhatsApp"
-              right={inativos.length > 0 ? <IconAlert className="w-4.5 h-4.5 text-pulse" /> : undefined}
+              title="Risco de abandono"
+              sub="classificação automática por continuidade, faltas, pacote e financeiro"
+              right={churnRisks.length > 0 ? <IconAlert className="w-4.5 h-4.5 text-pulse" /> : undefined}
             />
             <ul className="divide-y divide-line/70">
-              {inativos.length === 0 && <li className="px-5 py-8 text-center font-mono text-[11.5px] text-fog">Nenhum paciente inativo. 💚</li>}
-              {inativos.map((p) => {
-                const dias = p.ultimaVisita ? differenceInDays(new Date(), new Date(p.ultimaVisita + 'T12:00')) : null;
+              {churnRisks.length === 0 && <li className="px-5 py-8 text-center font-mono text-[11.5px] text-fog">Nenhum tratamento com risco médio ou alto. 💚</li>}
+              {churnRisks.map((risk) => {
+                const p = patients.find((patient) => patient.id === risk.patientId);
+                if (!p) return null;
                 return (
                   <li key={p.id} className="px-5 py-3.5 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <Link to={`/pacientes/${p.id}`} className="font-display font-semibold text-[13.5px] hover:text-mint transition-colors">{p.nome}</Link>
                       <p className="font-mono text-[10.5px] text-fog mt-0.5">
-                        {dias !== null ? `${dias} dias sem vir` : 'nunca compareceu'} · última visita {p.ultimaVisita ? format(new Date(p.ultimaVisita + 'T12:00'), 'dd/MM/yy', { locale: ptBR }) : '—'}
+                        risco {risk.level} · {risk.score} pontos · {risk.reasons.join(' · ')}
                       </p>
                     </div>
                     <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => navigate('/mensagens')}>
@@ -177,9 +191,9 @@ export function Crm() {
                 );
               })}
             </ul>
-            {inativos.length > 0 && (
+            {churnRisks.length > 0 && (
               <div className="px-5 py-3 border-t border-line flex items-center justify-between">
-                <span className="font-mono text-[10.5px] text-fog">{inativos.length} paciente(s) em risco de perda</span>
+                <span className="font-mono text-[10.5px] text-fog">{churnRisks.length} tratamento(s) exigem atenção</span>
                 <Btn variant="ghost" className="!px-3 !py-1.5 !text-[11.5px]" onClick={() => navigate('/mensagens')}>
                   Selecionar campanha
                 </Btn>
