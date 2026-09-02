@@ -11,7 +11,7 @@ export function useMessageCenter(userId?:string){
  const queueSelectedConfirmations=(ids:string[])=>execute(()=>queueSelectedAppointmentConfirmations(ids,48));
  const queueNps=()=>execute(()=>queueNpsSurveys(7));
  const queueSelectedNps=(ids:string[])=>execute(()=>queueSelectedNpsSurveys(ids,7));
- const queueSelectedReactivation=(ids:string[])=>execute(()=>queueSelectedReactivationCampaign(ids,30));
+ const queueSelectedReactivation=(ids:string[])=>execute(()=>queueSelectedReactivationCampaign(ids,30,30));
  const resolveReview=async(logId:string,resolution:string,note?:string)=>{setLoading(true);try{await resolveWhatsappReview(logId,resolution,note);await refresh();}finally{setLoading(false);}};
  const flush=async(limit=20)=>{setLoading(true);try{const dispatch=await flushMessageOutbox(limit);await refresh();return dispatch;}finally{setLoading(false);}};
  const saveTemplate=async(id:string,body:string)=>{setLoading(true);try{await saveMessageTemplate(id,body);await refresh();}finally{setLoading(false);}};
