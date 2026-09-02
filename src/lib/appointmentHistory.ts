@@ -8,7 +8,7 @@ export interface AppointmentHistoryItem {
   detail: string;
 }
 
-const statusLabel = (value: unknown) => String(value ?? '').replaceAll('_', ' ');
+const statusLabel = (value: unknown) => String(value ?? '').split('_').join(' ');
 
 export async function loadAppointmentHistory(appointmentId: string): Promise<AppointmentHistoryItem[]> {
   const historyQuery = await (supabase.from as Function)('appointment_status_history')
