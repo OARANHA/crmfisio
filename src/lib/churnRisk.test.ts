@@ -27,7 +27,7 @@ describe('calculateChurnRisk', () => {
     }];
     const transactions: FinancialTransaction[] = [{
       id: 't1', tipo: 'receber', descricao: 'Sessão', categoria: 'Atendimento', valor: 15000,
-      vencimento: '2026-08-01', status: 'atrasado', pacienteId: patient.id, metodo: null,
+      vencimento: '2026-08-01', status: 'atrasado', pacienteId: patient.id, metodo: null, paidAt: null,
     }];
 
     const result = calculateChurnRisk(patient, appointments, packages, transactions, now);

@@ -103,6 +103,7 @@ export const mapPayment = (row: PaymentRow): FinancialTransaction => ({
   status: row.status,
   pacienteId: row.patient_id,
   metodo: row.metodo,
+  paidAt: row.paid_at,
 });
 
 const mapEvolution = (row: EvolutionRow): Evolution => ({

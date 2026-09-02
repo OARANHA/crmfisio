@@ -251,7 +251,7 @@ function TransactionModal({ tipo, patients, onClose, onSave }: { tipo: 'receber'
 
   const save = () => {
     if (!valid) return;
-    onSave({ tipo, descricao: descricao.trim(), categoria: categoria.trim(), valor: cents, vencimento, status: 'pendente', pacienteId: tipo === 'receber' && pacienteId ? pacienteId : null, metodo: null });
+    onSave({ tipo, descricao: descricao.trim(), categoria: categoria.trim(), valor: cents, vencimento, status: 'pendente', pacienteId: tipo === 'receber' && pacienteId ? pacienteId : null, metodo: null, paidAt: null });
   };
 
   return <Modal open onClose={onClose} title={tipo === 'receber' ? 'Nova conta a receber' : 'Nova conta a pagar'}>

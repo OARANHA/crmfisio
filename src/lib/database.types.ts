@@ -285,6 +285,7 @@ export interface Database {
           vencimento: string
           status: 'pendente' | 'pago' | 'atrasado'
           metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null
+          paid_at: string | null
           created_at: string
           updated_at: string
         }
@@ -299,6 +300,7 @@ export interface Database {
           vencimento: string
           status?: 'pendente' | 'pago' | 'atrasado'
           metodo?: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -313,6 +315,7 @@ export interface Database {
           vencimento?: string
           status?: 'pendente' | 'pago' | 'atrasado'
           metodo?: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
         }

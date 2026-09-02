@@ -107,6 +107,7 @@ export interface FinancialTransaction {
   status: TxStatus;
   pacienteId: string | null;
   metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null;
+  paidAt: string | null;
 }
 
 export interface Commission { id: string; fisioId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
