@@ -41,7 +41,7 @@ export function Relatorios() {
       .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.vencimento.startsWith(mes))
       .forEach((t) => porCategoria.set(t.categoria, (porCategoria.get(t.categoria) ?? 0) + t.valor));
 
-    const notas = surveys.filter((s) => s.nota !== null).map((s) => s.nota as number);
+    const notas = surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number);
     const npsMedio = notas.length ? Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10 : 0;
 
     return { fin, faltas, producao, comparecimento, porFisio, ocupacao, porCategoria: [...porCategoria.entries()], npsMedio, ticketGeral: fin.length ? Math.round(producao / fin.length) : 0 };
@@ -156,7 +156,7 @@ export function Relatorios() {
 
           <Reveal delay={200}>
             <Card>
-              <CardHead title="Receita por categoria" sub="recebimentos pagos na competência" />
+              <CardHead title="Títulos pagos por categoria" sub={`vencimento na competência · consolidado da clínica${unidade ? ' (não filtrado por unidade)' : ''}`} />
               <div className="p-5 space-y-3">
                 {dados.porCategoria.length === 0 && <p className="font-mono text-[11.5px] text-fog">Sem recebimentos baixados neste mês.</p>}
                 {dados.porCategoria.map(([cat, v]) => (
