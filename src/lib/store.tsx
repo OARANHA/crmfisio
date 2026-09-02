@@ -268,10 +268,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTxStatus: (id, status, metodo) => {
         const anterior = transactions.find((t) => t.id === id);
         setTransactions((prev) => prev.map((t) => t.id === id ? { ...t, status, metodo: metodo ?? t.metodo } : t));
-        void updatePayment(id, status, metodo).catch((error) => {
-          if (anterior) setTransactions((prev) => prev.map((t) => t.id === id ? anterior : t));
-          persistError('Falha ao atualizar financeiro', error);
-        });
+        void updatePayment(id, status, metodo)
+          .then((updated) => setTransactions((prev) => prev.map((t) => t.id === id ? updated : t)))
+          .catch((error) => {
+            if (anterior) setTransactions((prev) => prev.map((t) => t.id === id ? anterior : t));
+            persistError('Falha ao atualizar financeiro', error);
+          });
       },
 
       addTransaction: (t) => {
