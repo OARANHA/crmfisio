@@ -25,12 +25,12 @@ const ACC_META: Record<Access, { label: string; cls: string; icon: React.ReactNo
 };
 
 const LGPD_PILLARS = [
-  { title: 'Criptografia de dados sensíveis', text: 'CPF, anamnese e evoluções com AES-256-GCM (envelope encryption via KMS). Dados de saúde são sensíveis (art. 5º, II).' },
+  { title: 'Proteção de dados sensíveis', text: 'RLS multi-tenant, autenticação e controle por perfil limitam o acesso a dados administrativos e clínicos.' },
   { title: 'Consentimento versionado', text: 'Termos com hash do conteúdo, versão, IP e timestamp. Histórico nunca sobrescrito — só versionado.' },
-  { title: 'Auditoria completa', text: 'Toda ação sensível gera trilha: usuário, ação, entidade, IP e horário. Imutável (append-only).' },
-  { title: 'Portabilidade & esquecimento', text: 'Export completo do titular em JSON e anonimização irreversível, com retenção clínica de 20 anos (CFM).' },
+  { title: 'Trilha de auditoria', text: 'Ações sensíveis integradas à auditoria preservam usuário, ação, contexto e horário em registro append-only para a aplicação.' },
+  { title: 'Portabilidade & anonimização', text: 'Export do titular em JSON e anonimização operacional, sujeitos às regras de retenção aplicáveis à clínica.' },
   { title: 'Mínimo acesso necessário', text: 'RBAC garante que a recepção nunca abra evolução clínica; o fisioterapeuta nunca altere repasses.' },
-  { title: 'Retenção e backup seguros', text: 'Backups criptografados, plano de resposta a incidentes com notificação à ANPD em até 48h.' },
+  { title: 'Governança operacional', text: 'Retenção, restauração de backup e resposta a incidentes devem seguir procedimentos documentados da operação.' },
 ];
 
 export function Config() {
@@ -196,7 +196,7 @@ export function Config() {
                 <div className="border border-pulse/35 bg-pulse/[0.04] p-4">
                   <p className="font-display font-semibold text-[14px] text-pulse flex items-center gap-2"><IconX className="w-4 h-4" /> Anonimização irreversível</p>
                   <p className="text-[12.5px] text-fog mt-1 leading-relaxed">
-                    Remove todos os dados identificáveis do paciente (nome, CPF, contatos, anamnese). O registro clínico é preservado de forma anônima para a retenção legal de 20 anos.
+                    Remove identificadores diretos do cadastro, como nome, CPF, contatos e anamnese. Registros relacionados são preservados conforme as regras de retenção definidas para a clínica.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <Select value={anon ?? ''} onChange={(e) => { setAnon(e.target.value || null); setArmed(false); }} className="!w-64">
