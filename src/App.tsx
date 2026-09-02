@@ -7,7 +7,7 @@ import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { Financeiro } from './pages/Financeiro';
 import { CrmOperational } from './pages/CrmOperational';
-import { Mensagens } from './pages/Mensagens';
+import { MensagensOperational } from './pages/MensagensOperational';
 import { Relatorios } from './pages/Relatorios';
 import { ConfigPremium } from './pages/ConfigPremium';
 
@@ -33,7 +33,7 @@ export default function App() {
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/crm" element={<CrmOperational />} />
-            <Route path="/mensagens" element={<Mensagens />} />
+            <Route path="/mensagens" element={<MensagensOperational />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/config" element={<ConfigPremium />} />
             <Route path="*" element={<Home />} />
