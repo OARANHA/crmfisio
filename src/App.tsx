@@ -8,7 +8,7 @@ import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
-import { Relatorios } from './pages/Relatorios';
+import { RelatoriosHub } from './pages/RelatoriosHub';
 import { ConfigPremium } from './pages/ConfigPremium';
 
 function Home() {
@@ -34,7 +34,7 @@ export default function App() {
             <Route path="/financeiro" element={<FinanceiroOperational />} />
             <Route path="/crm" element={<CrmOperational />} />
             <Route path="/mensagens" element={<MensagensOperational />} />
-            <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/relatorios" element={<RelatoriosHub />} />
             <Route path="/config" element={<ConfigPremium />} />
             <Route path="*" element={<Home />} />
           </Route>
