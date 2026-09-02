@@ -5,14 +5,16 @@ import type {
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   RecurrenceRule, Role, SessionPackage, Unidade, User, WaLog,
 } from './types';
-import { seedUnidades, seedRooms, seedCommissions, seedRecurrence } from './seed';
+import { seedUnidades, seedRooms, seedRecurrence } from './seed';
 import {
   anonymizePatient,
+  closeMonthlyCommissions,
   insertAppointment,
   insertEvolution,
   insertPatient,
   insertPayment,
   loadClinicData,
+  markCommissionPaid,
   updateAppointmentStatus,
   updateConsent,
   updatePatientStage,
@@ -80,8 +82,8 @@ interface AppState {
   editarSerie: (serieId: string, patch: SeriePatch) => number;
   cancelarSerie: (serieId: string) => number;
 
-  fecharRepasse: (periodo: string) => number;
-  setCommissionStatus: (id: string, status: Commission['status']) => void;
+  fecharRepasse: (periodo: string) => Promise<number>;
+  setCommissionStatus: (id: string, status: Commission['status']) => Promise<void>;
 
   exportarTitular: (pacienteId: string) => Record<string, unknown>;
   anonimizarPaciente: (pacienteId: string) => void;
@@ -136,7 +138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
-  const [commissions, setCommissions] = useState<Commission[]>(seedCommissions);
+  const [commissions, setCommissions] = useState<Commission[]>([]);
   const [evolutions, setEvolutions] = useState<Evolution[]>([]);
   const [consents, setConsents] = useState<ConsentTerm[]>([]);
   const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
@@ -162,6 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPatients([]);
       setAppointments([]);
       setTransactions([]);
+      setCommissions([]);
       setEvolutions([]);
       setConsents([]);
       setSurveys([]);
@@ -180,6 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPatients(data.patients);
         setAppointments(data.appointments);
         setTransactions(data.transactions);
+        setCommissions(data.commissions);
         setEvolutions(data.evolutions);
         setConsents(data.consents);
         setSurveys(data.surveys);
@@ -377,17 +381,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return removidas;
       },
 
-      fecharRepasse: (periodo) => {
-        const bases = new Map<string, number>();
-        appointments.filter((a) => a.status === 'finalizado' && a.data.startsWith(periodo)).forEach((a) => bases.set(a.fisioId, (bases.get(a.fisioId) ?? 0) + a.valor));
-        const novas: Commission[] = [...bases.entries()]
-          .filter(([fisioId, base]) => base > 0 && !commissions.some((c) => c.periodo === periodo && c.fisioId === fisioId))
-          .map(([fisioId, base]) => ({ id: nid('c'), fisioId, periodo, base, percentual: 40, status: 'aberto' }));
-        if (novas.length) setCommissions((prev) => [...novas, ...prev]);
-        return novas.length;
+      fecharRepasse: async (periodo) => {
+        const anteriores = new Set(commissions.map((c) => c.id));
+        const fechadas = await closeMonthlyCommissions(periodo);
+        setCommissions((prev) => [
+          ...fechadas,
+          ...prev.filter((item) => !fechadas.some((closed) => closed.id === item.id)),
+        ]);
+        return fechadas.filter((item) => !anteriores.has(item.id)).length;
       },
 
-      setCommissionStatus: (id, status) => setCommissions((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c))),
+      setCommissionStatus: async (id, status) => {
+        if (status !== 'pago') throw new Error('Somente a baixa de repasse é permitida');
+        const paid = await markCommissionPaid(id);
+        setCommissions((prev) => prev.map((item) => item.id === id ? paid : item));
+      },
 
       exportarTitular: (pacienteId) => {
         const p = patients.find((x) => x.id === pacienteId);

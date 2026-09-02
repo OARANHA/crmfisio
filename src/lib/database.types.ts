@@ -515,8 +515,36 @@ export interface Database {
           created_at?: string
         }
       }
+      commission_settlements: {
+        Row: {
+          id: string
+          clinic_id: string
+          professional_id: string
+          period: string
+          base_amount: number
+          percentage: number
+          commission_amount: number
+          status: 'aberto' | 'pago'
+          paid_at: string | null
+          paid_by: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: never
+        Update: never
+      }
     }
     Views: {}
-    Functions: {}
+    Functions: {
+      close_monthly_commissions: {
+        Args: { p_period: string }
+        Returns: Database['public']['Tables']['commission_settlements']['Row'][]
+      }
+      mark_commission_paid: {
+        Args: { p_commission_id: string }
+        Returns: Database['public']['Tables']['commission_settlements']['Row']
+      }
+    }
   }
 }
