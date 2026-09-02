@@ -1,10 +1,15 @@
 import { appointmentActions, appointmentStatusGuidance } from '../lib/appointmentWorkflow';
-import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Role } from '../lib/types';
+import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient, type Role } from '../lib/types';
+import type { AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { Btn, Chip, Modal } from '../lib/ui';
+import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
 
 interface Props {
   appointment: Appointment | null;
   role: Role;
+  patient?: Patient;
+  appointments: Appointment[];
+  whatsapp?: AppointmentWhatsappState;
   patientLabel: string;
   unitLabel: string;
   roomLabel: string;
@@ -18,6 +23,9 @@ interface Props {
 export function AppointmentActionModal({
   appointment,
   role,
+  patient,
+  appointments,
+  whatsapp,
   patientLabel,
   unitLabel,
   roomLabel,
@@ -42,6 +50,8 @@ export function AppointmentActionModal({
               {appointment.data} · {appointment.inicio}–{appointment.fim} · {appointment.tipo}
             </p>
           </div>
+
+          <AppointmentPatientSnapshot patient={patient} appointment={appointment} appointments={appointments} whatsapp={whatsapp} />
 
           <div className="grid grid-cols-2 gap-3 text-[12px]">
             <div className="border border-line bg-deep p-3">
@@ -77,12 +87,7 @@ export function AppointmentActionModal({
             <div className="space-y-2">
               {actions.map((action) => (
                 <div key={action.status}>
-                  <Btn
-                    className="w-full"
-                    variant={action.tone === 'primary' ? undefined : 'ghost'}
-                    disabled={action.disabled}
-                    onClick={() => onStatus(action.status)}
-                  >
+                  <Btn className="w-full" variant={action.tone === 'primary' ? undefined : 'ghost'} disabled={action.disabled} onClick={() => onStatus(action.status)}>
                     {action.label}
                   </Btn>
                   {action.hint && <p className="font-mono text-[10px] text-amber mt-1">{action.hint}</p>}
