@@ -1,6 +1,6 @@
-# 🫀 Coração — ERP + CRM + Prontuário Eletrônico para Fisioterapia
+# MedicsPro — ERP + CRM + Prontuário Eletrônico para Fisioterapia
 
-> O cérebro da operação de uma clínica de fisioterapia: **Agenda Inteligente**, **PEP**, **Financeiro**, **CRM**, **Mensageria** e **Conformidade LGPD** — em um único sistema web responsivo.
+> Operação clínica integrada com **Agenda Inteligente**, **PEP**, **Financeiro**, **CRM**, **Mensageria** e recursos técnicos de apoio à conformidade com a LGPD.
 
 ![React](https://img.shields.io/badge/React_18-61dafb?logo=react&logoColor=000&style=flat-square)
 ![TypeScript](https://img.shields.io/badge/TypeScript_5-3178c6?logo=typescript&logoColor=fff&style=flat-square)
@@ -35,7 +35,7 @@
 
 - 🏢 **Multi-unidade**: seletor global (Sede Centro / Savassi) filtrando Agenda, Dashboard e Relatórios; salas e sessões vinculadas por unidade
 - 📦 **Portabilidade (art. 18, V)**: exportação JSON completa do titular com 1 clique
-- 🕳 **Direito ao esquecimento (art. 18, VI)**: anonimização irreversível com confirmação dupla (retenção clínica anônima de 20 anos — CFM)
+- 🕳 **Anonimização operacional**: remoção dos identificadores diretos com confirmação dupla, preservando registros sujeitos às regras de retenção da clínica
 - 🧾 **Trilha de auditoria** `audit_log` append-only: cada login, assinatura, exportação, anonimização e repasse gera entrada imutável
 - 📈 **Relatórios de produção**: competência selecionável, produção por profissional, ocupação por dia, receita por categoria, **exportação CSV real** (padrão Excel pt-BR)
 
@@ -74,8 +74,8 @@ npm run preview
 | Front-end | **React 18 + Vite + TypeScript + Tailwind 4** | Tipagem compartilhada, build estático leve, PWA-ready |
 | Estado | **Context + hooks** (`src/lib/store.tsx`) | Camada única de domínio — trocável por TanStack Query + API sem tocar nas páginas |
 | Roteamento | **React Router 6** (HashRouter) | Funciona em hospedagem estática sem rewrite de servidor |
-| Back-end (próximo) | **NestJS + Prisma + PostgreSQL 16 + Redis** | Monólito modular espelhando os domínios; *exclusion constraints* anti-choque de agenda no banco |
-| Auth/Segurança | **JWT curto + refresh httpOnly + RBAC + AES-256-GCM** | Dados sensíveis criptografados, audit log append-only |
+| Back-end | **Supabase self-hosted + PostgreSQL + Edge Functions** | RLS multi-tenant, RPCs transacionais, triggers e automações server-side |
+| Auth/Segurança | **Supabase Auth + RBAC + RLS** | Isolamento por clínica e trilha de auditoria append-only para a aplicação |
 
 > Os tipos em `src/lib/types.ts` **espelham 1:1 o esquema relacional aprovado** (14 tabelas, 19 relacionamentos). Valores monetários em **centavos** (inteiros), nunca float.
 
@@ -102,15 +102,16 @@ src/
 
 ## 🗺 Roadmap
 
-- [ ] **Back-end** NestJS + Prisma (API REST + WebSockets, BullMQ para lembretes)
-- [ ] Integração real: WhatsApp (Evolution API/Meta), pagamentos (Asaas/Mercado Pago com split), Clicksign
+- [x] Back-end Supabase self-hosted com PostgreSQL, Auth e Edge Functions
+- [x] WhatsApp via Evolution API com outbox, worker e webhook de status
+- [ ] Pagamentos online (Asaas/Mercado Pago) e assinatura eletrônica externa quando necessária
 - [ ] 2FA para administradores · criptografia de campo via KMS
 - [ ] PWA offline de leitura para o tablet da sala
 
 ## ⚖️ LGPD
 
-Dados de saúde são **dados sensíveis** (art. 5º, II). O sistema trata como fundação: CPF mascarado na UI, opt-in explícito para WhatsApp, consentimentos versionados com hash/IP/timestamp, portabilidade e esquecimento self-service, e auditoria imutável. Base legal primária: tutela da saúde (art. 7º, VIII).
+Dados de saúde são dados pessoais sensíveis. O produto implementa controles técnicos como RLS, RBAC, opt-in de comunicação, consentimentos versionados, exportação do titular, anonimização operacional e auditoria append-only na aplicação. Esses recursos apoiam a conformidade, mas não substituem a definição jurídica das bases legais, dos prazos de retenção e dos processos de cada clínica.
 
 ---
 
-Feito como blueprint vivo do **Projeto Coração** — passos 1 (arquitetura), 2 (banco de dados) e 3 (roadmap) aprovados e implementados. 🫀
+MedicsPro é um produto em evolução contínua. O estado das próximas entregas é mantido em `TODO.md` e `PRODUCT_ROADMAP.md`.
