@@ -22,6 +22,21 @@ export interface RecurrenceInput {
   valor: number;
 }
 
+export interface AppointmentSeriesSummary {
+  id: string;
+  pacienteId: string;
+  fisioId: string;
+  roomId: string;
+  tipo: string;
+  diasSemana: number[];
+  hora: string;
+  duracaoMin: number;
+  dataInicio: string;
+  dataFim: string;
+  valor: number;
+  status: 'ativa' | 'cancelada' | 'concluida';
+}
+
 const params = (input: RecurrenceInput) => ({
   p_paciente_id: input.pacienteId,
   p_fisio_id: input.fisioId,
@@ -60,6 +75,28 @@ export async function createAppointmentSeries(input: RecurrenceInput, skipConfli
     created: Number(result.created ?? 0),
     skipped: Number(result.skipped ?? 0),
   };
+}
+
+export async function listAppointmentSeries(): Promise<AppointmentSeriesSummary[]> {
+  const { data, error } = await (supabase.from as Function)('appointment_series')
+    .select('id,paciente_id,fisio_id,room_id,tipo,dias_semana,hora,duracao_min,data_inicio,data_fim,valor,status')
+    .order('data_inicio', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    pacienteId: String(row.paciente_id),
+    fisioId: String(row.fisio_id),
+    roomId: row.room_id ? String(row.room_id) : '',
+    tipo: String(row.tipo),
+    diasSemana: (row.dias_semana as number[]) ?? [],
+    hora: String(row.hora).slice(0, 5),
+    duracaoMin: Number(row.duracao_min),
+    dataInicio: String(row.data_inicio),
+    dataFim: String(row.data_fim),
+    valor: Number(row.valor),
+    status: row.status as AppointmentSeriesSummary['status'],
+  }));
 }
 
 export async function cancelAppointmentSeries(seriesId: string, reason: string): Promise<number> {
