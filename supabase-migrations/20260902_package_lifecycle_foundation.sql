@@ -31,6 +31,8 @@ CREATE INDEX IF NOT EXISTS patient_packages_renewed_from_idx
   WHERE renewed_from_id IS NOT NULL;
 
 -- Ledger: uma sessão finalizada pode consumir no máximo uma unidade do pacote.
+-- Não fazemos backfill automático porque pacote_id legado não possuía FK e pode
+-- apontar para o catálogo. Assim preservamos qualquer saldo histórico existente.
 CREATE TABLE IF NOT EXISTS public.package_session_usage (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clinic_id uuid NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
@@ -55,29 +57,21 @@ REVOKE ALL ON public.package_session_usage FROM PUBLIC;
 GRANT SELECT ON public.package_session_usage TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.package_session_usage TO service_role;
 
--- Mantém saldo/status derivados do ledger e da validade, evitando contadores soltos.
-CREATE OR REPLACE FUNCTION public.refresh_patient_package_state(p_patient_package_id uuid)
+CREATE OR REPLACE FUNCTION public.refresh_patient_package_status(p_patient_package_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_used integer;
 BEGIN
-  SELECT count(*)::integer INTO v_used
-  FROM public.package_session_usage
-  WHERE patient_package_id = p_patient_package_id;
-
   UPDATE public.patient_packages
-  SET sessoes_usadas = least(sessoes_totais, coalesce(v_used,0)),
-      status = CASE
+  SET status = CASE
         WHEN validade_ate IS NOT NULL AND validade_ate < current_date THEN 'vencido'
-        WHEN coalesce(v_used,0) >= sessoes_totais THEN 'esgotado'
+        WHEN sessoes_usadas >= sessoes_totais THEN 'esgotado'
         ELSE 'ativo'
       END,
       exhausted_at = CASE
-        WHEN coalesce(v_used,0) >= sessoes_totais THEN coalesce(exhausted_at, now())
+        WHEN sessoes_usadas >= sessoes_totais THEN coalesce(exhausted_at, now())
         ELSE NULL
       END,
       updated_at = now()
@@ -85,11 +79,11 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.refresh_patient_package_state(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.refresh_patient_package_state(uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_patient_package_status(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.refresh_patient_package_status(uuid) TO service_role;
 
 -- Consome/reverte saldo quando uma sessão vinculada muda para/de finalizado.
--- pacote_id é tratado como patient_packages.id; referências legadas a catálogo
+-- pacote_id é tratado como patient_packages.id. Referências legadas ao catálogo
 -- são ignoradas com segurança até serem normalizadas.
 CREATE OR REPLACE FUNCTION public.sync_appointment_package_usage()
 RETURNS trigger
@@ -100,6 +94,7 @@ AS $$
 DECLARE
   v_old_package uuid;
   v_new_package uuid;
+  v_usage_id uuid;
 BEGIN
   v_old_package := CASE WHEN TG_OP = 'UPDATE' THEN OLD.pacote_id ELSE NULL END;
   v_new_package := NEW.pacote_id;
@@ -112,9 +107,17 @@ BEGIN
        SELECT 1 FROM public.patient_packages p
        WHERE p.id = v_old_package AND p.clinic_id = OLD.clinic_id AND p.patient_id = OLD.paciente_id
      ) THEN
+    v_usage_id := NULL;
     DELETE FROM public.package_session_usage
-    WHERE appointment_id = OLD.id AND patient_package_id = v_old_package;
-    PERFORM public.refresh_patient_package_state(v_old_package);
+    WHERE appointment_id = OLD.id AND patient_package_id = v_old_package
+    RETURNING id INTO v_usage_id;
+
+    IF v_usage_id IS NOT NULL THEN
+      UPDATE public.patient_packages
+      SET sessoes_usadas = greatest(0, sessoes_usadas - 1), updated_at = now()
+      WHERE id = v_old_package;
+      PERFORM public.refresh_patient_package_status(v_old_package);
+    END IF;
   END IF;
 
   IF NEW.status = 'finalizado'
@@ -124,15 +127,20 @@ BEGIN
        WHERE p.id = v_new_package
          AND p.clinic_id = NEW.clinic_id
          AND p.patient_id = NEW.paciente_id
-         AND p.status IN ('ativo','esgotado')
+         AND (p.validade_ate IS NULL OR p.validade_ate >= NEW.data)
      ) THEN
+    v_usage_id := NULL;
     INSERT INTO public.package_session_usage (clinic_id, patient_package_id, appointment_id)
     VALUES (NEW.clinic_id, v_new_package, NEW.id)
-    ON CONFLICT (appointment_id) DO UPDATE
-      SET patient_package_id = EXCLUDED.patient_package_id,
-          clinic_id = EXCLUDED.clinic_id,
-          consumed_at = now();
-    PERFORM public.refresh_patient_package_state(v_new_package);
+    ON CONFLICT (appointment_id) DO NOTHING
+    RETURNING id INTO v_usage_id;
+
+    IF v_usage_id IS NOT NULL THEN
+      UPDATE public.patient_packages
+      SET sessoes_usadas = least(sessoes_totais, sessoes_usadas + 1), updated_at = now()
+      WHERE id = v_new_package AND sessoes_usadas < sessoes_totais;
+      PERFORM public.refresh_patient_package_status(v_new_package);
+    END IF;
   END IF;
 
   RETURN NEW;
@@ -220,6 +228,9 @@ BEGIN
   IF p_payment_method IS NOT NULL AND p_payment_method NOT IN ('pix','cartao','dinheiro','boleto') THEN
     RAISE EXCEPTION 'Método financeiro inválido';
   END IF;
+  IF p_payment_status='pago' AND p_payment_method IS NULL THEN
+    RAISE EXCEPTION 'Método obrigatório para pagamento já liquidado';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.patients
     WHERE id=p_patient_id AND clinic_id=v_clinic AND deleted_at IS NULL AND anonimizado=false
@@ -268,18 +279,30 @@ $$;
 REVOKE ALL ON FUNCTION public.sell_session_package(uuid,uuid,date,text,text,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.sell_session_package(uuid,uuid,date,text,text,uuid) TO authenticated;
 
--- Quando o recebível associado é quitado, consolida o valor efetivamente pago.
+-- Quando o recebível associado é quitado, consolida valor e ROI da renovação.
 CREATE OR REPLACE FUNCTION public.sync_patient_package_payment()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_patient_package_id uuid;
 BEGIN
   IF NEW.tipo='receber' AND NEW.status='pago' AND OLD.status IS DISTINCT FROM NEW.status THEN
     UPDATE public.patient_packages
     SET valor_pago=NEW.valor, updated_at=now()
-    WHERE payment_id=NEW.id AND clinic_id=NEW.clinic_id;
+    WHERE payment_id=NEW.id AND clinic_id=NEW.clinic_id
+    RETURNING id INTO v_patient_package_id;
+
+    IF v_patient_package_id IS NOT NULL THEN
+      UPDATE public.recovery_events
+      SET amount=NEW.valor, value_kind='realized', payment_id=NEW.id,
+          metadata=metadata || jsonb_build_object('payment_id',NEW.id,'paid_at',now())
+      WHERE clinic_id=NEW.clinic_id
+        AND event_type='package_renewal'
+        AND source_id=v_patient_package_id;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -330,6 +353,7 @@ BEGIN
          CASE WHEN pp.validade_ate IS NULL THEN NULL ELSE (pp.validade_ate-current_date)::integer END,
          CASE
            WHEN pp.status='vencido' THEN 'vencido'
+           WHEN pp.status='esgotado' THEN 'esgotado'
            WHEN greatest(pp.sessoes_totais-pp.sessoes_usadas,0) <= greatest(0,p_remaining_threshold) THEN 'saldo_baixo'
            WHEN pp.validade_ate IS NOT NULL AND pp.validade_ate <= current_date + greatest(0,p_expiry_days) THEN 'validade_proxima'
            ELSE 'continuidade'
