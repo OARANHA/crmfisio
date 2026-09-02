@@ -337,11 +337,12 @@ export async function insertPayment(clinicId: string, payment: Omit<FinancialTra
   return mapPayment(data);
 }
 
-export async function updatePayment(id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']): Promise<void> {
+export async function updatePayment(id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']): Promise<FinancialTransaction> {
   const payload: Database['public']['Tables']['payments']['Update'] = { status };
   if (metodo !== undefined) payload.metodo = metodo;
-  const { error } = await supabase.from('payments').update(payload).eq('id', id);
-  if (error) throw error;
+  const { data, error } = await supabase.from('payments').update(payload).eq('id', id).select('*').single();
+  if (error || !data) throw error ?? new Error('Baixa financeira sem retorno do banco');
+  return mapPayment(data);
 }
 
 export async function insertEvolution(clinicId: string, evolution: Omit<Evolution, 'id'>): Promise<Evolution> {
