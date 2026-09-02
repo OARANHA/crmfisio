@@ -17,7 +17,7 @@ export function AppointmentRecurrencePanel() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [units, setUnits] = useState<Unidade[]>([]);
   const [patientId, setPatientId] = useState('');
-  const [professionalId, setProfessionalId] = useState('');
+  const [professionalId, setProfessionalId] = useState(user?.role === 'fisio' ? user.id : '');
   const [unitId, setUnitId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [type, setType] = useState('Cinesioterapia');
@@ -29,6 +29,13 @@ export function AppointmentRecurrencePanel() {
   const [value, setValue] = useState(120);
   const [preview, setPreview] = useState<RecurrencePreviewSlot[]>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'fisio' && user.id && professionalId !== user.id) {
+      setProfessionalId(user.id);
+      setPreview([]);
+    }
+  }, [user?.id, user?.role, professionalId]);
 
   useEffect(() => {
     let active = true;
@@ -48,9 +55,17 @@ export function AppointmentRecurrencePanel() {
     return () => { active = false; };
   }, [user?.id, open]);
 
-  const professionals = users.filter((item) => item.role === 'fisio' && item.ativo);
+  const professionals = useMemo(() => {
+    const active = users.filter((item) => item.role === 'fisio' && item.ativo);
+    return user?.role === 'fisio' ? active.filter((item) => item.id === user.id) : active;
+  }, [users, user?.id, user?.role]);
+  const selectablePatients = useMemo(
+    () => patients.filter((patient) => !patient.anonimizado).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [patients],
+  );
   const availableRooms = useMemo(() => rooms.filter((room) => room.unidadeId === unitId), [rooms, unitId]);
   const ready = patientId && professionalId && roomId && weekdays.length > 0 && startDate && endDate && endDate >= startDate;
+  const selectedPatient = selectablePatients.find((patient) => patient.id === patientId);
   const input = () => ({
     pacienteId: patientId,
     fisioId: professionalId,
@@ -73,7 +88,7 @@ export function AppointmentRecurrencePanel() {
       if (slots.length === 0) toast('Nenhuma ocorrência cai nos dias escolhidos.', 'warn');
     } catch (error) {
       console.error('[MedicsPro] prévia recorrência:', error);
-      toast('Não foi possível calcular a prévia da série. A migration pode ainda não estar aplicada.', 'warn');
+      toast('Não foi possível calcular a prévia da série.', 'warn');
     } finally { setBusy(false); }
   };
 
@@ -92,8 +107,6 @@ export function AppointmentRecurrencePanel() {
     } finally { setBusy(false); }
   };
 
-  if (user?.role === 'fisio') return null;
-
   const available = preview.filter((slot) => slot.available).length;
   const conflicts = preview.length - available;
 
@@ -102,15 +115,27 @@ export function AppointmentRecurrencePanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-display font-semibold">Agendamento recorrente</p>
-          <p className="font-mono text-[10px] text-fog mt-0.5">Crie a série no banco somente depois de revisar todos os horários.</p>
+          <p className="font-mono text-[10px] text-fog mt-0.5">
+            {user?.role === 'fisio' ? 'Planeje recorrências para a sua própria agenda após revisar os horários.' : 'Crie a série no banco somente depois de revisar todos os horários.'}
+          </p>
         </div>
         <Btn variant="ghost" onClick={() => { setOpen((value) => !value); setPreview([]); }}>{open ? 'Fechar' : 'Nova série'}</Btn>
       </div>
 
       {open && <div className="mt-4 space-y-4">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field label="Paciente"><Select value={patientId} onChange={(event) => { setPatientId(event.target.value); setPreview([]); }}><option value="">Selecionar…</option>{patients.filter((p) => p.status !== 'alta' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
-          <Field label="Profissional"><Select value={professionalId} onChange={(event) => { setProfessionalId(event.target.value); setPreview([]); }}><option value="">Selecionar…</option>{professionals.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
+          <Field label="Paciente">
+            <Select value={patientId} onChange={(event) => { setPatientId(event.target.value); setPreview([]); }}>
+              <option value="">Selecionar…</option>
+              {selectablePatients.map((patient) => <option key={patient.id} value={patient.id}>{patient.nome}{patient.status === 'alta' ? ' · alta' : patient.status === 'inativo' ? ' · inativo' : ''}</option>)}
+            </Select>
+          </Field>
+          <Field label="Profissional" hint={user?.role === 'fisio' ? 'Recorrência vinculada à sua própria agenda.' : undefined}>
+            <Select value={professionalId} disabled={user?.role === 'fisio'} onChange={(event) => { setProfessionalId(event.target.value); setPreview([]); }}>
+              <option value="">Selecionar…</option>
+              {professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}
+            </Select>
+          </Field>
           <Field label="Unidade"><Select value={unitId} onChange={(event) => { const id = event.target.value; setUnitId(id); setRoomId(rooms.find((room) => room.unidadeId === id)?.id ?? ''); setPreview([]); }}><option value="">Selecionar…</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select></Field>
           <Field label="Sala / recurso"><Select value={roomId} onChange={(event) => { setRoomId(event.target.value); setPreview([]); }}><option value="">Selecionar…</option>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select></Field>
           <Field label="Tipo"><Select value={type} onChange={(event) => { setType(event.target.value); setPreview([]); }}>{['Avaliação','Cinesioterapia','Eletroterapia','RPG','Neurofuncional','Pilates','Tração'].map((item) => <option key={item}>{item}</option>)}</Select></Field>
@@ -120,6 +145,12 @@ export function AppointmentRecurrencePanel() {
           <Field label="Início"><Input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPreview([]); }} /></Field>
           <Field label="Fim"><Input type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPreview([]); }} /></Field>
         </div>
+
+        {selectedPatient?.status === 'alta' && (
+          <div className="border border-amber/35 bg-amber/[0.05] p-3 font-mono text-[10px] text-amber">
+            Este paciente está com status de alta. A recorrência pode ser planejada, mas confirme se houve nova indicação clínica antes de criar a série.
+          </div>
+        )}
 
         <div>
           <p className="font-mono text-[9px] uppercase text-fog mb-2">Dias da semana</p>
