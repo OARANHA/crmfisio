@@ -9,6 +9,7 @@ import { Reveal, CountUp } from '../components/Reveal';
 import { Ecg } from '../components/Ecg';
 import { RevenueRecovery } from '../components/RevenueRecovery';
 import { OperationalHealthCard } from '../components/dashboards/OperationalHealthCard';
+import { RecoveryImpactCard } from '../components/dashboards/RecoveryImpactCard';
 
 export function Dashboard() {
   const { user, appointments, transactions, patients, surveys, consents, users, unidadeSel, unidades } = useApp();
@@ -105,6 +106,10 @@ export function Dashboard() {
 
       <Reveal delay={95}>
         <RevenueRecovery />
+      </Reveal>
+
+      <Reveal delay={105}>
+        <RecoveryImpactCard />
       </Reveal>
 
       <Reveal delay={110}>
