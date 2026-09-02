@@ -2,8 +2,7 @@ import { addDays, format, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type {
   User, Unidade, Patient, Room, Appointment, SessionPackage, PatientPackage,
-  FinancialTransaction, Commission, Evolution, ConsentTerm, NpsSurvey,
-  RecurrenceRule, WaLog, AuditEntry,
+  FinancialTransaction, Evolution, ConsentTerm, NpsSurvey, WaLog, AuditEntry,
 } from './types';
 
 const d = (offset: number) =>
@@ -152,11 +151,6 @@ seedAppointments.forEach((a) => {
   if (a.pacienteId === 'p2') a.serieId = 'serie-joao';
 });
 
-export const seedRecurrence: RecurrenceRule[] = [
-  { id: 'serie-mariana', pacienteId: 'p1', fisioId: 'u2', roomId: 'r1', tipo: 'Cinesioterapia', diasSemana: [1, 2, 4, 5], hora: '08:00', duracaoMin: 50, inicio: d(-21), fim: d(35), valor: 12000 },
-  { id: 'serie-joao', pacienteId: 'p2', fisioId: 'u2', roomId: 'r1', tipo: 'Pós-op LCA', diasSemana: [2, 3, 5], hora: '08:00', duracaoMin: 50, inicio: d(-28), fim: d(28), valor: 12000 },
-];
-
 export const seedTransactions: FinancialTransaction[] = [
   { id: 't1', tipo: 'receber', descricao: 'Pacote 10 sessões — Mariana Castro', categoria: 'Pacotes', valor: 120000, vencimento: d(2), status: 'pago', pacienteId: 'p1', metodo: 'pix' },
   { id: 't2', tipo: 'receber', descricao: 'Sessão avulsa — João Pedro', categoria: 'Sessões', valor: 12000, vencimento: d(4), status: 'pago', pacienteId: 'p2', metodo: 'cartao' },
@@ -166,11 +160,6 @@ export const seedTransactions: FinancialTransaction[] = [
   { id: 't6', tipo: 'pagar', descricao: 'Aluguel — Sede Centro', categoria: 'Fixo', valor: 450000, vencimento: d(8), status: 'pendente', pacienteId: null, metodo: null },
   { id: 't7', tipo: 'pagar', descricao: 'Energia elétrica (2 unidades)', categoria: 'Fixo', valor: 78000, vencimento: d(-5), status: 'pago', pacienteId: null, metodo: 'boleto' },
   { id: 't8', tipo: 'pagar', descricao: 'Manutenção ondas de choque — Savassi', categoria: 'Manutenção', valor: 35000, vencimento: d(11), status: 'pendente', pacienteId: null, metodo: null },
-];
-
-export const seedCommissions: Commission[] = [
-  { id: 'c1', fisioId: 'u2', periodo: format(new Date(), 'yyyy-MM'), base: 156000, percentual: 40, status: 'aberto' },
-  { id: 'c2', fisioId: 'u3', periodo: format(new Date(), 'yyyy-MM'), base: 119000, percentual: 40, status: 'aberto' },
 ];
 
 const evo = (pacienteId: string, fisioId: string, day: number, texto: string, anexos: string[] = []): Evolution => ({
