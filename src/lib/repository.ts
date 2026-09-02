@@ -287,20 +287,12 @@ export async function updatePatientStage(id: string, stage: Patient['funilStage'
 }
 
 export async function anonymizePatient(id: string): Promise<void> {
-  const { error } = await supabase.from('patients').update({
-    nome: 'Paciente Anonizado',
-    cpf: null,
-    telefone: null,
-    email: null,
-    queixa_principal: null,
-    convenio: null,
-    cid10: [],
-    ultima_visita: null,
-    opt_in_whats: false,
-    status: 'inativo',
-    anonimizado: true,
-    anamnese: emptyAnamnese as unknown as Json,
-  }).eq('id', id);
+  const { error } = await supabase.rpc('anonymize_patient_lgpd', { p_patient_id: id });
+  if (error) throw error;
+}
+
+export async function logPatientDataExport(id: string): Promise<void> {
+  const { error } = await supabase.rpc('log_patient_data_export', { p_patient_id: id });
   if (error) throw error;
 }
 
