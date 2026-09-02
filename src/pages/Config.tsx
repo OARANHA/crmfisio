@@ -11,7 +11,7 @@ const RBAC_ROWS: { module: string; admin: Access; fisio: Access; recep: Access }
   { module: 'Agenda (agendar, mover, cancelar)', admin: 'full', fisio: 'full', recep: 'full' },
   { module: 'Prontuário / Anamnese', admin: 'read', fisio: 'full', recep: 'none' },
   { module: 'Evolução clínica + anexos', admin: 'none', fisio: 'full', recep: 'none' },
-  { module: 'Financeiro (caixa, pacotes, repasse)', admin: 'full', fisio: 'read', recep: 'read' },
+  { module: 'Financeiro (recebíveis/pacotes na recepção; gestão completa no admin)', admin: 'full', fisio: 'read', recep: 'full' },
   { module: 'CRM (funil, NPS, lembretes)', admin: 'full', fisio: 'read', recep: 'full' },
   { module: 'Mensagens (automação WhatsApp)', admin: 'full', fisio: 'read', recep: 'full' },
   { module: 'Relatórios + exportações', admin: 'full', fisio: 'read', recep: 'none' },
@@ -110,7 +110,7 @@ export function Config() {
           <Card className="overflow-x-auto">
             <CardHead
               title="Matriz de permissões por módulo"
-              sub="decidida na API via Guards — a UI apenas reflete"
+              sub="aplicada por RLS e RPCs no banco — a UI apenas reflete"
               right={<IconShield className="w-4.5 h-4.5 text-mint" />}
             />
             <table className="w-full min-w-[680px] text-[13px]">
@@ -162,7 +162,7 @@ export function Config() {
               </ul>
             </Card>
             <Card>
-              <CardHead title="Unidades" sub="Fase 3 — operação multi-unidade" />
+              <CardHead title="Unidades" sub="operação multi-unidade ativa" />
               <ul className="divide-y divide-line/70">
                 {unidades.map((u) => (
                   <li key={u.id} className="px-5 py-3.5">
