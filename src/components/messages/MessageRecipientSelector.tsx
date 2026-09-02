@@ -16,7 +16,7 @@ interface Props {
   blockedSummary?: string;
   busy?: boolean;
   canSend?: boolean;
-  accent?: 'mint' | 'aqua';
+  accent?: 'mint' | 'aqua' | 'amber';
   onSend: (ids: string[]) => Promise<void> | void;
 }
 
@@ -31,7 +31,11 @@ export function MessageRecipientSelector({ title, sub, candidates, blockedSummar
 
   const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const toggleAll = () => setSelected(allSelected ? [] : ids);
-  const accentClass = accent === 'mint' ? 'border-mint/45 text-mint' : 'border-aqua/45 text-aqua';
+  const accentClass = accent === 'mint'
+    ? 'border-mint/45 text-mint'
+    : accent === 'aqua'
+      ? 'border-aqua/45 text-aqua'
+      : 'border-amber/45 text-amber';
 
   return (
     <Card>

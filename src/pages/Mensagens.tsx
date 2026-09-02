@@ -5,12 +5,15 @@ import { MessageActivity } from '../components/messages/MessageActivity';
 import { MessageRecipientSelector, type MessageRecipientCandidate } from '../components/messages/MessageRecipientSelector';
 import { MessageReviewQueue } from '../components/messages/MessageReviewQueue';
 import { MessageTemplatesEditor } from '../components/messages/MessageTemplatesEditor';
+import { buildReactivationSelection } from '../components/messages/reactivationEligibility';
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
 import { useApp } from '../lib/store';
 import { Btn, Chip } from '../lib/ui';
 
 const OPEN_MESSAGE_STATUS = new Set(['fila', 'enviando', 'enviado', 'entregue', 'lido']);
+const REACTIVATION_INACTIVITY_DAYS = 30;
+const REACTIVATION_COOLDOWN_DAYS = 30;
 
 function appointmentDateTime(data: string, inicio: string) {
   const time = inicio.length === 5 ? `${inicio}:00` : inicio;
@@ -22,7 +25,7 @@ export function Mensagens() {
   const canSend = access('mensagens') === 'full';
   const {
     logs, templates, loading, queueSelectedConfirmations, queueSelectedNps,
-    resolveReview, flush, saveTemplate,
+    queueSelectedReactivation, resolveReview, flush, saveTemplate,
   } = useMessageCenter(user?.id);
 
   const confirmationSelection = useMemo(() => {
@@ -88,7 +91,14 @@ export function Mensagens() {
     return { candidates, stats };
   }, [appointments, patients, logs]);
 
-  const inactive = patients.filter((patient) => patient.status === 'inativo' && patient.optInWhats && !patient.anonimizado).length;
+  const reactivationSelection = useMemo(() => buildReactivationSelection({
+    patients,
+    appointments,
+    logs,
+    inactivityDays: REACTIVATION_INACTIVITY_DAYS,
+    cooldownDays: REACTIVATION_COOLDOWN_DAYS,
+  }), [appointments, patients, logs]);
+
   const queued = logs.filter((log) => log.status === 'fila').length;
   const sending = logs.filter((log) => log.status === 'enviando').length;
   const sentBase = logs.filter((log) => ['enviado', 'entregue', 'lido'].includes(log.status));
@@ -103,7 +113,20 @@ export function Mensagens() {
     const parts = [
       stats.noOptin ? `${stats.noOptin} sem opt-in` : '',
       stats.noPhone ? `${stats.noPhone} sem telefone` : '',
-      stats.alreadySent ? `${stats.alreadySent} atendimento(s) já pesquisado(s)` : '',
+      stats.alreadySent ? `${stats.alreadySent} atendimento(s) já processado(s)` : '',
+    ].filter(Boolean);
+    return parts.length ? `Fora da seleção: ${parts.join(' · ')}` : '';
+  };
+
+  const reactivationBlockedText = () => {
+    const s = reactivationSelection.stats;
+    const parts = [
+      s.recentlyActive ? `${s.recentlyActive} ainda dentro de ${REACTIVATION_INACTIVITY_DAYS} dias` : '',
+      s.futureAppointment ? `${s.futureAppointment} já com sessão futura` : '',
+      s.cooldown ? `${s.cooldown} em cooldown de ${REACTIVATION_COOLDOWN_DAYS} dias` : '',
+      s.noOptin ? `${s.noOptin} sem opt-in` : '',
+      s.noPhone ? `${s.noPhone} sem telefone` : '',
+      s.noHistory ? `${s.noHistory} sem atendimento finalizado` : '',
     ].filter(Boolean);
     return parts.length ? `Fora da seleção: ${parts.join(' · ')}` : '';
   };
@@ -129,6 +152,18 @@ export function Mensagens() {
     } catch (error) {
       console.error('[MedicsPro] NPS selecionado:', error);
       toast('Não foi possível enviar o NPS dos atendimentos selecionados.', 'warn');
+    }
+  };
+
+  const sendReactivation = async (ids: string[]) => {
+    try {
+      const { queued: count, dispatch } = await queueSelectedReactivation(ids);
+      if (!count) return toast('Nenhum dos pacientes selecionados continua elegível para reativação.', 'info');
+      if (dispatch.failed) toast(`${dispatch.sent} reativação(ões) enviada(s) e ${dispatch.failed} falhou(aram).`, 'warn');
+      else toast(`${dispatch.sent} convite${dispatch.sent === 1 ? '' : 's'} de reativação enviado${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
+    } catch (error) {
+      console.error('[MedicsPro] reativação selecionada:', error);
+      toast('Não foi possível enviar a campanha de reativação.', 'warn');
     }
   };
 
@@ -172,12 +207,11 @@ export function Mensagens() {
       <Reveal delay={130}><MessageRecipientSelector title="Pesquisa NPS — atendimentos dos últimos 7 dias" sub="Cada atendimento finalizado pode gerar sua própria pesquisa. Um NPS anterior do mesmo paciente não bloqueia uma nova sessão." candidates={npsSelection.candidates} blockedSummary={blockedText(npsSelection.stats)} busy={loading} canSend={canSend} accent="aqua" onSend={sendNps} /></Reveal>
     </div>
 
+    <Reveal delay={150}><MessageRecipientSelector title="Oportunidades de reativação" sub={`Classificação automática: entram pacientes cuja última sessão finalizada ocorreu há pelo menos ${REACTIVATION_INACTIVITY_DAYS} dias e que não possuem sessão futura. Não é necessário marcar o paciente manualmente como inativo. Novo contato só após ${REACTIVATION_COOLDOWN_DAYS} dias; PARAR/SAIR aplica opt-out.`} candidates={reactivationSelection.candidates} blockedSummary={reactivationBlockedText()} busy={loading} canSend={canSend} accent="amber" onSend={sendReactivation} /></Reveal>
+
     <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 items-start">
-      <div className="space-y-4">
-        <Reveal delay={160}><div className="border border-line bg-panel px-5 py-4"><p className="font-display font-semibold text-[14px]">Reativação de pacientes inativos</p><p className="text-[12px] text-fog mt-1">Entrará como campanha controlada após fecharmos opt-out e frequência de contato.</p><p className="font-mono text-[10.5px] text-fog mt-2">{inactive} elegível{inactive === 1 ? '' : 'is'} · em preparação</p></div></Reveal>
-        <Reveal delay={180}><MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} /></Reveal>
-      </div>
-      <Reveal delay={150}><MessageActivity logs={logs} patients={patients} /></Reveal>
+      <Reveal delay={180}><MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} /></Reveal>
+      <Reveal delay={170}><MessageActivity logs={logs} patients={patients} /></Reveal>
     </div>
   </div>;
 }
