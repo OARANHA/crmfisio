@@ -334,7 +334,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
                   {evaluations.length > 0 && (
                     <div className="rounded-xl border border-line bg-deep p-3">
                       <p className="font-display font-semibold text-[12.5px]">{evaluations.length} registro(s) no modelo anterior</p>
-                      <p className="font-mono text-[10px] text-fog mt-1">Último registro: {format(new Date(`${evaluations[0].data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                      <p className="font-mono text-[10px] text-fog mt-1">Último registro: {format(new Date(evaluations[0].data), 'dd/MM/yyyy', { locale: ptBR })}</p>
                     </div>
                   )}
                   <div className="grid sm:grid-cols-2 gap-4">
