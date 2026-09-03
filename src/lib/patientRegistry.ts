@@ -129,19 +129,32 @@ export async function listPatientGuardians(patientId: string): Promise<PatientGu
 }
 
 export async function loadPatientRegistryExtras(patientId: string) {
-  const [{ data: patient, error }, guardians, avatarUrl] = await Promise.all([
-    supabase.from('patients').select('preferred_name,address_line,insurance_number,administrative_notes,avatar_path').eq('id', patientId).single(),
+  const { data: patient, error } = await supabase
+    .from('patients')
+    .select('preferred_name,address_line,insurance_number,administrative_notes,avatar_path')
+    .eq('id', patientId)
+    .single();
+  if (error) throw error;
+
+  const [guardiansResult, avatarResult] = await Promise.allSettled([
     listPatientGuardians(patientId),
     getPatientAvatarUrl(patientId),
   ]);
-  if (error) throw error;
+
+  if (guardiansResult.status === 'rejected') {
+    console.warn('[MedicsPro] responsáveis do paciente indisponíveis:', guardiansResult.reason);
+  }
+  if (avatarResult.status === 'rejected') {
+    console.warn('[MedicsPro] avatar do paciente indisponível:', avatarResult.reason);
+  }
+
   return {
     preferredName: patient.preferred_name ?? '',
     addressLine: patient.address_line ?? '',
     insuranceNumber: patient.insurance_number ?? '',
     administrativeNotes: patient.administrative_notes ?? '',
     avatarPath: patient.avatar_path ?? null,
-    avatarUrl,
-    guardians,
+    avatarUrl: avatarResult.status === 'fulfilled' ? avatarResult.value : null,
+    guardians: guardiansResult.status === 'fulfilled' ? guardiansResult.value : [],
   };
 }
