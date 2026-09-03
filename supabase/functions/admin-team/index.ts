@@ -140,6 +140,9 @@ Deno.serve(async (req) => {
       .eq('clinic_id', caller.clinic_id)
       .single();
     if (targetError || !target) return json({ error: 'Usuário não pertence à clínica' }, 404);
+    if (target.role === 'owner' && target.id !== caller.id) {
+      return json({ error: 'O proprietário não pode ser alterado por outro usuário' }, 403);
+    }
     if (target.id === caller.id && payload.action === 'set_active' && payload.ativo === false) {
       return json({ error: 'Você não pode desativar o próprio usuário' }, 400);
     }
@@ -148,6 +151,7 @@ Deno.serve(async (req) => {
       const updates: Record<string, unknown> = {};
       if (payload.nome !== undefined) updates.nome = payload.nome.trim();
       if (payload.role !== undefined) {
+        if (target.role === 'owner') return json({ error: 'O papel proprietário não pode ser alterado por este fluxo' }, 403);
         if (!['admin', 'fisio', 'recep', 'financeiro'].includes(payload.role)) return json({ error: 'Perfil de acesso inválido' }, 400);
         updates.role = payload.role;
       }

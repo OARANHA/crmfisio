@@ -62,50 +62,19 @@ VITE_SUPABASE_ANON_KEY=<cole_a_anon_key_aqui>
 
 ---
 
-### **PASSO 4: Criar Usuários no Supabase Auth**
+### **PASSO 4: Provisionar clínicas e usuários**
 
-Os usuários agora devem ser criados no **Supabase Auth**, não mais no seed mockado.
+Não insira registros diretamente em `auth.users`. Senhas e identidades são gerenciadas
+exclusivamente pela API administrativa do Supabase Auth em código server-side.
 
-#### Opção A: Via Supabase Studio (Recomendado para setup inicial)
-
-1. No Studio, vá em **Authentication** → **Users**
-2. Clique em **Add user** → **Create new user**
-3. Preencha:
-   - Email: `admin@medicspro.com.br`
-   - Senha: `<senha_forte>`
-   - Auto Confirm User: **SIM** (marque esta opção)
-4. Repita para cada perfil inicial:
-   - `fisio.teste@medicspro.com.br`
-   - `recep.teste@medicspro.com.br`
-
-#### Opção B: Via SQL (cria usuário + profile de uma vez)
-
-Execute no **SQL Editor** do Supabase:
-
-```sql
--- Criar usuário admin
-INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, created_at, updated_at)
-VALUES (
-  'admin@medicspro.com.br',
-  crypt('SuaSenhaForte123!', gen_salt('bf')),
-  NOW(),
-  NOW(),
-  NOW()
-) RETURNING id;
-
--- Com o ID retornado, crie o profile:
-INSERT INTO profiles (id, clinic_id, email, nome, role, registro, cor, ativo)
-VALUES (
-  '<ID_RETORNADO_ACIMA>',
-  '00000000-0000-0000-0000-000000000001',
-  'admin@medicspro.com.br',
-  'Dr. Admin',
-  'admin',
-  'CRM/SP 123456',
-  '#4fd1a5',
-  true
-);
-```
+- O bootstrap único de `platform_admin` e a criação segura da primeira clínica estão em
+  `docs/PLATFORM_PROVISIONING.md`.
+- O primeiro usuário de cada clínica é criado como `owner` pela Edge Function
+  `provision-clinic`.
+- Usuários adicionais são criados por `owner/admin` pela Edge Function `admin-team` e
+  sempre herdam o `clinic_id` do chamador autenticado.
+- A `SUPABASE_SERVICE_ROLE_KEY` nunca deve ser exposta no frontend ou em comandos
+  executados em computadores não confiáveis.
 
 ---
 
