@@ -115,6 +115,26 @@ html[data-theme='light'] .app-surface {
     radial-gradient(900px 560px at 92% 4%, color-mix(in srgb, var(--color-aqua) 3%, transparent), transparent 70%);
 }
 
+/* MVD: o detalhe da agenda ocupa uma coluna persistente, sem apagar o contexto do calendário. */
+@media (min-width: 768px) {
+  body.agenda-detail-open main {
+    padding-right: 458px !important;
+    transition: padding-right 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  body:not(.agenda-detail-open) main {
+    transition: padding-right 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+}
+
+.agenda-detail-panel {
+  animation: agenda-panel-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes agenda-panel-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .rv {
   opacity: 0;
   transform: translateY(10px);
