@@ -1,38 +1,30 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
 import { useApp } from '../lib/store';
 import { fmtBRL } from '../lib/types';
 import { Card, Chip, IconChevronR } from '../lib/ui';
+import { buildChurnRiskList } from '../lib/churnRisk';
 
 export function RevenueRecovery() {
-  const { transactions, patients, appointments } = useApp();
-  const hoje = format(new Date(), 'yyyy-MM-dd');
+  const { transactions, patients, appointments, patientPackages } = useApp();
 
   const recovery = useMemo(() => {
     const overdue = transactions.filter((t) => t.tipo === 'receber' && t.status === 'atrasado');
     const overdueValue = overdue.reduce((sum, t) => sum + t.valor, 0);
 
-    const inactive = patients.filter((p) => p.status === 'inativo' && !p.anonimizado);
-    const active = patients.filter((p) => p.status === 'ativo' && !p.anonimizado);
-
-    const futurePatientIds = new Set(
-      appointments
-        .filter((a) => a.data >= hoje && !['cancelado', 'faltou', 'finalizado'].includes(a.status))
-        .map((a) => a.pacienteId)
-    );
-
-    const withoutNextSession = active.filter((p) => !futurePatientIds.has(p.id));
+    const risks = buildChurnRiskList(patients, appointments, patientPackages, transactions);
+    const relevantRisks = risks.filter((risk) => risk.level !== 'baixo');
+    const withoutNextSession = relevantRisks.filter((risk) => !risk.hasFutureAppointment);
 
     return {
       overdueValue,
       overdueCount: overdue.length,
-      inactiveCount: inactive.length,
+      riskCount: relevantRisks.length,
       withoutNextSessionCount: withoutNextSession.length,
     };
-  }, [transactions, patients, appointments, hoje]);
+  }, [transactions, patients, appointments, patientPackages]);
 
-  const hasOpportunity = recovery.overdueCount + recovery.inactiveCount + recovery.withoutNextSessionCount > 0;
+  const hasOpportunity = recovery.overdueCount + recovery.riskCount + recovery.withoutNextSessionCount > 0;
 
   return (
     <Card className="overflow-hidden border-mint/25">
@@ -45,7 +37,7 @@ export function RevenueRecovery() {
             </div>
             <h2 className="font-display text-xl md:text-2xl font-bold mt-2">Dinheiro que a clínica pode recuperar agora</h2>
             <p className="text-fog text-[12.5px] mt-1 max-w-2xl">
-              O MedicsPro cruza inadimplência, pacientes inativos e tratamentos sem próxima sessão para transformar operação em receita.
+              O MedicsPro cruza inadimplência e risco objetivo de abandono para orientar recuperação e continuidade.
             </p>
           </div>
           <div className="md:ml-auto text-left md:text-right">
@@ -63,14 +55,14 @@ export function RevenueRecovery() {
             </div>
           </Link>
           <Link to="/crm" className="bg-panel/80 hover:bg-raise px-4 py-4 transition-colors group">
-            <p className="font-mono text-[10px] uppercase text-fog">Pacientes para reativar</p>
+            <p className="font-mono text-[10px] uppercase text-fog">Tratamentos em risco</p>
             <div className="flex items-end gap-2 mt-1">
-              <span className="font-display text-2xl font-bold text-aqua">{recovery.inactiveCount}</span>
+              <span className="font-display text-2xl font-bold text-aqua">{recovery.riskCount}</span>
               <IconChevronR className="w-4 h-4 ml-auto text-fog group-hover:text-mint" />
             </div>
           </Link>
           <Link to="/agenda" className="bg-panel/80 hover:bg-raise px-4 py-4 transition-colors group">
-            <p className="font-mono text-[10px] uppercase text-fog">Ativos sem próxima sessão</p>
+            <p className="font-mono text-[10px] uppercase text-fog">Riscos sem próxima sessão</p>
             <div className="flex items-end gap-2 mt-1">
               <span className="font-display text-2xl font-bold text-pulse">{recovery.withoutNextSessionCount}</span>
               <IconChevronR className="w-4 h-4 ml-auto text-fog group-hover:text-mint" />

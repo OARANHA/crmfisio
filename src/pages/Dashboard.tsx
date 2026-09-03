@@ -10,9 +10,10 @@ import { Ecg } from '../components/Ecg';
 import { RevenueRecovery } from '../components/RevenueRecovery';
 import { OperationalHealthCard } from '../components/dashboards/OperationalHealthCard';
 import { RecoveryImpactCard } from '../components/dashboards/RecoveryImpactCard';
+import { buildChurnRiskList } from '../lib/churnRisk';
 
 export function Dashboard() {
-  const { user, appointments, transactions, patients, surveys, consents, users, unidadeSel, unidades } = useApp();
+  const { user, appointments, transactions, patients, patientPackages, surveys, consents, users, unidadeSel, unidades } = useApp();
   const inUnit = useUnitFilter();
 
   const mes = format(new Date(), 'yyyy-MM');
@@ -58,11 +59,15 @@ export function Dashboard() {
     [appointments, users, mes, inUnit]
   );
   const maxProd = Math.max(...prod.map((p) => p.valor), 1);
+  const churnRisks = useMemo(
+    () => buildChurnRiskList(patients, appointments, patientPackages, transactions).filter((risk) => risk.level !== 'baixo'),
+    [patients, appointments, patientPackages, transactions],
+  );
 
   const pendencias = [
     ...transactions.filter((t) => t.status === 'atrasado').map((t) => ({ icon: '💸', txt: `Cobrança atrasada: ${t.descricao} (${fmtBRL(t.valor)})`, to: '/financeiro' })),
     ...consents.filter((c) => !c.assinado).map((c) => ({ icon: '✍️', txt: `Termo pendente — ${patients.find((p) => p.id === c.pacienteId)?.nome ?? ''}`, to: `/pacientes/${c.pacienteId}` })),
-    ...patients.filter((p) => p.status === 'inativo' && !p.anonimizado).map((p) => ({ icon: '⚠️', txt: `Paciente inativo: ${p.nome} — reativação sugerida`, to: '/crm' })),
+    ...churnRisks.map((risk) => ({ icon: '⚠️', txt: `Risco ${risk.level}: ${risk.patientName} — ${risk.reasons[0] ?? 'continuidade comprometida'}`, to: '/crm' })),
   ].slice(0, 5);
 
   return (
