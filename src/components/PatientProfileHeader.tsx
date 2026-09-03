@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ageFrom, maskCpf, STAGE_META, type Patient, type PatientGuardian } from '../lib/types';
 import { loadPatientRegistryExtras } from '../lib/patientRegistry';
-import { Card, Chip, IconMail, IconPhone } from '../lib/ui';
+import { Chip, IconMail, IconPhone } from '../lib/ui';
 import { IconLock } from './icons';
 import { PatientJourneyControl } from './PatientJourneyControl';
 
@@ -34,42 +34,50 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
   const displayName = extras?.preferredName || patient.nome;
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-start gap-5 px-5 py-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line bg-mint/10 shadow-sm">
+    <section className="rounded-2xl border border-line/80 bg-panel/85 px-5 py-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="h-[68px] w-[68px] shrink-0 overflow-hidden rounded-full border border-line bg-mint/10 ring-4 ring-deep/70">
           {extras?.avatarUrl ? <img src={extras.avatarUrl} alt={`Foto de ${patient.nome}`} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center font-display text-xl font-bold text-mint">{initials}</span>}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-display text-2xl font-bold tracking-tight">{displayName}</h1>
+            <h1 className="font-display text-[26px] font-bold tracking-tight text-paper">{displayName}</h1>
             <Chip className={sm.chip}>{sm.label}</Chip>
-            {patient.status === 'inativo' && <Chip className="border-pulse/40 text-pulse">inativo · oportunidade de reativação</Chip>}
-            {patient.status === 'alta' && <Chip className="border-aqua/40 text-aqua">alta registrada · histórico preservado</Chip>}
+            {patient.status === 'inativo' && <Chip className="border-pulse/40 text-pulse">inativo</Chip>}
+            {patient.status === 'alta' && <Chip className="border-aqua/40 text-aqua">alta</Chip>}
           </div>
-          {extras?.preferredName && extras.preferredName !== patient.nome && <p className="mt-0.5 text-[12.5px] text-fog">Nome civil: {patient.nome}</p>}
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-fog">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-fog">
+            {extras?.preferredName && extras.preferredName !== patient.nome && <span>Nome civil: {patient.nome}</span>}
             <span>{ageFrom(patient.nascimento)} anos</span>
             <span className="inline-flex items-center gap-1.5"><IconLock className="h-3.5 w-3.5 text-pulse" />{maskCpf(patient.cpf)}</span>
             {patient.telefone && <span className="inline-flex items-center gap-1.5"><IconPhone className="h-3.5 w-3.5" />{patient.telefone}</span>}
             {patient.email && <span className="inline-flex items-center gap-1.5"><IconMail className="h-3.5 w-3.5" />{patient.email}</span>}
-            <span className={patient.optInWhats ? 'text-mint' : 'text-fog/70'}>WhatsApp {patient.optInWhats ? 'autorizado' : 'sem opt-in'}</span>
+            <span className={patient.optInWhats ? 'font-medium text-mint' : 'text-fog/70'}>WhatsApp {patient.optInWhats ? 'autorizado' : 'sem opt-in'}</span>
           </div>
 
           {(primaryGuardian || emergencyContact) && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {primaryGuardian && <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-deep/70 px-3 py-2 text-[12.5px]"><span className="font-semibold">Contato: {primaryGuardian.name}</span><span className="text-fog">{primaryGuardian.relationship}</span>{primaryGuardian.phone && <span className="text-fog">{primaryGuardian.phone}</span>}{primaryGuardian.isLegalGuardian && <span className="text-mint">legal</span>}{primaryGuardian.isFinancialResponsible && <span className="text-amber">financeiro</span>}{primaryGuardian.isEmergencyContact && <span className="text-pulse">emergência</span>}</div>}
-              {emergencyContact && <div className="inline-flex items-center gap-2 rounded-xl bg-pulse/[0.06] px-3 py-2 text-[12.5px]"><span className="font-semibold text-pulse">Emergência: {emergencyContact.name}</span>{emergencyContact.phone && <span className="text-fog">{emergencyContact.phone}</span>}</div>}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
+              {primaryGuardian && (
+                <span className="text-fog">
+                  <strong className="font-semibold text-paper/90">Contato principal:</strong> {primaryGuardian.name} · {primaryGuardian.relationship}{primaryGuardian.phone ? ` · ${primaryGuardian.phone}` : ''}
+                </span>
+              )}
+              {emergencyContact && (
+                <span className="text-pulse">
+                  <strong className="font-semibold">Emergência:</strong> {emergencyContact.name}{emergencyContact.phone ? ` · ${emergencyContact.phone}` : ''}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link to={`/pacientes/${patient.id}/editar`} className="rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise hover:text-paper">Editar cadastro</Link>
           <PatientJourneyControl patient={patient} />
         </div>
       </div>
-    </Card>
+    </section>
   );
 }
