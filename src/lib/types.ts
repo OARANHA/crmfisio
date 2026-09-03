@@ -4,161 +4,49 @@
 // ---------------------------------------------------------------------------
 
 export type Role = 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro';
-
-export type ModuleKey =
-  | 'dashboard' | 'agenda' | 'pacientes' | 'clinico'
-  | 'financeiro' | 'crm' | 'mensagens' | 'relatorios' | 'config';
-
+export type ModuleKey = | 'dashboard' | 'agenda' | 'pacientes' | 'clinico' | 'financeiro' | 'crm' | 'mensagens' | 'relatorios' | 'config';
 export type Access = 'full' | 'read' | 'none';
 
-export interface User {
-  id: string;
-  nome: string;
-  email: string;
-  role: Role;
-  registro: string;
-  cor: string;
-  ativo: boolean;
-}
-
+export interface User { id: string; nome: string; email: string; role: Role; registro: string; cor: string; ativo: boolean }
 export interface Unidade { id: string; nome: string; endereco: string }
-
 export type AppointmentStatus = 'agendado' | 'confirmado' | 'em_atendimento' | 'finalizado' | 'faltou' | 'cancelado';
 export type FunilStage = 'lead' | 'avaliacao' | 'tratamento' | 'alta';
 export type PacienteStatus = 'ativo' | 'inativo' | 'alta';
 
 export interface Patient {
-  id: string;
-  nome: string;
-  preferredName?: string;
-  nascimento: string;
-  telefone: string;
-  email: string;
-  cpf: string;
-  convenio: string | null;
-  insuranceNumber?: string;
-  addressLine?: string;
-  administrativeNotes?: string;
-  avatarPath?: string | null;
-  queixaPrincipal: string;
-  cid10: string[];
-  funilStage: FunilStage;
-  status: PacienteStatus;
-  ultimaVisita: string | null;
-  createdAt: string;
-  optInWhats: boolean;
-  anonimizado?: boolean;
+  id: string; nome: string; preferredName?: string; nascimento: string; telefone: string; email: string; cpf: string;
+  convenio: string | null; insuranceNumber?: string; addressLine?: string; administrativeNotes?: string; avatarPath?: string | null;
+  queixaPrincipal: string; cid10: string[]; funilStage: FunilStage; status: PacienteStatus; ultimaVisita: string | null;
+  createdAt: string; optInWhats: boolean; anonimizado?: boolean;
   anamnese: { historia: string; cirurgias: string; medicamentos: string; alergias: string; objetivo: string };
 }
 
 export interface PatientGuardian {
-  id: string;
-  clinicId: string;
-  patientId: string;
-  name: string;
-  relationship: string;
-  cpf: string;
-  phone: string;
-  email: string;
-  isLegalGuardian: boolean;
-  isFinancialResponsible: boolean;
-  isPrimaryContact: boolean;
-  isEmergencyContact: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id: string; clinicId: string; patientId: string; name: string; relationship: string; cpf: string; phone: string; email: string;
+  isLegalGuardian: boolean; isFinancialResponsible: boolean; isPrimaryContact: boolean; isEmergencyContact: boolean;
+  createdAt: string; updatedAt: string;
 }
 
 export interface PatientGuardianInput {
-  name: string;
-  relationship: string;
-  cpf?: string;
-  phone?: string;
-  email?: string;
-  isLegalGuardian?: boolean;
-  isFinancialResponsible?: boolean;
-  isPrimaryContact?: boolean;
-  isEmergencyContact?: boolean;
+  name: string; relationship: string; cpf?: string; phone?: string; email?: string;
+  isLegalGuardian?: boolean; isFinancialResponsible?: boolean; isPrimaryContact?: boolean; isEmergencyContact?: boolean;
 }
 
 export interface Room { id: string; nome: string; tipo: 'sala' | 'equipamento'; unidadeId: string }
-
 export interface Appointment {
-  id: string;
-  pacienteId: string;
-  fisioId: string;
-  roomId: string;
-  data: string;
-  inicio: string;
-  fim: string;
-  status: AppointmentStatus;
-  tipo: string;
-  valor: number;
-  pacoteId: string | null;
-  serieId: string | null;
-  notas: string;
-  isFitIn?: boolean;
-  cancellationReason?: string | null;
-  rescheduledFromId?: string | null;
+  id: string; pacienteId: string; fisioId: string; roomId: string; data: string; inicio: string; fim: string; status: AppointmentStatus;
+  tipo: string; valor: number; pacoteId: string | null; serieId: string | null; notas: string;
+  isFitIn?: boolean; cancellationReason?: string | null; rescheduledFromId?: string | null;
 }
-
-export interface RecurrenceRule {
-  id: string;
-  pacienteId: string;
-  fisioId: string;
-  roomId: string;
-  tipo: string;
-  diasSemana: number[];
-  hora: string;
-  duracaoMin: number;
-  inicio: string;
-  fim: string;
-  valor: number;
-}
-
+export interface RecurrenceRule { id: string; pacienteId: string; fisioId: string; roomId: string; tipo: string; diasSemana: number[]; hora: string; duracaoMin: number; inicio: string; fim: string; valor: number }
 export interface SessionPackage { id: string; nome: string; sessoes: number; preco: number; validadeDias: number }
-
-export interface PatientPackage {
-  id: string;
-  pacienteId: string;
-  pacoteId: string;
-  sessoesTotais: number;
-  sessoesUsadas: number;
-  compraData: string;
-  valorPago: number;
-  status: 'ativo' | 'esgotado' | 'vencido';
-}
-
+export interface PatientPackage { id: string; pacienteId: string; pacoteId: string; sessoesTotais: number; sessoesUsadas: number; compraData: string; valorPago: number; status: 'ativo' | 'esgotado' | 'vencido' }
 export type TxTipo = 'receber' | 'pagar';
 export type TxStatus = 'pendente' | 'pago' | 'atrasado';
-
-export interface FinancialTransaction {
-  id: string;
-  tipo: TxTipo;
-  descricao: string;
-  categoria: string;
-  valor: number;
-  vencimento: string;
-  status: TxStatus;
-  pacienteId: string | null;
-  metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null;
-  paidAt: string | null;
-}
-
+export interface FinancialTransaction { id: string; tipo: TxTipo; descricao: string; categoria: string; valor: number; vencimento: string; status: TxStatus; pacienteId: string | null; metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null; paidAt: string | null }
 export interface Commission { id: string; fisioId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
 export interface Evolution { id: string; pacienteId: string; fisioId: string; data: string; texto: string; anexos: string[] }
-
-export interface ConsentTerm {
-  id: string;
-  pacienteId: string;
-  nome: string;
-  versao: string;
-  assinado: boolean;
-  dataAssinatura: string | null;
-  hash: string | null;
-  assinaturaUrl?: string | null;
-  ip?: string | null;
-}
-
+export interface ConsentTerm { id: string; pacienteId: string; nome: string; versao: string; assinado: boolean; dataAssinatura: string | null; hash: string | null; assinaturaUrl?: string | null; ip?: string | null }
 export interface NpsSurvey { id: string; pacienteId: string; nota: number | null; comentario: string; data: string }
 export type WaStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';
 export type WaTemplate = 'confirmacao' | 'nps' | 'reativacao' | 'vaga_espera';
@@ -173,14 +61,12 @@ export const STATUS_META: Record<AppointmentStatus, { label: string; dot: string
   faltou: { label: 'Faltou', dot: '#f2545b', chip: 'bg-pulse/10 border-pulse/35 text-pulse' },
   cancelado: { label: 'Cancelado', dot: '#94b0a4', chip: 'bg-fog/10 border-fog/25 text-fog' },
 };
-
 export const STAGE_META: Record<FunilStage, { label: string; chip: string; bar: string; next: FunilStage | null }> = {
   lead: { label: 'Lead', chip: 'bg-steel/10 border-steel/30 text-steel', bar: '#9ab8c9', next: 'avaliacao' },
   avaliacao: { label: 'Avaliação', chip: 'bg-amber/10 border-amber/35 text-amber', bar: '#f2b441', next: 'tratamento' },
   tratamento: { label: 'Em tratamento', chip: 'bg-mint/10 border-mint/30 text-mint', bar: '#4fd1a5', next: 'alta' },
   alta: { label: 'Alta', chip: 'bg-aqua/10 border-aqua/30 text-aqua', bar: '#6ec1e4', next: null },
 };
-
 export const ROLE_META: Record<Role, { label: string; text: string; chip: string; desc: string }> = {
   owner: { label: 'Proprietário', text: 'text-pulse', chip: 'bg-pulse/10 border-pulse/35 text-pulse', desc: 'Gestão da clínica, usuários, financeiro e leitura clínica. Não executa atos clínicos por ser proprietário.' },
   admin: { label: 'Administrador', text: 'text-mint', chip: 'bg-mint/10 border-mint/35 text-mint', desc: 'Acesso total: agenda, prontuário (leitura), financeiro, CRM, relatórios e configurações.' },
@@ -188,29 +74,17 @@ export const ROLE_META: Record<Role, { label: string; text: string; chip: string
   recep: { label: 'Recepcionista', text: 'text-aqua', chip: 'bg-aqua/10 border-aqua/30 text-aqua', desc: 'Agenda, cadastro, financeiro operacional, CRM e mensagens. Sem acesso clínico nem relatórios.' },
   financeiro: { label: 'Financeiro', text: 'text-steel', chip: 'bg-steel/10 border-steel/30 text-steel', desc: 'Cobranças, recebimentos, repasses e relatórios financeiros. Sem conteúdo clínico.' },
 };
-
 export const CID10_CATALOG = [
-  { code: 'M54.5', desc: 'Dor lombar baixa' },
-  { code: 'M75.4', desc: 'Síndrome do impacto do ombro' },
-  { code: 'M17.1', desc: 'Artrose primária do joelho' },
-  { code: 'M54.2', desc: 'Cervicalgia' },
-  { code: 'S83.5', desc: 'Entorse/ruptura de LCA' },
-  { code: 'M72.2', desc: 'Fasciite plantar' },
-  { code: 'I69.4', desc: 'Sequelas de AVC' },
-  { code: 'M25.5', desc: 'Dor articular' },
+  { code: 'M54.5', desc: 'Dor lombar baixa' }, { code: 'M75.4', desc: 'Síndrome do impacto do ombro' },
+  { code: 'M17.1', desc: 'Artrose primária do joelho' }, { code: 'M54.2', desc: 'Cervicalgia' },
+  { code: 'S83.5', desc: 'Entorse/ruptura de LCA' }, { code: 'M72.2', desc: 'Fasciite plantar' },
+  { code: 'I69.4', desc: 'Sequelas de AVC' }, { code: 'M25.5', desc: 'Dor articular' },
 ];
-
-export const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v / 100);
-
-export const maskCpf = (cpf: string) => {
-  const digits = (cpf || '').replace(/\D/g, '').padStart(11, '0');
-  return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
-};
-
-export const ageFrom = (birth: string) => {
-  const d = new Date(`${birth}T12:00`); const n = new Date();
-  let a = n.getFullYear() - d.getFullYear();
-  if (n < new Date(n.getFullYear(), d.getMonth(), d.getDate())) a--;
-  return a;
+export const fmtBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v / 100);
+export const dayOf = <T extends { data: string }>(x: T): string => x.data;
+export const DATA_KEY = 'data' as const;
+export const maskCpf = (cpf: string) => cpf.length > 7 ? `***.${cpf.slice(4, 7)}.***-**` : '***.***.***-**';
+export const ageFrom = (nascimento: string) => {
+  const n = new Date(nascimento + 'T12:00');
+  return Math.floor((Date.now() - n.getTime()) / (365.25 * 24 * 3600e3));
 };
