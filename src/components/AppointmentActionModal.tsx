@@ -5,6 +5,7 @@ import { Btn, Chip, Modal } from '../lib/ui';
 import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
 import { AppointmentHistoryTimeline } from './AppointmentHistoryTimeline';
 import { TreatmentJourneyContext } from './TreatmentJourneyContext';
+import { isOperationalRole } from '../lib/permissions';
 
 interface Props {
   appointment: Appointment | null;
@@ -39,8 +40,8 @@ export function AppointmentActionModal({
 }: Props) {
   const actions = appointment ? appointmentActions(role, appointment).filter((action) => action.status !== 'cancelado') : [];
   const operationalEditable = !!appointment && ['agendado', 'confirmado'].includes(appointment.status);
-  const canReschedule = operationalEditable && (role === 'admin' || role === 'recep');
-  const canCancel = operationalEditable && (role === 'admin' || role === 'recep' || role === 'fisio');
+  const canReschedule = operationalEditable && isOperationalRole(role);
+  const canCancel = operationalEditable && (isOperationalRole(role) || role === 'fisio');
 
   return (
     <Modal open={!!appointment} onClose={onClose} title="Atendimento">

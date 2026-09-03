@@ -3,7 +3,7 @@
 // Valores monetários em CENTAVOS (inteiros), nunca float.
 // ---------------------------------------------------------------------------
 
-export type Role = 'admin' | 'fisio' | 'recep';
+export type Role = 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro';
 
 export type ModuleKey =
   | 'dashboard' | 'agenda' | 'pacientes' | 'clinico'
@@ -162,9 +162,11 @@ export const STAGE_META: Record<FunilStage, { label: string; chip: string; bar: 
 };
 
 export const ROLE_META: Record<Role, { label: string; text: string; chip: string; desc: string }> = {
+  owner: { label: 'Proprietário', text: 'text-pulse', chip: 'bg-pulse/10 border-pulse/35 text-pulse', desc: 'Gestão da clínica, usuários, financeiro e leitura clínica. Não executa atos clínicos por ser proprietário.' },
   admin: { label: 'Administrador', text: 'text-mint', chip: 'bg-mint/10 border-mint/35 text-mint', desc: 'Acesso total: agenda, prontuário (leitura), financeiro, CRM, relatórios e configurações.' },
   fisio: { label: 'Fisioterapeuta', text: 'text-amber', chip: 'bg-amber/10 border-amber/35 text-amber', desc: 'Agenda própria, prontuário e evolução clínica completos. Financeiro e relatórios somente leitura.' },
   recep: { label: 'Recepcionista', text: 'text-aqua', chip: 'bg-aqua/10 border-aqua/30 text-aqua', desc: 'Agenda, cadastro, financeiro operacional, CRM e mensagens. Sem acesso clínico nem relatórios.' },
+  financeiro: { label: 'Financeiro', text: 'text-steel', chip: 'bg-steel/10 border-steel/30 text-steel', desc: 'Cobranças, recebimentos, repasses e relatórios financeiros. Sem conteúdo clínico.' },
 };
 
 export const CID10_CATALOG = [

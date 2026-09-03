@@ -129,7 +129,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`);
   };
 
-  const canCollect = user?.role === 'admin' || user?.role === 'recep' || user?.role === 'fisio';
+  const canCollect = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep' || user?.role === 'financeiro';
 
   return (
     <Card>

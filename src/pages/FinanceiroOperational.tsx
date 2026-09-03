@@ -14,6 +14,7 @@ import {
   type PackageCatalogItem,
   type PackageRenewalCandidate,
 } from '../lib/packageLifecycle';
+import { isClinicManager } from '../lib/permissions';
 
 const STATUS_TX: Record<FinancialTransaction['status'], { label: string; chip: string }> = {
   pendente: { label: 'Pendente', chip: 'border-amber/40 text-amber bg-amber/10' },
@@ -45,10 +46,11 @@ export function FinanceiroOperational() {
 
   const isRecep = user?.role === 'recep';
   const isFisio = user?.role === 'fisio';
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isClinicManager(user?.role);
+  const isFinance = user?.role === 'financeiro';
   const canOperatePackages = !isFisio && access('financeiro') === 'full';
   const canWriteTipo = (tipo: 'receber' | 'pagar') =>
-    access('financeiro') === 'full' && (isAdmin || (isRecep && tipo === 'receber'));
+    access('financeiro') === 'full' && (isAdmin || isFinance || (isRecep && tipo === 'receber'));
 
   const refreshPackages = async () => {
     try {

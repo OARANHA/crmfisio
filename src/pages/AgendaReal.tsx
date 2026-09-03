@@ -16,6 +16,7 @@ import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
 import { AppointmentRescheduleModal, type ReschedulePreset } from '../components/AppointmentRescheduleModal';
 import { AppointmentFinderPanel } from '../components/AppointmentFinderPanel';
 import { WaitlistPanel } from '../components/WaitlistPanel';
+import { isOperationalRole } from '../lib/permissions';
 
 const DAY_START = 7 * 60;
 const DAY_END = 19 * 60;
@@ -106,7 +107,7 @@ export function AgendaReal() {
   const labelSlots = useMemo(() => gridSlots.filter((minute) => minute % 60 === 0), [gridSlots]);
   const todayIso = format(new Date(), 'yyyy-MM-dd');
   const roomsForFilter = useMemo(() => rooms.filter((room) => unitFilter === 'all' || room.unidadeId === unitFilter), [rooms, unitFilter]);
-  const canDrag = (appointment: Appointment) => (user?.role === 'admin' || user?.role === 'recep') && ['agendado', 'confirmado'].includes(appointment.status);
+  const canDrag = (appointment: Appointment) => isOperationalRole(user?.role) && ['agendado', 'confirmado'].includes(appointment.status);
 
   useEffect(() => {
     if (roomFilter !== 'all' && !roomsForFilter.some((room) => room.id === roomFilter)) setRoomFilter('all');
@@ -284,7 +285,7 @@ export function AgendaReal() {
         </div>
       </Reveal>
 
-      {(user?.role === 'admin' || user?.role === 'recep') && view !== 'mes' && <p className="font-mono text-[10px] text-fog">Dica: arraste atendimentos agendados ou confirmados para outro horário. Nada é salvo antes da confirmação da remarcação.</p>}
+      {isOperationalRole(user?.role) && view !== 'mes' && <p className="font-mono text-[10px] text-fog">Dica: arraste atendimentos agendados ou confirmados para outro horário. Nada é salvo antes da confirmação da remarcação.</p>}
 
       <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={fisios} defaultFisioId={fisioFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
