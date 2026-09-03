@@ -6,6 +6,7 @@ import { useApp } from '../../lib/store';
 import { STATUS_META } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
+import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 export function ClinicianDashboard() {
   const { user, appointments, patients, evolutions, patientPackages, packages } = useApp();
@@ -65,24 +66,18 @@ export function ClinicianDashboard() {
           <h1 className="font-display text-3xl font-bold tracking-tight">Olá, {user?.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ')[0]}</h1>
           <p className="text-fog text-[13px] mt-0.5">{format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · visão clínica do dia</p>
         </div>
-        <Link to="/hoje" className="ml-auto font-mono text-[11px] text-mint hover:text-paper transition-colors">Minha fila de hoje →</Link>
+        <div className="ml-auto"><DashboardQuickActions actions={[{ label: 'Minha fila de hoje', to: '/hoje', primary: true }, { label: 'Agenda completa', to: '/agenda' }]} /></div>
       </div>
     </Reveal>
 
     <Reveal delay={60}>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">
-        {[
-          { label: 'Sessões hoje', value: todayAppointments.length, sub: next ? `próxima às ${next.inicio.slice(0, 5)}` : 'sem próxima pendente', tone: 'text-paper' },
-          { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', tone: 'text-mint' },
-          { label: 'Em atendimento', value: inService, sub: 'agora', tone: inService ? 'text-aqua' : 'text-fog' },
-          { label: 'Finalizados', value: finished, sub: 'no dia', tone: 'text-mint' },
-          { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', tone: missingEvolution.length ? 'text-amber' : 'text-mint' },
-        ].map((item) => <div key={item.label} className="bg-panel px-5 py-4">
-          <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog">{item.label}</p>
-          <p className={`font-display text-[26px] font-bold leading-tight mt-1 ${item.tone}`}>{item.value}</p>
-          <p className="font-mono text-[10.5px] text-fog/80 mt-0.5">{item.sub}</p>
-        </div>)}
-      </div>
+      <DashboardMetricGrid items={[
+        { label: 'Sessões hoje', value: todayAppointments.length, sub: next ? `próxima às ${next.inicio.slice(0, 5)}` : 'sem próxima pendente', to: '/agenda' },
+        { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', tone: 'text-mint', to: '/hoje' },
+        { label: 'Em atendimento', value: inService, sub: 'agora', tone: inService ? 'text-aqua' : 'text-fog', to: '/hoje' },
+        { label: 'Finalizados', value: finished, sub: 'no dia', tone: 'text-mint', to: '/agenda' },
+        { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', tone: missingEvolution.length ? 'text-amber' : 'text-mint', to: '/hoje' },
+      ]} />
     </Reveal>
 
     <div className="grid xl:grid-cols-[1.35fr_1fr] gap-4 items-start">

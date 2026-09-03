@@ -7,6 +7,7 @@ import { STATUS_META, fmtBRL } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
 import { buildChurnRiskList } from '../../lib/churnRisk';
+import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 type ActionItem = {
   icon: string;
@@ -70,28 +71,21 @@ export function ReceptionDashboard() {
               {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · central operacional da recepção
             </p>
           </div>
-          <Chip className={`ml-auto ${unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}`}>
-            {unit ? unit.nome : 'Todas as unidades'}
-          </Chip>
+          <div className="ml-auto flex flex-col items-end gap-2">
+            <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>{unit ? unit.nome : 'Todas as unidades'}</Chip>
+            <DashboardQuickActions actions={[{ label: 'Abrir agenda', to: '/agenda', primary: true }, { label: 'Pacientes', to: '/pacientes' }, { label: 'Mensagens', to: '/mensagens' }]} />
+          </div>
         </div>
       </Reveal>
 
       <Reveal delay={60}>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">
-          {[
-            { label: 'Agenda hoje', value: todayAppointments.length, sub: 'atendimentos previstos', tone: 'text-paper' },
-            { label: 'A confirmar', value: operational.pendingConfirmation, sub: 'pedem contato', tone: operational.pendingConfirmation ? 'text-amber' : 'text-mint' },
-            { label: 'Confirmados', value: operational.confirmed, sub: 'presenças esperadas', tone: 'text-mint' },
-            { label: 'Consentimentos', value: operational.pendingConsents, sub: 'pendentes de aceite', tone: operational.pendingConsents ? 'text-amber' : 'text-mint' },
-            { label: 'Cobranças vencidas', value: operational.overdueCount, sub: operational.overdueValue ? fmtBRL(operational.overdueValue) : 'nenhuma pendência', tone: operational.overdueCount ? 'text-pulse' : 'text-mint' },
-          ].map((item) => (
-            <div key={item.label} className="bg-panel px-5 py-4">
-              <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog">{item.label}</p>
-              <p className={`font-display text-[26px] font-bold leading-tight mt-1 ${item.tone}`}>{item.value}</p>
-              <p className="font-mono text-[10.5px] text-fog/80 mt-0.5">{item.sub}</p>
-            </div>
-          ))}
-        </div>
+        <DashboardMetricGrid items={[
+          { label: 'Agenda hoje', value: todayAppointments.length, sub: 'atendimentos previstos', to: '/agenda' },
+          { label: 'A confirmar', value: operational.pendingConfirmation, sub: 'pedem contato', tone: operational.pendingConfirmation ? 'text-amber' : 'text-mint', to: '/mensagens' },
+          { label: 'Confirmados', value: operational.confirmed, sub: 'presenças esperadas', tone: 'text-mint', to: '/hoje' },
+          { label: 'Consentimentos', value: operational.pendingConsents, sub: 'pendentes de aceite', tone: operational.pendingConsents ? 'text-amber' : 'text-mint', to: '/pacientes' },
+          { label: 'Cobranças vencidas', value: operational.overdueCount, sub: operational.overdueValue ? fmtBRL(operational.overdueValue) : 'nenhuma pendência', tone: operational.overdueCount ? 'text-pulse' : 'text-mint', to: '/financeiro' },
+        ]} />
       </Reveal>
 
       <div className="grid xl:grid-cols-[1.4fr_1fr] gap-4 items-start">
