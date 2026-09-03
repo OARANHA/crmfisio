@@ -20,6 +20,13 @@ SELECT
   has_function_privilege('authenticated', 'public.complete_clinic_provisioning(uuid,uuid)', 'EXECUTE') AS authenticated_execute,
   has_function_privilege('service_role', 'public.complete_clinic_provisioning(uuid,uuid)', 'EXECUTE') AS service_role_execute;
 
+SELECT
+  has_table_privilege('service_role', 'public.platform_audit_log', 'SELECT') AS audit_select,
+  has_table_privilege('service_role', 'public.platform_audit_log', 'INSERT') AS audit_insert,
+  has_table_privilege('service_role', 'public.platform_audit_log', 'UPDATE') AS audit_update,
+  has_table_privilege('service_role', 'public.platform_audit_log', 'DELETE') AS audit_delete,
+  has_table_privilege('service_role', 'public.platform_audit_log', 'TRUNCATE') AS audit_truncate;
+
 SELECT count(*) AS active_platform_admins
 FROM public.platform_admins
 WHERE ativo IS TRUE;

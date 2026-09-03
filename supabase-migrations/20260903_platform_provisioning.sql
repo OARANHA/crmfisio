@@ -50,6 +50,7 @@ ALTER TABLE public.platform_audit_log ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.platform_admins FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.clinic_provisioning_requests FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.platform_audit_log FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.platform_audit_log FROM service_role;
 GRANT ALL ON public.platform_admins TO service_role;
 GRANT ALL ON public.clinic_provisioning_requests TO service_role;
 GRANT SELECT, INSERT ON public.platform_audit_log TO service_role;
