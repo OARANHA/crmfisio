@@ -7,6 +7,7 @@ import { STATUS_META, dayOf, fmtBRL, type Appointment, type Patient } from '../l
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
 import { isClinicManager } from '../lib/permissions';
+import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 
 type ClinicalEvaluation = {
   id: string;
@@ -245,7 +246,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
 
   const tabs: { key: Tab; label: string; locked?: boolean }[] = [
     { key: 'resumo', label: 'Resumo clínico' },
-    { key: 'avaliacao', label: `Avaliação & Plano${evaluations.length ? ` (${evaluations.length})` : ''}`, locked: !clinicalRead },
+    { key: 'avaliacao', label: `Avaliações${evaluations.length ? ` (${evaluations.length} legado)` : ''}`, locked: !clinicalRead },
     { key: 'evolucoes', label: `Evoluções (${evolutions.length})`, locked: !clinicalRead },
     { key: 'sessoes', label: `Sessões (${sessions.length})` },
     { key: 'documentos', label: `Documentos (${patientConsents.length})` },
@@ -296,28 +297,35 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
       )}
 
       {tab === 'avaliacao' && clinicalRead && (
-        <Card>
-          <CardHead title="Avaliação clínica & plano terapêutico" sub={clinicalWrite ? 'registro estruturado, pronto para futura assistência por IA' : 'visualização clínica — edição reservada ao profissional assistente'} />
-          {loading ? <div className="p-6 font-mono text-[12px] text-fog">Carregando prontuário…</div> : (
-            <div className="p-5 space-y-5">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="História da condição atual"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.historia} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, historia: e.target.value } }))} /></Field>
-                <Field label="Exame físico / achados"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.exameFisico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, exameFisico: e.target.value } }))} /></Field>
-                <Field label="Cirurgias prévias"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.cirurgias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, cirurgias: e.target.value } }))} /></Field>
-                <Field label="Medicamentos em uso"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.medicamentos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, medicamentos: e.target.value } }))} /></Field>
-                <Field label="Alergias"><Input disabled={!clinicalWrite} value={evaluationDraft.anamnese.alergias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, alergias: e.target.value } }))} /></Field>
-                <Field label="Dor / EVA (0–10)"><Input disabled={!clinicalWrite} value={evaluationDraft.anamnese.eva} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, eva: e.target.value } }))} placeholder="Ex.: 6/10" /></Field>
+        <div className="space-y-4">
+          <ClinicalAssessmentRunner patient={patient} />
+
+          <Card>
+            <CardHead title="Avaliação anterior · compatibilidade" sub={clinicalWrite ? 'fluxo legado preservado durante a transição para modelos versionados' : 'visualização do histórico clínico anterior'} />
+            {loading ? <div className="p-6 font-mono text-[12px] text-fog">Carregando prontuário anterior…</div> : (
+              <div className="p-5 space-y-5">
+                <div className="border border-amber/30 bg-amber/[0.04] rounded-xl p-3 text-[11px] text-amber">
+                  Este formulário permanece disponível temporariamente para não interromper o prontuário existente. Novas avaliações devem preferir os modelos estruturados acima após a migration do Assessment Engine ser validada em staging.
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field label="História da condição atual"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.historia} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, historia: e.target.value } }))} /></Field>
+                  <Field label="Exame físico / achados"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.exameFisico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, exameFisico: e.target.value } }))} /></Field>
+                  <Field label="Cirurgias prévias"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.cirurgias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, cirurgias: e.target.value } }))} /></Field>
+                  <Field label="Medicamentos em uso"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.medicamentos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, medicamentos: e.target.value } }))} /></Field>
+                  <Field label="Alergias"><Input disabled={!clinicalWrite} value={evaluationDraft.anamnese.alergias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, alergias: e.target.value } }))} /></Field>
+                  <Field label="Dor / EVA (0–10)"><Input disabled={!clinicalWrite} value={evaluationDraft.anamnese.eva} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, eva: e.target.value } }))} placeholder="Ex.: 6/10" /></Field>
+                </div>
+                <Field label="Objetivos terapêuticos"><Textarea disabled={!clinicalWrite} value={evaluationDraft.objetivos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, objetivos: e.target.value }))} placeholder="Resultados clínicos esperados e critérios de sucesso." /></Field>
+                <Field label="Plano terapêutico"><Textarea disabled={!clinicalWrite} value={evaluationDraft.planoTerapeutico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, planoTerapeutico: e.target.value }))} placeholder="Frequência, condutas, progressão, reavaliação e critérios de alta." /></Field>
+                <Field label="Observações clínicas"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.observacoes} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, observacoes: e.target.value } }))} /></Field>
+                <div className="flex items-center justify-between border-t border-line pt-4">
+                  <p className="font-mono text-[10.5px] text-fog">Compatibilidade: cada salvamento continua criando uma nova avaliação no modelo anterior.</p>
+                  {clinicalWrite && <Btn variant="ghost" onClick={saveEvaluation} disabled={saving}>{saving ? 'Salvando…' : 'Registrar no modelo anterior'}</Btn>}
+                </div>
               </div>
-              <Field label="Objetivos terapêuticos"><Textarea disabled={!clinicalWrite} value={evaluationDraft.objetivos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, objetivos: e.target.value }))} placeholder="Resultados clínicos esperados e critérios de sucesso." /></Field>
-              <Field label="Plano terapêutico"><Textarea disabled={!clinicalWrite} value={evaluationDraft.planoTerapeutico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, planoTerapeutico: e.target.value }))} placeholder="Frequência, condutas, progressão, reavaliação e critérios de alta." /></Field>
-              <Field label="Observações clínicas"><Textarea disabled={!clinicalWrite} value={evaluationDraft.anamnese.observacoes} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, observacoes: e.target.value } }))} /></Field>
-              <div className="flex items-center justify-between border-t border-line pt-4">
-                <p className="font-mono text-[10.5px] text-fog">Cada salvamento cria uma nova avaliação versionada; o histórico clínico não é sobrescrito.</p>
-                {clinicalWrite && <Btn onClick={saveEvaluation} disabled={saving}>{saving ? 'Salvando…' : 'Registrar avaliação'}</Btn>}
-              </div>
-            </div>
-          )}
-        </Card>
+            )}
+          </Card>
+        </div>
       )}
 
       {tab === 'evolucoes' && clinicalRead && (
