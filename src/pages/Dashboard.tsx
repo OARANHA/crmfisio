@@ -168,7 +168,7 @@ export function Dashboard() {
             {prod.map((p) => (
               <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-ink shrink-0" style={{ background: p.f.cor }}>
+                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.f.cor }}>
                     {p.f.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                   </span>
                   <div className="min-w-0">

@@ -277,7 +277,7 @@ export function AgendaReal() {
         <div className="flex flex-wrap items-end gap-3">
           <div><h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1><p className="text-fog text-[13px] mt-0.5">operação clínica · conflitos, remarcações e recuperação de vagas protegidos</p></div>
           <div className="ml-auto flex flex-wrap gap-2">
-            <div className="flex border border-line">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 font-mono text-[10px] uppercase ${view === item ? 'bg-mint text-ink font-semibold' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
+            <div className="flex rounded-xl border border-line overflow-hidden">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 text-[11px] font-semibold ${view === item ? 'bg-mint text-on-accent' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
             <Btn variant="ghost" onClick={() => moveAnchor(-1)}>←</Btn><Btn variant="ghost" onClick={() => setAnchor(new Date())}>Hoje</Btn><Btn variant="ghost" onClick={() => moveAnchor(1)}>→</Btn>
             <Btn variant="ghost" onClick={() => setFinderOpen((value) => !value)}>Encontrar horário</Btn>
             <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Nova sessão</Btn>

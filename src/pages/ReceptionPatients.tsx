@@ -162,7 +162,7 @@ function ReceptionPatientDetail({ id }: { id: string }) {
         </Link>
         <Card className="mt-2">
           <div className="px-5 py-4 flex flex-wrap items-start gap-4">
-            <span className="w-12 h-12 rounded-full grid place-items-center font-display font-bold text-lg text-ink bg-mint">
+            <span className="w-12 h-12 rounded-full grid place-items-center font-display font-bold text-lg text-on-accent bg-mint">
               {patient.nome.split(' ').map((word) => word[0]).slice(0, 2).join('')}
             </span>
             <div className="min-w-0 flex-1">
