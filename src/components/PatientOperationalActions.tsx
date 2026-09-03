@@ -4,7 +4,7 @@ import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
-import { Btn, Card, CardHead, Chip, Select } from '../lib/ui';
+import { Btn, Chip, Select } from '../lib/ui';
 
 type ConsentTemplate = {
   id: string;
@@ -32,6 +32,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const [consents, setConsents] = useState<ConsentRow[]>([]);
   const [templateId, setTemplateId] = useState('');
   const [busy, setBusy] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
 
   const db = supabase as any;
 
@@ -48,9 +49,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
   };
 
   useEffect(() => {
-    void load().catch((error) => {
-      console.error('[MedicsPro] consentimentos do paciente:', error);
-    });
+    void load().catch((error) => console.error('[MedicsPro] consentimentos do paciente:', error));
   }, [patient.id]);
 
   const pending = useMemo(() => consents.find((c) => !c.assinado && !c.canceled_at), [consents]);
@@ -62,10 +61,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     if (!templateId) return;
     setBusy(true);
     try {
-      const { error } = await db.rpc('create_patient_consent', {
-        p_patient_id: patient.id,
-        p_template_id: templateId,
-      });
+      const { error } = await db.rpc('create_patient_consent', { p_patient_id: patient.id, p_template_id: templateId });
       if (error) throw error;
       await load();
       toast('Consentimento gerado e aguardando aceite do paciente.');
@@ -81,11 +77,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     if (!window.confirm('Confirma que o paciente leu o termo exibido e manifestou aceite?')) return;
     setBusy(true);
     try {
-      const { error } = await db.rpc('accept_patient_consent', {
-        p_consent_id: id,
-        p_ip: null,
-        p_user_agent: navigator.userAgent,
-      });
+      const { error } = await db.rpc('accept_patient_consent', { p_consent_id: id, p_ip: null, p_user_agent: navigator.userAgent });
       if (error) throw error;
       await load();
       await refreshClinicData();
@@ -102,13 +94,10 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     if (!window.confirm('Cancelar este consentimento pendente? O registro ficará preservado como cancelado.')) return;
     setBusy(true);
     try {
-      const { error } = await db.rpc('cancel_patient_consent', {
-        p_consent_id: id,
-        p_reason: 'Substituído por nova versão ou corrigido operacionalmente',
-      });
+      const { error } = await db.rpc('cancel_patient_consent', { p_consent_id: id, p_reason: 'Substituído por nova versão ou corrigido operacionalmente' });
       if (error) throw error;
       await load();
-      toast('Consentimento pendente cancelado. Agora você pode gerar a versão correta.');
+      toast('Consentimento pendente cancelado.');
     } catch (error) {
       console.error('[MedicsPro] cancelar consentimento:', error);
       toast('Não foi possível cancelar o consentimento pendente.', 'warn');
@@ -125,96 +114,71 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     }
   };
 
-  const scheduleNext = () => {
-    nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`);
-  };
-
   const canCollect = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep' || user?.role === 'financeiro';
 
   return (
-    <Card>
-      <CardHead title="Próximas ações" sub="reduz cliques entre prontuário, agenda e documentação" />
-      <div className="p-4 grid lg:grid-cols-2 gap-4">
-        <div className="border border-line bg-deep p-4 flex flex-col gap-3">
-          <div>
-            <p className="font-display font-semibold text-[13.5px]">Continuidade do tratamento</p>
-            <p className="text-[11.5px] text-fog mt-1">Abra a agenda já com este paciente selecionado.</p>
+    <section className="rounded-2xl border border-line/80 bg-panel/80 px-4 py-3.5 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-fog">Ação imediata</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+            <span className="font-semibold text-paper">Continuidade do tratamento</span>
+            <span className="text-fog">Agenda e consentimento sem sair do contexto do paciente.</span>
           </div>
-          <Btn onClick={scheduleNext}>Agendar próxima sessão</Btn>
         </div>
+        <Btn onClick={() => nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`)}>Agendar sessão</Btn>
+        <button
+          type="button"
+          onClick={() => setConsentOpen((value) => !value)}
+          className="inline-flex items-center gap-2 rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:bg-raise hover:text-paper"
+        >
+          Consentimento
+          {signed ? <Chip className="border-mint/30 bg-mint/10 text-mint">assinado</Chip> : <Chip className="border-amber/30 bg-amber/10 text-amber">pendente</Chip>}
+        </button>
+      </div>
 
-        <div className="border border-line bg-deep p-4 space-y-3">
-          <div className="flex items-start gap-2">
-            <div className="flex-1">
-              <p className="font-display font-semibold text-[13.5px]">Consentimento</p>
-              <p className="text-[11.5px] text-fog mt-1">O texto e a versão aceitos ficam preservados no histórico.</p>
-            </div>
-            {signed ? <Chip className="border-mint/40 text-mint">assinado ✓</Chip> : <Chip className="border-amber/40 text-amber">pendente</Chip>}
-          </div>
-
+      {consentOpen && (
+        <div className="mt-4 border-t border-line/70 pt-4">
           {pending ? (
-            <div className="space-y-3">
-              <div className="border border-line/70 p-3">
-                <p className="font-display font-semibold text-[12.5px]">{pending.nome} · v{pending.versao}</p>
-                <p className="text-[11px] text-fog mt-2 whitespace-pre-wrap max-h-28 overflow-auto">{pending.conteudo_snapshot || 'Conteúdo versionado vinculado ao documento.'}</p>
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <p className="font-semibold">{pending.nome} · v{pending.versao}</p>
+                <p className="mt-1 line-clamp-2 text-[12.5px] text-fog">{pending.conteudo_snapshot || 'Documento versionado aguardando aceite.'}</p>
               </div>
-              {canCollect && (
-                <div className="flex flex-wrap gap-2">
-                  <Btn variant="subtle" onClick={() => acceptConsent(pending.id)} disabled={busy}>Registrar aceite</Btn>
-                  <Btn variant="ghost" onClick={() => cancelConsent(pending.id)} disabled={busy}>Cancelar pendência</Btn>
-                </div>
-              )}
+              {canCollect && <div className="flex gap-2"><Btn variant="subtle" onClick={() => acceptConsent(pending.id)} disabled={busy}>Registrar aceite</Btn><Btn variant="ghost" onClick={() => cancelConsent(pending.id)} disabled={busy}>Cancelar</Btn></div>}
             </div>
           ) : signed ? (
             <div className="space-y-3">
-              <div className="border border-mint/25 bg-mint/[0.03] p-3">
-                <p className="font-mono text-[10.5px] text-mint">Último aceite: {signed.nome} · versão {signed.versao}</p>
-                <p className="font-mono text-[9.5px] text-fog mt-1">{signed.data_assinatura ? new Date(signed.data_assinatura).toLocaleString('pt-BR') : 'Data não informada'}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Btn variant="subtle" onClick={() => viewConsent(signed)}>Visualizar documento</Btn>
-                  <Btn variant="ghost" onClick={() => viewConsent(signed)}>Imprimir / salvar PDF</Btn>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{signed.nome} · v{signed.versao}</p>
+                  <p className="mt-1 text-[12.5px] text-fog">Aceito {signed.data_assinatura ? new Date(signed.data_assinatura).toLocaleString('pt-BR') : 'em data não informada'}.</p>
                 </div>
+                <Btn variant="subtle" onClick={() => viewConsent(signed)}>Visualizar</Btn>
               </div>
-              {signedHistory.length > 1 && (
-                <div className="space-y-2">
-                  <p className="font-display font-semibold text-[11.5px]">Histórico de documentos assinados</p>
-                  {signedHistory.map((document) => (
-                    <div key={document.id} className="flex flex-wrap items-center gap-2 border border-line/70 px-3 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] truncate">{document.nome} · v{document.versao}</p>
-                        <p className="font-mono text-[9px] text-fog">{document.data_assinatura ? new Date(document.data_assinatura).toLocaleString('pt-BR') : 'Data não informada'}</p>
-                      </div>
-                      <Btn variant="ghost" onClick={() => viewConsent(document)}>Abrir</Btn>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {signedHistory.length > 1 && <p className="text-[12px] text-fog">{signedHistory.length} versões assinadas preservadas no histórico.</p>}
               {templates.length > 0 && canCollect && (
-                <div className="space-y-2 border-t border-line/60 pt-3">
-                  <p className="text-[10.5px] text-fog">Precisa coletar uma nova versão? Selecione o modelo vigente.</p>
-                  <Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                    {templates.map((t) => <option key={t.id} value={t.id}>{t.nome} · v{t.versao}</option>)}
+                <div className="flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
+                  <Select value={templateId} onChange={(event) => setTemplateId(event.target.value)} className="!w-auto min-w-[260px]">
+                    {templates.map((template) => <option key={template.id} value={template.id}>{template.nome} · v{template.versao}</option>)}
                   </Select>
-                  <Btn variant="ghost" onClick={createConsent} disabled={busy || !templateId}>Gerar nova versão para aceite</Btn>
+                  <Btn variant="ghost" onClick={createConsent} disabled={busy || !templateId}>Gerar nova versão</Btn>
                 </div>
               )}
             </div>
           ) : templates.length === 0 ? (
-            <p className="font-mono text-[10.5px] text-amber">Nenhum modelo ativo. O administrador deve criar um em Configurações.</p>
+            <p className="text-[12.5px] text-amber">Nenhum modelo ativo de consentimento.</p>
           ) : (
-            <div className="space-y-2">
-              <Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                {templates.map((t) => <option key={t.id} value={t.id}>{t.nome} · v{t.versao}</option>)}
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={templateId} onChange={(event) => setTemplateId(event.target.value)} className="!w-auto min-w-[280px]">
+                {templates.map((template) => <option key={template.id} value={template.id}>{template.nome} · v{template.versao}</option>)}
               </Select>
               {canCollect && <Btn variant="subtle" onClick={createConsent} disabled={busy || !templateId}>{busy ? 'Processando…' : 'Gerar consentimento'}</Btn>}
             </div>
           )}
-
-          {canceled.length > 0 && (
-            <p className="font-mono text-[9.5px] text-fog">Histórico: {canceled.length} consentimento(s) cancelado(s) preservado(s).</p>
-          )}
+          {canceled.length > 0 && <p className="mt-3 text-[11.5px] text-fog">{canceled.length} consentimento(s) cancelado(s) preservado(s).</p>}
         </div>
-      </div>
-    </Card>
+      )}
+    </section>
   );
 }
