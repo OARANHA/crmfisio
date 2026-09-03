@@ -89,22 +89,22 @@ export const IconMoon = ({ className }: IP) => (
 
 export function Chip({ className = '', children }: { className?: string; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium text-[11px] leading-4 ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-deep/35 px-2.5 py-1 font-medium text-[12px] leading-4 ${className}`}>
       {children}
     </span>
   );
 }
 
 export function Card({ className = '', children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}>{children}</div>;
+  return <div className={`rounded-[18px] border border-line/75 bg-panel shadow-[0_8px_30px_rgba(0,0,0,0.08)] ${className}`}>{children}</div>;
 }
 
 export function CardHead({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-line">
-      <div>
-        <h3 className="font-display font-semibold text-[15px] leading-tight">{title}</h3>
-        {sub && <p className="text-[12px] text-fog mt-1">{sub}</p>}
+    <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b border-line/60">
+      <div className="min-w-0">
+        <h3 className="font-display font-semibold text-[16px] leading-[1.25] tracking-[-0.015em]">{title}</h3>
+        {sub && <p className="text-[13px] leading-relaxed text-fog mt-1.5">{sub}</p>}
       </div>
       {right}
     </div>
@@ -114,12 +114,12 @@ export function CardHead({ title, sub, right }: { title: string; sub?: string; r
 export function Btn({
   variant = 'primary', className = '', children, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' | 'subtle' }) {
-  const base = 'inline-flex items-center justify-center gap-2 rounded-xl font-display font-semibold text-[13px] px-4 py-2.5 transition-all active:translate-y-px disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40';
+  const base = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl font-display font-semibold text-[13.5px] px-4 py-2.5 transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:translate-y-px disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/35';
   const v =
-    variant === 'primary' ? 'bg-mint text-on-accent hover:brightness-105'
-    : variant === 'danger' ? 'bg-pulse text-on-accent hover:brightness-105'
-    : variant === 'subtle' ? 'bg-raise text-paper border border-line hover:border-line2'
-    : 'border border-line text-fog hover:text-paper hover:border-line2';
+    variant === 'primary' ? 'bg-mint text-on-accent shadow-[0_4px_16px_rgba(0,0,0,0.10)] hover:brightness-[1.04]'
+    : variant === 'danger' ? 'bg-pulse text-on-accent hover:brightness-[1.04]'
+    : variant === 'subtle' ? 'bg-raise/75 text-paper border border-line/70 hover:bg-raise hover:border-line2'
+    : 'border border-line/70 bg-transparent text-fog hover:text-paper hover:bg-raise/45 hover:border-line2';
   return <button className={`${base} ${v} ${className}`} {...rest}>{children}</button>;
 }
 
@@ -135,49 +135,49 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
-      <div className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-2xl border border-line2 bg-panel shadow-2xl my-auto rv is-in overflow-hidden`}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-          <h3 className="font-display font-semibold text-[15px]">{title}</h3>
-          <button onClick={onClose} className="text-fog hover:text-paper transition-colors" aria-label="Fechar">
+      <div className="fixed inset-0 bg-black/55 backdrop-blur-[4px]" onClick={onClose} />
+      <div className={`relative w-full ${wide ? 'max-w-4xl' : 'max-w-xl'} rounded-[20px] border border-line2/80 bg-panel shadow-[0_28px_90px_rgba(0,0,0,0.38)] my-auto rv is-in overflow-hidden`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line/60">
+          <h3 className="font-display font-semibold text-[16px] tracking-[-0.015em]">{title}</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-fog hover:text-paper hover:bg-raise/60 transition-colors" aria-label="Fechar">
             <IconX className="w-4.5 h-4.5" />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-6 py-5">{children}</div>
       </div>
     </div>
   );
 }
 
-const fieldCls = 'w-full rounded-xl bg-deep border border-line px-3.5 py-2.5 text-[13.5px] text-paper placeholder:text-fog/50 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/10 transition-colors';
+const fieldCls = 'w-full min-h-11 rounded-xl bg-deep/80 border border-line/75 px-3.5 py-2.5 text-[14px] leading-5 text-paper placeholder:text-fog/45 focus:outline-none focus:border-mint/55 focus:ring-3 focus:ring-mint/10 transition-[border-color,box-shadow,background-color]';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="block text-[11.5px] font-semibold text-fog mb-1.5">{label}</span>
+      <span className="block text-[12.5px] leading-5 font-semibold text-fog mb-1.5">{label}</span>
       {children}
-      {hint && <span className="block font-mono text-[10.5px] text-fog/70 mt-1">{hint}</span>}
+      {hint && <span className="block text-[11.5px] leading-relaxed text-fog/75 mt-1.5">{hint}</span>}
     </label>
   );
 }
 export const Input = (p: React.InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={`${fieldCls} ${p.className ?? ''}`} />;
 export const Select = (p: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...p} className={`${fieldCls} ${p.className ?? ''}`} />;
-export const Textarea = (p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...p} className={`${fieldCls} min-h-[90px] ${p.className ?? ''}`} />;
+export const Textarea = (p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...p} className={`${fieldCls} min-h-[104px] resize-y ${p.className ?? ''}`} />;
 
-export function Bar({ pct, color = '#4fd1a5', className = '' }: { pct: number; color?: string; className?: string }) {
+export function Bar({ pct, color = '#67d5b2', className = '' }: { pct: number; color?: string; className?: string }) {
   return (
-    <div className={`h-1.5 bg-deep border border-line overflow-hidden ${className}`}>
-      <div className="h-full bar-anim" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
+    <div className={`h-1.5 rounded-full bg-deep/70 overflow-hidden ${className}`}>
+      <div className="h-full rounded-full bar-anim" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
     </div>
   );
 }
 
 export function Empty({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line2 bg-deep/40 px-6 py-10 text-center">
-      <p className="font-display font-semibold text-[15px] text-paper/80">{title}</p>
-      {sub && <p className="font-mono text-[11.5px] text-fog mt-1.5">{sub}</p>}
-      {action && <div className="mt-4 flex justify-center">{action}</div>}
+    <div className="rounded-[18px] border border-dashed border-line2/70 bg-deep/30 px-6 py-10 text-center">
+      <p className="font-display font-semibold text-[16px] text-paper/85">{title}</p>
+      {sub && <p className="text-[12.5px] leading-relaxed text-fog mt-2 max-w-xl mx-auto">{sub}</p>}
+      {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );
 }
