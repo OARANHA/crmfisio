@@ -1,3 +1,4 @@
+import { AssessmentTemplatesAdmin } from '../components/AssessmentTemplatesAdmin';
 import { ConsentTemplatesAdmin } from '../components/ConsentTemplatesAdmin';
 import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
@@ -8,6 +9,7 @@ export function ConfigPremium() {
     <div className="space-y-6">
       <InfrastructureAdmin />
       <TeamAdmin />
+      <AssessmentTemplatesAdmin />
       <ConsentTemplatesAdmin />
       <Config />
     </div>
