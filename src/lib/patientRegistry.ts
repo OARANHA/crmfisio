@@ -34,9 +34,9 @@ export const isMinorBirthDate = (birthDate: string, referenceDate = new Date()):
   if (!birthDate) return false;
   const birth = new Date(`${birthDate}T12:00:00`);
   if (Number.isNaN(birth.getTime())) return false;
-  const adultDate = new Date(birth);
-  adultDate.setFullYear(adultDate.getFullYear() + 18);
-  return referenceDate < adultDate;
+  const adultDate = new Date(birth.getFullYear() + 18, birth.getMonth(), birth.getDate(), 12, 0, 0, 0);
+  const referenceDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate(), 12, 0, 0, 0);
+  return referenceDay < adultDate;
 };
 
 export async function createPatientRegistry(input: PatientRegistryInput): Promise<string> {
