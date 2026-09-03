@@ -16,7 +16,7 @@ const DAY_LABEL: Record<number, string> = {
 const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 
 export function AppointmentSeriesManager() {
-  const { user, users, patients, appointments, toast } = useApp();
+  const { user, users, patients, appointments, refreshClinicData, toast } = useApp();
   const [series, setSeries] = useState<AppointmentSeriesSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -64,8 +64,7 @@ export function AppointmentSeriesManager() {
       toast(`Série cancelada. ${cancelled} sessão(ões) futura(s) cancelada(s).`);
       setCancellingId(null);
       setReason('Tratamento interrompido ou replanejado');
-      await load();
-      window.setTimeout(() => window.location.reload(), 350);
+      await Promise.all([load(), refreshClinicData()]);
     } catch (error) {
       console.error('[MedicsPro] cancelar série recorrente:', error);
       toast('Não foi possível cancelar a série recorrente.', 'warn');

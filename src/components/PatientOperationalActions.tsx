@@ -26,7 +26,7 @@ type ConsentRow = {
 };
 
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
-  const { user, toast } = useApp();
+  const { user, refreshClinicData, toast } = useApp();
   const nav = useNavigate();
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
   const [consents, setConsents] = useState<ConsentRow[]>([]);
@@ -88,8 +88,8 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
       });
       if (error) throw error;
       await load();
+      await refreshClinicData();
       toast('Aceite registrado com data, usuário e versão do termo.');
-      window.setTimeout(() => window.location.reload(), 450);
     } catch (error) {
       console.error('[MedicsPro] aceitar consentimento:', error);
       toast('Não foi possível registrar o aceite.', 'warn');

@@ -28,7 +28,7 @@ const REOPEN_REASONS = [
 ];
 
 export function PatientJourneyControl({ patient }: { patient: Patient }) {
-  const { user, toast } = useApp();
+  const { user, refreshClinicData, toast } = useApp();
   const [action, setAction] = useState<JourneyAction | null>(null);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -120,8 +120,8 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
         ? 'Tratamento reaberto; a alta anterior foi preservada no histórico.'
         : `Paciente movido para ${STAGE_META[action.to].label}.`);
 
+    await refreshClinicData();
     close();
-    window.setTimeout(() => window.location.reload(), 300);
   };
 
   return (
