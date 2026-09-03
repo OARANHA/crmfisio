@@ -36,7 +36,7 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 };
 
 export function AgendaReal() {
-  const { user, users, patients, appointments, addAppointment, setAppointmentStatus, toast } = useApp();
+  const { user, users, patients, appointments, addAppointment, setAppointmentStatus, refreshClinicData, toast } = useApp();
   const nav = useNavigate();
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<View>('semana');
@@ -165,7 +165,7 @@ export function AgendaReal() {
     setSelected({ ...selected, status });
   };
 
-  const reloadAgenda = () => window.setTimeout(() => window.location.reload(), 350);
+  const refreshAgenda = () => { void refreshClinicData().catch((error) => console.error('[MedicsPro] atualizar agenda:', error)); };
   const moveAnchor = (direction: -1 | 1) => {
     if (view === 'mes') setAnchor((date) => addMonths(date, direction));
     else if (view === 'semana') setAnchor((date) => addDays(date, direction * 7));
@@ -179,7 +179,7 @@ export function AgendaReal() {
       await cancelAppointmentWithReason(cancelling.id, reason);
       toast('Sessão cancelada e motivo registrado.');
       setCancelling(null);
-      reloadAgenda();
+      await refreshClinicData();
     } catch (error) {
       console.error('[MedicsPro] cancelamento operacional:', error);
       toast('Não foi possível cancelar a sessão.', 'warn');
@@ -194,7 +194,7 @@ export function AgendaReal() {
       toast('Sessão remarcada com histórico preservado.');
       setRescheduling(null);
       setReschedulePreset(null);
-      reloadAgenda();
+      await refreshClinicData();
     } catch (error) {
       console.error('[MedicsPro] remarcação operacional:', error);
       toast('Não foi possível remarcar a sessão.', 'warn');
@@ -301,7 +301,7 @@ export function AgendaReal() {
 
       {!loadingInfra && rooms.length === 0 && <div className="border border-amber/40 bg-amber/[0.05] p-4 text-[12.5px] text-amber">A agenda ainda não possui sala/recurso real. Um administrador deve cadastrar a estrutura em Configurações → Estrutura da clínica.</div>}
       <Reveal delay={80}><div className="flex flex-wrap gap-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="font-mono text-[10.5px] text-fog flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
-      {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
+      {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={refreshAgenda} />}
 
       <Reveal delay={120}>{view === 'mes' ? (
         <Card className="overflow-hidden"><div className="grid grid-cols-7 border-b border-line">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="px-2 py-2 text-center font-mono text-[10px] uppercase text-fog border-l border-line/60 first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
