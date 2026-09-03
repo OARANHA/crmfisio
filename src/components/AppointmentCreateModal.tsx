@@ -32,7 +32,7 @@ interface Props {
 }
 
 export function AppointmentCreateModal({ creating, onClose, rooms, unidades, prefillPatientId, onSave }: Props) {
-  const { user, users, patients, appointments } = useApp();
+  const { user, users, patients, appointments, patientPackages, packages } = useApp();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [pacienteId, setPacienteId] = useState('');
   const [fisioId, setFisioId] = useState(user?.role === 'fisio' ? user.id : '');
@@ -43,6 +43,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   const [hora, setHora] = useState('08:00');
   const [duracao, setDuracao] = useState(50);
   const [valor, setValor] = useState(120);
+  const [pacoteId, setPacoteId] = useState('');
   const [isFitIn, setIsFitIn] = useState(false);
   const [key, setKey] = useState('');
 
@@ -55,6 +56,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
     setDia(creating.dia);
     setHora(creating.hora);
     setPacienteId(creating.patientId ?? prefillPatientId ?? '');
+    setPacoteId('');
     const initialRoomId = creating.roomId ?? '';
     const initialRoom = rooms.find((r) => r.id === initialRoomId);
     const firstUnit = initialRoom?.unidadeId ?? unidades[0]?.id ?? '';
@@ -67,6 +69,9 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
 
   const fim = toHHMM(toMin(hora) + duracao);
   const availableRooms = rooms.filter((r) => !unitId || r.unidadeId === unitId);
+  const availablePackages = patientPackages.filter((item) =>
+    item.pacienteId === pacienteId && item.status === 'ativo' && item.sessoesUsadas < item.sessoesTotais
+  );
   const conflicts = useMemo(() => {
     if (!pacienteId || !fisioId || !roomId || !dia || !hora) return [];
     return findAppointmentConflicts(appointments, {
@@ -95,7 +100,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
       status: 'agendado',
       tipo,
       valor: Math.round(valor * 100),
-      pacoteId: null,
+      pacoteId: pacoteId || null,
       serieId: null,
       notas: '',
       isFitIn,
@@ -112,9 +117,19 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
 
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Paciente">
-          <Select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)}>
+          <Select value={pacienteId} onChange={(e) => { setPacienteId(e.target.value); setPacoteId(''); }}>
             <option value="">Selecionar…</option>
             {patients.filter((p) => p.status !== 'alta' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </Select>
+        </Field>
+        <Field label="Cobrança / pacote">
+          <Select value={pacoteId} onChange={(e) => setPacoteId(e.target.value)}>
+            <option value="">Atendimento avulso — cobrar ao finalizar</option>
+            {availablePackages.map((item) => {
+              const catalog = packages.find((entry) => entry.id === item.pacoteId);
+              const remaining = item.sessoesTotais - item.sessoesUsadas;
+              return <option key={item.id} value={item.id}>{catalog?.nome ?? 'Pacote'} · {remaining} sessão(ões)</option>;
+            })}
           </Select>
         </Field>
         <Field label="Profissional">

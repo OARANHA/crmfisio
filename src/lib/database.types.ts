@@ -278,6 +278,7 @@ export interface Database {
           id: string
           clinic_id: string
           patient_id: string | null
+          appointment_id: string | null
           tipo: 'receber' | 'pagar'
           descricao: string
           categoria: string
@@ -293,6 +294,7 @@ export interface Database {
           id?: string
           clinic_id: string
           patient_id?: string | null
+          appointment_id?: string | null
           tipo: 'receber' | 'pagar'
           descricao: string
           categoria: string
@@ -308,6 +310,7 @@ export interface Database {
           id?: string
           clinic_id?: string
           patient_id?: string | null
+          appointment_id?: string | null
           tipo?: 'receber' | 'pagar'
           descricao?: string
           categoria?: string
