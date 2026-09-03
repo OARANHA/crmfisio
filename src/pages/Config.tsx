@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
 import { ROLE_META, maskCpf, type Access, type ModuleKey, type Role } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Select } from '../lib/ui';
 import { IconLock, IconShield, IconCheck, IconX, IconEye, IconDb } from '../components/icons';
 import { Reveal } from '../components/Reveal';
 import { ACCESS_MATRIX, ROLES } from '../lib/permissions';
+import { auditText, auditTimestamp } from '../lib/auditDisplay';
 
 const RBAC_ROWS: { module: string; key: ModuleKey }[] = [
   { module: 'Dashboard', key: 'dashboard' },
@@ -255,18 +254,20 @@ export function Config() {
             />
             <ul className="divide-y divide-line/70 max-h-[640px] overflow-y-auto">
               {audit.map((e) => {
+                const action = auditText(e.acao, 'AÇÃO NÃO INFORMADA');
+                const detail = auditText(e.detalhe, 'Sem detalhes');
                 const acaoCls =
-                  e.acao.includes('ANONIMIZACAO') ? 'border-pulse/40 text-pulse'
-                  : e.acao.includes('EXPORTACAO') ? 'border-aqua/40 text-aqua'
-                  : e.acao.includes('ASSINATURA') || e.acao.includes('LOGIN') ? 'border-mint/40 text-mint'
+                  action.includes('ANONIMIZACAO') ? 'border-pulse/40 text-pulse'
+                  : action.includes('EXPORTACAO') ? 'border-aqua/40 text-aqua'
+                  : action.includes('ASSINATURA') || action.includes('LOGIN') ? 'border-mint/40 text-mint'
                   : 'border-amber/40 text-amber';
                 return (
                   <li key={e.id} className="px-5 py-3 flex flex-wrap items-center gap-3 hover:bg-raise/40 transition-colors">
                     <span className="font-mono text-[10.5px] text-fog tabular-nums w-32 shrink-0">
-                      {format(new Date(e.ts), "dd/MM HH:mm:ss", { locale: ptBR })}
+                      {auditTimestamp(e.ts)}
                     </span>
-                    <Chip className={acaoCls}>{e.acao}</Chip>
-                    <span className="text-[12.5px] flex-1 min-w-[200px]">{e.detalhe}</span>
+                    <Chip className={acaoCls}>{action}</Chip>
+                    <span className="text-[12.5px] flex-1 min-w-[200px] break-words">{detail}</span>
                     <span className="font-mono text-[10.5px] text-fog">{userName(users, e.usuarioId)}</span>
                   </li>
                 );
