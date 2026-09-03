@@ -24,11 +24,11 @@ export function Dashboard() {
     const prodMes = appointments.filter((a) => a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
     const producao = prodMes.reduce((s, a) => s + a.valor, 0);
     const aReceber = transactions.filter((t) => t.tipo === 'receber' && t.status !== 'pago').reduce((s, t) => s + t.valor, 0);
-    const faltas = appointments.filter((a) => a.status === 'faltou' && inUnit(a)).length;
+    const faltas = appointments.filter((a) => a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
     const realizadas = prodMes.length;
     const comparecimento = realizadas + faltas > 0 ? Math.round((realizadas / (realizadas + faltas)) * 100) : 100;
     const novos = patients.filter((p) => p.createdAt.startsWith(mes) && !p.anonimizado).length;
-    const notas = surveys.filter((s) => s.nota !== null).map((s) => s.nota as number);
+    const notas = surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number);
     const nps = notas.length ? Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10 : 0;
     return { producao, aReceber, comparecimento, novos, nps, realizadas, faltas };
   }, [appointments, transactions, patients, surveys, mes, inUnit]);
@@ -95,7 +95,7 @@ export function Dashboard() {
             { l: 'A receber', v: Math.round(k.aReceber / 100), s: '', pre: 'R$ ', c: 'text-amber', sub: 'consolidado da clínica' },
             { l: 'Comparecimento', v: k.comparecimento, s: '%', pre: '', c: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}` },
             { l: 'Novos pacientes', v: k.novos, s: '', pre: '', c: 'text-aqua', sub: 'consolidado da clínica · mês corrente' },
-            { l: 'NPS médio', v: 0, s: '', pre: '', c: 'text-paper', sub: `consolidado · nota ${k.nps.toLocaleString('pt-BR')} / 10`, plain: k.nps },
+            { l: 'NPS médio', v: 0, s: '', pre: '', c: 'text-paper', sub: `consolidado da clínica · mês corrente · nota ${k.nps.toLocaleString('pt-BR')} / 10`, plain: k.nps },
           ].map((x) => (
             <div key={x.l} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
               <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog">{x.l}</p>
