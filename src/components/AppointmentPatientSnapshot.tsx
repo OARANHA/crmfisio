@@ -16,7 +16,7 @@ export function AppointmentPatientSnapshot({ patient, appointment, appointments,
   const nextVisit = future[0];
 
   return (
-    <div className="border border-line bg-deep/50 p-3 space-y-3">
+    <div className="space-y-3 rounded-xl border border-line bg-deep/50 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-mono text-[9px] uppercase text-fog">Resumo rápido do paciente</p>
@@ -28,20 +28,20 @@ export function AppointmentPatientSnapshot({ patient, appointment, appointments,
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="border border-line/70 p-2">
-          <span className="block font-mono text-[8.5px] uppercase text-fog">Última visita</span>
+        <div className="rounded-lg border border-line/70 p-2">
+          <span className="block text-[8.5px] font-semibold uppercase tracking-wide text-fog">Última visita</span>
           {lastVisit ?? '—'}
         </div>
-        <div className="border border-line/70 p-2">
-          <span className="block font-mono text-[8.5px] uppercase text-fog">Próxima sessão</span>
+        <div className="rounded-lg border border-line/70 p-2">
+          <span className="block text-[8.5px] font-semibold uppercase tracking-wide text-fog">Próxima sessão</span>
           {nextVisit ? `${nextVisit.data} · ${nextVisit.inicio}` : 'Nenhuma'}
         </div>
-        <div className="border border-line/70 p-2">
-          <span className="block font-mono text-[8.5px] uppercase text-fog">Sessões finalizadas</span>
+        <div className="rounded-lg border border-line/70 p-2">
+          <span className="block text-[8.5px] font-semibold uppercase tracking-wide text-fog">Sessões finalizadas</span>
           {completed.length}
         </div>
-        <div className="border border-line/70 p-2">
-          <span className="block font-mono text-[8.5px] uppercase text-fog">Confirmação WhatsApp</span>
+        <div className="rounded-lg border border-line/70 p-2">
+          <span className="block text-[8.5px] font-semibold uppercase tracking-wide text-fog">Confirmação WhatsApp</span>
           {appointmentWhatsappLabel(whatsapp)}
         </div>
       </div>
