@@ -11,6 +11,7 @@ import { RevenueRecovery } from '../components/RevenueRecovery';
 import { OperationalHealthCard } from '../components/dashboards/OperationalHealthCard';
 import { RecoveryImpactCard } from '../components/dashboards/RecoveryImpactCard';
 import { buildChurnRiskList } from '../lib/churnRisk';
+import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
   const { user, appointments, transactions, patients, patientPackages, surveys, consents, users, unidadeSel, unidades } = useApp();
@@ -82,31 +83,23 @@ export function Dashboard() {
               {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · visão do gestor
             </p>
           </div>
-          <Chip className={`ml-auto ${unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}`}>
-            {unidade ? unidade.nome : 'Consolidado · todas as unidades'}
-          </Chip>
+          <div className="ml-auto flex flex-col items-end gap-2">
+            <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>
+              {unidade ? unidade.nome : 'Consolidado · todas as unidades'}
+            </Chip>
+            <DashboardQuickActions actions={[{ label: 'Abrir agenda', to: '/agenda', primary: true }, { label: 'Pacientes', to: '/pacientes' }, { label: 'Financeiro', to: '/financeiro' }]} />
+          </div>
         </div>
       </Reveal>
 
       <Reveal delay={70}>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">
-          {[
-            { l: 'Produção do mês', v: Math.round(k.producao / 100), s: '', pre: 'R$ ', c: 'text-mint', sub: `${k.realizadas} sessões finalizadas${unidade ? ' · unidade selecionada' : ''}` },
-            { l: 'A receber', v: Math.round(k.aReceber / 100), s: '', pre: 'R$ ', c: 'text-amber', sub: 'consolidado da clínica' },
-            { l: 'Comparecimento', v: k.comparecimento, s: '%', pre: '', c: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}` },
-            { l: 'Novos pacientes', v: k.novos, s: '', pre: '', c: 'text-aqua', sub: 'consolidado da clínica · mês corrente' },
-            { l: 'NPS médio', v: 0, s: '', pre: '', c: 'text-paper', sub: `consolidado da clínica · mês corrente · nota ${k.nps.toLocaleString('pt-BR')} / 10`, plain: k.nps },
-          ].map((x) => (
-            <div key={x.l} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
-              <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog">{x.l}</p>
-              <p className={`font-display text-[26px] font-bold leading-tight mt-1 ${x.c}`}>
-                {x.pre}
-                {x.plain !== undefined ? x.plain.toLocaleString('pt-BR') : <CountUp to={x.v} suffix={x.s} />}
-              </p>
-              <p className="font-mono text-[10.5px] text-fog/80 mt-0.5">{x.sub}</p>
-            </div>
-          ))}
-        </div>
+        <DashboardMetricGrid items={[
+          { label: 'Produção do mês', value: <>R$ <CountUp to={Math.round(k.producao / 100)} /></>, tone: 'text-mint', sub: `${k.realizadas} sessões finalizadas${unidade ? ' · unidade selecionada' : ''}`, to: '/relatorios' },
+          { label: 'A receber', value: <>R$ <CountUp to={Math.round(k.aReceber / 100)} /></>, tone: 'text-amber', sub: 'consolidado da clínica', to: '/financeiro' },
+          { label: 'Comparecimento', value: <CountUp to={k.comparecimento} suffix="%" />, tone: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}`, to: '/agenda' },
+          { label: 'Novos pacientes', value: <CountUp to={k.novos} />, tone: 'text-aqua', sub: 'consolidado da clínica · mês corrente', to: '/pacientes' },
+          { label: 'NPS médio', value: k.nps.toLocaleString('pt-BR'), sub: `nota média de 0 a 10 · mês corrente`, to: '/relatorios' },
+        ]} />
       </Reveal>
 
       <Reveal delay={95}>
