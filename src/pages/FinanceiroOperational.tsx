@@ -31,7 +31,7 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 export function FinanceiroOperational() {
   const {
     user, access, transactions, setTxStatus, patientPackages, patients, packages,
-    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, toast,
+    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, refreshClinicData, toast,
   } = useApp();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);
@@ -232,7 +232,7 @@ export function FinanceiroOperational() {
       {packageModal && <PackageCatalogModal initial={packageModal === 'new' ? null : packageModal} onClose={() => setPackageModal(null)} onSaved={async () => { setPackageModal(null); await refreshPackages(); toast('Catálogo de pacotes atualizado.'); }} />}
       {transactionModal && <TransactionModal tipo={transactionModal} patients={patients} onClose={() => setTransactionModal(null)} onSave={(transaction) => { addTransaction(transaction); setTransactionModal(null); }} />}
       {settling && <SettleTransactionModal transaction={settling} onClose={() => setSettling(null)} onConfirm={(method) => { setTxStatus(settling.id, 'pago', method); setSettling(null); }} />}
-      {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={() => { toast(sellModal.renewedFromId ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); window.location.reload(); }} />}
+      {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={async () => { const renewed = Boolean(sellModal.renewedFromId); setSellModal(null); await Promise.all([refreshClinicData(), refreshPackages()]); toast(renewed ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); }} />}
       {repasse && <RepasseModal onClose={() => setRepasse(false)} />}
     </div>
   );
@@ -307,7 +307,7 @@ function PackageCatalogModal({ initial, onClose, onSaved }: { initial: PackageCa
   </Modal>;
 }
 
-function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { initial: { patientId?: string; renewedFromId?: string; packageId?: string }; catalog: PackageCatalogItem[]; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSaved: () => void }) {
+function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { initial: { patientId?: string; renewedFromId?: string; packageId?: string }; catalog: PackageCatalogItem[]; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSaved: () => Promise<void> }) {
   const [patientId, setPatientId] = useState(initial.patientId ?? '');
   const [packageId, setPackageId] = useState(initial.packageId ?? '');
   const [dueDate, setDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -321,7 +321,7 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
     setSaving(true);
     try {
       await sellSessionPackage({ patientId, packageId, dueDate, paymentStatus: status, paymentMethod: status === 'pago' ? method : null, renewedFromId: initial.renewedFromId ?? null });
-      onSaved();
+      await onSaved();
     } finally { setSaving(false); }
   };
 
