@@ -39,6 +39,7 @@ interface AppState {
   setUnidadeSel: (v: string) => void;
   rooms: Room[];
   refreshInfrastructure: () => Promise<void>;
+  refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
   patients: Patient[];
@@ -104,6 +105,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setToasts((t) => [...t.slice(-3), { id, msg, kind }]);
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4400);
   }, []);
+
+  const refreshClinicData = useCallback(async () => {
+    if (!user?.id) return;
+    const data = await loadClinicData(user.id);
+    const infrastructure = await loadInfrastructure(data.clinicId);
+    setClinicId(data.clinicId);
+    setUsers(data.users);
+    setUnidades(infrastructure.unidades);
+    setRooms(infrastructure.rooms);
+    setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
+    setPatients(data.patients);
+    setAppointments(data.appointments);
+    setTransactions(data.transactions);
+    setCommissions(data.commissions);
+    setEvolutions(data.evolutions);
+    setConsents(data.consents);
+    setSurveys(data.surveys);
+    setPackages(data.packages);
+    setPatientPackages(data.patientPackages);
+    setWaLogs(data.waLogs);
+    setAudit(data.audit);
+  }, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRooms(infrastructure.rooms);
         setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
       },
+      refreshClinicData,
       packages,
       patientPackages,
       patients,
@@ -340,7 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } : x));
       },
     };
-  }, [user, clinicId, users, unidades, rooms, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast]);
+  }, [user, clinicId, users, unidades, rooms, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
