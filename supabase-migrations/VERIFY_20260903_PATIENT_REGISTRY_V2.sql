@@ -34,7 +34,7 @@ SELECT
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
-  AND p.proname IN ('create_patient_registry_v2', 'set_patient_avatar_path')
+  AND p.proname IN ('create_patient_registry_v2', 'set_patient_avatar_path', 'get_medicspro_storage_status')
 ORDER BY p.proname;
 
 -- Expected RPC privileges:
@@ -42,6 +42,7 @@ ORDER BY p.proname;
 -- authenticated_execute = true
 
 -- Manual auth matrix after structural checks:
+-- owner/admin: can consult storage status without seeing credentials.
 -- recep: may create patient + guardian and upload/read avatar in own clinic.
 -- fisio: may create/read patient context + guardian and upload/read avatar in own clinic.
 -- financeiro: cannot create patient through V2 RPC, cannot write guardian/avatar.
