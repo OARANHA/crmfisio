@@ -10,6 +10,7 @@ import { useApp, patientName, userName } from '../lib/store';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Select, Input } from '../lib/ui';
 import { WaitlistEntryCard, entryMatchesSlot } from './waitlist/WaitlistEntryCard';
+import { isOperationalRole } from '../lib/permissions';
 
 interface Props { unidades: Unidade[]; rooms: Room[]; onRecovered: () => void }
 const dayLabels = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }];
@@ -29,7 +30,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [smartBusyId, setSmartBusyId] = useState<string | null>(null);
-  const canManage = user?.role === 'admin' || user?.role === 'recep';
+  const canManage = isOperationalRole(user?.role);
   const professionals = users.filter((item) => item.role === 'fisio' && item.ativo);
 
   const refresh = async (id = clinicId) => { if (id) setEntries(await loadWaitlist(id)); };

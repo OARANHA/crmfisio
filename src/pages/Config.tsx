@@ -6,16 +6,18 @@ import { ROLE_META, maskCpf, type Access, type ModuleKey, type Role } from '../l
 import { Card, CardHead, Btn, Chip, Select } from '../lib/ui';
 import { IconLock, IconShield, IconCheck, IconX, IconEye, IconDb } from '../components/icons';
 import { Reveal } from '../components/Reveal';
+import { ACCESS_MATRIX, ROLES } from '../lib/permissions';
 
-const RBAC_ROWS: { module: string; admin: Access; fisio: Access; recep: Access }[] = [
-  { module: 'Agenda (agendar, mover, cancelar)', admin: 'full', fisio: 'full', recep: 'full' },
-  { module: 'Prontuário / Anamnese', admin: 'read', fisio: 'full', recep: 'none' },
-  { module: 'Evolução clínica + anexos', admin: 'none', fisio: 'full', recep: 'none' },
-  { module: 'Financeiro (recebíveis/pacotes na recepção; gestão completa no admin)', admin: 'full', fisio: 'read', recep: 'full' },
-  { module: 'CRM (funil, NPS, lembretes)', admin: 'full', fisio: 'read', recep: 'full' },
-  { module: 'Mensagens (automação WhatsApp)', admin: 'full', fisio: 'read', recep: 'full' },
-  { module: 'Relatórios + exportações', admin: 'full', fisio: 'read', recep: 'none' },
-  { module: 'Usuários, unidades e configurações', admin: 'full', fisio: 'none', recep: 'none' },
+const RBAC_ROWS: { module: string; key: ModuleKey }[] = [
+  { module: 'Dashboard', key: 'dashboard' },
+  { module: 'Agenda', key: 'agenda' },
+  { module: 'Pacientes', key: 'pacientes' },
+  { module: 'Prontuário e evolução clínica', key: 'clinico' },
+  { module: 'Financeiro', key: 'financeiro' },
+  { module: 'CRM', key: 'crm' },
+  { module: 'Mensagens', key: 'mensagens' },
+  { module: 'Relatórios', key: 'relatorios' },
+  { module: 'Usuários, unidades e configurações', key: 'config' },
 ];
 
 const ACC_META: Record<Access, { label: string; cls: string; icon: React.ReactNode }> = {
@@ -117,7 +119,7 @@ export function Config() {
               <thead>
                 <tr className="bg-deep border-b border-line font-mono text-[10.5px] uppercase tracking-[0.12em] text-fog">
                   <th className="text-left px-4 py-3 font-medium">Módulo</th>
-                  {(Object.keys(ROLE_META) as Role[]).map((r) => (
+                  {ROLES.map((r) => (
                     <th key={r} className={`px-4 py-3 font-medium ${ROLE_META[r].text}`}>{ROLE_META[r].label}</th>
                   ))}
                 </tr>
@@ -126,8 +128,8 @@ export function Config() {
                 {RBAC_ROWS.map((row, i) => (
                   <tr key={row.module} className={`border-b border-line/60 last:border-0 ${i % 2 ? 'bg-deep/40' : ''} hover:bg-raise/50 transition-colors`}>
                     <td className="px-4 py-3">{row.module}</td>
-                    {(['admin', 'fisio', 'recep'] as Role[]).map((r) => {
-                      const m = ACC_META[row[r]];
+                    {ROLES.map((r) => {
+                      const m = ACC_META[ACCESS_MATRIX[r][row.key]];
                       return (
                         <td key={r} className="px-4 py-3 text-center">
                           <span className={`inline-flex items-center gap-1.5 font-mono text-[11.5px] ${m.cls}`}>{m.icon}{m.label}</span>

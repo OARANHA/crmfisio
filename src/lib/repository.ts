@@ -52,7 +52,7 @@ export const mapProfile = (row: ProfileRow): User => ({
   id: row.id,
   nome: row.nome,
   email: row.email,
-  role: row.role === 'owner' || row.role === 'financeiro' ? (row.role === 'owner' ? 'admin' : 'recep') : row.role,
+  role: row.role,
   registro: row.registro ?? '',
   cor: row.cor ?? '#cbd5e1',
   ativo: row.ativo,

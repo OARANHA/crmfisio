@@ -37,7 +37,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
   const available = useMemo<JourneyAction[]>(() => {
     if (!user) return [];
 
-    if (patient.funilStage === 'lead' && ['admin', 'fisio', 'recep'].includes(user.role)) {
+    if (patient.funilStage === 'lead' && ['owner', 'admin', 'fisio', 'recep'].includes(user.role)) {
       return [{
         to: 'avaliacao',
         label: 'Encaminhar para avaliação',
@@ -67,7 +67,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
       }];
     }
 
-    if (patient.funilStage === 'alta' && ['admin', 'fisio'].includes(user.role)) {
+    if (patient.funilStage === 'alta' && ['owner', 'admin', 'fisio'].includes(user.role)) {
       return [{
         to: 'tratamento',
         label: user.role === 'fisio' ? 'Reabrir tratamento' : 'Corrigir / reabrir tratamento',

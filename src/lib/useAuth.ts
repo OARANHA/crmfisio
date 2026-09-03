@@ -6,9 +6,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, type User, type Session } from './supabaseClient';
 import type { Database } from './database.types';
+import type { ModuleKey, Role } from './types';
+import { accessFor, isRole } from './permissions';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
-type Role = Profile['role'];
 
 interface AuthUser extends User {
   profile?: Profile;
@@ -22,17 +23,8 @@ interface UseAuthReturn {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  canAccess: (module: string) => boolean;
+  canAccess: (module: ModuleKey) => boolean;
 }
-
-// Matriz RBAC espelhada do store.tsx
-const ACCESS_MATRIX: Record<Role, Record<string, 'full' | 'read' | 'none'>> = {
-  owner: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'full', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
-  admin: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
-  fisio: { dashboard: 'read', agenda: 'full', pacientes: 'full', clinico: 'full', financeiro: 'read', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
-  recep: { dashboard: 'none', agenda: 'full', pacientes: 'full', clinico: 'none', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'none', config: 'none' },
-  financeiro: { dashboard: 'read', agenda: 'read', pacientes: 'read', clinico: 'none', financeiro: 'full', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
-};
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -47,6 +39,7 @@ export function useAuth(): UseAuthReturn {
         .from('profiles')
         .select('*')
         .eq('id', userId)
+        .eq('ativo', true)
         .single();
 
       if (error || !data) {
@@ -76,11 +69,7 @@ export function useAuth(): UseAuthReturn {
         if (session?.user) {
           const prof = await fetchProfile(session.user.id);
           if (mounted) {
-            setUser({
-              ...session.user,
-              profile: prof || undefined,
-              role: (prof?.role as Role) || 'fisio',
-            });
+            setUser(prof && isRole(prof.role) ? { ...session.user, profile: prof, role: prof.role } : null);
             setProfile(prof);
           }
         } else {
@@ -108,11 +97,7 @@ export function useAuth(): UseAuthReturn {
       
       if (newSession?.user) {
         const prof = await fetchProfile(newSession.user.id);
-        setUser({
-          ...newSession.user,
-          profile: prof || undefined,
-          role: (prof?.role as Role) || 'fisio',
-        });
+        setUser(prof && isRole(prof.role) ? { ...newSession.user, profile: prof, role: prof.role } : null);
         setProfile(prof);
       } else {
         setUser(null);
@@ -138,11 +123,11 @@ export function useAuth(): UseAuthReturn {
 
       if (data.user) {
         const prof = await fetchProfile(data.user.id);
-        setUser({
-          ...data.user,
-          profile: prof || undefined,
-          role: (prof?.role as Role) || 'fisio',
-        });
+        if (!prof || !isRole(prof.role)) {
+          await supabase.auth.signOut();
+          throw new Error('Usuário sem perfil ativo e válido');
+        }
+        setUser({ ...data.user, profile: prof, role: prof.role });
         setProfile(prof);
       }
 
@@ -162,10 +147,9 @@ export function useAuth(): UseAuthReturn {
   };
 
   // Verificar acesso por módulo
-  const canAccess = useCallback((module: string): boolean => {
+  const canAccess = useCallback((module: ModuleKey): boolean => {
     if (!user?.role) return false;
-    const access = ACCESS_MATRIX[user.role]?.[module];
-    return access !== 'none';
+    return accessFor(user.role, module) !== 'none';
   }, [user?.role]);
 
   return {

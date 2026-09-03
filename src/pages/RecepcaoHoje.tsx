@@ -109,9 +109,9 @@ export function RecepcaoHoje() {
                     <div className="flex flex-wrap gap-2 xl:justify-end">
                       {!arrived && !['finalizado','faltou','cancelado'].includes(item.status) && <Btn disabled={busyId === item.appointment_id} onClick={() => void arrival(item, true)}>Paciente chegou</Btn>}
                       {arrived && item.status !== 'em_atendimento' && item.status !== 'finalizado' && <Btn variant="ghost" disabled={busyId === item.appointment_id} onClick={() => void arrival(item, false)}>Desfazer chegada</Btn>}
-                      {(user?.role === 'fisio' || user?.role === 'admin') && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => status(item, 'em_atendimento')}>Iniciar atendimento</Btn>}
-                      {(user?.role === 'fisio' || user?.role === 'admin') && item.status === 'em_atendimento' && <Btn onClick={() => status(item, 'finalizado')}>Finalizar</Btn>}
-                      {(user?.role === 'recep' || user?.role === 'admin') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => status(item, 'faltou')}>Marcar falta</Btn>}
+                      {user?.role === 'fisio' && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => status(item, 'em_atendimento')}>Iniciar atendimento</Btn>}
+                      {user?.role === 'fisio' && item.status === 'em_atendimento' && <Btn onClick={() => status(item, 'finalizado')}>Finalizar</Btn>}
+                      {(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => status(item, 'faltou')}>Marcar falta</Btn>}
                     </div>
                   </div>
                 );

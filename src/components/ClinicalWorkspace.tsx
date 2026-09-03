@@ -6,6 +6,7 @@ import { useApp, userName } from '../lib/store';
 import { STATUS_META, dayOf, fmtBRL, type Appointment, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
+import { isClinicManager } from '../lib/permissions';
 
 type ClinicalEvaluation = {
   id: string;
@@ -76,8 +77,8 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
   const [sessionId, setSessionId] = useState('');
 
   const clinicalWrite = user?.role === 'fisio';
-  const clinicalRead = user?.role === 'fisio' || user?.role === 'admin';
-  const documentWrite = user?.role === 'fisio' || user?.role === 'admin' || user?.role === 'recep';
+  const clinicalRead = user?.role === 'fisio' || isClinicManager(user?.role);
+  const documentWrite = user?.role === 'fisio' || isClinicManager(user?.role) || user?.role === 'recep';
 
   const sessions = useMemo(
     () => appointments

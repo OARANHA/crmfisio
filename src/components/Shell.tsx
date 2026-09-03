@@ -134,24 +134,14 @@ export function Shell() {
       return;
     }
 
-    const roleMap: Record<string, string> = {
-      owner: 'admin',
-      admin: 'admin',
-      fisio: 'fisio',
-      recep: 'recep',
-      financeiro: 'recep',
-    };
-
-    const mappedRole = roleMap[profile.role] || 'fisio';
-
     setAuthenticatedUser({
       id: user.id,
       nome: profile.nome || user.email?.split('@')[0] || 'Usuário',
       email: user.email || '',
-      role: mappedRole as 'admin' | 'fisio' | 'recep',
+      role: profile.role,
       registro: profile.registro || '',
       cor: profile.cor || '#cbd5e1',
-      ativo: true,
+      ativo: profile.ativo,
     });
   }, [user?.id, profile?.id, profile?.role, profile?.nome, profile?.cor, setAuthenticatedUser]);
 

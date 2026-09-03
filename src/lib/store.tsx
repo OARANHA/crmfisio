@@ -21,12 +21,7 @@ import {
   updatePayment,
   updateSurvey,
 } from './repository';
-
-const ACCESS: Record<Role, Record<ModuleKey, Access>> = {
-  admin: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
-  fisio: { dashboard: 'read', agenda: 'full', pacientes: 'full', clinico: 'full', financeiro: 'read', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
-  recep: { dashboard: 'none', agenda: 'full', pacientes: 'full', clinico: 'none', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'none', config: 'none' },
-};
+import { accessFor } from './permissions';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -182,7 +177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user?.id, pushToast]);
 
   const value = useMemo<AppState>(() => {
-    const access = (m: ModuleKey): Access => (user ? ACCESS[user.role][m] : 'none');
+    const access = (m: ModuleKey): Access => accessFor(user?.role, m);
     const canView = (m: ModuleKey) => access(m) !== 'none';
 
     const persistError = (label: string, error: unknown) => {

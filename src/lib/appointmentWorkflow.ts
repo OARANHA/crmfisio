@@ -1,4 +1,5 @@
 import type { Appointment, AppointmentStatus, Role } from './types';
+import { isClinicalRole, isOperationalRole } from './permissions';
 
 export interface AppointmentAction {
   status: AppointmentStatus;
@@ -30,8 +31,8 @@ export function appointmentActions(
   if (status === 'finalizado' || status === 'cancelado' || status === 'faltou') return [];
 
   const actions: AppointmentAction[] = [];
-  const operational = role === 'admin' || role === 'recep';
-  const clinical = role === 'admin' || role === 'fisio';
+  const operational = isOperationalRole(role);
+  const clinical = isClinicalRole(role);
 
   if (status === 'agendado' && operational) {
     actions.push({ status: 'confirmado', label: 'Confirmar presença', tone: 'primary' });
