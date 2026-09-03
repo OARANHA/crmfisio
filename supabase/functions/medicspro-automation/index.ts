@@ -50,6 +50,10 @@ Deno.serve(async (req) => {
 
   let runId: string | null = null;
   try {
+    const { data: overdueData, error: overdueError } = await admin.rpc('mark_overdue_payments');
+    if (overdueError) throw overdueError;
+    const overdueMarked = Number(overdueData ?? 0);
+
     const { data, error } = await admin.rpc('run_whatsapp_automation_tick');
     if (error) throw error;
 
@@ -98,6 +102,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
+      overdue_marked: overdueMarked,
       ...tick,
       queued_waitlist_offers: queuedWaitlistOffers,
       queued_reactivations: queuedReactivations,
