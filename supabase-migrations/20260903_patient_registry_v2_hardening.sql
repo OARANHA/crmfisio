@@ -165,4 +165,49 @@ CREATE TRIGGER audit_patient_guardian_change
 AFTER INSERT OR UPDATE OR DELETE ON public.patient_guardians
 FOR EACH ROW EXECUTE FUNCTION public.audit_patient_guardian_change();
 
+-- Safe capability/status view for owner/admin UI. Never exposes storage credentials.
+CREATE OR REPLACE FUNCTION public.get_medicspro_storage_status()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, storage, pg_temp
+AS $$
+DECLARE
+  v_profile public.profiles%ROWTYPE;
+  v_bucket storage.buckets%ROWTYPE;
+  v_count BIGINT;
+BEGIN
+  SELECT * INTO v_profile
+  FROM public.profiles
+  WHERE id = auth.uid() AND ativo = true;
+
+  IF v_profile.id IS NULL OR v_profile.role NOT IN ('owner', 'admin') THEN
+    RAISE EXCEPTION 'Sem permissão para consultar armazenamento';
+  END IF;
+
+  SELECT * INTO v_bucket
+  FROM storage.buckets
+  WHERE id = 'patient-avatars';
+
+  SELECT count(*) INTO v_count
+  FROM storage.objects
+  WHERE bucket_id = 'patient-avatars'
+    AND (storage.foldername(name))[1] = v_profile.clinic_id::text;
+
+  RETURN jsonb_build_object(
+    'provider', 'supabase-storage',
+    'managed_by_platform', true,
+    'patient_avatars_enabled', v_bucket.id IS NOT NULL,
+    'patient_avatars_private', COALESCE(NOT v_bucket.public, false),
+    'file_size_limit', v_bucket.file_size_limit,
+    'allowed_mime_types', to_jsonb(v_bucket.allowed_mime_types),
+    'clinic_avatar_objects', v_count
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_medicspro_storage_status() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_medicspro_storage_status() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_medicspro_storage_status() TO authenticated;
+
 COMMIT;
