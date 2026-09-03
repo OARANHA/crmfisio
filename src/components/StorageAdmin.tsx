@@ -27,16 +27,20 @@ export function StorageAdmin() {
   useEffect(() => {
     let active = true;
     if (!user || !['owner', 'admin'].includes(user.role)) return;
-    supabase.rpc('get_medicspro_storage_status')
-      .then(({ data, error: rpcError }) => {
-        if (!active) return;
+
+    void (async () => {
+      try {
+        const { data, error: rpcError } = await supabase.rpc('get_medicspro_storage_status');
         if (rpcError) throw rpcError;
+        if (!active) return;
         setStatus(data as StorageStatus);
-      })
-      .catch((loadError) => {
+        setError('');
+      } catch (loadError: unknown) {
         console.warn('[MedicsPro] status do storage:', loadError);
         if (active) setError('Armazenamento ainda não validado neste ambiente.');
-      });
+      }
+    })();
+
     return () => { active = false; };
   }, [user]);
 
