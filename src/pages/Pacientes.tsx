@@ -104,7 +104,7 @@ function Pep({ id }: { id: string }) {
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Reveal>
         <Link to="/pacientes" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fog transition-colors hover:text-mint">
           <IconChevronL className="h-4 w-4" /> Pacientes
@@ -112,11 +112,11 @@ function Pep({ id }: { id: string }) {
         <div className="mt-2"><PatientProfileHeader patient={patient} /></div>
       </Reveal>
 
-      <Reveal delay={60}>
+      <Reveal delay={40}>
         <PatientOperationalActions patient={patient} />
       </Reveal>
 
-      <Reveal delay={80}>
+      <Reveal delay={60}>
         <ClinicalWorkspace patient={patient} />
       </Reveal>
     </div>
