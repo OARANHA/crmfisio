@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useApp } from '../lib/store';
-import { Btn, Card, CardHead, Field, Input, Textarea } from '../lib/ui';
+import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
 import type {
   AssessmentComponentType,
@@ -47,6 +47,17 @@ const slugKey = (value: string, fallback: string) => {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   return normalized || fallback;
+};
+
+const hasDuplicateComponentKeys = (schema: AssessmentTemplateSchema) => {
+  const keys = new Set<string>();
+  for (const section of schema.sections) {
+    for (const component of section.components) {
+      if (keys.has(component.key)) return true;
+      keys.add(component.key);
+    }
+  }
+  return false;
 };
 
 export function AssessmentTemplatesAdmin() {
@@ -133,7 +144,6 @@ export function AssessmentTemplatesAdmin() {
         specialty: 'fisioterapia',
         schema: emptySchema(),
       });
-      await load();
       const all = await listAssessmentTemplatesForAdmin();
       setTemplates(all);
       const created = all.find((item) => item.id === id);
@@ -164,12 +174,20 @@ export function AssessmentTemplatesAdmin() {
     }
   };
 
-  const saveDraft = async () => {
-    if (!editing || !version || !name.trim()) return;
+  const validateBeforeSave = () => {
     if (schema.sections.length === 0 || schema.sections.every((section) => section.components.length === 0)) {
       toast('Adicione ao menos um campo antes de salvar o modelo.', 'warn');
-      return;
+      return false;
     }
+    if (hasDuplicateComponentKeys(schema)) {
+      toast('Existem campos com a mesma chave. Renomeie um deles antes de salvar.', 'warn');
+      return false;
+    }
+    return true;
+  };
+
+  const saveDraft = async () => {
+    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
@@ -185,11 +203,7 @@ export function AssessmentTemplatesAdmin() {
   };
 
   const publish = async () => {
-    if (!editing || !version) return;
-    if (schema.sections.length === 0 || schema.sections.every((section) => section.components.length === 0)) {
-      toast('Um modelo vazio não pode ser publicado.', 'warn');
-      return;
-    }
+    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
@@ -331,9 +345,11 @@ export function AssessmentTemplatesAdmin() {
               {schema.sections.map((section, sectionIndex) => (
                 <div key={`${section.key}-${sectionIndex}`} className="border border-line bg-panel p-4 space-y-3">
                   <div className="flex gap-2 items-end">
-                    <Field label={`Seção ${sectionIndex + 1}`} className="flex-1">
-                      <Input value={section.title} onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)} />
-                    </Field>
+                    <div className="flex-1">
+                      <Field label={`Seção ${sectionIndex + 1}`}>
+                        <Input value={section.title} onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)} />
+                      </Field>
+                    </div>
                     {schema.sections.length > 1 && <Btn variant="ghost" onClick={() => removeSection(sectionIndex)}>Remover seção</Btn>}
                   </div>
 
@@ -350,7 +366,7 @@ export function AssessmentTemplatesAdmin() {
                       </Field>
                       <Field label="Tipo">
                         <select
-                          className="w-full bg-deep border border-line px-3 py-2.5 text-[12px] text-paper outline-none focus:border-mint"
+                          className="w-full rounded-xl bg-deep border border-line px-3.5 py-2.5 text-[13px] text-paper outline-none focus:border-mint/60"
                           value={component.type}
                           onChange={(event) => patchComponent(sectionIndex, componentIndex, { type: event.target.value as AssessmentComponentType })}
                         >
@@ -383,7 +399,7 @@ export function AssessmentTemplatesAdmin() {
   );
 }
 
-function TemplateGroup({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function TemplateGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <div>
       <p className="font-display font-semibold text-[14px]">{title}</p>
