@@ -15,15 +15,17 @@
   --color-pulse: #e96b73;
   --color-steel: #afbdc2;
   --color-on-accent: #082019;
-  --font-display: "Inter", "Segoe UI Variable", "Segoe UI", sans-serif;
-  --font-body: "Inter", "Segoe UI Variable", "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --font-display: "Aptos Display", "Aptos", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Aptos", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* `font-mono` era usado em excesso no legado visual. Mantemos números tabulares,
+     mas a família agora segue o corpo. Código real deve usar <code>/<pre>. */
+  --font-mono: "Aptos", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
   font-size: 16px;
-  text-rendering: optimizeLegibility;
+  text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -48,14 +50,15 @@ html[data-theme='light'] {
 body {
   @apply bg-ink text-paper font-body antialiased;
   min-width: 320px;
-  font-size: 15px;
-  line-height: 1.55;
-  letter-spacing: -0.006em;
+  font-size: 15.5px;
+  line-height: 1.58;
+  letter-spacing: 0;
   transition: background-color 180ms ease, color 180ms ease;
 }
 
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
+code, pre, kbd, samp { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
 ::selection { background: var(--color-mint); color: var(--color-on-accent); }
 
 /* Evita a volta de textos microscópicos em áreas operacionais. */
@@ -71,7 +74,7 @@ button { cursor: pointer; }
 [class~="text-[13.5px]"] { font-size: 14.25px !important; line-height: 1.52 !important; }
 
 .font-mono {
-  letter-spacing: -0.012em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 

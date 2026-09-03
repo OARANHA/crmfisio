@@ -1,4 +1,4 @@
--- Patient Registry V2 verification — read-only except no-op catalog checks.
+-- Patient Registry V2 verification — structural/read-only checks.
 
 SELECT column_name, data_type
 FROM information_schema.columns
@@ -27,9 +27,25 @@ WHERE schemaname = 'storage'
   AND policyname LIKE 'patient_avatars_%'
 ORDER BY policyname;
 
+SELECT
+  p.proname,
+  has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('create_patient_registry_v2', 'set_patient_avatar_path', 'get_medicspro_storage_status')
+ORDER BY p.proname;
+
+-- Expected RPC privileges:
+-- anon_execute = false
+-- authenticated_execute = true
+
 -- Manual auth matrix after structural checks:
--- recep: may create/update patient + guardian and upload/read avatar in own clinic.
--- fisio: may read and update patient context + guardian, upload/read avatar in own clinic.
--- financeiro: no guardian write and no avatar write.
+-- owner/admin: can consult storage status without seeing credentials.
+-- recep: may create patient + guardian and upload/read avatar in own clinic.
+-- fisio: may create/read patient context + guardian and upload/read avatar in own clinic.
+-- financeiro: cannot create patient through V2 RPC, cannot write guardian/avatar.
 -- clinic A must not read/write guardian/avatar of clinic B.
--- anon must not read patient-avatars.
+-- minor patient without guardian must be rejected atomically.
+-- anon must not read patient-avatars or execute V2 RPCs.

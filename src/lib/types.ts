@@ -30,11 +30,16 @@ export type PacienteStatus = 'ativo' | 'inativo' | 'alta';
 export interface Patient {
   id: string;
   nome: string;
+  preferredName?: string;
   nascimento: string;
   telefone: string;
   email: string;
   cpf: string; // mascarado na UI (LGPD)
   convenio: string | null;
+  insuranceNumber?: string;
+  addressLine?: string;
+  administrativeNotes?: string;
+  avatarPath?: string | null;
   queixaPrincipal: string;
   cid10: string[];
   funilStage: FunilStage;
@@ -44,6 +49,33 @@ export interface Patient {
   optInWhats: boolean;
   anonimizado?: boolean; // Fase 3 — direito ao esquecimento
   anamnese: { historia: string; cirurgias: string; medicamentos: string; alergias: string; objetivo: string };
+}
+
+export interface PatientGuardian {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  name: string;
+  relationship: string;
+  cpf: string;
+  phone: string;
+  email: string;
+  isLegalGuardian: boolean;
+  isFinancialResponsible: boolean;
+  isPrimaryContact: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientGuardianInput {
+  name: string;
+  relationship: string;
+  cpf?: string;
+  phone?: string;
+  email?: string;
+  isLegalGuardian?: boolean;
+  isFinancialResponsible?: boolean;
+  isPrimaryContact?: boolean;
 }
 
 export interface Room { id: string; nome: string; tipo: 'sala' | 'equipamento'; unidadeId: string }
