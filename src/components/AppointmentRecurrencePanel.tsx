@@ -12,7 +12,7 @@ const DAYS = [
 ] as const;
 
 export function AppointmentRecurrencePanel() {
-  const { user, users, patients, toast } = useApp();
+  const { user, users, patients, refreshClinicData, toast } = useApp();
   const [open, setOpen] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [units, setUnits] = useState<Unidade[]>([]);
@@ -100,7 +100,7 @@ export function AppointmentRecurrencePanel() {
       toast(`Série criada: ${result.created} sessão(ões)${result.skipped ? `, ${result.skipped} conflito(s) ignorado(s)` : ''}.`);
       setPreview([]);
       setOpen(false);
-      window.setTimeout(() => window.location.reload(), 350);
+      await refreshClinicData();
     } catch (error) {
       console.error('[MedicsPro] criar recorrência:', error);
       toast('Não foi possível criar a série recorrente.', 'warn');
