@@ -39,6 +39,32 @@ describe('assessmentEngine helpers', () => {
     })).toBe(false);
   });
 
+  it('rejects duplicate component keys across sections', () => {
+    expect(isAssessmentTemplateSchema({
+      sections: [
+        {
+          key: 'dor',
+          title: 'Dor',
+          components: [{ key: 'eva', type: 'scale', label: 'Intensidade' }],
+        },
+        {
+          key: 'funcao',
+          title: 'Função',
+          components: [{ key: 'eva', type: 'long_text', label: 'Observação' }],
+        },
+      ],
+    })).toBe(false);
+  });
+
+  it('rejects duplicate section keys', () => {
+    expect(isAssessmentTemplateSchema({
+      sections: [
+        { key: 'dor', title: 'Dor', components: [] },
+        { key: 'dor', title: 'Dor 2', components: [] },
+      ],
+    })).toBe(false);
+  });
+
   it('rejects unsupported component types', () => {
     expect(isAssessmentTemplateSchema({
       sections: [
