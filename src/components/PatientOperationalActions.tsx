@@ -117,20 +117,19 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const canCollect = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep' || user?.role === 'financeiro';
 
   return (
-    <section className="rounded-2xl border border-line/80 bg-panel/80 px-4 py-3.5 shadow-sm">
+    <section className="border-y border-line/60 py-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-fog">Ação imediata</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
-            <span className="font-semibold text-paper">Continuidade do tratamento</span>
-            <span className="text-fog">Agenda e consentimento sem sair do contexto do paciente.</span>
-          </div>
+          <p className="text-[12px] font-semibold text-mint">Próxima ação</p>
+          <p className="mt-0.5 text-[13.5px] text-paper/90">
+            Continue o cuidado sem perder o contexto do paciente.
+          </p>
         </div>
         <Btn onClick={() => nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`)}>Agendar sessão</Btn>
         <button
           type="button"
           onClick={() => setConsentOpen((value) => !value)}
-          className="inline-flex items-center gap-2 rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:bg-raise hover:text-paper"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:bg-raise hover:text-paper"
         >
           Consentimento
           {signed ? <Chip className="border-mint/30 bg-mint/10 text-mint">assinado</Chip> : <Chip className="border-amber/30 bg-amber/10 text-amber">pendente</Chip>}
@@ -138,11 +137,11 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
       </div>
 
       {consentOpen && (
-        <div className="mt-4 border-t border-line/70 pt-4">
+        <div className="mt-3 border-t border-line/50 pt-3">
           {pending ? (
             <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
               <div>
-                <p className="font-semibold">{pending.nome} · v{pending.versao}</p>
+                <p className="font-semibold text-[13.5px]">{pending.nome} · v{pending.versao}</p>
                 <p className="mt-1 line-clamp-2 text-[12.5px] text-fog">{pending.conteudo_snapshot || 'Documento versionado aguardando aceite.'}</p>
               </div>
               {canCollect && <div className="flex gap-2"><Btn variant="subtle" onClick={() => acceptConsent(pending.id)} disabled={busy}>Registrar aceite</Btn><Btn variant="ghost" onClick={() => cancelConsent(pending.id)} disabled={busy}>Cancelar</Btn></div>}
@@ -151,14 +150,14 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{signed.nome} · v{signed.versao}</p>
+                  <p className="font-semibold text-[13.5px]">{signed.nome} · v{signed.versao}</p>
                   <p className="mt-1 text-[12.5px] text-fog">Aceito {signed.data_assinatura ? new Date(signed.data_assinatura).toLocaleString('pt-BR') : 'em data não informada'}.</p>
                 </div>
                 <Btn variant="subtle" onClick={() => viewConsent(signed)}>Visualizar</Btn>
               </div>
               {signedHistory.length > 1 && <p className="text-[12px] text-fog">{signedHistory.length} versões assinadas preservadas no histórico.</p>}
               {templates.length > 0 && canCollect && (
-                <div className="flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
+                <div className="flex flex-wrap items-center gap-2 border-t border-line/50 pt-3">
                   <Select value={templateId} onChange={(event) => setTemplateId(event.target.value)} className="!w-auto min-w-[260px]">
                     {templates.map((template) => <option key={template.id} value={template.id}>{template.nome} · v{template.versao}</option>)}
                   </Select>
