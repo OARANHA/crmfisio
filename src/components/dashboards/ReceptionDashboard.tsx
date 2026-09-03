@@ -6,6 +6,7 @@ import { useApp, useUnitFilter } from '../../lib/store';
 import { STATUS_META, fmtBRL } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
+import { buildChurnRiskList } from '../../lib/churnRisk';
 
 type ActionItem = {
   icon: string;
@@ -15,7 +16,7 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, appointments, patients, consents, transactions, users, unidadeSel, unidades } = useApp();
+  const { user, appointments, patients, patientPackages, consents, transactions, users, unidadeSel, unidades } = useApp();
   const inUnit = useUnitFilter();
   const today = format(new Date(), 'yyyy-MM-dd');
   const unit = unidades.find((item) => item.id === unidadeSel);
@@ -52,11 +53,12 @@ export function ReceptionDashboard() {
     transactions.filter((transaction) => transaction.tipo === 'receber' && transaction.status === 'atrasado').slice(0, 3).forEach((transaction) => {
       result.push({ icon: '💸', label: `Cobrança vencida — ${transaction.descricao} (${fmtBRL(transaction.valor)})`, to: '/financeiro', tone: 'text-pulse' });
     });
-    patients.filter((patient) => patient.status === 'inativo' && !patient.anonimizado).slice(0, 2).forEach((patient) => {
-      result.push({ icon: '📞', label: `Paciente para reativar — ${patient.nome}`, to: '/crm', tone: 'text-aqua' });
+    buildChurnRiskList(patients, appointments, patientPackages, transactions)
+      .filter((risk) => risk.level !== 'baixo').slice(0, 2).forEach((risk) => {
+      result.push({ icon: '📞', label: `Risco ${risk.level} — ${risk.patientName}`, to: '/crm', tone: 'text-aqua' });
     });
     return result.slice(0, 6);
-  }, [consents, transactions, patients]);
+  }, [consents, transactions, patients, appointments, patientPackages]);
 
   return (
     <div className="space-y-4">
