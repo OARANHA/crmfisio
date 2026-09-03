@@ -28,7 +28,7 @@ function ThemeButton({ theme, onToggle }: { theme: ColorTheme; onToggle: () => v
     <button
       type="button"
       onClick={onToggle}
-      className="grid h-10 w-10 place-items-center rounded-xl border border-line/70 bg-panel/80 text-fog transition-colors hover:bg-raise/60 hover:border-line2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/35"
+      className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40"
       aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
       title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
     >
@@ -53,13 +53,13 @@ function Login({ theme, onToggleTheme }: { theme: ColorTheme; onToggleTheme: () 
   return (
     <div className="app-surface min-h-screen flex items-center justify-center p-5 relative">
       <div className="absolute right-5 top-5"><ThemeButton theme={theme} onToggle={onToggleTheme} /></div>
-      <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-line/70 bg-panel shadow-[0_30px_90px_rgba(0,0,0,0.22)]">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[24px] border border-line/75 bg-panel shadow-[0_24px_80px_rgba(15,28,24,0.12)]">
         <div className="px-8 pt-8">
           <div className="flex items-center gap-2.5">
             <PulseMark className="w-8 h-7" />
             <span className="font-display font-bold text-xl tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>
           </div>
-          <h1 className="font-display text-[26px] font-bold mt-7 leading-tight tracking-[-0.02em]">Acesse sua clínica</h1>
+          <h1 className="font-display text-[28px] font-bold mt-7 leading-tight tracking-tight">Acesse sua clínica</h1>
           <p className="text-fog text-[14px] mt-2 leading-relaxed">Autenticação segura com Supabase Auth. Use seu email e senha cadastrados.</p>
         </div>
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
@@ -70,17 +70,19 @@ function Login({ theme, onToggleTheme }: { theme: ColorTheme; onToggleTheme: () 
             </div>
           )}
           <div className="space-y-2">
-            <label className="block text-[13px] font-semibold text-fog">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full min-h-11 rounded-xl border border-line/75 bg-deep/80 px-4 py-3 text-[14px] focus:border-mint/60 focus:outline-none focus:ring-3 focus:ring-mint/10" placeholder="seu@email.com" required disabled={loading} />
+            <label className="block text-[13px] font-semibold text-paper/80">Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full min-h-12 rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="seu@email.com" required disabled={loading} />
           </div>
           <div className="space-y-2">
-            <label className="block text-[13px] font-semibold text-fog">Senha</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full min-h-11 rounded-xl border border-line/75 bg-deep/80 px-4 py-3 text-[14px] focus:border-mint/60 focus:outline-none focus:ring-3 focus:ring-mint/10" placeholder="••••••••" required disabled={loading} />
+            <label className="block text-[13px] font-semibold text-paper/80">Senha</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full min-h-12 rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="••••••••" required disabled={loading} />
           </div>
-          <button type="submit" disabled={loading || !email || !password} className="w-full rounded-xl bg-mint text-on-accent hover:brightness-[1.04] font-display font-semibold py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_6px_18px_rgba(0,0,0,0.10)]">{loading ? 'Entrando...' : 'Entrar'}</button>
+          <button type="submit" disabled={loading || !email || !password} className="w-full min-h-12 rounded-xl bg-mint text-on-accent hover:brightness-105 font-display font-semibold py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-mint/10">
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
         <div className="px-8 pb-7 flex items-center gap-2 text-[12px] text-fog">
-          <IconLock className="w-3.5 h-3.5 text-mint" />
+          <IconLock className="w-3.5 h-3.5 text-pulse" />
           Sessão autenticada · acesso protegido por perfil e clínica · LGPD
         </div>
       </div>
@@ -96,10 +98,15 @@ function Toasts() {
     info: { cls: 'border-aqua/50 text-aqua', Icon: IconBell },
   };
   return (
-    <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 w-[min(92vw,400px)]">
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-[min(92vw,400px)]">
       {toasts.map((t) => {
         const m = meta[t.kind];
-        return <div key={t.id} className={`rv is-in rounded-2xl border ${m.cls} bg-panel/95 backdrop-blur-md px-4 py-3.5 shadow-2xl flex items-start gap-2.5`}><m.Icon className="w-4 h-4 shrink-0 mt-0.5" /><p className="text-[13px] text-paper leading-snug">{t.msg}</p></div>;
+        return (
+          <div key={t.id} className={`rv is-in rounded-xl border ${m.cls} bg-panel/95 backdrop-blur px-4 py-3.5 shadow-xl flex items-start gap-2.5`}>
+            <m.Icon className="w-4 h-4 shrink-0 mt-0.5" />
+            <p className="text-[13.5px] text-paper leading-snug">{t.msg}</p>
+          </div>
+        );
       })}
     </div>
   );
@@ -114,8 +121,19 @@ export function Shell() {
   const { theme, toggleTheme } = useColorTheme();
 
   useEffect(() => {
-    if (!user || !profile) { setAuthenticatedUser(null); return; }
-    setAuthenticatedUser({ id: user.id, nome: profile.nome || user.email?.split('@')[0] || 'Usuário', email: user.email || '', role: profile.role, registro: profile.registro || '', cor: profile.cor || '#cbd5e1', ativo: profile.ativo });
+    if (!user || !profile) {
+      setAuthenticatedUser(null);
+      return;
+    }
+    setAuthenticatedUser({
+      id: user.id,
+      nome: profile.nome || user.email?.split('@')[0] || 'Usuário',
+      email: user.email || '',
+      role: profile.role,
+      registro: profile.registro || '',
+      cor: profile.cor || '#cbd5e1',
+      ativo: profile.ativo,
+    });
   }, [user?.id, profile?.id, profile?.role, profile?.nome, profile?.cor, setAuthenticatedUser]);
 
   const effectiveUser = appUser;
@@ -141,10 +159,19 @@ export function Shell() {
   };
 
   const navList = (compact = false) => (
-    <nav className="flex flex-col gap-1.5 px-3">
+    <nav className="flex flex-col gap-1.5 px-3.5">
       {items.map((n) => (
-        <NavLink key={n.key + n.to} to={n.to} onClick={() => setMobileOpen(false)} title={compact ? n.label : undefined}
-          className={({ isActive }) => `flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl font-display font-semibold text-[14px] transition-colors ${isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/55'}`}>
+        <NavLink
+          key={n.key + n.to}
+          to={n.to}
+          onClick={() => setMobileOpen(false)}
+          title={compact ? n.label : undefined}
+          className={({ isActive }) =>
+            `flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl py-2.5 font-display font-semibold text-[14px] transition-colors ${
+              isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
+            }`
+          }
+        >
           <n.Icon className="w-5 h-5 shrink-0" />
           <span className={compact ? 'sr-only' : ''}>{n.label}</span>
         </NavLink>
@@ -154,41 +181,59 @@ export function Shell() {
 
   return (
     <div className="app-surface min-h-screen relative">
-      <aside className={`hidden lg:flex fixed inset-y-0 left-0 ${collapsed ? 'w-[80px]' : 'w-[272px]'} flex-col border-r border-line/65 bg-deep/92 backdrop-blur-md z-40 transition-[width] duration-200`}>
-        <div className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-3 px-5'} h-[68px] border-b border-line/55`}>
+      <aside className={`hidden lg:flex fixed inset-y-0 left-0 ${collapsed ? 'w-[80px]' : 'w-[268px]'} flex-col border-r border-line/65 bg-deep/96 backdrop-blur-sm z-40 transition-[width] duration-200`}>
+        <div className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-2.5 px-5.5'} h-[68px] border-b border-line/60`}>
           <PulseMark className="w-7 h-6" />
-          {!collapsed && <span className="font-display font-bold text-[16px] tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>}
+          {!collapsed && <span className="font-display font-bold text-[15px] tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>}
         </div>
-        <button onClick={toggleCollapsed} className="absolute -right-3 top-[86px] grid h-7 w-7 place-items-center rounded-full border border-line/70 bg-panel text-fog shadow-md hover:text-paper hover:bg-raise" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>{collapsed ? <IconChevronR className="h-3.5 w-3.5" /> : <IconChevronL className="h-3.5 w-3.5" />}</button>
-        <div className="py-5 flex-1 overflow-y-auto">{navList(collapsed)}</div>
-        <div className="border-t border-line/55 p-4">
+        <button onClick={toggleCollapsed} className="absolute -right-3 top-[86px] grid h-7 w-7 place-items-center rounded-full border border-line/70 bg-panel text-fog shadow-sm hover:text-paper hover:bg-raise" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
+          {collapsed ? <IconChevronR className="h-3.5 w-3.5" /> : <IconChevronL className="h-3.5 w-3.5" />}
+        </button>
+        <div className="py-5.5 flex-1 overflow-y-auto">{navList(collapsed)}</div>
+        <div className="border-t border-line/60 p-4.5">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
-            <span className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-[12px] text-on-accent shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>{effectiveUser.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}</span>
-            {!collapsed && <span className="min-w-0 flex-1"><span className="block font-display font-semibold text-[13.5px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span><span className={`block text-[11.5px] mt-1 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span></span>}
-            {!collapsed && <button onClick={handleLogout} className="rounded-lg p-2 text-fog hover:text-pulse hover:bg-raise/50 transition-colors" title="Sair"><IconLogout className="w-4.5 h-4.5" /></button>}
+            <span className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-[12px] text-on-accent shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>
+              {effectiveUser.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
+            </span>
+            {!collapsed && <span className="min-w-0 flex-1">
+              <span className="block font-display font-semibold text-[13.5px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span>
+              <span className={`block text-[12px] mt-0.5 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span>
+            </span>}
+            {!collapsed && <button onClick={handleLogout} className="grid h-9 w-9 place-items-center rounded-lg text-fog hover:text-pulse hover:bg-raise/55 transition-colors" title="Sair"><IconLogout className="w-4.5 h-4.5" /></button>}
           </div>
         </div>
       </aside>
 
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-[280px] flex flex-col border-r border-line/65 bg-deep rv is-in">
-            <div className="flex items-center justify-between px-5 h-16 border-b border-line/55"><div className="flex items-center gap-2.5"><PulseMark className="w-6 h-5" /><span className="font-display font-bold text-[16px]">MEDICSPRO<span className="text-pulse">.</span></span></div><button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-fog hover:bg-raise/50"><IconX className="w-5 h-5" /></button></div>
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-[278px] flex flex-col border-r border-line bg-deep rv is-in">
+            <div className="flex items-center justify-between px-5 h-16 border-b border-line/60">
+              <div className="flex items-center gap-2.5"><PulseMark className="w-6 h-5" /><span className="font-display font-bold text-[15px]">MEDICSPRO<span className="text-pulse">.</span></span></div>
+              <button onClick={() => setMobileOpen(false)} className="text-fog"><IconX className="w-5 h-5" /></button>
+            </div>
             <div className="py-4 flex-1 overflow-y-auto">{navList()}</div>
-            <div className="border-t border-line/55 p-4"><button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors text-[13px]"><IconLogout className="w-4 h-4" /> Encerrar sessão — {effectiveUser.nome}</button></div>
+            <div className="border-t border-line p-4"><button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors text-[13px]"><IconLogout className="w-4 h-4" /> Encerrar sessão — {effectiveUser.nome}</button></div>
           </aside>
         </div>
       )}
 
-      <div className={`${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[272px]'} relative transition-[padding] duration-200`}>
-        <header className="sticky top-0 z-30 h-[68px] border-b border-line/55 bg-ink/82 backdrop-blur-xl flex items-center gap-3 px-4 md:px-7">
-          <button className="lg:hidden rounded-lg p-2 text-fog hover:text-paper hover:bg-raise/50" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
-          <div className="hidden sm:flex items-center gap-2 text-[12.5px] font-medium text-fog"><IconShield className="w-4 h-4 text-mint" /><span>Ambiente protegido</span></div>
-          <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!w-auto !min-h-10 !py-2 !text-[13px] ml-1" title="Filtrar por unidade"><option value="all">Todas as unidades</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Select>
-          <div className="ml-auto flex items-center gap-2"><ThemeButton theme={theme} onToggle={toggleTheme} /><span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/70 bg-panel/80 text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 grid place-items-center rounded-full bg-pulse text-on-accent text-[10px] font-semibold">{pendencias}</span>}</span></div>
+      <div className={`${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[268px]'} relative transition-[padding] duration-200`}>
+        <header className="sticky top-0 z-30 h-[68px] border-b border-line/60 bg-ink/88 backdrop-blur-xl flex items-center gap-3 px-4 md:px-7">
+          <button className="lg:hidden text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
+          <div className="hidden sm:flex items-center gap-2 text-[13px] font-medium text-fog"><IconShield className="w-4 h-4 text-mint" /><span>Ambiente protegido</span></div>
+          <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!w-auto !min-h-10 !py-2 !text-[13px] ml-1" title="Filtrar por unidade">
+            <option value="all">Todas as unidades</option>
+            {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+          </Select>
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeButton theme={theme} onToggle={toggleTheme} />
+            <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
+          </div>
         </header>
-        <main className="px-4 md:px-8 xl:px-10 py-6 md:py-9 max-w-[1640px] mx-auto"><Outlet /></main>
+        <main className="px-4 sm:px-6 md:px-8 xl:px-10 py-7 md:py-9 max-w-[1760px] mx-auto">
+          <Outlet />
+        </main>
       </div>
       <Toasts />
     </div>
