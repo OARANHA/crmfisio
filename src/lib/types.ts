@@ -34,7 +34,7 @@ export interface Patient {
   nascimento: string;
   telefone: string;
   email: string;
-  cpf: string; // mascarado na UI (LGPD)
+  cpf: string;
   convenio: string | null;
   insuranceNumber?: string;
   addressLine?: string;
@@ -47,7 +47,7 @@ export interface Patient {
   ultimaVisita: string | null;
   createdAt: string;
   optInWhats: boolean;
-  anonimizado?: boolean; // Fase 3 — direito ao esquecimento
+  anonimizado?: boolean;
   anamnese: { historia: string; cirurgias: string; medicamentos: string; alergias: string; objetivo: string };
 }
 
@@ -63,6 +63,7 @@ export interface PatientGuardian {
   isLegalGuardian: boolean;
   isFinancialResponsible: boolean;
   isPrimaryContact: boolean;
+  isEmergencyContact: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,6 +77,7 @@ export interface PatientGuardianInput {
   isLegalGuardian?: boolean;
   isFinancialResponsible?: boolean;
   isPrimaryContact?: boolean;
+  isEmergencyContact?: boolean;
 }
 
 export interface Room { id: string; nome: string; tipo: 'sala' | 'equipamento'; unidadeId: string }
@@ -85,12 +87,12 @@ export interface Appointment {
   pacienteId: string;
   fisioId: string;
   roomId: string;
-  data: string; // YYYY-MM-DD
-  inicio: string; // HH:mm
-  fim: string; // HH:mm
+  data: string;
+  inicio: string;
+  fim: string;
   status: AppointmentStatus;
   tipo: string;
-  valor: number; // centavos
+  valor: number;
   pacoteId: string | null;
   serieId: string | null;
   notas: string;
@@ -105,7 +107,7 @@ export interface RecurrenceRule {
   fisioId: string;
   roomId: string;
   tipo: string;
-  diasSemana: number[]; // 1=seg ... 6=sab
+  diasSemana: number[];
   hora: string;
   duracaoMin: number;
   inicio: string;
@@ -143,7 +145,6 @@ export interface FinancialTransaction {
 }
 
 export interface Commission { id: string; fisioId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
-
 export interface Evolution { id: string; pacienteId: string; fisioId: string; data: string; texto: string; anexos: string[] }
 
 export interface ConsentTerm {
@@ -159,23 +160,10 @@ export interface ConsentTerm {
 }
 
 export interface NpsSurvey { id: string; pacienteId: string; nota: number | null; comentario: string; data: string }
-
 export type WaStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';
 export type WaTemplate = 'confirmacao' | 'nps' | 'reativacao' | 'vaga_espera';
-export interface WaLog {
-  id: string;
-  pacienteId: string;
-  template: WaTemplate;
-  mensagem: string;
-  enviadoEm: string;
-  status: WaStatus;
-}
-
+export interface WaLog { id: string; pacienteId: string; template: WaTemplate; mensagem: string; enviadoEm: string; status: WaStatus }
 export interface AuditEntry { id: string; ts: string; usuarioId: string; acao: string; detalhe: string }
-
-// ---------------------------------------------------------------------------
-// Metadados de apresentação
-// ---------------------------------------------------------------------------
 
 export const STATUS_META: Record<AppointmentStatus, { label: string; dot: string; chip: string }> = {
   agendado: { label: 'Agendado', dot: '#9ab8c9', chip: 'bg-steel/10 border-steel/30 text-steel' },
@@ -212,23 +200,17 @@ export const CID10_CATALOG = [
   { code: 'M25.5', desc: 'Dor articular' },
 ];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 export const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v / 100);
 
-/** Acessa o campo de dia (YYYY-MM-DD) de qualquer entidade datada. */
-export const dayOf = <T extends { data: string }>(x: T): string => x.data;
+export const maskCpf = (cpf: string) => {
+  const digits = (cpf || '').replace(/\D/g, '').padStart(11, '0');
+  return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+};
 
-/** Nome do campo de dia — usado em literais para manter tipagem segura. */
-export const DATA_KEY = 'data' as const;
-
-export const maskCpf = (cpf: string) =>
-  cpf.length > 7 ? `***.${cpf.slice(4, 7)}.***-**` : '***.***.***-**';
-
-export const ageFrom = (nascimento: string) => {
-  const n = new Date(nascimento + 'T12:00');
-  return Math.floor((Date.now() - n.getTime()) / (365.25 * 24 * 3600e3));
+export const ageFrom = (birth: string) => {
+  const d = new Date(`${birth}T12:00`); const n = new Date();
+  let a = n.getFullYear() - d.getFullYear();
+  if (n < new Date(n.getFullYear(), d.getMonth(), d.getDate())) a--;
+  return a;
 };
