@@ -112,19 +112,23 @@ export function isAssessmentTemplateSchema(value: unknown): value is AssessmentT
   const sections = (value as { sections?: unknown }).sections;
   if (!Array.isArray(sections)) return false;
 
+  const componentKeys = new Set<string>();
+  const sectionKeys = new Set<string>();
+
   return sections.every((section) => {
     if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
     const rawSection = section as Record<string, unknown>;
-    if (typeof rawSection.key !== 'string' || typeof rawSection.title !== 'string') return false;
+    if (typeof rawSection.key !== 'string' || !rawSection.key.trim() || typeof rawSection.title !== 'string') return false;
+    if (sectionKeys.has(rawSection.key)) return false;
+    sectionKeys.add(rawSection.key);
     if (!Array.isArray(rawSection.components)) return false;
 
-    const keys = new Set<string>();
     return rawSection.components.every((component) => {
       if (!component || typeof component !== 'object' || Array.isArray(component)) return false;
       const raw = component as Record<string, unknown>;
       if (typeof raw.key !== 'string' || !raw.key.trim()) return false;
-      if (keys.has(raw.key)) return false;
-      keys.add(raw.key);
+      if (componentKeys.has(raw.key)) return false;
+      componentKeys.add(raw.key);
       if (typeof raw.label !== 'string') return false;
       return [
         'heading', 'short_text', 'long_text', 'integer', 'decimal', 'scale',
@@ -195,7 +199,6 @@ export async function listAvailableAssessmentTemplates(): Promise<AssessmentTemp
   const { data, error } = await supabase
     .from('assessment_templates')
     .select('*')
-    .neq('status', 'archived')
     .order('owner_type', { ascending: false })
     .order('name');
 
