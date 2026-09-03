@@ -5,6 +5,7 @@ import { DashboardRoleAware } from './pages/DashboardRoleAware';
 import { AgendaOperational } from './pages/AgendaOperational';
 import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
+import { PatientEditPage } from './pages/PatientEditPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/agenda" element={<AgendaOperational />} />
             <Route path="/hoje" element={<RecepcaoHoje />} />
             <Route path="/pacientes" element={<PatientsRoleAware />} />
+            <Route path="/pacientes/:id/editar" element={<PatientEditPage />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
             <Route path="/crm" element={<CrmOperational />} />

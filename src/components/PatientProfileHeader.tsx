@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ageFrom, maskCpf, STAGE_META, type Patient, type PatientGuardian } from '../lib/types';
 import { loadPatientRegistryExtras } from '../lib/patientRegistry';
 import { Card, Chip, IconMail, IconPhone } from '../lib/ui';
@@ -28,27 +29,25 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
 
   const sm = STAGE_META[patient.funilStage];
   const initials = patient.nome.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
-  const primaryGuardian = extras?.guardians.find((guardian) => guardian.isPrimaryContact) ?? extras?.guardians[0];
+  const primaryGuardian = extras?.guardians.find((item) => item.isPrimaryContact) ?? extras?.guardians[0];
+  const emergencyContact = extras?.guardians.find((item) => item.isEmergencyContact && item.id !== primaryGuardian?.id);
+  const displayName = extras?.preferredName || patient.nome;
 
   return (
     <Card>
       <div className="flex flex-wrap items-start gap-5 px-5 py-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-line bg-mint/10">
-          {extras?.avatarUrl ? (
-            <img src={extras.avatarUrl} alt={`Foto de ${patient.nome}`} className="h-full w-full object-cover" />
-          ) : (
-            <span className="grid h-full w-full place-items-center font-display text-xl font-bold text-mint">{initials}</span>
-          )}
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line bg-mint/10 shadow-sm">
+          {extras?.avatarUrl ? <img src={extras.avatarUrl} alt={`Foto de ${patient.nome}`} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center font-display text-xl font-bold text-mint">{initials}</span>}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-display text-2xl font-bold tracking-tight">{extras?.preferredName || patient.nome}</h1>
-            {extras?.preferredName && extras.preferredName !== patient.nome && <span className="text-[12.5px] text-fog">cadastro: {patient.nome}</span>}
+            <h1 className="font-display text-2xl font-bold tracking-tight">{displayName}</h1>
             <Chip className={sm.chip}>{sm.label}</Chip>
             {patient.status === 'inativo' && <Chip className="border-pulse/40 text-pulse">inativo · oportunidade de reativação</Chip>}
             {patient.status === 'alta' && <Chip className="border-aqua/40 text-aqua">alta registrada · histórico preservado</Chip>}
           </div>
+          {extras?.preferredName && extras.preferredName !== patient.nome && <p className="mt-0.5 text-[12.5px] text-fog">Nome civil: {patient.nome}</p>}
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-fog">
             <span>{ageFrom(patient.nascimento)} anos</span>
@@ -58,18 +57,18 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
             <span className={patient.optInWhats ? 'text-mint' : 'text-fog/70'}>WhatsApp {patient.optInWhats ? 'autorizado' : 'sem opt-in'}</span>
           </div>
 
-          {primaryGuardian && (
-            <div className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-deep/70 px-3 py-2 text-[12.5px]">
-              <span className="font-semibold">Responsável: {primaryGuardian.name}</span>
-              <span className="text-fog">{primaryGuardian.relationship}</span>
-              {primaryGuardian.phone && <span className="text-fog">{primaryGuardian.phone}</span>}
-              {primaryGuardian.isFinancialResponsible && <span className="text-amber">financeiro</span>}
-              {primaryGuardian.isLegalGuardian && <span className="text-mint">legal</span>}
+          {(primaryGuardian || emergencyContact) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {primaryGuardian && <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-deep/70 px-3 py-2 text-[12.5px]"><span className="font-semibold">Contato: {primaryGuardian.name}</span><span className="text-fog">{primaryGuardian.relationship}</span>{primaryGuardian.phone && <span className="text-fog">{primaryGuardian.phone}</span>}{primaryGuardian.isLegalGuardian && <span className="text-mint">legal</span>}{primaryGuardian.isFinancialResponsible && <span className="text-amber">financeiro</span>}{primaryGuardian.isEmergencyContact && <span className="text-pulse">emergência</span>}</div>}
+              {emergencyContact && <div className="inline-flex items-center gap-2 rounded-xl bg-pulse/[0.06] px-3 py-2 text-[12.5px]"><span className="font-semibold text-pulse">Emergência: {emergencyContact.name}</span>{emergencyContact.phone && <span className="text-fog">{emergencyContact.phone}</span>}</div>}
             </div>
           )}
         </div>
 
-        <PatientJourneyControl patient={patient} />
+        <div className="flex items-center gap-2">
+          <Link to={`/pacientes/${patient.id}/editar`} className="rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise hover:text-paper">Editar cadastro</Link>
+          <PatientJourneyControl patient={patient} />
+        </div>
       </div>
     </Card>
   );
