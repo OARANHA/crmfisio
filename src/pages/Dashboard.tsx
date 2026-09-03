@@ -38,7 +38,7 @@ export function Dashboard() {
       dIso,
       label: format(new Date(dIso + 'T12:00'), 'EEE', { locale: ptBR }).replace('.', ''),
       valor: transactions
-        .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.vencimento === dIso)
+        .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.paidAt?.startsWith(dIso))
         .reduce((s, t) => s + t.valor, 0),
     }));
   }, [transactions]);
@@ -86,11 +86,11 @@ export function Dashboard() {
       <Reveal delay={70}>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">
           {[
-            { l: 'Produção do mês', v: Math.round(k.producao / 100), s: '', pre: 'R$ ', c: 'text-mint', sub: `${k.realizadas} sessões finalizadas` },
-            { l: 'A receber', v: Math.round(k.aReceber / 100), s: '', pre: 'R$ ', c: 'text-amber', sub: 'pendências + atrasados' },
-            { l: 'Comparecimento', v: k.comparecimento, s: '%', pre: '', c: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas` },
-            { l: 'Novos pacientes', v: k.novos, s: '', pre: '', c: 'text-aqua', sub: 'no mês corrente' },
-            { l: 'NPS médio', v: 0, s: '', pre: '', c: 'text-paper', sub: `nota ${k.nps.toLocaleString('pt-BR')} / 10`, plain: k.nps },
+            { l: 'Produção do mês', v: Math.round(k.producao / 100), s: '', pre: 'R$ ', c: 'text-mint', sub: `${k.realizadas} sessões finalizadas${unidade ? ' · unidade selecionada' : ''}` },
+            { l: 'A receber', v: Math.round(k.aReceber / 100), s: '', pre: 'R$ ', c: 'text-amber', sub: 'consolidado da clínica' },
+            { l: 'Comparecimento', v: k.comparecimento, s: '%', pre: '', c: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}` },
+            { l: 'Novos pacientes', v: k.novos, s: '', pre: '', c: 'text-aqua', sub: 'consolidado da clínica · mês corrente' },
+            { l: 'NPS médio', v: 0, s: '', pre: '', c: 'text-paper', sub: `consolidado · nota ${k.nps.toLocaleString('pt-BR')} / 10`, plain: k.nps },
           ].map((x) => (
             <div key={x.l} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
               <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog">{x.l}</p>
@@ -119,7 +119,7 @@ export function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <Reveal delay={120}>
           <Card className="lg:col-span-2">
-            <CardHead title="Recebimentos — últimos 7 dias" sub="baixas confirmadas · consolidado todas as unidades" />
+            <CardHead title="Recebimentos — últimos 7 dias" sub="data efetiva da baixa · consolidado da clínica" />
             <div className="p-5">
               <div className="flex items-end gap-2 h-40">
                 {semana.map((s) => (
