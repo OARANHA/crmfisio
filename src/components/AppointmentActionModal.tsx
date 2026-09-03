@@ -44,7 +44,7 @@ export function AppointmentActionModal({
   const canCancel = operationalEditable && (isOperationalRole(role) || role === 'fisio');
 
   return (
-    <Modal open={!!appointment} onClose={onClose} title="Atendimento">
+    <Modal open={!!appointment} onClose={onClose} title="Atendimento" wide>
       {appointment && (
         <div className="space-y-4">
           <div>
@@ -57,26 +57,26 @@ export function AppointmentActionModal({
           <AppointmentPatientSnapshot patient={patient} appointment={appointment} appointments={appointments} whatsapp={whatsapp} />
           <TreatmentJourneyContext patient={patient} appointment={appointment} />
 
-          <div className="grid grid-cols-2 gap-3 text-[12px]">
-            <div className="border border-line bg-deep p-3">
-              <span className="block font-mono text-[9px] text-fog uppercase">Unidade</span>
+          <div className="grid grid-cols-2 gap-3 text-[12px] sm:grid-cols-4">
+            <div className="rounded-xl border border-line bg-deep p-3">
+              <span className="block text-[9px] font-semibold uppercase tracking-wide text-fog">Unidade</span>
               {unitLabel || '—'}
             </div>
-            <div className="border border-line bg-deep p-3">
-              <span className="block font-mono text-[9px] text-fog uppercase">Sala/Recurso</span>
+            <div className="rounded-xl border border-line bg-deep p-3">
+              <span className="block text-[9px] font-semibold uppercase tracking-wide text-fog">Sala/Recurso</span>
               {roomLabel}
             </div>
-            <div className="border border-line bg-deep p-3">
-              <span className="block font-mono text-[9px] text-fog uppercase">Valor</span>
+            <div className="rounded-xl border border-line bg-deep p-3">
+              <span className="block text-[9px] font-semibold uppercase tracking-wide text-fog">Valor</span>
               {fmtBRL(appointment.valor)}
             </div>
-            <div className="border border-line bg-deep p-3">
-              <span className="block font-mono text-[9px] text-fog uppercase">Status</span>
+            <div className="rounded-xl border border-line bg-deep p-3">
+              <span className="block text-[9px] font-semibold uppercase tracking-wide text-fog">Status</span>
               <Chip className={STATUS_META[appointment.status].chip}>{STATUS_META[appointment.status].label}</Chip>
             </div>
           </div>
 
-          <div className="border border-line bg-deep/60 p-3 text-[11.5px] text-fog">
+          <div className="rounded-xl border border-line bg-deep/60 p-3 text-[11.5px] text-fog">
             {appointmentStatusGuidance(appointment.status)}
           </div>
 
