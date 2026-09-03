@@ -9,6 +9,7 @@ import { IconLock } from './icons';
 import { isClinicManager } from '../lib/permissions';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalAssessmentHistory } from './ClinicalAssessmentHistory';
+import { ClinicalSummaryMvd } from './ClinicalSummaryMvd';
 
 type ClinicalEvaluation = {
   id: string;
@@ -263,14 +264,14 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex border border-line bg-panel overflow-x-auto">
+      <div className="flex border-b border-line overflow-x-auto">
         {tabs.map((item) => (
           <button
             key={item.key}
             disabled={item.locked}
             onClick={() => !item.locked && setTab(item.key)}
             className={`px-4 py-3 font-display font-semibold text-[13px] border-b-2 whitespace-nowrap transition-colors ${
-              item.locked ? 'text-fog/35 cursor-not-allowed' : tab === item.key ? 'border-mint text-mint bg-mint/5' : 'border-transparent text-fog hover:text-paper'
+              item.locked ? 'text-fog/35 cursor-not-allowed' : tab === item.key ? 'border-mint text-mint' : 'border-transparent text-fog hover:text-paper'
             }`}
           >
             {item.locked && <IconLock className="w-3 h-3 inline mr-1.5 -mt-0.5" />}
@@ -280,29 +281,22 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
       </div>
 
       {tab === 'resumo' && (
-        <div className="grid lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2">
-            <CardHead title="Visão clínica" sub="o que o profissional precisa saber antes de atender" />
-            <div className="p-5 grid sm:grid-cols-2 gap-4 text-[13.5px]">
-              <Info label="Queixa principal" value={patient.queixaPrincipal || '—'} />
-              <Info label="CID-10" value={patient.cid10.join(' · ') || '—'} />
-              <Info label="Objetivo terapêutico" value={latestEvaluation?.objetivos || patient.anamnese.objetivo || 'Ainda não definido'} />
-              <Info label="Plano terapêutico" value={latestEvaluation?.planoTerapeutico || 'Ainda não definido'} />
-              <Info label="Última sessão" value={lastSession ? `${format(new Date(`${lastSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} · ${lastSession.tipo}` : 'Nenhuma sessão finalizada'} />
-              <Info label="Próxima sessão" value={nextSession ? `${format(new Date(`${nextSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} às ${nextSession.inicio}` : 'Sem próxima sessão'} alert={!nextSession} />
-            </div>
-          </Card>
-          <Card>
-            <CardHead title="Prontidão do tratamento" sub="sinais operacionais" />
-            <div className="p-5 space-y-3">
-              <StatusLine label="Avaliação clínica" ok={Boolean(latestEvaluation)} />
-              <StatusLine label="Plano terapêutico" ok={Boolean(latestEvaluation?.planoTerapeutico)} />
-              <StatusLine label="Próxima sessão" ok={Boolean(nextSession)} />
-              <StatusLine label="Consentimento" ok={patientConsents.some((c) => c.assinado)} />
-              {activeSession && <div className="border border-amber/40 bg-amber/5 p-3 text-[12px] text-amber">Atendimento em andamento às {activeSession.inicio}. Finalize somente após registrar a evolução.</div>}
-            </div>
-          </Card>
-        </div>
+        <ClinicalSummaryMvd
+          complaint={patient.queixaPrincipal || 'Sem queixa principal registrada'}
+          cid={patient.cid10.join(' · ') || 'Sem CID-10 registrado'}
+          objective={latestEvaluation?.objetivos || patient.anamnese.objetivo || 'Ainda não definido'}
+          plan={latestEvaluation?.planoTerapeutico || 'Ainda não definido'}
+          lastSession={lastSession ? `${format(new Date(`${lastSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} · ${lastSession.tipo}` : 'Nenhuma sessão finalizada'}
+          nextSession={nextSession ? `${format(new Date(`${nextSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} às ${nextSession.inicio}` : 'Sem próxima sessão'}
+          hasNextSession={Boolean(nextSession)}
+          readiness={[
+            { label: 'Avaliação', ok: Boolean(latestEvaluation) },
+            { label: 'Plano', ok: Boolean(latestEvaluation?.planoTerapeutico) },
+            { label: 'Agenda', ok: Boolean(nextSession) },
+            { label: 'Consentimento', ok: patientConsents.some((c) => c.assinado) },
+          ]}
+          activeSessionTime={activeSession?.inicio}
+        />
       )}
 
       {tab === 'avaliacao' && clinicalRead && (
@@ -449,24 +443,6 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
           )}
         </Card>
       )}
-    </div>
-  );
-}
-
-function Info({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) {
-  return (
-    <div className="border border-line bg-deep px-4 py-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-fog">{label}</p>
-      <p className={`mt-1.5 leading-relaxed ${alert ? 'text-amber' : 'text-paper/90'}`}>{value}</p>
-    </div>
-  );
-}
-
-function StatusLine({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <div className="flex items-center justify-between border-b border-line/60 pb-2 last:border-0">
-      <span className="text-[12.5px] text-paper/90">{label}</span>
-      <span className={`font-mono text-[10.5px] ${ok ? 'text-mint' : 'text-amber'}`}>{ok ? 'pronto ✓' : 'pendente'}</span>
     </div>
   );
 }
