@@ -78,19 +78,25 @@ export const IconDownload = ({ className }: IP) => (
 export const IconChart = ({ className }: IP) => (
   <svg {...b(className)}><path d="M4.5 19.5V5M4.5 19.5H20M8 15.5v-4M12 15.5V7.5M16 15.5v-6.5" /></svg>
 );
+export const IconSun = ({ className }: IP) => (
+  <svg {...b(className)}><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" /></svg>
+);
+export const IconMoon = ({ className }: IP) => (
+  <svg {...b(className)}><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z" /></svg>
+);
 
 /* ------------------------------- primitives ------------------------------- */
 
 export function Chip({ className = '', children }: { className?: string; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[11px] leading-4 ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium text-[11px] leading-4 ${className}`}>
       {children}
     </span>
   );
 }
 
 export function Card({ className = '', children }: { className?: string; children: ReactNode }) {
-  return <div className={`border border-line bg-panel ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl border border-line bg-panel shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}>{children}</div>;
 }
 
 export function CardHead({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
@@ -98,7 +104,7 @@ export function CardHead({ title, sub, right }: { title: string; sub?: string; r
     <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-line">
       <div>
         <h3 className="font-display font-semibold text-[15px] leading-tight">{title}</h3>
-        {sub && <p className="font-mono text-[11px] text-fog mt-0.5">{sub}</p>}
+        {sub && <p className="text-[12px] text-fog mt-1">{sub}</p>}
       </div>
       {right}
     </div>
@@ -108,10 +114,10 @@ export function CardHead({ title, sub, right }: { title: string; sub?: string; r
 export function Btn({
   variant = 'primary', className = '', children, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' | 'subtle' }) {
-  const base = 'inline-flex items-center justify-center gap-2 font-display font-semibold text-[13px] px-4 py-2 transition-all active:translate-y-px disabled:opacity-40 disabled:pointer-events-none';
+  const base = 'inline-flex items-center justify-center gap-2 rounded-xl font-display font-semibold text-[13px] px-4 py-2.5 transition-all active:translate-y-px disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40';
   const v =
-    variant === 'primary' ? 'bg-mint text-ink hover:bg-[#6fe0b6]'
-    : variant === 'danger' ? 'bg-pulse text-ink hover:bg-[#f4757b]'
+    variant === 'primary' ? 'bg-mint text-on-accent hover:brightness-105'
+    : variant === 'danger' ? 'bg-pulse text-on-accent hover:brightness-105'
     : variant === 'subtle' ? 'bg-raise text-paper border border-line hover:border-line2'
     : 'border border-line text-fog hover:text-paper hover:border-line2';
   return <button className={`${base} ${v} ${className}`} {...rest}>{children}</button>;
@@ -129,8 +135,8 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal>
-      <div className="fixed inset-0 bg-ink/80 backdrop-blur-[2px]" onClick={onClose} />
-      <div className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} border border-line2 bg-panel shadow-2xl my-auto rv is-in`}>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
+      <div className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-2xl border border-line2 bg-panel shadow-2xl my-auto rv is-in overflow-hidden`}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
           <h3 className="font-display font-semibold text-[15px]">{title}</h3>
           <button onClick={onClose} className="text-fog hover:text-paper transition-colors" aria-label="Fechar">
@@ -143,12 +149,12 @@ export function Modal({
   );
 }
 
-const fieldCls = 'w-full bg-deep border border-line px-3 py-2 text-[13.5px] text-paper placeholder:text-fog/50 focus:outline-none focus:border-mint/60 transition-colors';
+const fieldCls = 'w-full rounded-xl bg-deep border border-line px-3.5 py-2.5 text-[13.5px] text-paper placeholder:text-fog/50 focus:outline-none focus:border-mint/60 focus:ring-2 focus:ring-mint/10 transition-colors';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="block font-mono text-[10.5px] tracking-[0.14em] uppercase text-fog mb-1.5">{label}</span>
+      <span className="block text-[11.5px] font-semibold text-fog mb-1.5">{label}</span>
       {children}
       {hint && <span className="block font-mono text-[10.5px] text-fog/70 mt-1">{hint}</span>}
     </label>
@@ -168,7 +174,7 @@ export function Bar({ pct, color = '#4fd1a5', className = '' }: { pct: number; c
 
 export function Empty({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
-    <div className="border border-dashed border-line2 bg-deep/40 px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-line2 bg-deep/40 px-6 py-10 text-center">
       <p className="font-display font-semibold text-[15px] text-paper/80">{title}</p>
       {sub && <p className="font-mono text-[11.5px] text-fog mt-1.5">{sub}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}

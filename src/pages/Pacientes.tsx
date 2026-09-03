@@ -177,7 +177,7 @@ function Pep({ id }: { id: string }) {
         </Link>
         <Card className="mt-2">
           <div className="px-5 py-4 flex flex-wrap items-start gap-4">
-            <span className="w-12 h-12 rounded-full grid place-items-center font-display font-bold text-lg text-ink" style={{ background: '#4fd1a5' }}>
+            <span className="w-12 h-12 rounded-full grid place-items-center font-display font-bold text-lg text-on-accent" style={{ background: '#4fd1a5' }}>
               {p.nome.split(' ').map((w) => w[0]).slice(0, 2).join('')}
             </span>
             <div className="min-w-0 flex-1">

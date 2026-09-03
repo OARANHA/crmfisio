@@ -149,7 +149,7 @@ export function Config() {
                   const rm = ROLE_META[u.role];
                   return (
                     <li key={u.id} className="px-5 py-3 flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-ink" style={{ background: u.cor }}>
+                      <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent" style={{ background: u.cor }}>
                         {u.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                       </span>
                       <div className="min-w-0 flex-1">
