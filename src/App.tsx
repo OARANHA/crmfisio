@@ -7,6 +7,7 @@ import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { PatientEditPage } from './pages/PatientEditPage';
 import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
+import { NexusGlobalPage } from './pages/NexusGlobalPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -30,6 +31,7 @@ export default function App() {
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
+            <Route path="/nexus" element={<NexusGlobalPage />} />
             <Route path="/agenda" element={<AgendaOperational />} />
             <Route path="/hoje" element={<RecepcaoHoje />} />
             <Route path="/pacientes" element={<PatientsRoleAware />} />
