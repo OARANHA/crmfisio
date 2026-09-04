@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   const invite = Array.isArray(inviteData) ? inviteData[0] : inviteData;
   if (!invite?.invite_id || !invite?.token) return json({ error: 'Convite Nexus não retornado' }, 500);
 
-  const link = `${publicAppUrl}/autoavaliacao/${encodeURIComponent(invite.token)}`;
+  const link = `${publicAppUrl}/#/autoavaliacao/${encodeURIComponent(invite.token)}`;
   const firstName = String(patient.nome ?? '').trim().split(/\s+/)[0] || 'Olá';
   const message = `${firstName}, seu profissional enviou a autoavaliação ${supported.label}.\n\nAcesse o link seguro abaixo para responder:\n${link}\n\nO link é individual e expira automaticamente.`;
 
