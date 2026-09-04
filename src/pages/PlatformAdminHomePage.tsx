@@ -48,9 +48,7 @@ export function PlatformAdminHomePage() {
     await validate();
   };
 
-  if (authorized === null) {
-    return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão da plataforma…</div>;
-  }
+  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão da plataforma…</div>;
 
   if (!authorized) {
     return (
@@ -85,11 +83,16 @@ export function PlatformAdminHomePage() {
       </header>
 
       <main className="mx-auto max-w-5xl p-5 md:p-8">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Link to="/platform/governanca" className="rounded-2xl border border-line bg-panel p-6 transition-colors hover:border-aqua/50 hover:bg-raise">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Governança</p>
             <h2 className="mt-2 font-display text-xl font-bold">Automações e observabilidade</h2>
             <p className="mt-2 text-[12.5px] leading-relaxed text-fog">Controles globais, saúde dos ciclos e trilha de auditoria da plataforma.</p>
+          </Link>
+          <Link to="/platform/modulos" className="rounded-2xl border border-line bg-panel p-6 transition-colors hover:border-aqua/50 hover:bg-raise">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Entitlements</p>
+            <h2 className="mt-2 font-display text-xl font-bold">Módulos por clínica</h2>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-fog">Libere Nexus, Financeiro, CRM, Relatórios, Avaliações customizadas e WhatsApp sem misturar permissões clínicas.</p>
           </Link>
           <Link to="/platform/provisionar" className="rounded-2xl border border-line bg-panel p-6 transition-colors hover:border-mint/50 hover:bg-raise">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-mint">Onboarding</p>

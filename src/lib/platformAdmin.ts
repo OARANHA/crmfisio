@@ -50,6 +50,13 @@ export type PlatformClinicEntitlement = {
   updatedAt: string;
 };
 
+export type PlatformClinicSummary = {
+  id: string;
+  name: string;
+  cnpj: string | null;
+  createdAt: string;
+};
+
 export type PlatformAuditEntry = {
   id: string;
   actorUserId: string | null;
@@ -117,6 +124,18 @@ export async function loadPlatformAutomationRuns(limit = 20): Promise<PlatformAu
     clinicsProcessed: Number(row.clinics_processed ?? 0),
     status: String(row.status ?? 'unknown'),
     errorMessage: row.error_message ? String(row.error_message) : null,
+  }));
+}
+
+export async function loadPlatformClinics(): Promise<PlatformClinicSummary[]> {
+  const { data, error } = await db.rpc('platform_list_clinics');
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.clinic_id),
+    name: String(row.clinic_name),
+    cnpj: row.cnpj ? String(row.cnpj) : null,
+    createdAt: String(row.created_at),
   }));
 }
 
