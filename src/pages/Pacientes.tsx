@@ -9,6 +9,7 @@ import { Reveal } from '../components/Reveal';
 import { ClinicalWorkspace } from '../components/ClinicalWorkspace';
 import { PatientOperationalActions } from '../components/PatientOperationalActions';
 import { PatientProfileHeader } from '../components/PatientProfileHeader';
+import { NexusSelfAssessmentInviteAction } from '../components/NexusSelfAssessmentInviteAction';
 import { PatientRegistrationPage } from './PatientRegistrationPage';
 
 export function Pacientes() {
@@ -114,6 +115,10 @@ function Pep({ id }: { id: string }) {
 
       <Reveal delay={40}>
         <PatientOperationalActions patient={patient} />
+      </Reveal>
+
+      <Reveal delay={50}>
+        <NexusSelfAssessmentInviteAction patient={patient} />
       </Reveal>
 
       <Reveal delay={60}>
