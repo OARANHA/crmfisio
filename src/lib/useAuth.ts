@@ -1,6 +1,7 @@
 /**
- * Hook de autenticação com Supabase Auth
- * Substitui o login mockado por autenticação real JWT
+ * Hook de autenticação com Supabase Auth.
+ * Mantém a identidade autenticada separada do vínculo com clínica para que
+ * platform_admin possa operar o SaaS sem receber acesso implícito a tenants.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -18,8 +19,10 @@ interface AuthUser extends User {
 
 interface UseAuthReturn {
   user: AuthUser | null;
+  principal: User | null;
   session: Session | null;
   profile: Profile | null;
+  platformAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -28,11 +31,12 @@ interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [principal, setPrincipal] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [platformAdmin, setPlatformAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Buscar perfil do usuário no banco
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -42,11 +46,7 @@ export function useAuth(): UseAuthReturn {
         .eq('ativo', true)
         .single();
 
-      if (error || !data) {
-        console.warn('[useAuth] Perfil não encontrado:', error);
-        return null;
-      }
-
+      if (error || !data) return null;
       return data as Profile;
     } catch (e) {
       console.error('[useAuth] Erro ao buscar perfil:', e);
@@ -54,99 +54,112 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
-  // Carregar sessão inicial
+  const fetchPlatformAdmin = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-admin-session', { body: {} });
+      if (error) return false;
+      return data?.platformAdmin === true;
+    } catch (e) {
+      console.error('[useAuth] Erro ao validar platform_admin:', e);
+      return false;
+    }
+  }, []);
+
+  const hydrateIdentity = useCallback(async (authUser: User | null) => {
+    setPrincipal(authUser);
+    if (!authUser) {
+      setUser(null);
+      setProfile(null);
+      setPlatformAdmin(false);
+      return;
+    }
+
+    const [prof, isPlatformAdmin] = await Promise.all([
+      fetchProfile(authUser.id),
+      fetchPlatformAdmin(),
+    ]);
+
+    setPlatformAdmin(isPlatformAdmin);
+    setProfile(prof);
+    setUser(prof && isRole(prof.role) ? { ...authUser, profile: prof, role: prof.role } : null);
+  }, [fetchPlatformAdmin, fetchProfile]);
+
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (!mounted) return;
-        
-        setSession(session);
-        
-        if (session?.user) {
-          const prof = await fetchProfile(session.user.id);
-          if (mounted) {
-            setUser(prof && isRole(prof.role) ? { ...session.user, profile: prof, role: prof.role } : null);
-            setProfile(prof);
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
+        setSession(currentSession);
+        await hydrateIdentity(currentSession?.user ?? null);
       } catch (e) {
         console.error('[useAuth] Erro na inicialização:', e);
         if (mounted) {
+          setPrincipal(null);
           setUser(null);
           setProfile(null);
+          setPlatformAdmin(false);
         }
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    initAuth();
+    void initAuth();
 
-    // Listener para mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
-      
       setSession(newSession);
-      
-      if (newSession?.user) {
-        const prof = await fetchProfile(newSession.user.id);
-        setUser(prof && isRole(prof.role) ? { ...newSession.user, profile: prof, role: prof.role } : null);
-        setProfile(prof);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
+      await hydrateIdentity(newSession?.user ?? null);
+      if (mounted) setLoading(false);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [hydrateIdentity]);
 
-  // Login com email/senha
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      if (!data.user) throw new Error('Sessão não criada');
 
-      if (data.user) {
-        const prof = await fetchProfile(data.user.id);
-        if (!prof || !isRole(prof.role)) {
-          await supabase.auth.signOut();
-          throw new Error('Usuário sem perfil ativo e válido');
-        }
-        setUser({ ...data.user, profile: prof, role: prof.role });
-        setProfile(prof);
+      const [prof, isPlatformAdmin] = await Promise.all([
+        fetchProfile(data.user.id),
+        fetchPlatformAdmin(),
+      ]);
+
+      if ((!prof || !isRole(prof.role)) && !isPlatformAdmin) {
+        await supabase.auth.signOut();
+        throw new Error('Usuário sem perfil ativo ou acesso à plataforma');
       }
 
+      setPrincipal(data.user);
+      setPlatformAdmin(isPlatformAdmin);
+      setProfile(prof);
+      setUser(prof && isRole(prof.role) ? { ...data.user, profile: prof, role: prof.role } : null);
       return { error: null };
     } catch (e) {
       console.error('[signIn] Erro:', e);
       return { error: e instanceof Error ? e : new Error('Erro ao fazer login') };
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Logout
   const signOut = async () => {
     await supabase.auth.signOut();
+    setPrincipal(null);
     setUser(null);
     setSession(null);
     setProfile(null);
+    setPlatformAdmin(false);
   };
 
-  // Verificar acesso por módulo
   const canAccess = useCallback((module: ModuleKey): boolean => {
     if (!user?.role) return false;
     return accessFor(user.role, module) !== 'none';
@@ -154,8 +167,10 @@ export function useAuth(): UseAuthReturn {
 
   return {
     user,
+    principal,
     session,
     profile,
+    platformAdmin,
     loading,
     signIn,
     signOut,
