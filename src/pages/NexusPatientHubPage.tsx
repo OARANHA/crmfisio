@@ -15,12 +15,12 @@ type Tool = { key: string; title: string; subtitle: string; href: (patientId: st
 
 const modules: NexusModule[] = [
   { key: 'mental-health', title: 'Saúde Mental', description: 'Escalas, risco, sintomas e acompanhamento longitudinal.', status: 'available' },
-  { key: 'eem', title: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa clínica e histórico.', status: 'planned' },
+  { key: 'eem', title: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa determinística, alertas e histórico.', status: 'available' },
   { key: 'cognition', title: 'Cognição', description: 'MEEM e instrumentos cognitivos com evolução longitudinal.', status: 'planned' },
   { key: 'psychopharmacology', title: 'Psicofarmacologia', description: 'Equivalências, trocas, redução e monitoramento.', status: 'planned' },
   { key: 'calculators', title: 'Calculadoras', description: 'Função renal, risco cardiovascular e ferramentas clínicas.', status: 'planned' },
   { key: 'education', title: 'Educação em Saúde', description: 'Conteúdo contextual orientado pelos achados clínicos.', status: 'planned' },
-  { key: 'evidence', title: 'Evidências', description: 'Fontes, versões de regras e proveniência do Nexus.', status: 'planned' },
+  { key: 'evidence', title: 'Evidências', description: 'Fontes, versões de regras e proveniência clínica Nexus.', status: 'planned' },
 ];
 
 const scale = (id: string, key: string) => `/pacientes/${id}/nexus/scales/${key}`;
@@ -97,7 +97,7 @@ export function NexusPatientHubPage() {
     return counts;
   }, [results]);
 
-  const activeTools = groups.reduce((sum, group) => sum + group.tools.length, 0);
+  const activeTools = groups.reduce((sum, group) => sum + group.tools.length, 0) + 1;
 
   if (!user) return <Navigate to="/" replace />;
   if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
@@ -128,7 +128,7 @@ export function NexusPatientHubPage() {
                 <p className="text-[12.5px] font-semibold text-paper">{flag.title}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-fog">{flag.message}</p>
                 {flag.requiredAction && <p className="mt-2 text-[11px] font-medium text-pulse">Ação: {flag.requiredAction}</p>}
-                {['phq9.item9.positive', 'epds.item10.self-harm', 'srq20.item17.death-ideation'].includes(flag.flagCode) && (
+                {['phq9.item9.positive', 'epds.item10.self-harm', 'srq20.item17.death-ideation', 'eem.thought.suicidal-ideation'].includes(flag.flagCode) && (
                   <Link to={`/pacientes/${patient.id}/nexus/cssrs`} className="mt-3 inline-flex rounded-lg border border-pulse/35 bg-pulse/[0.06] px-3 py-2 text-[11px] font-semibold text-pulse hover:bg-pulse/10">Aplicar C-SSRS agora →</Link>
                 )}
               </div>
@@ -164,7 +164,7 @@ export function NexusPatientHubPage() {
               </>}
             </div>
           </Card>
-          <Card><div className="p-5"><p className="font-display font-semibold text-[13px]">Outros domínios Nexus</p><div className="mt-3 space-y-2">{modules.filter((module) => module.key !== 'mental-health').map((module) => <div key={module.key} className="rounded-xl border border-line bg-deep p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-[11.5px] font-semibold text-paper">{module.title}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{module.description}</p></div><Chip className="border-line text-fog">em migração</Chip></div></div>)}</div></div></Card>
+          <Card><div className="p-5"><p className="font-display font-semibold text-[13px]">Outros domínios Nexus</p><div className="mt-3 space-y-2">{modules.filter((module) => module.key !== 'mental-health').map((module) => module.key === 'eem' ? <Link key={module.key} to={`/pacientes/${patient.id}/nexus/eem`} className="block rounded-xl border border-mint/30 bg-mint/[0.04] p-3 transition-colors hover:border-mint/60"><div className="flex items-start justify-between gap-2"><div><p className="text-[11.5px] font-semibold text-paper">{module.title}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{module.description}</p></div><Chip className="border-mint/40 text-mint">ativo</Chip></div><p className="mt-2 font-mono text-[9.5px] text-mint">{resultCounts.get('eem') ?? 0} registro(s) · abrir →</p></Link> : <div key={module.key} className="rounded-xl border border-line bg-deep p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-[11.5px] font-semibold text-paper">{module.title}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{module.description}</p></div><Chip className="border-line text-fog">em migração</Chip></div></div>)}</div></div></Card>
           <Card><div className="p-5"><p className="font-display font-semibold text-[13px]">Princípio de segurança</p><p className="mt-2 text-[11px] leading-relaxed text-fog">O Nexus não cria outro paciente nem outro prontuário. Resultados versionados podem ser propostos ao SOAP, mas só entram após revisão explícita do profissional.</p></div></Card>
         </div>
       </div>
