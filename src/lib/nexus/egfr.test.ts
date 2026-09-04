@@ -2,15 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { calculateEgfr2021 } from './egfr';
 
 describe('CKD-EPI 2021', () => {
-  it('reproduces a normal female example', () => {
+  it('reproduces a female example exactly', () => {
     const result = calculateEgfr2021(1, 45, 'female');
-    expect(result.egfr).toBe(70);
+    expect(result.egfr).toBe(71);
     expect(result.stage).toBe('G2');
   });
 
-  it('classifies stage boundaries', () => {
-    const g3a = calculateEgfr2021(1.5, 60, 'male');
-    expect(['G3a', 'G3b']).toContain(g3a.stage);
+  it('classifies a G3a example', () => {
+    const result = calculateEgfr2021(1.5, 60, 'male');
+    expect(result.egfr).toBe(53);
+    expect(result.stage).toBe('G3a');
   });
 
   it('is deterministic', () => {
