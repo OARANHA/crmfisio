@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
-import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import {
   isPlatformAdmin,
   loadPlatformAuditLog,
+  loadPlatformAutomationRuns,
   loadPlatformAutomationSettings,
   setPlatformAutomationSetting,
   type PlatformAuditEntry,
   type PlatformAutomationKey,
+  type PlatformAutomationRun,
   type PlatformAutomationSetting,
 } from '../lib/platformAdmin';
 
@@ -79,11 +80,20 @@ function Toggle({ enabled, disabled, onClick }: { enabled: boolean; disabled?: b
   );
 }
 
+function runStatusClass(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized === 'success' || normalized === 'completed') return 'border-mint/35 bg-mint/10 text-mint';
+  if (normalized === 'failed' || normalized === 'error') return 'border-pulse/35 bg-pulse/10 text-pulse';
+  if (normalized === 'running' || normalized === 'processing') return 'border-aqua/35 bg-aqua/10 text-aqua';
+  return 'border-line bg-deep text-fog';
+}
+
 export function PlatformAdminPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [settings, setSettings] = useState<PlatformAutomationSetting[]>([]);
+  const [runs, setRuns] = useState<PlatformAutomationRun[]>([]);
   const [audit, setAudit] = useState<PlatformAuditEntry[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [busyKey, setBusyKey] = useState<PlatformAutomationKey | null>(null);
@@ -99,14 +109,17 @@ export function PlatformAdminPage() {
       setAuthorized(allowed);
       if (!allowed) {
         setSettings([]);
+        setRuns([]);
         setAudit([]);
         return;
       }
-      const [nextSettings, nextAudit] = await Promise.all([
+      const [nextSettings, nextRuns, nextAudit] = await Promise.all([
         loadPlatformAutomationSettings(),
+        loadPlatformAutomationRuns(20),
         loadPlatformAuditLog(40),
       ]);
       setSettings(nextSettings);
+      setRuns(nextRuns);
       setAudit(nextAudit);
     } catch (cause) {
       console.error('[Platform Admin] load:', cause);
@@ -139,6 +152,7 @@ export function PlatformAdminPage() {
     if (!session) {
       setAuthorized(null);
       setSettings([]);
+      setRuns([]);
       setAudit([]);
       return;
     }
@@ -146,6 +160,8 @@ export function PlatformAdminPage() {
   }, [session?.user.id, refresh]);
 
   const settingMap = useMemo(() => new Map(settings.map((item) => [item.key, item])), [settings]);
+  const latestRun = runs[0] ?? null;
+  const failedRuns = useMemo(() => runs.filter((run) => run.workerFailed > 0 || ['failed', 'error'].includes(run.status.toLowerCase())), [runs]);
 
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -270,7 +286,76 @@ export function PlatformAdminPage() {
           </div>
         </section>
 
-        <PlatformClinicEntitlementsPanel onAuditChanged={setAudit} />
+        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
+          <div className="flex flex-wrap items-start gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Observabilidade</p>
+              <h2 className="mt-1 font-display text-xl font-bold">Saúde das automações</h2>
+              <p className="mt-1 text-[12.5px] text-fog">Telemetria operacional da plataforma, visível somente no domínio Platform Admin.</p>
+            </div>
+            {latestRun && (
+              <div className="ml-auto rounded-xl border border-line bg-deep px-3 py-2 text-right">
+                <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-fog">Último ciclo</p>
+                <p className="mt-1 text-[12px] font-semibold text-paper">{new Date(latestRun.startedAt).toLocaleString('pt-BR')}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-line bg-deep p-4">
+              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Execuções carregadas</p>
+              <p className="mt-2 font-display text-2xl font-bold">{runs.length}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-deep p-4">
+              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Com falha</p>
+              <p className={`mt-2 font-display text-2xl font-bold ${failedRuns.length > 0 ? 'text-pulse' : 'text-mint'}`}>{failedRuns.length}</p>
+            </div>
+            <div className="rounded-xl border border-line bg-deep p-4">
+              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Clínicas no último ciclo</p>
+              <p className="mt-2 font-display text-2xl font-bold">{latestRun?.clinicsProcessed ?? 0}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 overflow-x-auto rounded-xl border border-line/70">
+            <table className="min-w-full text-left text-[11px]">
+              <thead className="bg-deep text-fog">
+                <tr>
+                  <th className="px-3 py-2.5 font-semibold">Início</th>
+                  <th className="px-3 py-2.5 font-semibold">Status</th>
+                  <th className="px-3 py-2.5 font-semibold">Trigger</th>
+                  <th className="px-3 py-2.5 font-semibold">Clínicas</th>
+                  <th className="px-3 py-2.5 font-semibold">WA enviados</th>
+                  <th className="px-3 py-2.5 font-semibold">Falhas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60 bg-panel/40">
+                {runs.length === 0 ? (
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-fog">Nenhuma execução recente disponível.</td></tr>
+                ) : runs.map((run) => (
+                  <tr key={run.id}>
+                    <td className="px-3 py-3 font-mono text-[10px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')}</td>
+                    <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${runStatusClass(run.status)}`}>{run.status}</span></td>
+                    <td className="px-3 py-3 text-fog">{run.triggerSource}</td>
+                    <td className="px-3 py-3 text-paper">{run.clinicsProcessed}</td>
+                    <td className="px-3 py-3 text-paper">{run.workerSent}</td>
+                    <td className={`px-3 py-3 font-semibold ${run.workerFailed > 0 ? 'text-pulse' : 'text-mint'}`}>{run.workerFailed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {failedRuns.some((run) => run.errorMessage) && (
+            <div className="mt-4 rounded-xl border border-pulse/25 bg-pulse/[0.04] p-3">
+              <p className="text-[11.5px] font-semibold text-pulse">Falhas recentes registradas</p>
+              <div className="mt-2 space-y-1.5">
+                {failedRuns.filter((run) => run.errorMessage).slice(0, 3).map((run) => (
+                  <p key={run.id} className="font-mono text-[10px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.errorMessage}</p>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
         <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
           <div>
