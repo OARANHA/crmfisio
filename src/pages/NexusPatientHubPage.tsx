@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp } from '../lib/store';
+import { isClinicManager } from '../lib/permissions';
 import { Card, Chip, Empty } from '../lib/ui';
 import {
   listPatientNexusResults,
@@ -16,16 +17,10 @@ type NexusModule = {
   title: string;
   description: string;
   status: 'available' | 'planned';
-  href?: string;
 };
 
 const modules: NexusModule[] = [
-  {
-    key: 'mental-health',
-    title: 'Saúde Mental',
-    description: 'Escalas, risco, sintomas e acompanhamento longitudinal.',
-    status: 'available',
-  },
+  { key: 'mental-health', title: 'Saúde Mental', description: 'Escalas, risco, sintomas e acompanhamento longitudinal.', status: 'available' },
   { key: 'eem', title: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa clínica e histórico.', status: 'planned' },
   { key: 'cognition', title: 'Cognição', description: 'MEEM e instrumentos cognitivos com evolução longitudinal.', status: 'planned' },
   { key: 'psychopharmacology', title: 'Psicofarmacologia', description: 'Equivalências, trocas, redução e monitoramento.', status: 'planned' },
@@ -41,13 +36,16 @@ export function NexusPatientHubPage() {
   const [redFlags, setRedFlags] = useState<NexusRedFlag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  if (!user) return <Navigate to="/" replace />;
+  const canSeeClinical = Boolean(user && (user.role === 'fisio' || isClinicManager(user.role)));
   const patient = patients.find((item) => item.id === id);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!id) return;
+      if (!id || !canSeeClinical) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const [patientResults, patientFlags] = await Promise.all([
@@ -66,7 +64,7 @@ export function NexusPatientHubPage() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, canSeeClinical]);
 
   const latestPhq9 = useMemo(
     () => results.find((item) => item.toolKey === 'phq-9') ?? null,
@@ -76,6 +74,9 @@ export function NexusPatientHubPage() {
     () => results.filter((item) => item.toolKey === 'phq-9'),
     [results],
   );
+
+  if (!user) return <Navigate to="/" replace />;
+  if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
 
   if (!patient) {
     return <Card><Empty title="Paciente não encontrado" sub="O Nexus funciona sempre no contexto do paciente canônico do MedicsPro." /></Card>;
