@@ -7,7 +7,10 @@ import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { PatientEditPage } from './pages/PatientEditPage';
 import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
+import { PlatformAdminHomePage } from './pages/PlatformAdminHomePage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
+import { PlatformClinicModulesPage } from './pages/PlatformClinicModulesPage';
+import { PlatformClinicProvisioningPage } from './pages/PlatformClinicProvisioningPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -28,7 +31,10 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
-          <Route path="/platform" element={<PlatformAdminPage />} />
+          <Route path="/platform" element={<PlatformAdminHomePage />} />
+          <Route path="/platform/governanca" element={<PlatformAdminPage />} />
+          <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
+          <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
