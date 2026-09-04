@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
+import {
+  NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS,
+  nexusSelfAssessmentScaleLabel,
+  normalizeNexusFunctionError,
+  type NexusSelfAssessmentScaleKey,
+} from '../lib/nexusSelfAssessmentUi';
 import { Btn, Chip, Select } from '../lib/ui';
 import { NexusSelfAssessmentStatus } from './NexusSelfAssessmentStatus';
-
-type ScaleKey = 'phq9' | 'gad7';
 
 type InviteResponse = {
   inviteId?: string;
@@ -17,24 +21,9 @@ type InviteResponse = {
   error?: string;
 };
 
-const SCALE_OPTIONS: Array<{ value: ScaleKey; label: string; description: string }> = [
-  { value: 'phq9', label: 'PHQ-9', description: 'Sintomas depressivos' },
-  { value: 'gad7', label: 'GAD-7', description: 'Sintomas de ansiedade' },
-];
-
-function normalizeFunctionError(error: unknown, fallback: string) {
-  if (!error) return fallback;
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === 'object' && error && 'message' in error) {
-    const message = String((error as { message?: unknown }).message ?? '').trim();
-    if (message) return message;
-  }
-  return fallback;
-}
-
 export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient }) {
   const { user, toast } = useApp();
-  const [scaleKey, setScaleKey] = useState<ScaleKey>('phq9');
+  const [scaleKey, setScaleKey] = useState<NexusSelfAssessmentScaleKey>('phq9');
   const [busy, setBusy] = useState(false);
   const [lastInvite, setLastInvite] = useState<InviteResponse | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
@@ -63,11 +52,10 @@ export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient 
 
       setLastInvite(data);
       setHistoryKey((value) => value + 1);
-      const label = SCALE_OPTIONS.find((item) => item.value === scaleKey)?.label ?? scaleKey.toUpperCase();
-      toast(`${label} enviado por WhatsApp. O link individual expira automaticamente.`);
+      toast(`${nexusSelfAssessmentScaleLabel(scaleKey)} enviado por WhatsApp. O link individual expira automaticamente.`);
     } catch (error) {
       console.error('[MedicsPro] convite Nexus:', error);
-      toast(normalizeFunctionError(error, 'Não foi possível enviar a autoavaliação Nexus.'), 'warn');
+      toast(normalizeNexusFunctionError(error, 'Não foi possível enviar a autoavaliação Nexus.'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -75,7 +63,7 @@ export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient 
 
   if (!canInvite) return null;
 
-  const selected = SCALE_OPTIONS.find((item) => item.value === scaleKey) ?? SCALE_OPTIONS[0];
+  const selected = NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS.find((item) => item.value === scaleKey) ?? NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS[0];
 
   return (
     <div className="space-y-3">
@@ -95,8 +83,8 @@ export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient 
           <div className="flex flex-wrap items-end gap-2">
             <div>
               <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.08em] text-fog">Instrumento</label>
-              <Select value={scaleKey} onChange={(event) => setScaleKey(event.target.value as ScaleKey)} className="!w-auto min-w-[170px]">
-                {SCALE_OPTIONS.map((option) => (
+              <Select value={scaleKey} onChange={(event) => setScaleKey(event.target.value as NexusSelfAssessmentScaleKey)} className="!w-auto min-w-[170px]">
+                {NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label} · {option.description}</option>
                 ))}
               </Select>
