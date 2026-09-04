@@ -63,37 +63,18 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
 
           {(primaryGuardian || emergencyContact) && (
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
-              {primaryGuardian && (
-                <span className="text-fog">
-                  <strong className="font-semibold text-paper/90">Contato principal:</strong> {primaryGuardian.name} · {primaryGuardian.relationship}{primaryGuardian.phone ? ` · ${primaryGuardian.phone}` : ''}
-                </span>
-              )}
-              {emergencyContact && (
-                <span className="text-pulse">
-                  <strong className="font-semibold">Emergência:</strong> {emergencyContact.name}{emergencyContact.phone ? ` · ${emergencyContact.phone}` : ''}
-                </span>
-              )}
+              {primaryGuardian && <span className="text-fog"><strong className="font-semibold text-paper/90">Contato principal:</strong> {primaryGuardian.name} · {primaryGuardian.relationship}{primaryGuardian.phone ? ` · ${primaryGuardian.phone}` : ''}</span>}
+              {emergencyContact && <span className="text-pulse"><strong className="font-semibold">Emergência:</strong> {emergencyContact.name}{emergencyContact.phone ? ` · ${emergencyContact.phone}` : ''}</span>}
             </div>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canSeeClinical && (
-            <>
-              <Link
-                to={`/pacientes/${patient.id}/prontuario`}
-                className="rounded-xl border border-mint/35 bg-mint/[0.04] px-3.5 py-2 text-[12.5px] font-semibold text-mint transition-colors hover:border-mint/60 hover:bg-mint/10"
-              >
-                Prontuário
-              </Link>
-              <Link
-                to={`/pacientes/${patient.id}/nexus`}
-                className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10"
-              >
-                Nexus
-              </Link>
-            </>
-          )}
+          {canSeeClinical && <>
+            <Link to={`/pacientes/${patient.id}/prontuario`} className="rounded-xl border border-mint/35 bg-mint/[0.04] px-3.5 py-2 text-[12.5px] font-semibold text-mint transition-colors hover:border-mint/60 hover:bg-mint/10">Prontuário</Link>
+            <Link to={`/pacientes/${patient.id}/nexus`} className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10">Nexus</Link>
+            <Link to={`/pacientes/${patient.id}/nexus/evolution`} className="rounded-xl border border-aqua/25 px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-aqua/50 hover:bg-aqua/[0.04] hover:text-aqua">Evolução</Link>
+          </>}
           <Link to={`/pacientes/${patient.id}/editar`} className="rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise hover:text-paper">Editar cadastro</Link>
           <PatientJourneyControl patient={patient} />
         </div>
