@@ -81,7 +81,7 @@ export function isGad7Complete(answers: Gad7Answers): answers is Record<Gad7Ques
 export function calculateGad7(answers: Gad7Answers): Gad7Result {
   if (!isGad7Complete(answers)) throw new Error('GAD-7 incompleto: responda os 7 itens antes do cálculo final.');
   const answersArray = GAD7_QUESTIONS.map(({ id }) => answers[id]);
-  const totalScore = answersArray.reduce((total, value) => total + value, 0);
+  const totalScore = answersArray.reduce<number>((total, value) => total + value, 0);
   let classification = '';
   let severity: NexusSeverity = 'low';
   let interpretation = '';
