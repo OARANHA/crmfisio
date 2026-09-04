@@ -111,6 +111,25 @@ Revisar a redação/evidência do ponto de corte e decidir se existe contexto em
 
 Revisar se o título deve deixar de citar TOD ou se existe um conjunto complementar validado que deva entrar em nova versão.
 
+## 7. MEEM — classificação genérica versus cortes contextuais por escolaridade
+
+**Fonte atual Nexus**
+
+- metadata/cutoffInfo descreve cinco estratos de escolaridade: 20, 25, 26,5, 28 e 29 pontos;
+- `calculateResult` calcula todos esses estados de preservação por escolaridade;
+- porém a `classification` principal usa uma regra genérica: `>=27` preservado na maioria, `20-26` limítrofe/dependente da escolaridade e `<20` declínio significativo.
+
+**Comportamento migrado**
+
+- a classificação histórica executável foi preservada;
+- o MedicsPro registra explicitamente o estrato de escolaridade selecionado e calcula uma segunda interpretação contextual, sem alterar o score;
+- `output_snapshot` marca `clinicalReviewRequired: meem-generic-classification-vs-education-cutoffs`;
+- resultados antigos não serão recalculados.
+
+**Decisão clínica pendente**
+
+Definir se uma futura versão do Nexus deve promover o corte contextual por escolaridade à classificação principal do MEEM ou manter a classificação genérica como resumo e a escolaridade como interpretação complementar.
+
 ## Processo para resolver itens desta fila
 
 1. revisão pelo responsável clínico do Nexus;
