@@ -1,14 +1,23 @@
 -- MEDICSPRO — Platform Admin governance foundation
 -- Separates SaaS-level administration from clinic roles.
+-- IMPORTANT: production already has platform_admins/platform_audit_log from
+-- 20260903_platform_provisioning.sql. This migration upgrades that schema in place.
 
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.platform_admins (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  active boolean NOT NULL DEFAULT true,
+  ativo boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
-  created_by uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL
+  created_by uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Compatibility with installations created before this governance layer.
+ALTER TABLE public.platform_admins
+  ADD COLUMN IF NOT EXISTS ativo boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS created_by uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS public.platform_automation_settings (
   key text PRIMARY KEY,
@@ -28,15 +37,35 @@ CREATE TABLE IF NOT EXISTS public.platform_automation_settings (
   )
 );
 
+-- Keep the UUID audit identity used by the provisioning migration. The governance
+-- RPC returns id as text so both existing UUID rows and future callers stay stable.
 CREATE TABLE IF NOT EXISTS public.platform_audit_log (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_user_id uuid NULL REFERENCES auth.users(id) ON DELETE SET NULL,
   action text NOT NULL,
+  target_type text NOT NULL DEFAULT 'platform',
+  target_id uuid NULL,
   entity_type text NOT NULL,
   entity_key text NOT NULL,
   detail jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.platform_audit_log
+  ADD COLUMN IF NOT EXISTS entity_type text,
+  ADD COLUMN IF NOT EXISTS entity_key text;
+
+-- Existing provisioning rows only have target_type/target_id. Backfill the
+-- governance projection without rewriting or deleting historical audit data.
+UPDATE public.platform_audit_log
+SET entity_type = COALESCE(entity_type, target_type, 'platform'),
+    entity_key = COALESCE(entity_key, target_id::text, action)
+WHERE entity_type IS NULL OR entity_key IS NULL;
+
+ALTER TABLE public.platform_audit_log
+  ALTER COLUMN entity_type SET NOT NULL,
+  ALTER COLUMN entity_key SET NOT NULL,
+  ALTER COLUMN target_type SET DEFAULT 'platform';
 
 INSERT INTO public.platform_automation_settings (key, enabled)
 VALUES
@@ -69,7 +98,7 @@ AS $$
     SELECT 1
     FROM public.platform_admins pa
     WHERE pa.user_id = auth.uid()
-      AND pa.active = true
+      AND pa.ativo = true
   )
 $$;
 
@@ -145,12 +174,14 @@ BEGIN
   INSERT INTO public.platform_audit_log (
     actor_user_id,
     action,
+    target_type,
     entity_type,
     entity_key,
     detail
   ) VALUES (
     auth.uid(),
     'PLATFORM_AUTOMATION_SETTING_CHANGED',
+    'platform_automation_setting',
     'platform_automation_setting',
     p_key,
     jsonb_build_object('before', v_before, 'after', p_enabled)
@@ -168,7 +199,7 @@ GRANT EXECUTE ON FUNCTION public.platform_set_automation_setting(text, boolean) 
 
 CREATE OR REPLACE FUNCTION public.platform_get_audit_log(p_limit integer DEFAULT 30)
 RETURNS TABLE (
-  id bigint,
+  id text,
   actor_user_id uuid,
   action text,
   entity_type text,
@@ -187,7 +218,7 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT a.id, a.actor_user_id, a.action, a.entity_type, a.entity_key, a.detail, a.created_at
+  SELECT a.id::text, a.actor_user_id, a.action, a.entity_type, a.entity_key, a.detail, a.created_at
   FROM public.platform_audit_log a
   ORDER BY a.created_at DESC
   LIMIT LEAST(GREATEST(COALESCE(p_limit, 30), 1), 200);
@@ -202,6 +233,6 @@ COMMENT ON TABLE public.platform_admins IS
 COMMENT ON TABLE public.platform_automation_settings IS
   'Global runtime governance toggles read by the MedicsPro scheduled orchestrator.';
 COMMENT ON TABLE public.platform_audit_log IS
-  'Append-only audit trail for SaaS-level governance changes.';
+  'Append-only audit trail shared by provisioning and SaaS-level governance changes.';
 
 COMMIT;
