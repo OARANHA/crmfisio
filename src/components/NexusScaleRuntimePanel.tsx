@@ -6,11 +6,12 @@ import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty } from '../lib/ui';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
 import { calculateScale, isScaleComplete, type NexusScaleDefinition } from '../lib/nexus/scaleRuntime';
-import { persistScaleResult } from '../lib/nexus/scalePersistence';
+import { persistScaleResult, type NexusRawScaleSelection } from '../lib/nexus/scalePersistence';
 
 export function NexusScaleRuntimePanel({ patient, definition }: { patient: Patient; definition: NexusScaleDefinition }) {
   const { user, appointments, toast } = useApp();
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [rawSelections, setRawSelections] = useState<Record<string, NexusRawScaleSelection>>({});
   const [history, setHistory] = useState<NexusClinicalResult[]>([]);
   const [canApply, setCanApply] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -47,13 +48,30 @@ export function NexusScaleRuntimePanel({ patient, definition }: { patient: Patie
     return () => { cancelled = true; };
   }, [patient.id, user?.id, definition]);
 
+  const clear = () => {
+    setAnswers({});
+    setRawSelections({});
+  };
+
+  const choose = (questionId: string, optionIndex: number, label: string, value: number) => {
+    setAnswers((current) => ({ ...current, [questionId]: value }));
+    setRawSelections((current) => ({ ...current, [questionId]: { optionIndex, label, value } }));
+  };
+
   const submit = async () => {
     if (!user || !canApply || !isScaleComplete(definition, answers)) return;
     setBusy(true);
     try {
-      const saved = await persistScaleResult({ definition, patientId: patient.id, professionalId: user.id, appointmentId: activeAppointment?.id ?? null, answers });
+      const saved = await persistScaleResult({
+        definition,
+        patientId: patient.id,
+        professionalId: user.id,
+        appointmentId: activeAppointment?.id ?? null,
+        answers,
+        rawSelections,
+      });
       setHistory((current) => [saved.result, ...current]);
-      setAnswers({});
+      clear();
       toast(`${definition.acronym} finalizado e salvo no Nexus. Já pode ser proposto ao SOAP canônico.`, 'info');
     } catch (error) {
       console.error(`[MedicsPro/Nexus] finalizar ${definition.acronym}:`, error);
@@ -81,9 +99,9 @@ export function NexusScaleRuntimePanel({ patient, definition }: { patient: Patie
             <div className="flex flex-wrap items-start gap-2"><p className="min-w-0 flex-1 text-[12.5px] font-semibold leading-relaxed">{question.text}</p>{question.subscale && <Chip className="border-line text-fog">{question.subscale}</Chip>}</div>
             {question.instruction && <p className="mt-1 text-[10.5px] text-fog">{question.instruction}</p>}
             <div className={`mt-3 grid gap-2 ${question.options.length <= 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'}`}>
-              {question.options.map((option) => {
-                const selected = answers[question.id] === option.value;
-                return <button key={option.value} type="button" disabled={busy} onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.value }))} className={`rounded-lg border px-3 py-2.5 text-left text-[11px] transition-colors ${selected ? 'border-mint bg-mint/10 text-mint' : 'border-line text-fog hover:border-mint/35 hover:text-paper'}`}>{option.label}</button>;
+              {question.options.map((option, optionIndex) => {
+                const selected = rawSelections[question.id]?.optionIndex === optionIndex;
+                return <button key={`${question.id}:${optionIndex}`} type="button" disabled={busy} onClick={() => choose(question.id, optionIndex, option.label, option.value)} className={`rounded-lg border px-3 py-2.5 text-left text-[11px] transition-colors ${selected ? 'border-mint bg-mint/10 text-mint' : 'border-line text-fog hover:border-mint/35 hover:text-paper'}`}>{option.label}</button>;
               })}
             </div>
           </div>)}
@@ -91,7 +109,8 @@ export function NexusScaleRuntimePanel({ patient, definition }: { patient: Patie
           {preview && <div className="rounded-xl border border-mint/30 bg-mint/[0.04] p-4">
             <div className="flex flex-wrap items-start gap-3"><div><p className="font-mono text-[10px] uppercase tracking-wide text-fog">Resultado calculado pelo Nexus</p><p className="mt-1 font-display text-2xl font-bold">{preview.totalScore}<span className="text-sm text-fog">/{preview.maxScore}</span></p><p className="mt-1 text-[12px] font-semibold">{preview.classification}</p></div><Chip className="ml-auto border-mint/40 text-mint">{preview.severity}</Chip></div>
             <p className="mt-3 text-[11.5px] leading-relaxed text-fog">{preview.interpretation}</p>
-            <div className="mt-4 flex justify-end gap-2"><Btn variant="ghost" onClick={() => setAnswers({})} disabled={busy}>Limpar</Btn><Btn onClick={() => void submit()} disabled={busy}>{busy ? 'Finalizando…' : `Finalizar ${definition.acronym}`}</Btn></div>
+            {(preview.redFlags?.length ?? 0) > 0 && <div className="mt-3 rounded-lg border border-pulse/40 bg-pulse/[0.05] p-3"><p className="text-[11px] font-semibold text-pulse">⚠️ Esta aplicação gerará {preview.redFlags?.length} alerta clínico de segurança.</p></div>}
+            <div className="mt-4 flex justify-end gap-2"><Btn variant="ghost" onClick={clear} disabled={busy}>Limpar</Btn><Btn onClick={() => void submit()} disabled={busy}>{busy ? 'Finalizando…' : `Finalizar ${definition.acronym}`}</Btn></div>
           </div>}
         </div> : <div className="rounded-xl border border-line bg-deep p-4 text-[11.5px] text-fog">Seu acesso permite consultar resultados, mas a aplicação exige <span className="font-mono text-paper">{definition.requiredCapability}</span>.</div>}
 
@@ -113,5 +132,5 @@ export function NexusScaleRuntimePanel({ patient, definition }: { patient: Patie
 }
 
 function ContextBlock({ title, items }: { title: string; items: readonly { title: string; description: string }[] }) {
-  return <div className="rounded-xl border border-line bg-deep p-4"><p className="font-display text-[12.5px] font-semibold">{title}</p><div className="mt-3 space-y-3">{items.map((item) => <div key={item.title}><p className="text-[10.5px] font-semibold text-paper/90">{item.title}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.description}</p></div>)}</div></div>;
+  return <div className="rounded-xl border border-line bg-deep p-4"><p className="font-display text-[12.5px] font-semibold">{title}</p><div className="mt-3 space-y-3">{items.length === 0 ? <p className="text-[10.5px] text-fog">Sem conteúdo adicional registrado para esta versão.</p> : items.map((item) => <div key={item.title}><p className="text-[10.5px] font-semibold text-paper/90">{item.title}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.description}</p></div>)}</div></div>;
 }
