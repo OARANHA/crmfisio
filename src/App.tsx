@@ -17,6 +17,7 @@ import { NexusPatientEemPage } from './pages/NexusPatientEemPage';
 import { NexusPatientMeemPage } from './pages/NexusPatientMeemPage';
 import { NexusPatientEgfrPage } from './pages/NexusPatientEgfrPage';
 import { NexusPatientCardiovascularRiskPage } from './pages/NexusPatientCardiovascularRiskPage';
+import { NexusPatientAntidepressantSwitchPage } from './pages/NexusPatientAntidepressantSwitchPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/pacientes/:id/nexus/meem" element={<NexusPatientMeemPage />} />
             <Route path="/pacientes/:id/nexus/calculators/egfr" element={<NexusPatientEgfrPage />} />
             <Route path="/pacientes/:id/nexus/calculators/cv-risk" element={<NexusPatientCardiovascularRiskPage />} />
+            <Route path="/pacientes/:id/nexus/psychopharmacology/antidepressant-switch" element={<NexusPatientAntidepressantSwitchPage />} />
             <Route path="/pacientes/:id/nexus/scales/:scaleKey" element={<NexusPatientScalePage />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
