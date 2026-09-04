@@ -47,6 +47,7 @@ export default function App() {
             <Route path="/pacientes" element={<PatientsRoleAware />} />
             <Route path="/pacientes/:id/editar" element={<PatientEditPage />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
+            <Route path="/pacientes/:id/nexus" element={<PatientsRoleAware />} />
             <Route path="/pacientes/:id/nexus/eem" element={<NexusPatientEemPage />} />
             <Route path="/pacientes/:id/nexus/evolution" element={<NexusPatientEvolutionPage />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
