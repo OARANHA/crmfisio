@@ -7,17 +7,20 @@ CREATE OR REPLACE FUNCTION public.guard_finalized_appointment_financial_source()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_role text := public.current_app_role();
+  v_jwt_role text := COALESCE(auth.role(), '');
 BEGIN
   IF TG_OP <> 'UPDATE' THEN
     RETURN NEW;
   END IF;
 
-  -- Internal service operations have no clinic profile and may perform controlled repair.
-  IF v_role IS NULL THEN
+  -- Only the real Supabase service role or a direct trusted database session may
+  -- bypass the lock for controlled repair. An authenticated user without a clinic
+  -- profile must never become an implicit repair actor merely because app role is NULL.
+  IF v_jwt_role = 'service_role'
+     OR (v_jwt_role = '' AND session_user IN ('postgres', 'supabase_admin')) THEN
     RETURN NEW;
   END IF;
 
