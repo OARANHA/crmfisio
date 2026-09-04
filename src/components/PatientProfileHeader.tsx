@@ -80,7 +80,7 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
         <div className="flex flex-wrap items-center gap-2">
           {canSeeClinical && (
             <Link
-              to={`/pacientes/${patient.id}/nexus/phq9`}
+              to={`/pacientes/${patient.id}/nexus`}
               className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10"
             >
               Nexus
