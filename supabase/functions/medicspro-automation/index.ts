@@ -97,20 +97,27 @@ Deno.serve(async (req) => {
 
     let nexusProcessor: NexusProcessorResult & { configured: boolean } = { configured: Boolean(nexusProcessorSecret) };
     if (nexusProcessorSecret) {
-      const processorResponse = await fetch(`${supabaseUrl}/functions/v1/nexus-self-assessment-processor`, {
-        method: 'POST',
-        headers: {
-          apikey: anonKey,
-          'Content-Type': 'application/json',
-          'x-processor-secret': nexusProcessorSecret,
-        },
-        body: JSON.stringify({ limit: 100 }),
-      });
+      try {
+        const processorResponse = await fetch(`${supabaseUrl}/functions/v1/nexus-self-assessment-processor`, {
+          method: 'POST',
+          headers: {
+            apikey: anonKey,
+            'Content-Type': 'application/json',
+            'x-processor-secret': nexusProcessorSecret,
+          },
+          body: JSON.stringify({ limit: 100 }),
+        });
 
-      const processorPayload = await processorResponse.json().catch(() => ({})) as NexusProcessorResult;
-      nexusProcessor = { configured: true, ...processorPayload };
-      if (!processorResponse.ok || processorPayload.error) {
-        throw new Error(processorPayload.error ?? `Nexus processor HTTP ${processorResponse.status}`);
+        const processorPayload = await processorResponse.json().catch(() => ({})) as NexusProcessorResult;
+        nexusProcessor = { configured: true, ...processorPayload };
+        if (!processorResponse.ok || processorPayload.error) {
+          nexusProcessor.error = processorPayload.error ?? `Nexus processor HTTP ${processorResponse.status}`;
+          console.error('[medicspro-automation] nexus processor:', nexusProcessor.error);
+        }
+      } catch (processorError) {
+        const message = processorError instanceof Error ? processorError.message : 'Falha desconhecida no processor Nexus';
+        nexusProcessor = { configured: true, error: message };
+        console.error('[medicspro-automation] nexus processor:', message);
       }
     }
 
@@ -143,6 +150,7 @@ Deno.serve(async (req) => {
         claimed: Number(nexusProcessor.claimed ?? 0),
         processed: Number(nexusProcessor.processed ?? 0),
         failed: Number(nexusProcessor.failed ?? 0),
+        error: nexusProcessor.error ?? null,
       },
     });
   } catch (error) {
