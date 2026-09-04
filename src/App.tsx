@@ -7,6 +7,7 @@ import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { PatientEditPage } from './pages/PatientEditPage';
 import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
+import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -27,6 +28,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
+          <Route path="/platform" element={<PlatformAdminPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
