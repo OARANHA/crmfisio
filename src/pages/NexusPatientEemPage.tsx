@@ -1,15 +1,41 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { NexusEemPanel } from '../components/NexusEemPanel';
 import { useApp } from '../lib/store';
-import { isClinicManager } from '../lib/permissions';
+import { hasProfessionalCapability } from '../lib/nexusClinical';
 import { Card, Empty } from '../lib/ui';
 
 export function NexusPatientEemPage() {
   const { id } = useParams();
   const { user, patients } = useApp();
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setAuthorized(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    void hasProfessionalCapability('nexus.access')
+      .then((allowed) => {
+        if (active) setAuthorized(allowed);
+      })
+      .catch((error) => {
+        console.error('[Nexus] EEM route authorization:', error);
+        if (active) setAuthorized(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   if (!user) return <Navigate to="/" replace />;
-  const canSeeClinical = user.role === 'fisio' || isClinicManager(user.role);
-  if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
+  if (authorized === null) return <Card><div className="p-6 text-[12px] text-fog">Validando acesso ao Nexus…</div></Card>;
+  if (!authorized) return <Navigate to="/pacientes" replace />;
 
   const patient = patients.find((item) => item.id === id);
   if (!patient) return <Card><Empty title="Paciente não encontrado" sub="O EEM Nexus precisa estar vinculado ao paciente canônico do MedicsPro." /></Card>;
