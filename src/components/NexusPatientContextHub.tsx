@@ -1,5 +1,6 @@
 import type { Patient } from '../lib/types';
 import { Chip } from '../lib/ui';
+import { NexusLongitudinalPanel } from './NexusLongitudinalPanel';
 import { NexusSelfAssessmentInviteAction } from './NexusSelfAssessmentInviteAction';
 import { NexusSelfAssessmentStatus } from './NexusSelfAssessmentStatus';
 
@@ -8,7 +9,7 @@ const DOMAINS = [
   { key: 'eem', label: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa e integração com prontuário.', status: 'em integração' },
   { key: 'psychopharm', label: 'Psicofarmacologia', description: 'Ferramentas clínicas, monitoramento e evidências.', status: 'em integração' },
   { key: 'cognition', label: 'Cognição', description: 'MEEM, domínios cognitivos e evolução longitudinal.', status: 'em integração' },
-  { key: 'longitudinal', label: 'Evolução longitudinal', description: 'Tendências, baseline, alertas e comparação temporal.', status: 'em integração' },
+  { key: 'longitudinal', label: 'Evolução longitudinal', description: 'Tendências, baseline, alertas e comparação temporal.', status: 'ativo' },
   { key: 'evidence', label: 'Evidências', description: 'Versões de regra, referências e proveniência clínica.', status: 'em integração' },
 ] as const;
 
@@ -49,6 +50,7 @@ export function NexusPatientContextHub({ patient }: { patient: Patient }) {
       <div className="space-y-3 border-t border-line/60 p-4">
         <NexusSelfAssessmentInviteAction patient={patient} />
         <NexusSelfAssessmentStatus patient={patient} />
+        <NexusLongitudinalPanel patient={patient} />
       </div>
     </section>
   );
