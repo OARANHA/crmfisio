@@ -4,6 +4,7 @@ import { Card, Chip, IconChevronR } from '../lib/ui';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { isPsychiatristIdentity, professionalIdentityLabel } from '../lib/professionalIdentity';
 import { Reveal } from '../components/Reveal';
+import { NexusPatientLauncher } from '../components/NexusPatientLauncher';
 
 const DOMAINS = [
   { key: 'mental-health', title: 'Saúde Mental', sub: 'Depressão, ansiedade, bipolaridade, risco, álcool e substâncias, TDAH, TOC, sono e funcionalidade.', state: 'ativo parcial' },
@@ -39,13 +40,17 @@ export function NexusGlobalPage() {
               <p className="mt-3 text-[11px] font-mono text-fog">Perfil atual: {professionalIdentityLabel(identity)} · acesso funcional continua sujeito a capability + entitlement + autorização do recurso.</p>
             </div>
             <Link to="/pacientes" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line/80 bg-deep px-4 py-2.5 font-display text-[13px] font-semibold text-paper transition-colors hover:border-aqua/35 hover:bg-raise/50">
-              Abrir paciente <IconChevronR className="h-4 w-4" />
+              Pacientes <IconChevronR className="h-4 w-4" />
             </Link>
           </div>
         </section>
       </Reveal>
 
-      <Reveal delay={60}>
+      <Reveal delay={40}>
+        <NexusPatientLauncher />
+      </Reveal>
+
+      <Reveal delay={70}>
         <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {DOMAINS.map((domain) => (
             <Card key={domain.key} className="p-4 transition-colors hover:border-aqua/30 hover:bg-raise/20">
@@ -61,12 +66,12 @@ export function NexusGlobalPage() {
         </div>
       </Reveal>
 
-      <Reveal delay={100}>
+      <Reveal delay={110}>
         <section className="rounded-2xl border border-line/70 bg-deep/55 p-4">
           <p className="font-display text-[13.5px] font-semibold">Como usar o Nexus no MedicsPro</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">1 · Global</p><p className="mt-1.5 text-[11.5px] text-fog">Consulte instrumentos, evidências e ferramentas sem precisar abrir um paciente.</p></div>
-            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">2 · Contextual</p><p className="mt-1.5 text-[11.5px] text-fog">Dentro do paciente, o Nexus recebe contexto clínico e registra resultados no mesmo prontuário.</p></div>
+            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">2 · Contextual</p><p className="mt-1.5 text-[11.5px] text-fog">Selecione o paciente acima e continue no mesmo prontuário para executar recursos com contexto clínico.</p></div>
             <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">3 · Revisão humana</p><p className="mt-1.5 text-[11.5px] text-fog">Resultados, alertas e sugestões não substituem autoria, julgamento ou decisão clínica do profissional.</p></div>
           </div>
         </section>
