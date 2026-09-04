@@ -145,7 +145,7 @@ export function calculatePhq9(answers: Phq9Answers): Phq9Result {
   }
 
   const answersArray = PHQ9_QUESTIONS.map(({ id }) => answers[id]);
-  const totalScore = answersArray.reduce((total, value) => total + value, 0);
+  const totalScore = answersArray.reduce<number>((total, value) => total + value, 0);
 
   let classification = '';
   let severity: NexusSeverity = 'low';

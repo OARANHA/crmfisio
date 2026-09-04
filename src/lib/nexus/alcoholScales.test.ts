@@ -40,7 +40,7 @@ describe('AUDIT-C Nexus Runtime', () => {
     const four = calculateScale(AUDITC_DEFINITION, { q1: 2, q2: 1, q3: 1 });
     expect(three.severity).toBe('low');
     expect(four.severity).toBe('moderate');
-    expect(four.structuredData).toEqual({ clinicalReviewRequired: 'cutoff-sex-divergence' });
+    expect(four.structuredData).toEqual({ clinicalReviewRequired: 'audit-c-sex-specific-cutoff-divergence' });
   });
 });
 
