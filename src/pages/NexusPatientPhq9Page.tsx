@@ -31,12 +31,20 @@ export function NexusPatientPhq9Page() {
             <h1 className="font-display font-semibold text-[17px] mt-1">{patient.preferredName || patient.nome}</h1>
             <p className="text-[11px] text-fog mt-1">Saúde Mental › Depressão › PHQ-9</p>
           </div>
-          <Link
-            to={`/pacientes/${patient.id}`}
-            className="ml-auto rounded-xl border border-line px-3 py-2 text-[11.5px] font-semibold text-fog transition-colors hover:text-paper hover:border-line2"
-          >
-            Voltar ao paciente
-          </Link>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Link
+              to={`/pacientes/${patient.id}/nexus`}
+              className="rounded-xl border border-aqua/35 bg-aqua/[0.04] px-3 py-2 text-[11.5px] font-semibold text-aqua transition-colors hover:bg-aqua/10"
+            >
+              Visão Nexus
+            </Link>
+            <Link
+              to={`/pacientes/${patient.id}`}
+              className="rounded-xl border border-line px-3 py-2 text-[11.5px] font-semibold text-fog transition-colors hover:text-paper hover:border-line2"
+            >
+              Voltar ao paciente
+            </Link>
+          </div>
         </div>
       </div>
       <NexusPhq9Panel patient={patient} />
