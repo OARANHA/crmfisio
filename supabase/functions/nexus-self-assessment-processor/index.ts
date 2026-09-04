@@ -11,27 +11,29 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 });
 
-const PHQ9_RULE_VERSION = 'nexus-2026-09-03';
-const PHQ9_RULE_KEY = 'nexus.phq9';
-const PHQ9_TOOL_KEY = 'phq9';
-const PHQ9_REQUIRED_CAPABILITY = 'nexus.scales';
-
-const PHQ9_EVIDENCE = [
-  {
-    evidenceKey: 'phq9-kroenke-2001',
-    title: 'The PHQ-9: validity of a brief depression severity measure',
-    source: 'Kroenke K, Spitzer RL, Williams JB. J Gen Intern Med. 2001;16(9):606-13.',
-    year: 2001,
-    version: PHQ9_RULE_VERSION,
-  },
-  {
-    evidenceKey: 'phq9-brazil-validation',
-    title: 'Validação brasileira do PHQ-9',
-    source: 'Osório FL et al. (2009); Santos IS et al. (2013).',
-    version: PHQ9_RULE_VERSION,
-  },
-];
-
+type Severity = 'low' | 'moderate' | 'high' | 'severe';
+type Evidence = { evidenceKey: string; title: string; source: string; year?: number; version: string };
+type RedFlag = { flagCode: string; severity: 'warning' | 'critical'; title: string; message: string; requiredAction?: string };
+type Calculated = {
+  totalScore: number;
+  maxScore: number;
+  classification: string;
+  severity: Severity;
+  interpretation: string;
+  recommendations: string[];
+  answersArray: number[];
+  soapText: string;
+  redFlags?: RedFlag[];
+};
+type ProcessorDefinition = {
+  toolKey: string;
+  ruleKey: string;
+  ruleVersion: string;
+  moduleKey: string;
+  requiredCapability: string;
+  evidence: Evidence[];
+  calculate: (answers: Record<string, number>) => Calculated;
+};
 type ClaimedInvite = {
   invite_id: string;
   clinic_id: string;
@@ -43,71 +45,146 @@ type ClaimedInvite = {
   response_snapshot: Record<string, unknown>;
 };
 
-function asAnswerMap(payload: Record<string, unknown>): Record<string, number> {
+function asAnswerMap(payload: Record<string, unknown>, label: string): Record<string, number> {
   const answers = payload.answers;
   if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
-    throw new Error('PHQ-9 sem answers válidos');
+    throw new Error(`${label} sem answers válidos`);
   }
   return answers as Record<string, number>;
 }
 
-function calculatePhq9(answers: Record<string, number>) {
-  const ids = ['q1','q2','q3','q4','q5','q6','q7','q8','q9'];
+function requireIntegerRange(answers: Record<string, number>, ids: string[], min: number, max: number, label: string): number[] {
   const values = ids.map((id) => answers[id]);
-  if (values.some((value) => !Number.isInteger(value) || value < 0 || value > 3)) {
-    throw new Error('PHQ-9 incompleto ou com resposta fora da faixa 0-3');
+  if (values.some((value) => !Number.isInteger(value) || value < min || value > max)) {
+    throw new Error(`${label} incompleto ou com resposta fora da faixa ${min}-${max}`);
   }
-
-  const totalScore = values.reduce((sum, value) => sum + value, 0);
-  let classification = '';
-  let severity: 'low' | 'moderate' | 'high' | 'severe' = 'low';
-  let interpretation = '';
-  const recommendations: string[] = [];
-
-  if (totalScore <= 4) {
-    classification = 'Sintomas depressivos mínimos ou ausentes';
-    severity = 'low';
-    interpretation = 'Escore baixo (0-4 pts), sem indicação de intervenção farmacológica para depressão.';
-    recommendations.push('Acompanhamento longitudinal de rotina na APS', 'Orientações gerais de estilo de vida e higiene do sono');
-  } else if (totalScore <= 9) {
-    classification = 'Depressão leve';
-    severity = 'low';
-    interpretation = 'Sintomas leves (5-9 pts). Avaliar contexto psicossocial e impacto funcional.';
-    recommendations.push('Psicoeducação e suporte na APS', 'Ativação comportamental e atividade física orientada', 'Reavaliação em 4 a 8 semanas');
-  } else if (totalScore <= 14) {
-    classification = 'Depressão moderada';
-    severity = 'moderate';
-    interpretation = 'Sintomas moderados (10-14 pts, corte ≥ 10 atingido) com comprometimento das atividades diárias.';
-    recommendations.push('Considerar psicoterapia (TCC/interpessoal) e/ou farmacoterapia (ISRS de 1ª linha)', 'Pactuar plano de acompanhamento em APS');
-  } else if (totalScore <= 19) {
-    classification = 'Depressão moderadamente grave';
-    severity = 'high';
-    interpretation = 'Sintomas significativos (15-19 pts) exigindo intervenção clínica e medicamentosa estruturada.';
-    recommendations.push('Iniciar tratamento medicamentoso com ISRS', 'Pactuar retorno em 2 semanas', 'Avaliar suporte familiar e rede de apoio social');
-  } else {
-    classification = 'Depressão grave';
-    severity = 'severe';
-    interpretation = 'Sintomas graves (20-27 pts) com alto risco de prejuízo funcional e sofrimento psíquico severo.';
-    recommendations.push('Iniciar farmacoterapia combinada/otimizada', 'Investigar ativamente ideação e planejamento suicida', 'Considerar discussão de caso em Apoio Matricial / Psiquiatria');
-  }
-
-  const hasSuicideRiskFlag = answers.q9 > 0;
-  if (hasSuicideRiskFlag) {
-    recommendations.unshift('⚠️ ALERTA: Resposta positiva na pergunta 9 (ideação suicida/autolesão). Aplicar imediatamente o protocolo C-SSRS e pactuar Plano de Segurança.');
-  }
-
-  return {
-    totalScore,
-    maxScore: 27,
-    classification,
-    severity,
-    interpretation,
-    recommendations,
-    answersArray: values,
-    soapText: `PHQ-9: ${totalScore}/27 pts (${classification}) | Respostas: [${values.join(', ')}] | Fonte: Kroenke et al., 2001 (Validação BR: Osório, 2009)`,
-    hasSuicideRiskFlag,
-  };
+  return values;
 }
+
+const PHQ9_RULE_VERSION = 'nexus-2026-09-03';
+const PHQ9: ProcessorDefinition = {
+  toolKey: 'phq9',
+  ruleKey: 'nexus.phq9',
+  ruleVersion: PHQ9_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'phq9-kroenke-2001', title: 'The PHQ-9: validity of a brief depression severity measure', source: 'Kroenke K, Spitzer RL, Williams JB. J Gen Intern Med. 2001;16(9):606-13.', year: 2001, version: PHQ9_RULE_VERSION },
+    { evidenceKey: 'phq9-brazil-validation', title: 'Validação brasileira do PHQ-9', source: 'Osório FL et al. (2009); Santos IS et al. (2013).', version: PHQ9_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const values = requireIntegerRange(answers, ['q1','q2','q3','q4','q5','q6','q7','q8','q9'], 0, 3, 'PHQ-9');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    let classification = '';
+    let severity: Severity = 'low';
+    let interpretation = '';
+    const recommendations: string[] = [];
+
+    if (totalScore <= 4) {
+      classification = 'Sintomas depressivos mínimos ou ausentes';
+      interpretation = 'Escore baixo (0-4 pts), sem indicação de intervenção farmacológica para depressão.';
+      recommendations.push('Acompanhamento longitudinal de rotina na APS', 'Orientações gerais de estilo de vida e higiene do sono');
+    } else if (totalScore <= 9) {
+      classification = 'Depressão leve';
+      interpretation = 'Sintomas leves (5-9 pts). Avaliar contexto psicossocial e impacto funcional.';
+      recommendations.push('Psicoeducação e suporte na APS', 'Ativação comportamental e atividade física orientada', 'Reavaliação em 4 a 8 semanas');
+    } else if (totalScore <= 14) {
+      classification = 'Depressão moderada';
+      severity = 'moderate';
+      interpretation = 'Sintomas moderados (10-14 pts, corte ≥ 10 atingido) com comprometimento das atividades diárias.';
+      recommendations.push('Considerar psicoterapia (TCC/interpessoal) e/ou farmacoterapia (ISRS de 1ª linha)', 'Pactuar plano de acompanhamento em APS');
+    } else if (totalScore <= 19) {
+      classification = 'Depressão moderadamente grave';
+      severity = 'high';
+      interpretation = 'Sintomas significativos (15-19 pts) exigindo intervenção clínica e medicamentosa estruturada.';
+      recommendations.push('Iniciar tratamento medicamentoso com ISRS', 'Pactuar retorno em 2 semanas', 'Avaliar suporte familiar e rede de apoio social');
+    } else {
+      classification = 'Depressão grave';
+      severity = 'severe';
+      interpretation = 'Sintomas graves (20-27 pts) com alto risco de prejuízo funcional e sofrimento psíquico severo.';
+      recommendations.push('Iniciar farmacoterapia combinada/otimizada', 'Investigar ativamente ideação e planejamento suicida', 'Considerar discussão de caso em Apoio Matricial / Psiquiatria');
+    }
+
+    const redFlags: RedFlag[] = [];
+    if (answers.q9 > 0) {
+      recommendations.unshift('⚠️ ALERTA: Resposta positiva na pergunta 9 (ideação suicida/autolesão). Aplicar imediatamente o protocolo C-SSRS e pactuar Plano de Segurança.');
+      redFlags.push({
+        flagCode: 'phq9.item9.positive',
+        severity: 'critical',
+        title: 'PHQ-9 item 9 positivo',
+        message: 'Resposta positiva para pensamentos de morte ou autolesão no PHQ-9.',
+        requiredAction: 'Aplicar C-SSRS e realizar avaliação clínica de risco imediatamente.',
+      });
+    }
+
+    return {
+      totalScore,
+      maxScore: 27,
+      classification,
+      severity,
+      interpretation,
+      recommendations,
+      answersArray: values,
+      soapText: `PHQ-9: ${totalScore}/27 pts (${classification}) | Respostas: [${values.join(', ')}] | Fonte: Kroenke et al., 2001 (Validação BR: Osório, 2009)`,
+      redFlags,
+    };
+  },
+};
+
+const GAD7_RULE_VERSION = 'nexus-2026-09-03';
+const GAD7: ProcessorDefinition = {
+  toolKey: 'gad7',
+  ruleKey: 'nexus.gad7',
+  ruleVersion: GAD7_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'gad7-spitzer-2006', title: 'A brief measure for assessing generalized anxiety disorder', source: 'Spitzer RL, Kroenke K, Williams JB, Löwe B. Arch Intern Med. 2006;166(10):1092-7.', year: 2006, version: GAD7_RULE_VERSION },
+    { evidenceKey: 'gad7-brazil-validation', title: 'Validação brasileira do GAD-7', source: 'Moreno AL et al. Trends Psychiatry Psychother. 2016.', year: 2016, version: GAD7_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const values = requireIntegerRange(answers, ['q1','q2','q3','q4','q5','q6','q7'], 0, 3, 'GAD-7');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    let classification = '';
+    let severity: Severity = 'low';
+    let interpretation = '';
+    const recommendations: string[] = [];
+
+    if (totalScore <= 4) {
+      classification = 'Ansiedade mínima ou ausente';
+      interpretation = 'Sintomas dentro do espectro fisiológico (0-4 pts).';
+      recommendations.push('Acompanhamento longitudinal habitual na APS', 'Orientações para manejo do estresse e estilo de vida');
+    } else if (totalScore <= 9) {
+      classification = 'Ansiedade leve';
+      interpretation = 'Sintomas leves (5-9 pts). Benefício com psicoeducação e técnicas de relaxamento.';
+      recommendations.push('Técnicas de respiração diafragmática e higiene do sono', 'Acompanhamento periódico na APS');
+    } else if (totalScore <= 14) {
+      classification = 'Ansiedade moderada';
+      severity = 'moderate';
+      interpretation = 'Sintomas moderados (10-14 pts, corte ≥ 10 atingido). Indicação de investigação detalhada para TAG.';
+      recommendations.push('Avaliar indicação de psicoterapia (TCC) e/ou farmacoterapia (ISRS)', 'Pactuar consultas de acompanhamento');
+    } else {
+      classification = 'Ansiedade grave';
+      severity = 'severe';
+      interpretation = 'Sintomas graves (15-21 pts) com prejuízo funcional marcante.';
+      recommendations.push('Pactuar plano terapêutico medicamentoso e psicoterápico', 'Reavaliação em 2 semanas', 'Considerar apoio matricial se refratário');
+    }
+
+    return {
+      totalScore,
+      maxScore: 21,
+      classification,
+      severity,
+      interpretation,
+      recommendations,
+      answersArray: values,
+      soapText: `GAD-7: ${totalScore}/21 pts (${classification}) | Respostas: [${values.join(', ')}] | Fonte: Spitzer et al., 2006 (Validação BR: Moreno, 2016)`,
+      redFlags: [],
+    };
+  },
+};
+
+const PROCESSORS: ProcessorDefinition[] = [PHQ9, GAD7];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -120,105 +197,93 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRole || !processorSecret) {
     return json({ error: 'Processor Nexus não configurado no servidor' }, 503);
   }
-
   if (req.headers.get('x-processor-secret') !== processorSecret) {
     return json({ error: 'Não autorizado' }, 401);
   }
 
-  const admin = createClient(supabaseUrl, serviceRole, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+  const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
   const body = await req.json().catch(() => ({}));
   const limit = Math.max(1, Math.min(Number(body?.limit) || 20, 100));
+  const requestedScale = typeof body?.scaleKey === 'string' ? body.scaleKey.trim() : null;
+  const processors = requestedScale ? PROCESSORS.filter((item) => item.toolKey === requestedScale) : PROCESSORS;
+  if (requestedScale && processors.length === 0) return json({ error: 'Instrumento não suportado pelo processor' }, 400);
 
-  const { data, error } = await admin.rpc('claim_nexus_self_assessment_invites', {
-    p_scale_key: PHQ9_TOOL_KEY,
-    p_rule_version: PHQ9_RULE_VERSION,
-    p_limit: limit,
-  });
+  const results: Array<{ inviteId: string; scaleKey: string; status: 'processed' | 'failed'; resultId?: string; error?: string }> = [];
+  let claimed = 0;
 
-  if (error) {
-    console.error('[nexus-self-assessment-processor] claim:', error);
-    return json({ error: 'Não foi possível reservar submissões Nexus' }, 500);
-  }
+  for (const definition of processors) {
+    const { data, error } = await admin.rpc('claim_nexus_self_assessment_invites', {
+      p_scale_key: definition.toolKey,
+      p_rule_version: definition.ruleVersion,
+      p_limit: limit,
+    });
+    if (error) {
+      console.error('[nexus-self-assessment-processor] claim:', definition.toolKey, error);
+      return json({ error: `Não foi possível reservar submissões ${definition.toolKey}` }, 500);
+    }
 
-  const rows = (data ?? []) as ClaimedInvite[];
-  const results: Array<{ inviteId: string; status: 'processed' | 'failed'; resultId?: string; error?: string }> = [];
+    const rows = (data ?? []) as ClaimedInvite[];
+    claimed += rows.length;
 
-  for (const invite of rows) {
-    try {
-      if (invite.scale_key !== PHQ9_TOOL_KEY || invite.rule_version !== PHQ9_RULE_VERSION) {
-        throw new Error('Instrumento/versão não suportados por este processor');
+    for (const invite of rows) {
+      try {
+        if (invite.scale_key !== definition.toolKey || invite.rule_version !== definition.ruleVersion) {
+          throw new Error('Instrumento/versão não suportados por este handler');
+        }
+        const payload = invite.response_snapshot ?? {};
+        if (payload.scaleKey !== definition.toolKey || payload.ruleVersion !== definition.ruleVersion) {
+          throw new Error('Snapshot não corresponde ao convite reservado');
+        }
+
+        const answers = asAnswerMap(payload, definition.toolKey.toUpperCase());
+        const calculated = definition.calculate(answers);
+        const processedResult = {
+          moduleKey: definition.moduleKey,
+          toolKey: definition.toolKey,
+          ruleKey: definition.ruleKey,
+          ruleVersion: definition.ruleVersion,
+          requiredCapability: definition.requiredCapability,
+          inputSnapshot: {
+            source: 'patient-self-assessment',
+            inviteId: invite.invite_id,
+            answers,
+            selectedOptions: payload.selectedOptions,
+          },
+          outputSnapshot: {
+            recommendations: calculated.recommendations,
+            answersArray: calculated.answersArray,
+            selfAssessment: true,
+          },
+          totalScore: calculated.totalScore,
+          maxScore: calculated.maxScore,
+          classification: calculated.classification,
+          severity: calculated.severity,
+          interpretation: calculated.interpretation,
+          soapText: calculated.soapText,
+          evidenceSnapshot: definition.evidence,
+        };
+
+        const { data: resultId, error: processError } = await admin.rpc('complete_nexus_self_assessment_processing', {
+          p_invite_id: invite.invite_id,
+          p_result: processedResult,
+          p_red_flags: calculated.redFlags ?? [],
+        });
+        if (processError || !resultId) throw processError ?? new Error('Resultado Nexus não retornado');
+        results.push({ inviteId: invite.invite_id, scaleKey: definition.toolKey, status: 'processed', resultId: String(resultId) });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'Falha desconhecida';
+        console.error('[nexus-self-assessment-processor] process:', invite.invite_id, reason);
+        await admin.rpc('release_nexus_self_assessment_claim', { p_invite_id: invite.invite_id, p_error: reason });
+        results.push({ inviteId: invite.invite_id, scaleKey: definition.toolKey, status: 'failed', error: reason.slice(0, 300) });
       }
-
-      const payload = invite.response_snapshot ?? {};
-      if (payload.scaleKey !== PHQ9_TOOL_KEY || payload.ruleVersion !== PHQ9_RULE_VERSION) {
-        throw new Error('Snapshot não corresponde ao convite reservado');
-      }
-
-      const answers = asAnswerMap(payload);
-      const calculated = calculatePhq9(answers);
-
-      const redFlags = calculated.hasSuicideRiskFlag
-        ? [{
-            flagCode: 'phq9.item9.positive',
-            severity: 'critical',
-            title: 'PHQ-9 item 9 positivo',
-            message: 'Resposta positiva para pensamentos de morte ou autolesão no PHQ-9.',
-            requiredAction: 'Aplicar C-SSRS e realizar avaliação clínica de risco imediatamente.',
-          }]
-        : [];
-
-      const processedResult = {
-        moduleKey: 'scales',
-        toolKey: PHQ9_TOOL_KEY,
-        ruleKey: PHQ9_RULE_KEY,
-        ruleVersion: PHQ9_RULE_VERSION,
-        requiredCapability: PHQ9_REQUIRED_CAPABILITY,
-        inputSnapshot: {
-          source: 'patient-self-assessment',
-          inviteId: invite.invite_id,
-          answers,
-          selectedOptions: payload.selectedOptions,
-        },
-        outputSnapshot: {
-          recommendations: calculated.recommendations,
-          answersArray: calculated.answersArray,
-          selfAssessment: true,
-        },
-        totalScore: calculated.totalScore,
-        maxScore: calculated.maxScore,
-        classification: calculated.classification,
-        severity: calculated.severity,
-        interpretation: calculated.interpretation,
-        soapText: calculated.soapText,
-        evidenceSnapshot: PHQ9_EVIDENCE,
-      };
-
-      const { data: resultId, error: processError } = await admin.rpc('complete_nexus_self_assessment_processing', {
-        p_invite_id: invite.invite_id,
-        p_result: processedResult,
-        p_red_flags: redFlags,
-      });
-      if (processError || !resultId) throw processError ?? new Error('Resultado Nexus não retornado');
-
-      results.push({ inviteId: invite.invite_id, status: 'processed', resultId: String(resultId) });
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'Falha desconhecida';
-      console.error('[nexus-self-assessment-processor] process:', invite.invite_id, reason);
-      await admin.rpc('release_nexus_self_assessment_claim', {
-        p_invite_id: invite.invite_id,
-        p_error: reason,
-      });
-      results.push({ inviteId: invite.invite_id, status: 'failed', error: reason.slice(0, 300) });
     }
   }
 
   return json({
-    claimed: rows.length,
+    claimed,
     processed: results.filter((item) => item.status === 'processed').length,
     failed: results.filter((item) => item.status === 'failed').length,
+    supportedScales: PROCESSORS.map((item) => ({ scaleKey: item.toolKey, ruleVersion: item.ruleVersion })),
     results,
   });
 });
