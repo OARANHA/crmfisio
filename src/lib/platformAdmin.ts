@@ -15,6 +15,25 @@ export type PlatformAutomationSetting = {
   updatedAt: string;
 };
 
+export type PlatformClinicEntitlementKey =
+  | 'nexus.access'
+  | 'finance.access'
+  | 'crm.access'
+  | 'reports.access'
+  | 'assessments.custom'
+  | 'whatsapp.access';
+
+export type PlatformClinicEntitlementSource = 'manual' | 'plan' | 'trial' | 'migration';
+
+export type PlatformClinicEntitlement = {
+  key: PlatformClinicEntitlementKey;
+  enabled: boolean;
+  source: PlatformClinicEntitlementSource;
+  startsAt: string | null;
+  expiresAt: string | null;
+  updatedAt: string;
+};
+
 export type PlatformAuditEntry = {
   id: number;
   actorUserId: string | null;
@@ -62,6 +81,48 @@ export async function setPlatformAutomationSetting(
     enabled: Boolean(row.enabled),
     updatedAt: String(row.updated_at),
   };
+}
+
+function mapClinicEntitlement(row: any): PlatformClinicEntitlement {
+  return {
+    key: row.entitlement_key as PlatformClinicEntitlementKey,
+    enabled: Boolean(row.enabled),
+    source: row.source as PlatformClinicEntitlementSource,
+    startsAt: row.starts_at ? String(row.starts_at) : null,
+    expiresAt: row.expires_at ? String(row.expires_at) : null,
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export async function loadPlatformClinicEntitlements(clinicId: string): Promise<PlatformClinicEntitlement[]> {
+  const { data, error } = await db.rpc('platform_get_clinic_entitlements', {
+    p_clinic_id: clinicId,
+  });
+  if (error) throw error;
+  return (data ?? []).map(mapClinicEntitlement);
+}
+
+export async function setPlatformClinicEntitlement(input: {
+  clinicId: string;
+  key: PlatformClinicEntitlementKey;
+  enabled: boolean;
+  source?: PlatformClinicEntitlementSource;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+}): Promise<PlatformClinicEntitlement> {
+  const { data, error } = await db.rpc('platform_set_clinic_entitlement', {
+    p_clinic_id: input.clinicId,
+    p_entitlement_key: input.key,
+    p_enabled: input.enabled,
+    p_source: input.source ?? 'manual',
+    p_starts_at: input.startsAt ?? null,
+    p_expires_at: input.expiresAt ?? null,
+  });
+  if (error) throw error;
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('Entitlement não retornado pelo servidor');
+  return mapClinicEntitlement(row);
 }
 
 export async function loadPlatformAuditLog(limit = 30): Promise<PlatformAuditEntry[]> {
