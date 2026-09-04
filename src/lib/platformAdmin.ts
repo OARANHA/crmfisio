@@ -35,7 +35,7 @@ export type PlatformClinicEntitlement = {
 };
 
 export type PlatformAuditEntry = {
-  id: number;
+  id: string;
   actorUserId: string | null;
   action: string;
   entityType: string;
@@ -130,7 +130,7 @@ export async function loadPlatformAuditLog(limit = 30): Promise<PlatformAuditEnt
   if (error) throw error;
 
   return (data ?? []).map((row: any) => ({
-    id: Number(row.id),
+    id: String(row.id),
     actorUserId: row.actor_user_id ? String(row.actor_user_id) : null,
     action: String(row.action),
     entityType: String(row.entity_type),
