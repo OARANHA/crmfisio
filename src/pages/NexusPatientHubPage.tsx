@@ -23,25 +23,37 @@ const modules: NexusModule[] = [
   { key: 'evidence', title: 'Evidências', description: 'Fontes, versões de regras e proveniência do Nexus.', status: 'planned' },
 ];
 
+const scale = (id: string, key: string) => `/pacientes/${id}/nexus/scales/${key}`;
+
 const groups: { title: string; tools: Tool[] }[] = [
   { title: 'Humor e depressão', tools: [
     { key: 'phq-9', title: 'PHQ-9', subtitle: 'Depressão · evolução longitudinal', tone: 'mint', href: (id) => `/pacientes/${id}/nexus/phq9` },
-    { key: 'hcl-32', title: 'HCL-32', subtitle: 'Hipomania / espectro bipolar', href: (id) => `/pacientes/${id}/nexus/scales/hcl-32` },
-    { key: 'epds', title: 'EPDS', subtitle: 'Depressão perinatal · item 10 de segurança', tone: 'pulse', href: (id) => `/pacientes/${id}/nexus/scales/epds` },
+    { key: 'hcl-32', title: 'HCL-32', subtitle: 'Hipomania / espectro bipolar', href: (id) => scale(id, 'hcl-32') },
+    { key: 'mdq', title: 'MDQ', subtitle: 'Espectro bipolar · divergência clínica registrada', href: (id) => scale(id, 'mdq') },
+    { key: 'epds', title: 'EPDS', subtitle: 'Depressão perinatal · item 10 de segurança', tone: 'pulse', href: (id) => scale(id, 'epds') },
   ]},
   { title: 'Ansiedade, TOC e sofrimento psíquico', tools: [
     { key: 'gad-7', title: 'GAD-7', subtitle: 'Ansiedade · evolução longitudinal', href: (id) => `/pacientes/${id}/nexus/gad7` },
-    { key: 'ybocs', title: 'Y-BOCS', subtitle: 'Obsessões e compulsões', href: (id) => `/pacientes/${id}/nexus/scales/ybocs` },
-    { key: 'srq-20', title: 'SRQ-20', subtitle: 'Transtornos mentais comuns · item 17 de segurança', tone: 'pulse', href: (id) => `/pacientes/${id}/nexus/scales/srq-20` },
-    { key: 'phq-15', title: 'PHQ-15', subtitle: 'Sintomas somáticos', href: (id) => `/pacientes/${id}/nexus/scales/phq-15` },
+    { key: 'ham-a', title: 'HAM-A', subtitle: 'Ansiedade psíquica e somática · 14 itens', href: (id) => scale(id, 'ham-a') },
+    { key: 'ybocs', title: 'Y-BOCS', subtitle: 'Obsessões e compulsões', href: (id) => scale(id, 'ybocs') },
+    { key: 'srq-20', title: 'SRQ-20', subtitle: 'TMC · item 17 de segurança', tone: 'pulse', href: (id) => scale(id, 'srq-20') },
+    { key: 'phq-15', title: 'PHQ-15', subtitle: 'Sintomas somáticos', href: (id) => scale(id, 'phq-15') },
   ]},
   { title: 'TDAH / neurodesenvolvimento', tools: [
-    { key: 'asrs-18', title: 'ASRS-18', subtitle: 'TDAH em adultos · desatenção e hiperatividade', href: (id) => `/pacientes/${id}/nexus/scales/asrs-18` },
+    { key: 'asrs-18', title: 'ASRS-18', subtitle: 'TDAH em adultos · resposta bruta preservada', href: (id) => scale(id, 'asrs-18') },
+    { key: 'snap-iv', title: 'SNAP-IV', subtitle: 'Crianças/adolescentes · desatenção e hiperatividade', href: (id) => scale(id, 'snap-iv') },
+  ]},
+  { title: 'Sono', tools: [
+    { key: 'isi', title: 'ISI', subtitle: 'Gravidade e impacto clínico da insônia', href: (id) => scale(id, 'isi') },
+  ]},
+  { title: 'Trauma / TEPT', tools: [
+    { key: 'pc-ptsd-5', title: 'PC-PTSD-5', subtitle: 'Rastreio breve de TEPT · 5 itens', href: (id) => scale(id, 'pc-ptsd-5') },
+    { key: 'pcl-5', title: 'PCL-5', subtitle: 'TEPT · 20 itens e quatro clusters', href: (id) => scale(id, 'pcl-5') },
   ]},
   { title: 'Álcool e substâncias', tools: [
-    { key: 'audit', title: 'AUDIT', subtitle: 'Uso de risco, nocivo e dependência', href: (id) => `/pacientes/${id}/nexus/scales/audit` },
-    { key: 'audit-c', title: 'AUDIT-C', subtitle: 'Rastreio breve · divergência de corte em revisão', href: (id) => `/pacientes/${id}/nexus/scales/audit-c` },
-    { key: 'cage', title: 'CAGE', subtitle: 'Rastreio breve de dependência', href: (id) => `/pacientes/${id}/nexus/scales/cage` },
+    { key: 'audit', title: 'AUDIT', subtitle: 'Uso de risco, nocivo e dependência', href: (id) => scale(id, 'audit') },
+    { key: 'audit-c', title: 'AUDIT-C', subtitle: 'Rastreio breve · divergência de corte em revisão', href: (id) => scale(id, 'audit-c') },
+    { key: 'cage', title: 'CAGE', subtitle: 'Rastreio breve de dependência', href: (id) => scale(id, 'cage') },
   ]},
   { title: 'Segurança', tools: [
     { key: 'cssrs', title: 'C-SSRS', subtitle: 'Ideação e comportamento suicida', tone: 'pulse', href: (id) => `/pacientes/${id}/nexus/cssrs` },
@@ -84,6 +96,8 @@ export function NexusPatientHubPage() {
     for (const result of results) counts.set(result.toolKey, (counts.get(result.toolKey) ?? 0) + 1);
     return counts;
   }, [results]);
+
+  const activeTools = groups.reduce((sum, group) => sum + group.tools.length, 0);
 
   if (!user) return <Navigate to="/" replace />;
   if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
@@ -146,7 +160,7 @@ export function NexusPatientHubPage() {
                 <Metric label="Resultados finalizados" value={String(results.length)} />
                 <Metric label="Alertas em aberto" value={String(redFlags.length)} attention={redFlags.length > 0} />
                 <Metric label="Instrumentos já utilizados" value={String(resultCounts.size)} />
-                <Metric label="Instrumentos ativos neste Hub" value={String(groups.reduce((sum, group) => sum + group.tools.length, 0))} />
+                <Metric label="Instrumentos ativos neste Hub" value={String(activeTools)} />
               </>}
             </div>
           </Card>
