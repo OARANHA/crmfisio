@@ -12,6 +12,8 @@ import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
 import { RelatoriosHub } from './pages/RelatoriosHub';
 import { ConfigPremium } from './pages/ConfigPremium';
+import { PlatformAdminConsole } from './pages/PlatformAdminConsole';
+import { useAuth } from './lib/useAuth';
 
 function Home() {
   const { user, canView } = useApp();
@@ -21,13 +23,23 @@ function Home() {
   return <Navigate to={first} replace />;
 }
 
+function AuthenticatedSurface() {
+  const { principal, platformAdmin, signOut, loading } = useAuth();
+
+  if (!loading && principal && platformAdmin) {
+    return <PlatformAdminConsole principal={principal} onSignOut={signOut} />;
+  }
+
+  return <Shell />;
+}
+
 export default function App() {
   return (
     <AppProvider>
       <HashRouter>
         <Routes>
           <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
-          <Route element={<Shell />}>
+          <Route element={<AuthenticatedSurface />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
             <Route path="/agenda" element={<AgendaOperational />} />
