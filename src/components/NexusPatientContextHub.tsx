@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Patient } from '../lib/types';
 import { Chip } from '../lib/ui';
 import { NexusLongitudinalPanel } from './NexusLongitudinalPanel';
@@ -6,7 +7,7 @@ import { NexusSelfAssessmentStatus } from './NexusSelfAssessmentStatus';
 
 const DOMAINS = [
   { key: 'mental-health', label: 'Saúde Mental', description: 'Escalas, rastreios e acompanhamento por domínio clínico.', status: 'ativo' },
-  { key: 'eem', label: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa e integração com prontuário.', status: 'em integração' },
+  { key: 'eem', label: 'Exame do Estado Mental', description: 'EEM estruturado, narrativa e integração com prontuário.', status: 'ativo' },
   { key: 'psychopharm', label: 'Psicofarmacologia', description: 'Ferramentas clínicas, monitoramento e evidências.', status: 'em integração' },
   { key: 'cognition', label: 'Cognição', description: 'MEEM, domínios cognitivos e evolução longitudinal.', status: 'em integração' },
   { key: 'longitudinal', label: 'Evolução longitudinal', description: 'Tendências, baseline, alertas e comparação temporal.', status: 'ativo' },
@@ -43,6 +44,8 @@ export function NexusPatientContextHub({ patient }: { patient: Patient }) {
               <span className={`font-mono text-[9.5px] uppercase tracking-[0.08em] ${domain.status === 'ativo' ? 'text-mint' : 'text-fog'}`}>{domain.status}</span>
             </div>
             <p className="mt-2 text-[11.5px] leading-relaxed text-fog">{domain.description}</p>
+            {domain.key === 'eem' && <Link to={`/pacientes/${patient.id}/nexus/eem`} className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:text-paper">Abrir EEM →</Link>}
+            {domain.key === 'longitudinal' && <Link to={`/pacientes/${patient.id}/nexus/evolution`} className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:text-paper">Abrir evolução →</Link>}
           </article>
         ))}
       </div>
