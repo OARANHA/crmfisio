@@ -84,14 +84,14 @@ DECLARE
   v_count integer;
   v_invite public.nexus_self_assessment_invites%ROWTYPE;
 BEGIN
-  IF p_response IS NULL OR jsonb_typeof(p_response) <> 'object' THEN
+  IF p_response IS NULL OR jsonb_typeof(p_response) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'Resposta inválida';
   END IF;
   IF pg_column_size(p_response) > 65536 THEN
     RAISE EXCEPTION 'Resposta excede tamanho permitido';
   END IF;
-  IF jsonb_typeof(p_response->'answers') <> 'object'
-     OR jsonb_typeof(p_response->'selectedOptions') <> 'array' THEN
+  IF jsonb_typeof(p_response->'answers') IS DISTINCT FROM 'object'
+     OR jsonb_typeof(p_response->'selectedOptions') IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'Estrutura de resposta inválida';
   END IF;
 
