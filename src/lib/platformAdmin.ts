@@ -15,6 +15,22 @@ export type PlatformAutomationSetting = {
   updatedAt: string;
 };
 
+export type PlatformAutomationRun = {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  triggerSource: string;
+  queuedConfirmations: number;
+  queuedNps: number;
+  expiredWaitlistOffers: number;
+  workerProcessed: number;
+  workerSent: number;
+  workerFailed: number;
+  clinicsProcessed: number;
+  status: string;
+  errorMessage: string | null;
+};
+
 export type PlatformAuditEntry = {
   id: string;
   actorUserId: string | null;
@@ -62,6 +78,27 @@ export async function setPlatformAutomationSetting(
     enabled: Boolean(row.enabled),
     updatedAt: String(row.updated_at),
   };
+}
+
+export async function loadPlatformAutomationRuns(limit = 20): Promise<PlatformAutomationRun[]> {
+  const { data, error } = await db.rpc('platform_get_automation_runs', { p_limit: limit });
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    startedAt: String(row.started_at),
+    finishedAt: row.finished_at ? String(row.finished_at) : null,
+    triggerSource: String(row.trigger_source ?? 'unknown'),
+    queuedConfirmations: Number(row.queued_confirmations ?? 0),
+    queuedNps: Number(row.queued_nps ?? 0),
+    expiredWaitlistOffers: Number(row.expired_waitlist_offers ?? 0),
+    workerProcessed: Number(row.worker_processed ?? 0),
+    workerSent: Number(row.worker_sent ?? 0),
+    workerFailed: Number(row.worker_failed ?? 0),
+    clinicsProcessed: Number(row.clinics_processed ?? 0),
+    status: String(row.status ?? 'unknown'),
+    errorMessage: row.error_message ? String(row.error_message) : null,
+  }));
 }
 
 export async function loadPlatformAuditLog(limit = 30): Promise<PlatformAuditEntry[]> {
