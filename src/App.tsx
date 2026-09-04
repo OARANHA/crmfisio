@@ -13,6 +13,7 @@ import { NexusPatientCssrsPage } from './pages/NexusPatientCssrsPage';
 import { NexusPatientGad7Page } from './pages/NexusPatientGad7Page';
 import { NexusPatientHcl32Page } from './pages/NexusPatientHcl32Page';
 import { NexusPatientScalePage } from './pages/NexusPatientScalePage';
+import { NexusPatientEemPage } from './pages/NexusPatientEemPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/pacientes/:id/nexus/cssrs" element={<NexusPatientCssrsPage />} />
             <Route path="/pacientes/:id/nexus/gad7" element={<NexusPatientGad7Page />} />
             <Route path="/pacientes/:id/nexus/hcl32" element={<NexusPatientHcl32Page />} />
+            <Route path="/pacientes/:id/nexus/eem" element={<NexusPatientEemPage />} />
             <Route path="/pacientes/:id/nexus/scales/:scaleKey" element={<NexusPatientScalePage />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
