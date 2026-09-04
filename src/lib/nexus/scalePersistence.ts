@@ -1,12 +1,19 @@
 import { createNexusRedFlag, createNexusResultDraft, finalizeNexusResult, type NexusClinicalResult } from '../nexusClinical';
 import { calculateScale, type NexusScaleDefinition } from './scaleRuntime';
 
+export type NexusRawScaleSelection = {
+  optionIndex: number;
+  label: string;
+  value: number;
+};
+
 export type PersistScaleInput = {
   definition: NexusScaleDefinition;
   patientId: string;
   professionalId: string;
   appointmentId?: string | null;
   answers: Record<string, number>;
+  rawSelections?: Record<string, NexusRawScaleSelection>;
 };
 
 export type PersistScaleOutput = {
@@ -27,6 +34,7 @@ export async function persistScaleResult(input: PersistScaleInput): Promise<Pers
     requiredCapability: input.definition.requiredCapability,
     inputSnapshot: {
       answers: input.answers,
+      selectedOptions: input.rawSelections ?? {},
       answerOrder: input.definition.questions.map((question) => question.id),
     },
     outputSnapshot: {
@@ -44,8 +52,8 @@ export async function persistScaleResult(input: PersistScaleInput): Promise<Pers
     evidenceSnapshot: [...input.definition.evidence],
   });
 
-  // Alertas são materializados antes da finalização para que um resultado crítico
-  // jamais fique finalizado sem seu evento de segurança auditável.
+  // A policy de red flags exige o resultado ainda em draft. Isso garante que
+  // nenhum resultado crítico seja finalizado sem seu evento de segurança.
   for (const flag of clinical.redFlags ?? []) {
     await createNexusRedFlag({
       patientId: input.patientId,
