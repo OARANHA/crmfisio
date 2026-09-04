@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
 import { Card, Chip, IconChevronR } from '../lib/ui';
@@ -5,6 +6,7 @@ import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { isPsychiatristIdentity, professionalIdentityLabel } from '../lib/professionalIdentity';
 import { Reveal } from '../components/Reveal';
 import { NexusPatientLauncher } from '../components/NexusPatientLauncher';
+import { hasProfessionalCapability } from '../lib/nexusClinical';
 
 const DOMAINS = [
   { key: 'mental-health', title: 'Saúde Mental', sub: 'Depressão, ansiedade, bipolaridade, risco, álcool e substâncias, TDAH, TOC, sono e funcionalidade.', state: 'ativo parcial' },
@@ -21,6 +23,44 @@ export function NexusGlobalPage() {
   const { user } = useApp();
   const { identity } = useProfessionalIdentity(user?.id);
   const psychiatrist = isPsychiatristIdentity(identity);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setAuthorized(false);
+      return () => {
+        active = false;
+      };
+    }
+    void hasProfessionalCapability('nexus.access')
+      .then((allowed) => {
+        if (active) setAuthorized(allowed);
+      })
+      .catch((error) => {
+        console.error('[Nexus] global authorization:', error);
+        if (active) setAuthorized(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  if (authorized === null) {
+    return <div className="rounded-2xl border border-line bg-panel p-6 text-[13px] text-fog">Validando acesso ao Nexus…</div>;
+  }
+
+  if (!authorized) {
+    return (
+      <div className="rounded-2xl border border-line bg-panel p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fog">Nexus Clinical Engine</p>
+        <h1 className="mt-2 font-display text-2xl font-bold">Acesso não habilitado</h1>
+        <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-fog">
+          Este recurso exige a capability clínica <code className="text-paper/80">nexus.access</code>. Profissão, papel de clínica ou acesso à rota não concedem autorização por si só.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
