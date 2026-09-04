@@ -1,4 +1,4 @@
-import { createNexusResultDraft, finalizeNexusResult, type NexusClinicalResult } from '../nexusClinical';
+import { createNexusRedFlag, createNexusResultDraft, finalizeNexusResult, type NexusClinicalResult } from '../nexusClinical';
 import { calculateScale, type NexusScaleDefinition } from './scaleRuntime';
 
 export type PersistScaleInput = {
@@ -32,6 +32,7 @@ export async function persistScaleResult(input: PersistScaleInput): Promise<Pers
     outputSnapshot: {
       recommendations: clinical.recommendations,
       answersArray: clinical.answersArray,
+      redFlags: clinical.redFlags ?? [],
       ...clinical.structuredData,
     },
     totalScore: clinical.totalScore,
@@ -42,6 +43,20 @@ export async function persistScaleResult(input: PersistScaleInput): Promise<Pers
     soapText: clinical.soapText,
     evidenceSnapshot: [...input.definition.evidence],
   });
+
+  // Alertas são materializados antes da finalização para que um resultado crítico
+  // jamais fique finalizado sem seu evento de segurança auditável.
+  for (const flag of clinical.redFlags ?? []) {
+    await createNexusRedFlag({
+      patientId: input.patientId,
+      resultId: draft.id,
+      flagCode: flag.flagCode,
+      severity: flag.severity,
+      title: flag.title,
+      message: flag.message,
+      requiredAction: flag.requiredAction ?? null,
+    });
+  }
 
   const result = await finalizeNexusResult(draft.id);
   return { result, clinical };
