@@ -8,6 +8,7 @@ import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { PatientEditPage } from './pages/PatientEditPage';
 import { NexusPatientHubPage } from './pages/NexusPatientHubPage';
 import { NexusPatientPhq9Page } from './pages/NexusPatientPhq9Page';
+import { NexusPatientCssrsPage } from './pages/NexusPatientCssrsPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/pacientes/:id/editar" element={<PatientEditPage />} />
             <Route path="/pacientes/:id/nexus" element={<NexusPatientHubPage />} />
             <Route path="/pacientes/:id/nexus/phq9" element={<NexusPatientPhq9Page />} />
+            <Route path="/pacientes/:id/nexus/cssrs" element={<NexusPatientCssrsPage />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
             <Route path="/crm" element={<CrmOperational />} />
