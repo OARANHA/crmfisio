@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import {
   isPlatformAdmin,
   loadPlatformAuditLog,
@@ -268,6 +269,8 @@ export function PlatformAdminPage() {
             })}
           </div>
         </section>
+
+        <PlatformClinicEntitlementsPanel onAuditChanged={setAudit} />
 
         <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
           <div>
