@@ -63,7 +63,7 @@ function calculateAudit(answers: Record<string, number>): NexusScaleResult {
 
   return {
     totalScore, maxScore: 40, classification, severity, interpretation, recommendations,
-    answersArray: AUDIT_QUESTIONS.map((q) => answers[q.id] ?? 0),
+    answersArray: AUDIT_QUESTIONS.map((question) => answers[question.id] ?? 0),
     structuredData: { consumoScore, dependenciaScore, problemasScore },
     soapText: `AUDIT: ${totalScore}/40 pts (${classification}) [Consumo: ${consumoScore}/12 | Dependência: ${dependenciaScore}/12 | Problemas: ${problemasScore}/16] | Fonte: OMS (Babor et al., 2001 - Validação BR: Mendez, 1999)`,
   };
@@ -78,23 +78,26 @@ export const AUDIT_DEFINITION: NexusScaleDefinition = {
   validationInfo: 'Padrão-ouro da OMS validado no Brasil para a APS. Sensibilidade: 92%, Especificidade: 94% para uso de risco (corte ≥ 8).',
   cutoffInfo: '0-7: Baixo Risco | 8-15: Uso de Risco | 16-19: Uso Nocivo | 20-40: Provável Dependência (Corte ≥ 8)', estimatedMinutes: 3,
   questions: AUDIT_QUESTIONS,
-  evidence: [{ evidenceKey: 'audit-who-babor-2001', title: 'AUDIT manual', source: 'Babor TF et al. WHO/MSD/MSB/01.6a, 2001.', year: 2001, version: 'nexus-2026-09-03' }, { evidenceKey: 'audit-brazil-validation', title: 'Validação brasileira do AUDIT', source: 'Mendez EB (1999); Moretti-Pires RO, Corradi-Webster CM (2011).', version: 'nexus-2026-09-03' }],
+  evidence: [
+    { evidenceKey: 'audit-who-babor-2001', title: 'AUDIT manual', source: 'Babor TF, Higgins-Biddle JC, Saunders JB, Monteiro MG. WHO/MSD/MSB/01.6a, 2001.', year: 2001, version: 'nexus-2026-09-03' },
+    { evidenceKey: 'audit-brazil-validation', title: 'Validação brasileira do AUDIT', source: 'Mendez EB (1999); Moretti-Pires RO, Corradi-Webster CM (2011).', version: 'nexus-2026-09-03' },
+  ],
   clinicalConduct: [
-    { title: 'Zona I (0 a 7 pts) — Uso de Baixo Risco ou Abstinência', description: 'Educação em saúde sobre limites seguros de consumo segundo a OMS e riscos da associação com psicotrópicos.', badge: '0-7 pts', tone: 'neutral' },
-    { title: 'Zona II (8 a 15 pts) — Uso de Risco', description: 'Realizar Intervenção Breve de 5 a 15 minutos usando FRAMES e reavaliar em 1 a 3 meses.', badge: '8-15 pts', tone: 'warning' },
-    { title: 'Zona III (16 a 19 pts) — Uso Nocivo', description: 'Intervenção Breve estruturada, acompanhamento contínuo e investigação de repercussões clínicas e psiquiátricas.', badge: '16-19 pts', tone: 'warning' },
-    { title: 'Zona IV (20 a 40 pts) — Provável Dependência', description: 'Avaliação médica para risco de abstinência e cuidado compartilhado com rede especializada conforme contexto.', badge: '20-40 pts', tone: 'danger' },
-    { title: '⚠️ Prevenção da Encefalopatia de Wernicke', description: 'Em pacientes etilistas desnutridos ou em abstinência, considerar protocolo de tiamina antes/concomitante à glicose conforme avaliação clínica e protocolo local.', badge: 'Alerta Crítico', tone: 'danger' },
+    { title: 'Zona I (0 a 7 pts) — Uso de Baixo Risco ou Abstinência', description: 'Educação em saúde sobre limites seguros de consumo segundo a OMS (máximo de 2 doses/dia para homens e 1 dose/dia para mulheres e idosos, com no mínimo 2 dias livres de álcool por semana). Orientar riscos da associação com psicotrópicos.', badge: '0-7 pts: Zona I (Baixo Risco)', tone: 'neutral' },
+    { title: 'Zona II (8 a 15 pts) — Uso de Risco (Intervenção Breve)', description: 'Realizar Intervenção Breve (IB) de 5 a 15 minutos na própria consulta usando o acrônimo FRAMES: 1. Feedback sobre o escore; 2. Responsabilidade do paciente na mudança; 3. Aconselhamento claro e direto; 4. Menu de opções e metas; 5. Postura Empática; 6. Fomento da Autoeficácia. Reavaliar em 1 a 3 meses.', badge: '8-15 pts: Zona II (Uso de Risco)', tone: 'warning' },
+    { title: 'Zona III (16 a 19 pts) — Uso Nocivo de Álcool', description: 'Intervenção Breve estruturada + Aconselhamento contínuo na UBS. Solicitar painel laboratorial de rastreio de lesão hepática e hematológica (GGT, TGO, TGP, VCM, Bilirrubinas, Plaquetas). Rastrear comorbidades psiquiátricas frequentes (Depressão - PHQ-9, Ansiedade - GAD-7).', badge: '16-19 pts: Zona III (Uso Nocivo)', tone: 'warning' },
+    { title: 'Zona IV (20 a 40 pts) — Provável Síndrome de Dependência', description: 'Avaliação médica imediata para risco de Síndrome de Abstinência Alcoólica (escala CIWA-Ar). Prescrição profilática obrigatória de Tiamina (Vitamina B1) 100 a 300 mg/dia oral. Considerar farmacoterapia anticraving (Naltrexona 50mg/dia ou Acamprosato). Articulação e acompanhamento compartilhado com CAPS AD e grupos de autoajuda (Alcoólicos Anônimos - AA).', badge: '20-40 pts: Zona IV (Dependência)', tone: 'danger' },
+    { title: '⚠️ Prevenção da Encefalopatia de Wernicke', description: 'NUNCA prescrever soro glicosado endovenoso para pacientes etilistas desnutridos ou em abstinência sem administrar Tiamina parenteral previamente ou concomitantemente (a infusão de glicose isolada precipita encefalopatia de Wernicke aguda por consumo de estoques críticos de tiamina).', badge: 'Alerta Crítico de Emergência', tone: 'danger' },
   ],
   monitoringGoals: [
-    { title: 'Redução do Consumo / Cessação', description: 'Redução progressiva de dias de consumo pesado ou abstinência conforme pactuação clínica.' },
-    { title: 'Marcadores biológicos', description: 'Monitorar marcadores laboratoriais quando clinicamente indicados após redução/cessação.' },
-    { title: 'Prevenção de recaídas', description: 'Fortalecer rede de suporte e seguimento regular na APS.' },
+    { title: 'Meta Primária: Redução do Consumo / Cessação', description: 'Redução progressiva de dias de consumo pesado ("binge drinking" — ≥ 5 doses para homens ou ≥ 4 doses para mulheres numa mesma ocasião) ou abstinência completa conforme pactuação do paciente.' },
+    { title: 'Normalização dos Marcadores Biológicos', description: 'Monitoramento da queda de Gama-GT (GGT) e Volume Corpuscular Médio (VCM) em 6 a 12 semanas após a redução/cessação do consumo alcoólico.' },
+    { title: 'Prevenção de Recaídas & Cuidado Compartilhado', description: 'Fortalecimento da rede de suporte sociofamiliar e agendamento de consultas regulares de seguimento na UBS a cada 30 a 60 dias.' },
   ],
   clinicalPearls: [
-    { type: 'evidence', title: 'Intervenção Breve na APS', text: 'A implementação original do Nexus destaca evidência para intervenção breve na atenção primária.', reference: 'Babor TF et al. 2001; Moretti-Pires RO et al. 2011.' },
-    { type: 'pearl', title: 'Estrutura dos 3 domínios', text: 'Itens 1-3: consumo; 4-6: dependência; 7-10: problemas e consequências.' },
-    { type: 'pitfall', title: 'Abstinência não reconhecida', text: 'Tremor, sudorese, náuseas, taquicardia e insônia podem sinalizar abstinência e exigem avaliação clínica adequada.' },
+    { type: 'evidence', title: 'Eficácia da Intervenção Breve na Atenção Primária', text: 'Ensaios clínicos randomizados demonstram que uma Intervenção Breve de 5 a 15 minutos realizada pelo médico de família reduz o consumo nocivo de álcool em até 30% e diminui significativamente idas à emergência hospitalar e traumas.', reference: 'Babor TF et al. WHO/MSD/MSB/01.6a, 2001; Moretti-Pires RO et al. Rev Bras Psiquiatr. 2011.' },
+    { type: 'pearl', title: 'Pérola Clínica: Estrutura dos 3 Domínios do AUDIT', text: 'Os itens 1-3 avaliam a Quantidade e Frequência do consumo (max 12 pts); os itens 4-6 avaliam Sintomas de Dependência (tolerância, perda de controle, compulsão - max 12 pts); e os itens 7-10 avaliam Problemas e Consequências Danosas (culpa, amnésia alcoólica, traumas - max 16 pts).' },
+    { type: 'pitfall', title: 'Armadilha Clínica: Abstinência Aguda Não Reconhecida no Leito/Consultório', text: 'Tremores finos de extremidades, sudorese profusa, náuseas, taquicardia e insônia em pacientes internados ou em observação na UBS podem ser os primeiros sinais de Síndrome de Abstinência Alcoólica (SAA). Utilize o protocolo CIWA-Ar e trate precocemente com benzodiazepínicos de meia-vida longa (Diazepam) e Tiamina.' },
   ],
   calculate: calculateAudit,
 };
@@ -107,18 +110,20 @@ const AUDITC_QUESTIONS: readonly NexusScaleQuestion[] = [
 
 function calculateAuditC(answers: Record<string, number>): NexusScaleResult {
   const totalScore = ['q1','q2','q3'].reduce((sum, id) => sum + (answers[id] ?? 0), 0);
-  // Preserva o comportamento atual do Nexus. A metadata informa corte >=3 para mulheres,
-  // mas a função original usa >=4 universalmente. Não corrigir sem revisão clínica/versionamento.
+  // Compatibilidade clínica: metadata e implementação Nexus divergem.
+  // O Nexus informa corte >=4 em homens e >=3 em mulheres, mas a função original usa >=4 universalmente.
+  // Preservar nesta versão e exigir revisão clínica explícita antes de alterar a regra.
   const isHighRisk = totalScore >= 4;
+  const answersArray = AUDITC_QUESTIONS.map((question) => answers[question.id] ?? 0);
   return {
     totalScore, maxScore: 12,
     classification: isHighRisk ? 'AUDIT-C Positivo (Padrão de consumo de risco / nocivo)' : 'AUDIT-C Negativo (Baixo risco / Consumo moderado)',
     severity: isHighRisk ? 'moderate' : 'low',
     interpretation: `Escore de ${totalScore}/12 pontos no AUDIT-C. ${isHighRisk ? 'Indica padrão de consumo de risco. Recomenda-se aplicar o AUDIT completo de 10 itens para avaliação detalhada.' : 'Consumo compatível com baixo risco.'}`,
     recommendations: isHighRisk ? ['Realizar intervenção breve (IB) baseada em entrevista motivacional', 'Aplicar AUDIT completo de 10 itens para mapear dependência', 'Pactuar redução do padrão de consumo'] : ['Reforçar orientações preventivas de saúde'],
-    answersArray: AUDITC_QUESTIONS.map((q) => answers[q.id] ?? 0),
-    soapText: `AUDIT-C: ${totalScore}/12 pts (${isHighRisk ? 'Positivo / Consumo de risco' : 'Negativo / Baixo risco'}) | Itens: [${AUDITC_QUESTIONS.map((q) => answers[q.id] ?? 0).join(', ')}]`,
-    structuredData: { clinicalReviewRequired: 'cutoff-sex-divergence' },
+    answersArray,
+    soapText: `AUDIT-C: ${totalScore}/12 pts (${isHighRisk ? 'Positivo / Consumo de risco' : 'Negativo / Baixo risco'}) | Itens: [${answersArray.join(', ')}]`,
+    structuredData: { clinicalReviewRequired: 'audit-c-sex-specific-cutoff-divergence' },
   };
 }
 
@@ -127,12 +132,15 @@ export const AUDITC_DEFINITION: NexusScaleDefinition = {
   title: 'AUDIT-C (Rastreio Rápido do Padrão de Consumo de Álcool)', acronym: 'AUDIT-C', targetGroup: 'Adultos na APS para rastreamento breve de consumo de risco',
   description: 'Versão abreviada de 3 itens do AUDIT focada em consumo e padrão de risco. Rastreia uso arriscado ou dependência em menos de 1 minuto.',
   instructions: 'Selecione a alternativa que melhor descreve o hábito de consumo de bebidas alcoólicas no último ano.',
-  referenceCitation: 'Bush K, Kivlahan DR, McDonell MB, Fihn SD, Bradley KA. Arch Intern Med. 1998;158(16):1789-95.',
-  validationInfo: 'Nexus informa sensibilidade de 86% e especificidade de 72%; metadata: corte ≥4 em homens e ≥3 em mulheres. A função atual do Nexus usa ≥4 universalmente e requer revisão clínica explícita.',
-  cutoffInfo: 'Metadata Nexus: Homens ≥4 | Mulheres ≥3. Implementação atual preservada: ≥4 universal.', estimatedMinutes: 1,
+  referenceCitation: 'Bush K, Kivlahan DR, McDonell MB, Fihn SD, Bradley KA. The AUDIT alcohol consumption questions (AUDIT-C). Arch Intern Med. 1998; 158(16):1789-95.',
+  validationInfo: 'Sensibilidade de 86% e especificidade de 72% para corte ≥ 4 em homens e ≥ 3 em mulheres. A implementação Nexus atual usa ≥4 universalmente; divergência registrada para revisão clínica.',
+  cutoffInfo: 'Metadata Nexus: Homens ≥ 4 | Mulheres ≥ 3. Regra executável preservada nesta versão: ≥ 4 universal.', estimatedMinutes: 1,
   questions: AUDITC_QUESTIONS,
   evidence: [{ evidenceKey: 'auditc-bush-1998', title: 'AUDIT-C', source: 'Bush K et al. Arch Intern Med. 1998;158(16):1789-95.', year: 1998, version: 'nexus-2026-09-03' }],
-  clinicalConduct: [{ title: 'Intervenção Breve (IB)', description: 'Fornecer feedback sobre o escore e limites recomendados.' }, { title: 'Avaliação Integral com AUDIT-10', description: 'Em caso de rastreio positivo, aprofundar a avaliação.' }],
+  clinicalConduct: [
+    { title: 'Intervenção Breve (IB)', description: 'Fornecer feedback sobre o escore e limites recomendados.', badge: 'APS / MFC', tone: 'neutral' },
+    { title: 'Avaliação Integral com AUDIT-10', description: 'Em caso de rastreio positivo, aprofundar a avaliação.', badge: 'Rastreio Positivo', tone: 'warning' },
+  ],
   monitoringGoals: [], clinicalPearls: [], calculate: calculateAuditC,
 };
 
@@ -144,16 +152,17 @@ const CAGE_QUESTIONS: readonly NexusScaleQuestion[] = [
 ];
 
 function calculateCage(answers: Record<string, number>): NexusScaleResult {
-  const totalScore = CAGE_QUESTIONS.reduce((sum, q) => sum + (answers[q.id] ?? 0), 0);
+  const totalScore = CAGE_QUESTIONS.reduce((sum, question) => sum + (answers[question.id] ?? 0), 0);
   const isPositive = totalScore >= 2;
+  const answersArray = CAGE_QUESTIONS.map((question) => answers[question.id] ?? 0);
   return {
     totalScore, maxScore: 4,
     classification: isPositive ? 'CAGE Positivo (Suspeita de transtorno por uso de álcool)' : 'CAGE Negativo (Baixa probabilidade)',
     severity: isPositive ? 'high' : 'low',
     interpretation: `Escore de ${totalScore}/4 respostas afirmativas no CAGE. ${isPositive ? 'Rastreamento positivo (≥ 2 itens). Exige anamnese clínica direta sobre dependência, tolerância e abstinência.' : 'Rastreio negativo.'}`,
     recommendations: isPositive ? ['Avaliação clínica direta sobre critérios diagnósticos de dependência', 'Investigar sintomas de abstinência e complicações clínicas/sociais', 'Abordagem motivacional e projeto terapêutico singular'] : ['Orientações preventivas habituais'],
-    answersArray: CAGE_QUESTIONS.map((q) => answers[q.id] ?? 0),
-    soapText: `CAGE: ${totalScore}/4 respostas afirmativas (${isPositive ? 'Positivo ≥ 2' : 'Negativo'}) | Itens: [${CAGE_QUESTIONS.map((q) => answers[q.id] ?? 0).join(', ')}]`,
+    answersArray,
+    soapText: `CAGE: ${totalScore}/4 respostas afirmativas (${isPositive ? 'Positivo ≥ 2' : 'Negativo'}) | Itens: [${answersArray.join(', ')}]`,
   };
 }
 
@@ -161,10 +170,13 @@ export const CAGE_DEFINITION: NexusScaleDefinition = {
   toolKey: 'cage', moduleKey: 'mental-health', ruleKey: 'nexus.cage', ruleVersion: 'nexus-2026-09-03', requiredCapability: 'nexus.scales',
   title: 'CAGE (Questionário de Rastreamento de Suspeita de Dependência Alcoólica)', acronym: 'CAGE', targetGroup: 'Adultos na APS com suspeita de problemas relacionados ao álcool',
   description: 'Instrumento clássico de 4 perguntas mnemônicas para rastreio de problemas e dependência de álcool.', instructions: 'Selecione Sim ou Não para cada pergunta.',
-  referenceCitation: 'Ewing JA. JAMA. 1984;252(14):1905-7. Validação brasileira: Masur J, Monteiro MG. Rev Assoc Med Bras. 1983.',
-  validationInfo: 'Corte ≥2 respostas afirmativas sugere fortemente problemas relacionados ao uso de álcool.', cutoffInfo: '0-1: Baixa probabilidade | ≥2: Suspeita de uso problemático / dependência de álcool', estimatedMinutes: 1,
+  referenceCitation: 'Ewing JA. Detecting alcoholism. The CAGE questionnaire. JAMA. 1984; 252(14):1905-7. Validação brasileira: Masur J, Monteiro MG. Rev Assoc Med Bras. 1983.',
+  validationInfo: 'Corte ≥ 2 respostas afirmativas sugere fortemente problemas relacionados ao uso de álcool.', cutoffInfo: '0-1: Baixa probabilidade | ≥ 2: Suspeita de uso problemático / dependência de álcool', estimatedMinutes: 1,
   questions: CAGE_QUESTIONS,
-  evidence: [{ evidenceKey: 'cage-ewing-1984', title: 'CAGE questionnaire', source: 'Ewing JA. JAMA. 1984;252(14):1905-7.', year: 1984, version: 'nexus-2026-09-03' }, { evidenceKey: 'cage-brazil-masur-1983', title: 'Validação brasileira CAGE', source: 'Masur J, Monteiro MG. Rev Assoc Med Bras. 1983.', year: 1983, version: 'nexus-2026-09-03' }],
+  evidence: [
+    { evidenceKey: 'cage-ewing-1984', title: 'CAGE questionnaire', source: 'Ewing JA. JAMA. 1984;252(14):1905-7.', year: 1984, version: 'nexus-2026-09-03' },
+    { evidenceKey: 'cage-brazil-masur-1983', title: 'Validação brasileira CAGE', source: 'Masur J, Monteiro MG. Rev Assoc Med Bras. 1983.', year: 1983, version: 'nexus-2026-09-03' },
+  ],
   clinicalConduct: [{ title: 'Anamnese Clínica Detalhada', description: 'Investigar tempo de uso, tolerância e sintomas de abstinência matinal.', badge: 'Clínica', tone: 'warning' }],
   monitoringGoals: [], clinicalPearls: [], calculate: calculateCage,
 };
