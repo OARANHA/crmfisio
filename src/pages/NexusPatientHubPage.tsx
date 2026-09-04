@@ -12,12 +12,7 @@ import {
   type NexusRedFlag,
 } from '../lib/nexusClinical';
 
-type NexusModule = {
-  key: string;
-  title: string;
-  description: string;
-  status: 'available' | 'planned';
-};
+type NexusModule = { key: string; title: string; description: string; status: 'available' | 'planned' };
 
 const modules: NexusModule[] = [
   { key: 'mental-health', title: 'Saúde Mental', description: 'Escalas, risco, sintomas e acompanhamento longitudinal.', status: 'available' },
@@ -42,20 +37,14 @@ export function NexusPatientHubPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!id || !canSeeClinical) {
-        setLoading(false);
-        return;
-      }
+      if (!id || !canSeeClinical) { setLoading(false); return; }
       setLoading(true);
       try {
         const [patientResults, patientFlags] = await Promise.all([
           listPatientNexusResults(id),
           listPatientOpenNexusRedFlags(id),
         ]);
-        if (!cancelled) {
-          setResults(patientResults);
-          setRedFlags(patientFlags);
-        }
+        if (!cancelled) { setResults(patientResults); setRedFlags(patientFlags); }
       } catch (error) {
         console.error('[MedicsPro] Nexus patient hub:', error);
       } finally {
@@ -66,21 +55,14 @@ export function NexusPatientHubPage() {
     return () => { cancelled = true; };
   }, [id, canSeeClinical]);
 
-  const latestPhq9 = useMemo(
-    () => results.find((item) => item.toolKey === 'phq-9') ?? null,
-    [results],
-  );
-  const phq9History = useMemo(
-    () => results.filter((item) => item.toolKey === 'phq-9'),
-    [results],
-  );
+  const latestPhq9 = useMemo(() => results.find((item) => item.toolKey === 'phq-9') ?? null, [results]);
+  const latestCssrs = useMemo(() => results.find((item) => item.toolKey === 'cssrs') ?? null, [results]);
+  const phq9History = useMemo(() => results.filter((item) => item.toolKey === 'phq-9'), [results]);
+  const cssrsHistory = useMemo(() => results.filter((item) => item.toolKey === 'cssrs'), [results]);
 
   if (!user) return <Navigate to="/" replace />;
   if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
-
-  if (!patient) {
-    return <Card><Empty title="Paciente não encontrado" sub="O Nexus funciona sempre no contexto do paciente canônico do MedicsPro." /></Card>;
-  }
+  if (!patient) return <Card><Empty title="Paciente não encontrado" sub="O Nexus funciona sempre no contexto do paciente canônico do MedicsPro." /></Card>;
 
   return (
     <div className="space-y-4">
@@ -97,16 +79,14 @@ export function NexusPatientHubPage() {
 
       {redFlags.length > 0 && (
         <section className="rounded-2xl border border-pulse/40 bg-pulse/[0.05] p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-display font-semibold text-[14px] text-pulse">Alertas clínicos em aberto</p>
-            <Chip className="border-pulse/40 text-pulse">{redFlags.length}</Chip>
-          </div>
+          <div className="flex flex-wrap items-center gap-2"><p className="font-display font-semibold text-[14px] text-pulse">Alertas clínicos em aberto</p><Chip className="border-pulse/40 text-pulse">{redFlags.length}</Chip></div>
           <div className="mt-3 grid gap-2">
             {redFlags.slice(0, 3).map((flag) => (
               <div key={flag.id} className="rounded-xl border border-pulse/25 bg-deep p-3">
                 <p className="text-[12.5px] font-semibold text-paper">{flag.title}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-fog">{flag.message}</p>
                 {flag.requiredAction && <p className="mt-2 text-[11px] font-medium text-pulse">Ação: {flag.requiredAction}</p>}
+                {flag.flagCode === 'phq9.item9.positive' && <Link to={`/pacientes/${patient.id}/nexus/cssrs`} className="mt-3 inline-flex rounded-lg border border-pulse/35 bg-pulse/[0.06] px-3 py-2 text-[11px] font-semibold text-pulse hover:bg-pulse/10">Aplicar C-SSRS agora →</Link>}
               </div>
             ))}
           </div>
@@ -115,33 +95,16 @@ export function NexusPatientHubPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
         <Card>
-          <div className="border-b border-line px-5 py-4">
-            <p className="font-display font-semibold text-[15px]">Domínios Nexus</p>
-            <p className="mt-1 text-[11px] text-fog">A estrutura permanece estável enquanto os módulos clínicos são migrados em ondas.</p>
-          </div>
+          <div className="border-b border-line px-5 py-4"><p className="font-display font-semibold text-[15px]">Domínios Nexus</p><p className="mt-1 text-[11px] text-fog">A estrutura permanece estável enquanto os módulos clínicos são migrados em ondas.</p></div>
           <div className="grid gap-3 p-5 md:grid-cols-2">
             {modules.map((module) => (
               <div key={module.key} className="rounded-xl border border-line bg-deep p-4">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display font-semibold text-[13.5px] text-paper">{module.title}</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-fog">{module.description}</p>
-                  </div>
-                  <Chip className={module.status === 'available' ? 'border-mint/40 text-mint' : 'border-line text-fog'}>{module.status === 'available' ? 'ativo' : 'em migração'}</Chip>
-                </div>
+                <div className="flex items-start gap-2"><div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px] text-paper">{module.title}</p><p className="mt-1 text-[11px] leading-relaxed text-fog">{module.description}</p></div><Chip className={module.status === 'available' ? 'border-mint/40 text-mint' : 'border-line text-fog'}>{module.status === 'available' ? 'ativo' : 'em migração'}</Chip></div>
                 {module.key === 'mental-health' && (
                   <div className="mt-4 space-y-2 border-t border-line pt-3">
-                    <Link to={`/pacientes/${patient.id}/nexus/phq9`} className="flex items-center justify-between rounded-lg border border-mint/25 bg-mint/[0.04] px-3 py-2.5 transition-colors hover:border-mint/50">
-                      <span>
-                        <span className="block text-[12px] font-semibold text-paper">PHQ-9</span>
-                        <span className="block text-[10.5px] text-fog">Depressão · aplicação clínica e evolução</span>
-                      </span>
-                      <span className="font-mono text-[10px] text-mint">abrir →</span>
-                    </Link>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-lg border border-line px-3 py-2 text-[10.5px] text-fog">GAD-7 <span className="float-right">em migração</span></div>
-                      <div className="rounded-lg border border-line px-3 py-2 text-[10.5px] text-fog">C-SSRS <span className="float-right">em migração</span></div>
-                    </div>
+                    <Link to={`/pacientes/${patient.id}/nexus/phq9`} className="flex items-center justify-between rounded-lg border border-mint/25 bg-mint/[0.04] px-3 py-2.5 transition-colors hover:border-mint/50"><span><span className="block text-[12px] font-semibold text-paper">PHQ-9</span><span className="block text-[10.5px] text-fog">Depressão · aplicação clínica e evolução</span></span><span className="font-mono text-[10px] text-mint">abrir →</span></Link>
+                    <Link to={`/pacientes/${patient.id}/nexus/cssrs`} className="flex items-center justify-between rounded-lg border border-pulse/25 bg-pulse/[0.035] px-3 py-2.5 transition-colors hover:border-pulse/50"><span><span className="block text-[12px] font-semibold text-paper">C-SSRS</span><span className="block text-[10.5px] text-fog">Segurança · ideação e comportamento suicida</span></span><span className="font-mono text-[10px] text-pulse">abrir →</span></Link>
+                    <div className="rounded-lg border border-line px-3 py-2 text-[10.5px] text-fog">GAD-7 <span className="float-right">em migração</span></div>
                   </div>
                 )}
               </div>
@@ -151,38 +114,19 @@ export function NexusPatientHubPage() {
 
         <div className="space-y-4">
           <Card>
-            <div className="border-b border-line px-5 py-4">
-              <p className="font-display font-semibold text-[15px]">Resumo Nexus</p>
-              <p className="mt-1 text-[11px] text-fog">Sinais úteis antes de abrir uma ferramenta.</p>
-            </div>
+            <div className="border-b border-line px-5 py-4"><p className="font-display font-semibold text-[15px]">Resumo Nexus</p><p className="mt-1 text-[11px] text-fog">Sinais úteis antes de abrir uma ferramenta.</p></div>
             <div className="p-5 space-y-3">
-              {loading ? <p className="font-mono text-[11px] text-fog">Carregando contexto clínico…</p> : (
-                <>
-                  <Metric label="Resultados finalizados" value={String(results.length)} />
-                  <Metric label="Alertas em aberto" value={String(redFlags.length)} attention={redFlags.length > 0} />
-                  <Metric label="Aplicações PHQ-9" value={String(phq9History.length)} />
-                  {latestPhq9 ? (
-                    <div className="rounded-xl border border-aqua/30 bg-aqua/[0.04] p-3">
-                      <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-aqua">Último PHQ-9</p>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="font-display text-[25px] font-bold text-paper">{latestPhq9.totalScore ?? '—'}</span>
-                        <span className="text-[11px] text-fog">/ {latestPhq9.maxScore ?? 27}</span>
-                      </div>
-                      <p className="mt-1 text-[11.5px] font-semibold text-paper">{latestPhq9.classification || 'Sem classificação'}</p>
-                      <p className="mt-1 font-mono text-[9.5px] text-fog">{format(new Date(latestPhq9.finalizedAt || latestPhq9.createdAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR })}</p>
-                    </div>
-                  ) : <Empty title="Sem resultados Nexus" sub="O PHQ-9 será o primeiro instrumento clínico deste paciente." />}
-                </>
-              )}
+              {loading ? <p className="font-mono text-[11px] text-fog">Carregando contexto clínico…</p> : <>
+                <Metric label="Resultados finalizados" value={String(results.length)} />
+                <Metric label="Alertas em aberto" value={String(redFlags.length)} attention={redFlags.length > 0} />
+                <Metric label="Aplicações PHQ-9" value={String(phq9History.length)} />
+                <Metric label="Avaliações C-SSRS" value={String(cssrsHistory.length)} />
+                {latestCssrs && <div className={`rounded-xl border p-3 ${latestCssrs.severity === 'severe' ? 'border-pulse/40 bg-pulse/[0.05]' : 'border-line bg-deep'}`}><p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-pulse">Última C-SSRS</p><div className="mt-2 flex items-baseline gap-2"><span className="font-display text-[25px] font-bold text-paper">Nível {latestCssrs.totalScore ?? '—'}</span><span className="text-[11px] text-fog">/5</span></div><p className="mt-1 text-[11.5px] font-semibold text-paper">{latestCssrs.classification}</p></div>}
+                {latestPhq9 ? <div className="rounded-xl border border-aqua/30 bg-aqua/[0.04] p-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-aqua">Último PHQ-9</p><div className="mt-2 flex items-baseline gap-2"><span className="font-display text-[25px] font-bold text-paper">{latestPhq9.totalScore ?? '—'}</span><span className="text-[11px] text-fog">/ {latestPhq9.maxScore ?? 27}</span></div><p className="mt-1 text-[11.5px] font-semibold text-paper">{latestPhq9.classification || 'Sem classificação'}</p><p className="mt-1 font-mono text-[9.5px] text-fog">{format(new Date(latestPhq9.finalizedAt || latestPhq9.createdAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR })}</p></div> : <Empty title="Sem resultados Nexus" sub="PHQ-9 e C-SSRS são os primeiros instrumentos disponíveis." />}
+              </>}
             </div>
           </Card>
-
-          <Card>
-            <div className="p-5">
-              <p className="font-display font-semibold text-[13px]">Princípio de segurança</p>
-              <p className="mt-2 text-[11px] leading-relaxed text-fog">O Nexus não cria outro paciente nem outro prontuário. Ferramentas produzem resultados clínicos versionados ligados ao paciente canônico do MedicsPro.</p>
-            </div>
-          </Card>
+          <Card><div className="p-5"><p className="font-display font-semibold text-[13px]">Princípio de segurança</p><p className="mt-2 text-[11px] leading-relaxed text-fog">O Nexus não cria outro paciente nem outro prontuário. Ferramentas produzem resultados clínicos versionados ligados ao paciente canônico do MedicsPro.</p></div></Card>
         </div>
       </div>
     </div>
@@ -190,10 +134,5 @@ export function NexusPatientHubPage() {
 }
 
 function Metric({ label, value, attention = false }: { label: string; value: string; attention?: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-line bg-deep px-3.5 py-3">
-      <span className="text-[11.5px] text-fog">{label}</span>
-      <span className={`font-mono text-[13px] font-semibold ${attention ? 'text-pulse' : 'text-paper'}`}>{value}</span>
-    </div>
-  );
+  return <div className="flex items-center justify-between rounded-xl border border-line bg-deep px-3.5 py-3"><span className="text-[11.5px] text-fog">{label}</span><span className={`font-mono text-[13px] font-semibold ${attention ? 'text-pulse' : 'text-paper'}`}>{value}</span></div>;
 }
