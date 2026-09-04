@@ -6,6 +6,7 @@ DECLARE
   v_rls_admin boolean;
   v_rls_settings boolean;
   v_rls_audit boolean;
+  v_missing integer;
 BEGIN
   SELECT count(*) INTO v_settings
   FROM public.platform_automation_settings
@@ -21,6 +22,34 @@ BEGIN
 
   IF v_settings <> 7 THEN
     RAISE EXCEPTION 'Expected 7 platform automation settings, got %', v_settings;
+  END IF;
+
+  SELECT count(*) INTO v_missing
+  FROM (VALUES
+    ('platform_admins', 'ativo'),
+    ('platform_audit_log', 'target_type'),
+    ('platform_audit_log', 'target_id'),
+    ('platform_audit_log', 'entity_type'),
+    ('platform_audit_log', 'entity_key')
+  ) AS expected(table_name, column_name)
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = expected.table_name
+      AND c.column_name = expected.column_name
+  );
+
+  IF v_missing <> 0 THEN
+    RAISE EXCEPTION 'Platform governance compatibility columns missing: %', v_missing;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.platform_audit_log
+    WHERE entity_type IS NULL OR entity_key IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Existing platform audit rows were not backfilled into governance projection';
   END IF;
 
   SELECT relrowsecurity INTO v_rls_admin
@@ -54,6 +83,6 @@ BEGIN
     RAISE EXCEPTION 'Authenticated RPC grants missing';
   END IF;
 
-  RAISE NOTICE 'PLATFORM_ADMIN_GOVERNANCE_OK settings=%', v_settings;
+  RAISE NOTICE 'PLATFORM_ADMIN_GOVERNANCE_OK settings=% legacy_schema_compatible=true', v_settings;
 END
 $$;
