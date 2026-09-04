@@ -1,12 +1,11 @@
 name: Clinical workflow CI
 
 on:
+  pull_request:
+  workflow_dispatch:
   push:
     branches:
       - feature/clinical-workflow-premium
-  pull_request:
-    branches:
-      - main
 
 jobs:
   validate:
