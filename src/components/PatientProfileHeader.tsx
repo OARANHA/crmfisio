@@ -79,12 +79,20 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
 
         <div className="flex flex-wrap items-center gap-2">
           {canSeeClinical && (
-            <Link
-              to={`/pacientes/${patient.id}/nexus`}
-              className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10"
-            >
-              Nexus
-            </Link>
+            <>
+              <Link
+                to={`/pacientes/${patient.id}/prontuario`}
+                className="rounded-xl border border-mint/35 bg-mint/[0.04] px-3.5 py-2 text-[12.5px] font-semibold text-mint transition-colors hover:border-mint/60 hover:bg-mint/10"
+              >
+                Prontuário
+              </Link>
+              <Link
+                to={`/pacientes/${patient.id}/nexus`}
+                className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10"
+              >
+                Nexus
+              </Link>
+            </>
           )}
           <Link to={`/pacientes/${patient.id}/editar`} className="rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise hover:text-paper">Editar cadastro</Link>
           <PatientJourneyControl patient={patient} />
