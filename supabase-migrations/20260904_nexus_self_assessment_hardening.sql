@@ -128,8 +128,13 @@ BEGIN
 END;
 $$;
 
+-- Em stacks Supabase self-hosted, default privileges podem conceder EXECUTE
+-- diretamente a anon/authenticated/service_role. Revogar PUBLIC não remove ACLs
+-- explícitas, portanto o criador do convite deve revogar anon nominalmente.
 REVOKE ALL ON FUNCTION public.create_nexus_self_assessment_invite(uuid,text,text,uuid,integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_nexus_self_assessment_invite(uuid,text,text,uuid,integer) FROM anon;
 GRANT EXECUTE ON FUNCTION public.create_nexus_self_assessment_invite(uuid,text,text,uuid,integer) TO authenticated;
+
 REVOKE ALL ON FUNCTION public.submit_nexus_self_assessment(text,jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.submit_nexus_self_assessment(text,jsonb) TO anon, authenticated;
 
