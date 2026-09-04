@@ -19,6 +19,10 @@ import { NexusPatientEgfrPage } from './pages/NexusPatientEgfrPage';
 import { NexusPatientCardiovascularRiskPage } from './pages/NexusPatientCardiovascularRiskPage';
 import { NexusPatientAntidepressantSwitchPage } from './pages/NexusPatientAntidepressantSwitchPage';
 import { NexusPatientEvolutionPage } from './pages/NexusPatientEvolutionPage';
+import { NexusEvidencePage } from './pages/NexusEvidencePage';
+import { NexusEducationPage } from './pages/NexusEducationPage';
+import { NexusSelfAssessmentInvitePage } from './pages/NexusSelfAssessmentInvitePage';
+import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -38,6 +42,7 @@ export default function App() {
     <AppProvider>
       <HashRouter>
         <Routes>
+          <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<DashboardRoleAware />} />
@@ -54,6 +59,9 @@ export default function App() {
             <Route path="/pacientes/:id/nexus/eem" element={<NexusPatientEemPage />} />
             <Route path="/pacientes/:id/nexus/meem" element={<NexusPatientMeemPage />} />
             <Route path="/pacientes/:id/nexus/evolution" element={<NexusPatientEvolutionPage />} />
+            <Route path="/pacientes/:id/nexus/education" element={<NexusEducationPage />} />
+            <Route path="/pacientes/:id/nexus/self-assessment" element={<NexusSelfAssessmentInvitePage />} />
+            <Route path="/nexus/evidence" element={<NexusEvidencePage />} />
             <Route path="/pacientes/:id/nexus/calculators/egfr" element={<NexusPatientEgfrPage />} />
             <Route path="/pacientes/:id/nexus/calculators/cv-risk" element={<NexusPatientCardiovascularRiskPage />} />
             <Route path="/pacientes/:id/nexus/psychopharmacology/antidepressant-switch" element={<NexusPatientAntidepressantSwitchPage />} />
