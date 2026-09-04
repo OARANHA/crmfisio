@@ -28,29 +28,33 @@ Este documento consolida o estado de preparação da primeira composição beta 
 ## Gate técnico antes de merge
 
 1. CI do HEAD final deve passar em testes, typecheck e build.
-2. Não podem existir imports/rotas quebradas nas superfícies Nexus ou Platform Admin.
-3. EEM deve continuar usando a implementação canônica e capability `nexus.eem`.
-4. Longitudinal deve usar apenas resultados finalizados/versionados, sem reinterpretar histórico.
-5. Nenhuma migration de produção deve ser aplicada durante a fase de preview.
+2. `dependency-audit` deve passar com `npm audit --omit=dev --audit-level=critical`.
+3. Não podem existir imports/rotas quebradas nas superfícies Nexus ou Platform Admin.
+4. Rotas Nexus protegidas devem exigir `nexus.access`; escrita do EEM continua exigindo `nexus.eem`.
+5. EEM deve continuar usando a implementação canônica e capability `nexus.eem`.
+6. Longitudinal deve usar apenas resultados finalizados/versionados, sem reinterpretar histórico.
+7. Nenhuma migration de produção deve ser aplicada durante a fase de preview.
 
 ## Gate Platform Admin para rollout
 
 Aplicar em janela controlada e verificar, nesta ordem lógica:
 
-1. governança de Platform Admin;
-2. segurança/observabilidade das automações;
-3. entitlements por clínica;
-4. console de módulos por clínica;
-5. contrato read-only de entitlement de runtime;
-6. cadastro explícito do Platform Admin inicial;
-7. seed explícito de entitlements da clínica piloto;
-8. verifiers correspondentes;
-9. somente depois disso considerar enforcement módulo a módulo.
+1. fundação de provisionamento já existente/compatível;
+2. governança de Platform Admin;
+3. segurança/observabilidade das automações;
+4. entitlements por clínica;
+5. console de módulos por clínica;
+6. contrato read-only de entitlement de runtime;
+7. cadastro explícito do Platform Admin inicial;
+8. seed explícito de entitlements da clínica piloto;
+9. verifiers correspondentes;
+10. somente depois disso considerar enforcement módulo a módulo.
 
 ## Gate Nexus para uso clínico real
 
 - confirmar foundation Nexus já aplicada no ambiente alvo;
 - aplicar/verificar evidence seed exigido pelo EEM quando necessário;
+- aplicar/verificar vertical slice server-side das autoavaliações Nexus quando necessário;
 - confirmar capabilities profissionais esperadas;
 - validar tenant boundary e acesso paciente A/B;
 - validar PHQ-9/GAD-7 ponta a ponta incluindo processor e red flags;
@@ -88,6 +92,14 @@ Antes de liberar profissionais reais:
 8. fazer deploy do frontend aprovado;
 9. smoke test por perfis: Platform Admin, owner/admin, recepção e profissional clínico;
 10. somente então liberar o beta para profissionais convidados.
+
+## Estado atual do candidato
+
+HEAD técnico validado: `b835964f23f4d5a55cfcdff3178d46e716f6eef6`.
+
+CI final confirmada: workflow `Clinical workflow CI` run **#201**, com jobs `validate` e `dependency-audit` verdes.
+
+Isso qualifica a branch como **Beta Candidate técnico**. O trabalho restante depende de autorização controlada de merge/deploy e de validações de ambiente; não depende de nova arquitetura de produto.
 
 ## Critério de Beta Candidate
 
