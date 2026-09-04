@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Patient } from '../lib/types';
 import { Chip } from '../lib/ui';
 import { NexusLongitudinalPanel } from './NexusLongitudinalPanel';
 import { NexusSelfAssessmentInviteAction } from './NexusSelfAssessmentInviteAction';
 import { NexusSelfAssessmentStatus } from './NexusSelfAssessmentStatus';
+import { hasProfessionalCapability } from '../lib/nexusClinical';
 
 const DOMAINS = [
   { key: 'mental-health', label: 'Saúde Mental', description: 'Escalas, rastreios e acompanhamento por domínio clínico.', status: 'ativo' },
@@ -15,6 +17,27 @@ const DOMAINS = [
 ] as const;
 
 export function NexusPatientContextHub({ patient }: { patient: Patient }) {
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void hasProfessionalCapability('nexus.access')
+      .then((allowed) => {
+        if (active) setAuthorized(allowed);
+      })
+      .catch((error) => {
+        console.error('[Nexus] patient-context authorization:', error);
+        if (active) setAuthorized(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Capability is the authorization boundary. Profession and route visibility
+  // personalize UX, but never grant Nexus access by themselves.
+  if (authorized !== true) return null;
+
   return (
     <section className="overflow-hidden rounded-[20px] border border-aqua/25 bg-panel shadow-[0_12px_38px_rgba(15,28,24,0.055)]">
       <div className="border-b border-line/60 bg-gradient-to-r from-aqua/[0.08] via-panel to-panel px-5 py-5">
