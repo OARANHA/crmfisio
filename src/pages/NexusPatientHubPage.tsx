@@ -58,9 +58,11 @@ export function NexusPatientHubPage() {
   const latestPhq9 = useMemo(() => results.find((item) => item.toolKey === 'phq-9') ?? null, [results]);
   const latestCssrs = useMemo(() => results.find((item) => item.toolKey === 'cssrs') ?? null, [results]);
   const latestGad7 = useMemo(() => results.find((item) => item.toolKey === 'gad-7') ?? null, [results]);
+  const latestHcl32 = useMemo(() => results.find((item) => item.toolKey === 'hcl-32') ?? null, [results]);
   const phq9History = useMemo(() => results.filter((item) => item.toolKey === 'phq-9'), [results]);
   const cssrsHistory = useMemo(() => results.filter((item) => item.toolKey === 'cssrs'), [results]);
   const gad7History = useMemo(() => results.filter((item) => item.toolKey === 'gad-7'), [results]);
+  const hcl32History = useMemo(() => results.filter((item) => item.toolKey === 'hcl-32'), [results]);
 
   if (!user) return <Navigate to="/" replace />;
   if (!canSeeClinical) return <Navigate to="/pacientes" replace />;
@@ -109,8 +111,9 @@ export function NexusPatientHubPage() {
                   <div className="mt-4 space-y-2 border-t border-line pt-3">
                     <ToolLink href={`/pacientes/${patient.id}/nexus/phq9`} title="PHQ-9" subtitle="Depressão · aplicação clínica e evolução" tone="mint" />
                     <ToolLink href={`/pacientes/${patient.id}/nexus/gad7`} title="GAD-7" subtitle="Ansiedade · aplicação clínica e evolução" tone="aqua" />
+                    <ToolLink href={`/pacientes/${patient.id}/nexus/hcl32`} title="HCL-32" subtitle="Hipomania / espectro bipolar · Scale Runtime" tone="aqua" />
                     <ToolLink href={`/pacientes/${patient.id}/nexus/cssrs`} title="C-SSRS" subtitle="Segurança · ideação e comportamento suicida" tone="pulse" />
-                    <div className="rounded-lg border border-line px-3 py-2 text-[10.5px] text-fog">HCL-32 e demais escalas <span className="float-right">em migração</span></div>
+                    <div className="rounded-lg border border-line px-3 py-2 text-[10.5px] text-fog">Demais escalas Nexus <span className="float-right">próximos lotes</span></div>
                   </div>
                 )}
               </div>
@@ -127,10 +130,12 @@ export function NexusPatientHubPage() {
                 <Metric label="Alertas em aberto" value={String(redFlags.length)} attention={redFlags.length > 0} />
                 <Metric label="Aplicações PHQ-9" value={String(phq9History.length)} />
                 <Metric label="Aplicações GAD-7" value={String(gad7History.length)} />
+                <Metric label="Aplicações HCL-32" value={String(hcl32History.length)} />
                 <Metric label="Avaliações C-SSRS" value={String(cssrsHistory.length)} />
                 {latestCssrs && <ResultCard label="Última C-SSRS" value={`Nível ${latestCssrs.totalScore ?? '—'}`} suffix="/5" classification={latestCssrs.classification || ''} attention={latestCssrs.severity === 'severe'} />}
+                {latestHcl32 && <ResultCard label="Último HCL-32" value={String(latestHcl32.totalScore ?? '—')} suffix="/32" classification={latestHcl32.classification || ''} attention={latestHcl32.severity === 'high'} />}
                 {latestGad7 && <ResultCard label="Último GAD-7" value={String(latestGad7.totalScore ?? '—')} suffix="/21" classification={latestGad7.classification || ''} />}
-                {latestPhq9 ? <div className="rounded-xl border border-aqua/30 bg-aqua/[0.04] p-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-aqua">Último PHQ-9</p><div className="mt-2 flex items-baseline gap-2"><span className="font-display text-[25px] font-bold text-paper">{latestPhq9.totalScore ?? '—'}</span><span className="text-[11px] text-fog">/ {latestPhq9.maxScore ?? 27}</span></div><p className="mt-1 text-[11.5px] font-semibold text-paper">{latestPhq9.classification || 'Sem classificação'}</p><p className="mt-1 font-mono text-[9.5px] text-fog">{format(new Date(latestPhq9.finalizedAt || latestPhq9.createdAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR })}</p></div> : <Empty title="Sem resultados Nexus" sub="PHQ-9, GAD-7 e C-SSRS estão disponíveis nesta onda." />}
+                {latestPhq9 ? <div className="rounded-xl border border-aqua/30 bg-aqua/[0.04] p-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-aqua">Último PHQ-9</p><div className="mt-2 flex items-baseline gap-2"><span className="font-display text-[25px] font-bold text-paper">{latestPhq9.totalScore ?? '—'}</span><span className="text-[11px] text-fog">/ {latestPhq9.maxScore ?? 27}</span></div><p className="mt-1 text-[11.5px] font-semibold text-paper">{latestPhq9.classification || 'Sem classificação'}</p><p className="mt-1 font-mono text-[9.5px] text-fog">{format(new Date(latestPhq9.finalizedAt || latestPhq9.createdAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR })}</p></div> : <Empty title="Sem resultados Nexus" sub="PHQ-9, GAD-7, HCL-32 e C-SSRS estão disponíveis nesta onda." />}
               </>}
             </div>
           </Card>
