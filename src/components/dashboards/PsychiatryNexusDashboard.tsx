@@ -66,7 +66,8 @@ export function PsychiatryNexusDashboard() {
             </p>
           </div>
           <DashboardQuickActions actions={[
-            { label: 'Pacientes', to: '/pacientes', primary: true },
+            { label: 'Nexus', to: '/nexus', primary: true },
+            { label: 'Pacientes', to: '/pacientes' },
             { label: 'Agenda clínica', to: '/agenda' },
           ]} />
         </div>
@@ -132,11 +133,11 @@ export function PsychiatryNexusDashboard() {
             <p className="font-display text-[17px] font-semibold">Nexus no fluxo psiquiátrico</p>
             <p className="mt-1 text-[12px] text-fog">Domínios clínicos preservados como uma camada especializada dentro do MedicsPro.</p>
           </div>
-          <span className="ml-auto text-[10px] font-mono uppercase tracking-[0.12em] text-fog">acesso real continua sujeito a capability + entitlement</span>
+          <Link to="/nexus" className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-aqua hover:text-paper">Abrir biblioteca Nexus <IconChevronR className="h-3.5 w-3.5" /></Link>
         </div>
         <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-3">
           {NEXUS_DOMAINS.map((domain) => (
-            <div key={domain.title} className="rounded-2xl border border-line/80 bg-panel p-4 transition-colors hover:border-aqua/35 hover:bg-raise/30">
+            <Link to="/nexus" key={domain.title} className="rounded-2xl border border-line/80 bg-panel p-4 transition-colors hover:border-aqua/35 hover:bg-raise/30">
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-[14px] font-semibold">{domain.title}</p>
@@ -144,9 +145,10 @@ export function PsychiatryNexusDashboard() {
                 </div>
                 <Chip className="shrink-0 border-aqua/25 text-aqua">{domain.status}</Chip>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
+        <p className="mt-2 text-right text-[10px] font-mono uppercase tracking-[0.12em] text-fog">acesso real continua sujeito a capability + entitlement</p>
       </div>
     </Reveal>
 
