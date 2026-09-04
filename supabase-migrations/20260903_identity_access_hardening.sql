@@ -43,6 +43,8 @@ REVOKE UPDATE ON TABLE public.profiles FROM authenticated;
 -- Management roles may read clinical records, but clinical authorship belongs
 -- exclusively to care professionals. Client-side deletes are intentionally absent.
 DROP POLICY IF EXISTS evaluations_write_clinical ON public.physiotherapy_evaluations;
+DROP POLICY IF EXISTS evaluations_insert_clinical ON public.physiotherapy_evaluations;
+DROP POLICY IF EXISTS evaluations_update_clinical ON public.physiotherapy_evaluations;
 CREATE POLICY evaluations_insert_clinical ON public.physiotherapy_evaluations
 FOR INSERT TO authenticated
 WITH CHECK (
@@ -64,6 +66,8 @@ WITH CHECK (
 );
 
 DROP POLICY IF EXISTS evolutions_write_clinical ON public.physiotherapy_evolutions;
+DROP POLICY IF EXISTS evolutions_insert_clinical ON public.physiotherapy_evolutions;
+DROP POLICY IF EXISTS evolutions_update_clinical ON public.physiotherapy_evolutions;
 CREATE POLICY evolutions_insert_clinical ON public.physiotherapy_evolutions
 FOR INSERT TO authenticated
 WITH CHECK (
