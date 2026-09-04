@@ -17,7 +17,39 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm audit --omit=dev --audit-level=critical
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit production dependencies for critical vulnerabilities
+        shell: bash
+        run: |
+          set +e
+          for attempt in 1 2; do
+            output="$(npm audit --omit=dev --audit-level=critical 2>&1)"
+            code=$?
+            printf '%s\n' "$output"
+
+            if [ "$code" -eq 0 ]; then
+              exit 0
+            fi
+
+            if printf '%s\n' "$output" | grep -Eq '503 Service Unavailable|audit endpoint returned an error|ECONNRESET|ETIMEDOUT'; then
+              if [ "$attempt" -lt 2 ]; then
+                echo "::warning::npm audit indisponível; repetindo a consulta."
+                sleep 10
+                continue
+              fi
+              echo "::warning::npm audit indisponível após 2 tentativas; validação funcional continua independente."
+              exit 0
+            fi
+
+            exit "$code"
+          done
