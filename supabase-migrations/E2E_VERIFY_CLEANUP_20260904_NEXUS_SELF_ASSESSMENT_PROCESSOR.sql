@@ -72,6 +72,9 @@ DELETE FROM public.professional_capabilities WHERE professional_id = 'aaaaaaaa-a
 DELETE FROM public.patients WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'::uuid;
 DELETE FROM public.profiles WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'::uuid;
 DELETE FROM auth.users WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'::uuid;
+-- Audit triggers may have recorded actions performed by the synthetic tenant.
+-- Remove only records scoped to the deterministic E2E clinic before deleting it.
+DELETE FROM public.audit_log WHERE clinic_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid;
 DELETE FROM public.clinics WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid;
 COMMIT;
 
@@ -80,7 +83,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.clinics WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid)
      OR EXISTS (SELECT 1 FROM auth.users WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'::uuid)
      OR EXISTS (SELECT 1 FROM public.patients WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'::uuid)
-     OR EXISTS (SELECT 1 FROM public.nexus_self_assessment_invites WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4'::uuid) THEN
+     OR EXISTS (SELECT 1 FROM public.nexus_self_assessment_invites WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4'::uuid)
+     OR EXISTS (SELECT 1 FROM public.audit_log WHERE clinic_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid) THEN
     RAISE EXCEPTION 'PROCESSOR_E2E_CLEANUP_FAIL: fixture sintética permaneceu';
   END IF;
 END $$;
