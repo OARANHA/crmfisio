@@ -24,46 +24,80 @@ WHERE schemaname = 'public'
 ORDER BY policyname;
 
 -- O token bruto nunca deve existir em coluna persistente.
-SELECT column_name
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND table_name = 'nexus_self_assessment_invites'
-  AND column_name ILIKE '%token%'
-ORDER BY column_name;
--- Esperado: apenas token_hash.
+DO $$
+DECLARE
+  v_token_columns text[];
+BEGIN
+  SELECT array_agg(column_name ORDER BY column_name)
+    INTO v_token_columns
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'nexus_self_assessment_invites'
+    AND column_name ILIKE '%token%';
 
--- Não deve haver grants diretos de INSERT/UPDATE para anon/authenticated.
-SELECT grantee, privilege_type
-FROM information_schema.role_table_grants
-WHERE table_schema = 'public'
-  AND table_name = 'nexus_self_assessment_invites'
-ORDER BY grantee, privilege_type;
+  IF v_token_columns IS DISTINCT FROM ARRAY['token_hash']::text[] THEN
+    RAISE EXCEPTION 'Colunas de token inesperadas: %', coalesce(array_to_string(v_token_columns, ', '), '<nenhuma>');
+  END IF;
+END $$;
+
+-- Não deve haver grants diretos de INSERT/UPDATE/DELETE para anon/authenticated.
+DO $$
+DECLARE
+  v_bad_grants integer;
+BEGIN
+  SELECT count(*) INTO v_bad_grants
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND table_name = 'nexus_self_assessment_invites'
+    AND grantee IN ('anon','authenticated')
+    AND privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER');
+
+  IF v_bad_grants <> 0 THEN
+    RAISE EXCEPTION 'Grants diretos indevidos na tabela de convites: %', v_bad_grants;
+  END IF;
+END $$;
 
 -- Constraints de integridade adicionadas pelo hardening.
-SELECT conname, pg_get_constraintdef(oid) AS definition
-FROM pg_constraint
-WHERE conrelid = 'public.nexus_self_assessment_invites'::regclass
-  AND conname IN (
-    'nexus_self_assessment_scale_key_nonempty',
-    'nexus_self_assessment_rule_version_nonempty'
-  )
-ORDER BY conname;
+DO $$
+DECLARE
+  v_count integer;
+BEGIN
+  SELECT count(*) INTO v_count
+  FROM pg_constraint
+  WHERE conrelid = 'public.nexus_self_assessment_invites'::regclass
+    AND conname IN (
+      'nexus_self_assessment_scale_key_nonempty',
+      'nexus_self_assessment_rule_version_nonempty'
+    );
 
--- Assinaturas/ACL das funções públicas e autenticadas.
+  IF v_count <> 2 THEN
+    RAISE EXCEPTION 'Constraints de integridade incompletas: %/2', v_count;
+  END IF;
+END $$;
+
+-- ACL: criar convite é somente autenticado; resolver/submeter podem ser públicos por token.
+DO $$
+BEGIN
+  IF has_function_privilege('anon', 'public.create_nexus_self_assessment_invite(uuid,text,text,uuid,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon não pode executar create_nexus_self_assessment_invite';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.create_nexus_self_assessment_invite(uuid,text,text,uuid,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'authenticated sem EXECUTE em create_nexus_self_assessment_invite';
+  END IF;
+
+  IF NOT has_function_privilege('anon', 'public.resolve_nexus_self_assessment(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon sem EXECUTE em resolve_nexus_self_assessment';
+  END IF;
+
+  IF NOT has_function_privilege('anon', 'public.submit_nexus_self_assessment(text,jsonb)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon sem EXECUTE em submit_nexus_self_assessment';
+  END IF;
+END $$;
+
 SELECT
-  p.proname,
-  pg_get_function_identity_arguments(p.oid) AS args,
-  p.prosecdef AS security_definer,
-  p.proacl
-FROM pg_proc p
-JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public'
-  AND p.proname IN (
-    'create_nexus_self_assessment_invite',
-    'resolve_nexus_self_assessment',
-    'submit_nexus_self_assessment'
-  )
-ORDER BY p.proname;
+  'NEXUS_SELF_ASSESSMENT_OK' AS verification,
+  now() AS verified_at;
 
 -- Smoke tests funcionais devem ser executados em transação/ambiente de teste:
 -- 1. convite com scale_key/rule_version vazios deve falhar;
