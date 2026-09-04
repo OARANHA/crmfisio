@@ -11,6 +11,7 @@ import { NexusPatientHubPage } from './pages/NexusPatientHubPage';
 import { NexusPatientPhq9Page } from './pages/NexusPatientPhq9Page';
 import { NexusPatientCssrsPage } from './pages/NexusPatientCssrsPage';
 import { NexusPatientGad7Page } from './pages/NexusPatientGad7Page';
+import { NexusPatientHcl32Page } from './pages/NexusPatientHcl32Page';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/pacientes/:id/nexus/phq9" element={<NexusPatientPhq9Page />} />
             <Route path="/pacientes/:id/nexus/cssrs" element={<NexusPatientCssrsPage />} />
             <Route path="/pacientes/:id/nexus/gad7" element={<NexusPatientGad7Page />} />
+            <Route path="/pacientes/:id/nexus/hcl32" element={<NexusPatientHcl32Page />} />
             <Route path="/pacientes/:id" element={<PatientsRoleAware />} />
             <Route path="/financeiro" element={<FinanceiroOperational />} />
             <Route path="/crm" element={<CrmOperational />} />
