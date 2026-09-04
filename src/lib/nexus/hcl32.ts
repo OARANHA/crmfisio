@@ -56,29 +56,29 @@ function calculateHcl32(answers: Record<string, number>): NexusScaleResult {
   if (totalScore >= 18) {
     classification = 'Rastreio Positivo para Transtorno do Espectro Bipolar (Corte Brasileiro ≥ 18)';
     severity = 'high';
-    interpretation = `Escore de ${totalScore}/32 pontos ultrapassa a linha de corte validada no Brasil (≥ 18 pontos). Fator Ativação/Elação: ${activationScore}/19; Fator Risco/Irritabilidade: ${riskScore}/13.`;
+    interpretation = `Escore de ${totalScore}/32 pontos ultrapassa a linha de corte validada no Brasil (≥ 18 pontos - Soares & Moreno, 2010; Sensibilidade 75%, Especificidade 58%). Fator Ativação/Elação: ${activationScore}/19; Fator Risco/Irritabilidade: ${riskScore}/13. Sugere forte probabilidade de histórico de hipomania (Transtorno Bipolar Tipo II ou Espectro Bipolar).`;
     recommendations = [
-      'Evitar monoterapia antidepressiva sem revisão clínica do risco de bipolaridade.',
-      'Realizar anamnese psiquiátrica longitudinal e investigar histórico familiar de transtorno bipolar e suicídio.',
-      'Investigar duração dos episódios de hipomania e mudança nítida de comportamento.',
-      'Discutir o caso com saúde mental/psiquiatria conforme contexto clínico.',
+      '⚠️ ATENÇÃO: Evitar monoterapia com antidepressivos (risco de virada maníaca, indução de ciclagem rápida ou agitação psicomotora)',
+      'Realizar anamnese psiquiátrica longitudinal e investigar histórico familiar de transtorno bipolar e suicídio',
+      'Investigar a duração dos episódios de hipomania (critério DSM-5: mínimo de 4 dias consecutivos com mudança nítida de comportamento)',
+      'Discutir caso com Apoio Matricial em Saúde Mental / Psiquiatria para pactuação de estabilizador de humor (ex: Lítio, Lamotrigina, Quetiapina)',
     ];
   } else if (totalScore >= 14) {
     classification = 'Traços Moderados de Hipomania (Corte Internacional ≥ 14)';
     severity = 'moderate';
-    interpretation = `Escore de ${totalScore}/32 pontos atinge a faixa internacional de 14 a 17 pontos. Ativação: ${activationScore}/19; Risco: ${riskScore}/13.`;
+    interpretation = `Escore de ${totalScore}/32 pontos atinge a faixa de corte internacional (14 a 17 pts). Ativação: ${activationScore}/19; Risco: ${riskScore}/13. Há relato moderado de sintomas de elevação do humor no histórico prévio.`;
     recommendations = [
-      'Aprofundar investigação de fases prévias de hiperatividade, redução do sono e impulsividade.',
-      'Avaliar resposta a tratamentos antidepressivos anteriores.',
-      'Monitorar evolução longitudinal.',
+      'Aprofundar a investigação clínica de fases prévias de hiperatividade, redução do sono e impulsividade financeira/comportamental',
+      'Avaliar resposta a tratamentos antidepressivos anteriores (houve piora da insônia, irritabilidade ou perda de efeito?)',
+      'Monitorar evolução longitudinal na APS',
     ];
   } else {
     classification = 'Rastreio Negativo para Hipomania / Espectro Bipolar';
     severity = 'low';
     interpretation = `Escore de ${totalScore}/32 pontos abaixo da linha de corte sugestiva de episódios hipomaníacos (Ativação: ${activationScore}/19, Risco: ${riskScore}/13).`;
     recommendations = [
-      'Seguir investigação clínica conforme o quadro atual.',
-      'Reavaliar se houver piora paradoxal ou agitação durante tratamento antidepressivo.',
+      'Seguir propedêutica e tratamento padrão para Transtorno Depressivo Unipolar ou Ansiedade conforme protocolos clínicos',
+      'Reavaliar se houver piora paradoxal ou agitação durante tratamento com antidepressivos',
     ];
   }
 
@@ -105,32 +105,33 @@ export const HCL32_DEFINITION: NexusScaleDefinition = {
   title: 'HCL-32 (Hypomania Checklist - 32 itens)',
   acronym: 'HCL-32',
   targetGroup: 'Adultos na APS com episódios depressivos recorrentes ou oscilações de humor/energia',
-  description: 'Instrumento de autorrelato com 32 itens para rastreamento de episódios prévios de hipomania em pacientes com depressão, auxiliando na identificação do Transtorno Bipolar e do Espectro Bipolar.',
-  instructions: 'Comparado a como você é habitualmente, pense em períodos da sua vida em que se sentiu em uma fase de alta, com mais energia, disposição ou humor mais elevado. Responda SIM ou NÃO para cada afirmação.',
-  referenceCitation: 'Angst J, Adolfsson R, Benazzi F, et al. J Affect Disord. 2005;88(2):217-33. Versão brasileira: Soares OT, Moreno RA, Moura EC, Angst J. Rev Bras Psiquiatr. 2010;32(4):438-445.',
-  validationInfo: 'Versão brasileira validada. Alfa de Cronbach 0,86. Ponto de corte brasileiro ≥ 18 (sensibilidade 75%, especificidade 58%).',
-  cutoffInfo: '0-13: Negativo | 14-17: Traços moderados | ≥18: Positivo no corte brasileiro',
+  description: 'Instrumento de autorrelato com 32 itens para rastreamento de episódios prévios de hipomania em pacientes com depressão, auxiliando na identificação do Transtorno Bipolar (especialmente Tipo II) e do Espectro Bipolar.',
+  instructions: 'Comparado a como você é habitualmente, pense em períodos da sua vida em que você se sentiu "numa fase de alta", com muita energia, disposição ou humor mais elevado. Responda SIM ou NÃO para cada uma das 32 afirmações abaixo.',
+  referenceCitation: 'Angst J, Adolfsson R, Benazzi F, et al. J Affect Disord. 2005; 88(2):217-33. Versão Brasileira Validada: Soares OT, Moreno RA, Moura EC, Angst J. Rev Bras Psiquiatr. 2010; 32(4):438-445.',
+  validationInfo: 'Versão Brasileira validada (USP). Alfa de Cronbach: 0.86. Ponto de corte validado no Brasil: ≥ 18 pontos (Sensibilidade 75%, Especificidade 58%). Ponto de corte internacional: ≥ 14 pontos.',
+  cutoffInfo: '0-13: Rastreio Negativo | 14-17: Traços Moderados de Hipomania | ≥ 18: Rastreio Positivo para Espectro Bipolar (Corte BR)',
   estimatedMinutes: 5,
   questions,
   evidence: [
-    { evidenceKey: 'hcl32-angst-2005', title: 'The HCL-32: development and validation', source: 'Angst J et al. J Affect Disord. 2005;88(2):217-33.', year: 2005, version: 'nexus-2026-09-03' },
-    { evidenceKey: 'hcl32-brazil-soares-2010', title: 'Validação brasileira do HCL-32', source: 'Soares OT et al. Rev Bras Psiquiatr. 2010;32(4):438-445.', year: 2010, version: 'nexus-2026-09-03' },
+    { evidenceKey: 'hcl32-angst-2005', title: 'HCL-32 original', source: 'Angst J, Adolfsson R, Benazzi F, et al. J Affect Disord. 2005; 88(2):217-33.', year: 2005, version: 'nexus-2026-09-03' },
+    { evidenceKey: 'hcl32-brazil-soares-2010', title: 'Validação brasileira do HCL-32', source: 'Soares OT, Moreno RA, Moura EC, Angst J. Rev Bras Psiquiatr. 2010; 32(4):438-445.', year: 2010, version: 'nexus-2026-09-03' },
   ],
   clinicalConduct: [
-    { title: 'Escore < 14 — Rastreio Negativo', description: 'Baixa probabilidade de episódios hipomaníacos prévios. Interpretar sempre junto à história clínica.', badge: '0-13 pts', tone: 'neutral' },
-    { title: 'Escore 14 a 17 — Traços Moderados', description: 'Aprofundar anamnese cronológica e investigar redução objetiva da necessidade de sono, aumento de energia e impulsividade.', badge: '14-17 pts', tone: 'warning' },
-    { title: 'Escore ≥ 18 — Corte Brasileiro Positivo', description: 'Forte suspeita de espectro bipolar. Investigar duração, impacto funcional, história familiar e episódios prévios.', badge: '≥18 pts', tone: 'danger' },
-    { title: 'Alerta farmacológico', description: 'Resultado positivo deve provocar revisão diagnóstica antes de decisões farmacológicas, especialmente monoterapia antidepressiva.', badge: 'segurança', tone: 'danger' },
+    { title: 'Escore < 14 — Rastreio Negativo para Hipomania', description: 'Baixa probabilidade de episódios hipomaníacos prévios. Se o paciente apresentar queixa depressiva atual, conduzir o tratamento de acordo com as diretrizes para Transtorno Depressivo Maior unipolar.', badge: '0-13 pts: Negativo', tone: 'neutral' },
+    { title: 'Escore 14 a 17 — Traços Moderados de Hipomania (Corte Internacional)', description: 'Aprofundar a anamnese cronológica com o paciente e informantes familiares. Investigar períodos de aumento súbito de energia, redução objetiva da necessidade de sono (dormir 3-4h e acordar descansado) e impulsividade com dinheiro ou relacionamentos.', badge: '14-17 pts: Moderado', tone: 'warning' },
+    { title: 'Escore ≥ 18 — Rastreio Positivo no Brasil (Soares & Moreno, 2010)', description: 'Forte suspeita de Transtorno do Espectro Bipolar (especialmente Transtorno Bipolar Tipo II ou ciclotimia). Investigar duração dos períodos de elação/irritabilidade (mínimo de 4 dias consecutivos conforme DSM-5) e histórico familiar de transtorno de humor ou suicídio.', badge: '≥ 18 pts: Positivo (Corte BR)', tone: 'danger' },
+    { title: '⚠️ REGRA DE OURO: Contraindicação de Antidepressivo em Monoterapia', description: 'NUNCA prescrever antidepressivos isolados para pacientes deprimidos com HCL-32 ≥ 18 sem estabilizador de humor associado. A monoterapia antidepressiva pode desencadear virada maníaca, aceleração de ciclagem, disforia mista e aumento agudo do risco de suicídio.', badge: 'Alerta Absoluto', tone: 'danger' },
+    { title: 'Pactuação Terapêutica & Apoio Matricial em Saúde Mental', description: 'Discutir o caso no Apoio Matricial / Psiquiatria para introdução e titulação de estabilizadores de humor de 1ª linha (Carbonato de Lítio, Lamotrigina, Quetiapina ou Valproato de Sódio).', badge: 'Matriciamento', tone: 'warning' },
   ],
   monitoringGoals: [
-    { title: 'Estabilidade do humor e sono', description: 'Monitorar oscilação de humor, redução da necessidade de sono, impulsividade e funcionamento longitudinal.' },
-    { title: 'Monitoramento terapêutico', description: 'Quando houver estabilizadores, seguir monitoramento clínico/laboratorial específico do tratamento prescrito.' },
-    { title: 'Psicoeducação de sinais precoces', description: 'Orientar paciente e rede de apoio a reconhecer pródromos de elevação de humor e desorganização comportamental.' },
+    { title: 'Estabilização Timolépica & Regulação Circadiana', description: 'Alcançar estabilidade do humor sem oscilações maníacas ou depressivas. Estabelecer rotina estrita de sono-vigília (higiene circadiana) como pilar não farmacológico essencial.' },
+    { title: 'Monitoramento Laboratorial de Estabilizadores', description: 'Para Lítio: Litiemia a cada 3-6 meses (alvo 0,6 a 0,8 mEq/L na manutenção), TSH, Ureia e Creatinina. Para Valproato: Enzimas hepáticas (TGO/TGP) e hemograma com plaquetas.' },
+    { title: 'Psicoeducação Familiar de Sinais Precoces de Recaída', description: 'Orientar o paciente e sua família a reconhecer os pródromos de hipomania (diminuição da necessidade de sono, loquacidade excessiva, compras desnecessárias) para ajuste posológico precoce.' },
   ],
   clinicalPearls: [
-    { type: 'evidence', title: 'Validação brasileira', text: 'O ponto de corte brasileiro usado pelo Nexus é ≥18, conforme Soares et al. 2010.', reference: 'Soares OT et al. Rev Bras Psiquiatr. 2010;32(4):438-445.' },
-    { type: 'pearl', title: 'Hipomania pode ser percebida como bem-estar', text: 'Pacientes podem não relatar espontaneamente fases de hipomania porque as percebem como períodos de produtividade e energia.' },
-    { type: 'pitfall', title: 'Não confundir recuperação com hipomania', text: 'Recuperação de depressão não equivale a hipomania; investigar mudança quantitativa do sono, desinibição, pressão para falar e comportamentos fora do padrão.' },
+    { type: 'evidence', title: 'Estudo de Validação Brasileiro (FMUSP)', text: 'O estudo de validação no Brasil realizado por Soares, Moreno, Moura & Angst (Rev Bras Psiquiatr, 2010; 32(4):438-45) demonstrou que o ponto de corte ótimo na população brasileira é de 18 pontos (Sensibilidade 75%, Especificidade 58% e Alfa de Cronbach 0.86).', reference: 'Soares OT et al. Rev Bras Psiquiatr. 2010; 32(4):438-445.' },
+    { type: 'pearl', title: 'Pérola Clínica: A Ilusão do "Estou Apenas Ótimo"', text: 'Pacientes com Bipolar Tipo II demoram em média 8 a 10 anos para receber o diagnóstico correto, pois só procuram a UBS nas fases depressivas e consideram os períodos de hipomania como os únicos momentos em que "finalmente estavam saudáveis, produtivos e inspirados".' },
+    { type: 'pitfall', title: 'Armadilha: Diferenciar Hipomania de Alívio Pós-Depressão', text: 'Não confunda a recuperação do humor deprimido com hipomania. A hipomania verdadeira cursa com alteração quantitativa do sono (dorme poucas horas sem sentir cansaço diurno), desinibição social anormal, pressão para falar e projetos mirabolantes não finalizados.' },
   ],
   calculate: calculateHcl32,
 };
