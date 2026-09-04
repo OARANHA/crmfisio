@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ageFrom, maskCpf, STAGE_META, type Patient, type PatientGuardian } from '../lib/types';
 import { loadPatientRegistryExtras } from '../lib/patientRegistry';
+import { useApp } from '../lib/store';
+import { isClinicManager } from '../lib/permissions';
 import { Chip, IconMail, IconPhone } from '../lib/ui';
 import { IconLock } from './icons';
 import { PatientJourneyControl } from './PatientJourneyControl';
@@ -17,6 +19,7 @@ interface Extras {
 }
 
 export function PatientProfileHeader({ patient }: { patient: Patient }) {
+  const { user } = useApp();
   const [extras, setExtras] = useState<Extras | null>(null);
 
   useEffect(() => {
@@ -32,6 +35,7 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
   const primaryGuardian = extras?.guardians.find((item) => item.isPrimaryContact) ?? extras?.guardians[0];
   const emergencyContact = extras?.guardians.find((item) => item.isEmergencyContact && item.id !== primaryGuardian?.id);
   const displayName = extras?.preferredName || patient.nome;
+  const canSeeClinical = user?.role === 'fisio' || isClinicManager(user?.role);
 
   return (
     <section className="rounded-2xl border border-line/80 bg-panel/85 px-5 py-4 shadow-sm">
@@ -74,6 +78,14 @@ export function PatientProfileHeader({ patient }: { patient: Patient }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {canSeeClinical && (
+            <Link
+              to={`/pacientes/${patient.id}/nexus/phq9`}
+              className="rounded-xl border border-aqua/35 bg-aqua/[0.05] px-3.5 py-2 text-[12.5px] font-semibold text-aqua transition-colors hover:border-aqua/60 hover:bg-aqua/10"
+            >
+              Nexus
+            </Link>
+          )}
           <Link to={`/pacientes/${patient.id}/editar`} className="rounded-xl border border-line px-3.5 py-2 text-[12.5px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise hover:text-paper">Editar cadastro</Link>
           <PatientJourneyControl patient={patient} />
         </div>
