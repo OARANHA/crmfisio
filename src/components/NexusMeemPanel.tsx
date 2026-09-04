@@ -79,7 +79,7 @@ export function NexusMeemPanel({ patient }: { patient: Patient }) {
 
           <div className="space-y-3">
             {MEEM_QUESTIONS.map((question) => <section key={question.id} className="rounded-xl border border-line bg-deep p-4">
-              <div className="flex flex-wrap items-start gap-2"><p className="min-w-0 flex-1 text-[12px] font-semibold leading-relaxed">{question.text}</p><Chip className="border-line text-fog">{question.domain.replaceAll('_', ' ')}</Chip></div>
+              <div className="flex flex-wrap items-start gap-2"><p className="min-w-0 flex-1 text-[12px] font-semibold leading-relaxed">{question.text}</p><Chip className="border-line text-fog">{question.domain.replace(/_/g, ' ')}</Chip></div>
               <div className={`mt-3 grid gap-2 ${question.options.length <= 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
                 {question.options.map((option) => <button key={`${question.id}-${option.value}`} type="button" disabled={busy} onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.value }))} className={`rounded-lg border px-3 py-2.5 text-left text-[10.5px] transition-colors ${answers[question.id] === option.value ? 'border-mint bg-mint/10 text-mint' : 'border-line text-fog hover:border-mint/35 hover:text-paper'}`}>{option.label}</button>)}
               </div>
@@ -88,7 +88,7 @@ export function NexusMeemPanel({ patient }: { patient: Patient }) {
 
           {preview && <section className="rounded-xl border border-mint/30 bg-mint/[0.04] p-4">
             <div className="flex flex-wrap gap-4"><div><p className="font-mono text-[9.5px] uppercase tracking-wide text-fog">Resultado MEEM</p><p className="mt-1 font-display text-2xl font-bold">{preview.totalScore}<span className="text-sm text-fog">/30</span></p></div><div className="min-w-0 flex-1"><p className="text-[11.5px] font-semibold">{preview.classification}</p><p className={`mt-1 text-[11px] ${preview.contextualStatus === 'below_cutoff' ? 'text-pulse' : 'text-mint'}`}>{preview.educationLabel}: corte {preview.contextualCutoff} · {preview.contextualStatus === 'below_cutoff' ? 'abaixo do corte contextual' : 'igual/acima do corte contextual'}</p></div></div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(preview.domainScores).map(([domain, values]) => <div key={domain} className="rounded-lg border border-line bg-deep px-3 py-2"><p className="font-mono text-[9px] uppercase text-fog">{domain.replaceAll('_', ' ')}</p><p className="mt-1 text-[12px] font-semibold">{values.score}/{values.max}</p></div>)}</div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(preview.domainScores).map(([domain, values]) => <div key={domain} className="rounded-lg border border-line bg-deep px-3 py-2"><p className="font-mono text-[9px] uppercase text-fog">{domain.replace(/_/g, ' ')}</p><p className="mt-1 text-[12px] font-semibold">{values.score}/{values.max}</p></div>)}</div>
             <p className="mt-4 text-[10.5px] leading-relaxed text-fog">{preview.interpretation}</p>
             <div className="mt-4 flex justify-end gap-2"><Btn variant="ghost" disabled={busy} onClick={() => setAnswers({})}>Limpar</Btn><Btn disabled={busy} onClick={() => void submit()}>{busy ? 'Finalizando…' : 'Finalizar MEEM'}</Btn></div>
           </section>}
