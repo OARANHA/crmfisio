@@ -1,4 +1,4 @@
-import type { NexusEvidenceSnapshot, NexusSeverity } from '../nexusClinical';
+import type { NexusEvidenceSnapshot, NexusRedFlagSeverity, NexusSeverity } from '../nexusClinical';
 
 export type NexusScaleOption = { label: string; value: number };
 export type NexusScaleQuestion = {
@@ -23,6 +23,14 @@ export type NexusScalePearl = {
   reference?: string;
 };
 
+export type NexusScaleRedFlag = {
+  flagCode: string;
+  severity: NexusRedFlagSeverity;
+  title: string;
+  message: string;
+  requiredAction?: string | null;
+};
+
 export type NexusScaleResult = {
   totalScore: number;
   maxScore: number;
@@ -33,6 +41,7 @@ export type NexusScaleResult = {
   soapText: string;
   answersArray: number[];
   structuredData?: Record<string, unknown>;
+  redFlags?: NexusScaleRedFlag[];
 };
 
 export type NexusScaleDefinition = {
