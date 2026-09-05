@@ -30,6 +30,22 @@ type QueueRow = {
   telefone: string;
 };
 
+type EntitlementRow = {
+  clinic_id: string;
+  enabled: boolean;
+  starts_at: string | null;
+  expires_at: string | null;
+};
+
+const entitlementEffective = (row: EntitlementRow | null | undefined, now = Date.now()) => {
+  // Controlled rollout: no explicit row means legacy access remains allowed.
+  if (!row) return true;
+  if (!row.enabled) return false;
+  if (row.starts_at && Date.parse(row.starts_at) > now) return false;
+  if (row.expires_at && Date.parse(row.expires_at) <= now) return false;
+  return true;
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Método não permitido' }, 405);
@@ -59,11 +75,25 @@ Deno.serve(async (req) => {
 
     const { data: caller } = await admin
       .from('profiles')
-      .select('role,ativo')
+      .select('role,ativo,clinic_id')
       .eq('id', authData.user.id)
       .single();
-    if (!caller?.ativo || !['owner', 'admin', 'recep'].includes(caller.role)) {
+    if (!caller?.ativo || !caller.clinic_id || !['owner', 'admin', 'recep'].includes(caller.role)) {
       return json({ error: 'Perfil sem permissão para disparar mensagens' }, 403);
+    }
+
+    const { data: entitlement, error: entitlementError } = await admin
+      .from('platform_clinic_entitlements')
+      .select('clinic_id,enabled,starts_at,expires_at')
+      .eq('clinic_id', caller.clinic_id)
+      .eq('entitlement_key', 'whatsapp.access')
+      .maybeSingle();
+    if (entitlementError) {
+      console.error('[evolution-worker] entitlement:', entitlementError);
+      return json({ error: 'Não foi possível validar o módulo WhatsApp' }, 503);
+    }
+    if (!entitlementEffective(entitlement as EntitlementRow | null)) {
+      return json({ error: 'Módulo WhatsApp não liberado para esta clínica' }, 403);
     }
   }
 
@@ -81,9 +111,36 @@ Deno.serve(async (req) => {
   }
 
   const rows = (data ?? []) as QueueRow[];
+  const clinicIds = [...new Set(rows.map((row) => row.clinic_id).filter(Boolean))];
+  const entitlementByClinic = new Map<string, EntitlementRow>();
+  if (clinicIds.length) {
+    const { data: entitlementRows, error: entitlementError } = await admin
+      .from('platform_clinic_entitlements')
+      .select('clinic_id,enabled,starts_at,expires_at')
+      .in('clinic_id', clinicIds)
+      .eq('entitlement_key', 'whatsapp.access');
+    if (entitlementError) {
+      console.error('[evolution-worker] queue entitlements:', entitlementError);
+      return json({ error: 'Não foi possível validar os módulos WhatsApp da fila' }, 503);
+    }
+    for (const row of (entitlementRows ?? []) as EntitlementRow[]) entitlementByClinic.set(row.clinic_id, row);
+  }
+
   const results: Array<{ id: string; status: 'enviado' | 'falhou'; providerMessageId?: string }> = [];
+  let blocked = 0;
 
   for (const row of rows) {
+    if (!entitlementEffective(entitlementByClinic.get(row.clinic_id))) {
+      blocked += 1;
+      await admin.from('wa_logs').update({
+        status: 'fila',
+        scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        provider_status: 'ENTITLEMENT_BLOCKED',
+        error_message: 'Módulo WhatsApp temporariamente não liberado para esta clínica',
+      }).eq('id', row.id);
+      continue;
+    }
+
     const phone = normalizePhone(row.telefone ?? '');
     if (!phone) {
       await admin.from('wa_logs').update({
@@ -150,6 +207,7 @@ Deno.serve(async (req) => {
     processed: results.length,
     sent: results.filter((item) => item.status === 'enviado').length,
     failed: results.filter((item) => item.status === 'falhou').length,
+    blocked,
     results,
   });
 });
