@@ -4,7 +4,7 @@ Este documento é o ponto de retomada operacional do MedicsPro. Ele registra o q
 
 ## Estado da main
 
-Base consolidada considerada neste documento: merge do PR #150.
+Base consolidada considerada neste documento: merge do PR #151.
 
 A `main` é tratada como potencialmente produtiva e acompanha deploys via Portainer. Não usar `main` para experimentação.
 
@@ -93,44 +93,54 @@ Arquitetura vigente:
 - lançamento pago é imutável no fluxo normal;
 - recepção pode criar conta a receber, mas não conta a pagar;
 - valores monetários seguem centavos inteiros;
-- financeiro possui entitlement server-side.
+- financeiro possui entitlement server-side;
+- cancelamento de atendimento pré-pago exige resolução financeira explícita e auditável;
+- pagamento histórico liquidado é preservado;
+- resolução duplicada é rejeitada.
 
-### Pendências prioritárias
+### PR #151 — concluído em produção
 
-1. cancelamento de atendimento pré-pago precisa resolução financeira explícita e auditável;
-2. pagamento antecipado vinculado ao atendimento precisa UX própria;
-3. evoluções posteriores: parcial, múltiplos meios, caixa/conciliação, documentos fiscais/recibos.
+O PR #151 — `Require explicit financial resolution for prepaid cancellations` — foi mergeado na `main` e sua migration foi aplicada em produção.
 
-### PR aberto
+O verifier `VERIFY_20260905_PREPAID_CANCELLATION_FINANCIAL_RESOLUTION.sql` passou com todos os checks positivos.
 
-PR #151 — `Require explicit financial resolution for prepaid cancellations`.
+As disposições financeiras canônicas do cancelamento pré-pago são:
 
-O CI está verde, mas o PR continua aberto e **não deve ser mergeado sem autorização explícita para o PR #151**.
+- `refund_due`;
+- `credit_due`;
+- `retained`.
 
-A proposta do #151 preserva o pagamento original e registra disposição financeira auditável (`refund_due`, `credit_due` ou `retained`) em vez de reescrever silenciosamente um pagamento liquidado.
+`retained` é restrito a owner/admin. Reembolso e crédito permanecem obrigações explícitas para posterior operação; isso é acabamento operacional, não falha estrutural do financeiro core.
+
+### Evoluções posteriores
+
+- UX própria para cobrança antecipada e resolução financeira;
+- pagamento parcial e múltiplos meios;
+- caixa/conciliação;
+- documentos fiscais/recibos;
+- demais evoluções guiadas pelo piloto real.
 
 ## Regras de segurança e governança para continuar
 
-- nunca fazer merge de PR sem autorização explícita para o número exato do PR;
 - production migrations devem vir de commit de merge conhecido;
 - executar verifier após migration;
 - segurança server-side é autoridade; UI não substitui RLS/triggers/RPC authorization;
 - não bloquear tabelas compartilhadas por entitlement quando isso quebrar módulos legítimos;
 - não liberar Nexus por papel genérico;
 - não apagar/regravar histórico financeiro liquidado para "corrigir" exceções;
-- preservar histórico clínico e dados de comunicação mesmo quando módulos comerciais forem desabilitados.
+- preservar histórico clínico e dados de comunicação mesmo quando módulos comerciais forem desabilitados;
+- mudanças que exigem ação no servidor devem ser explicitamente destacadas para execução controlada em produção.
 
 ## Ordem recomendada de retomada
 
-1. revisar/fechar PR #151 e validar cancelamento pré-pago em produção;
-2. implementar a UX de resolução financeira de cancelamento;
-3. consolidar Atendimento em andamento;
-4. polir Assessment Engine + body map;
-5. melhorar Configurações/Platform Admin com estado ternário de entitlement;
-6. introduzir ajuda contextual e manual no painel;
-7. validar relatórios com base real do piloto;
-8. polir WhatsApp/observabilidade;
-9. continuar design system premium dark/light.
+1. consolidar Configurações / Entitlements / governança por clínica de ponta a ponta;
+2. consolidar Atendimento em andamento;
+3. polir Assessment Engine + body map;
+4. introduzir ajuda contextual e manual no painel;
+5. validar relatórios com base real do piloto;
+6. polir WhatsApp/observabilidade;
+7. continuar design system premium dark/light;
+8. evoluir financeiro avançado conforme sinais reais do piloto.
 
 ## Definition of Done para novas slices
 
@@ -139,7 +149,6 @@ Uma slice sensível só é considerada fechada quando houver, conforme aplicáve
 - código em branch dedicada;
 - CI verde;
 - PR revisável;
-- autorização explícita de merge;
 - migration aplicada de forma pinada ao merge commit;
 - verifier verde;
 - teste funcional negativo;
