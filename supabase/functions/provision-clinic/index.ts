@@ -171,6 +171,8 @@ Deno.serve(async (req) => {
       action: 'clinic.provision_failed',
       target_type: 'provisioning_request',
       target_id: provision.id,
+      entity_type: 'provisioning_request',
+      entity_key: provision.id,
       detail: { owner_email: ownerEmail, error: error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida' },
     });
     console.error('[provision-clinic]', error);
