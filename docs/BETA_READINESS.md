@@ -23,7 +23,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | Entitlements — Avaliações customizadas | 🟢 | `assessments.custom` protege criação/duplicação/edição/versionamento/publicação/arquivamento de templates próprios sem bloquear avaliações padrão. Testes bloqueado/liberado aprovados. |
 | Relatórios | 🟢 | `reports.access` é gate do módulo oficial; tabelas base compartilhadas não são bloqueadas para não quebrar Agenda/Pacientes/Financeiro/CRM. |
 | Nexus Clinical Engine | 🟢 | Fail-closed, exige entitlement explícito + identidade médica válida + CRM. Testes: médico sem entitlement bloqueado, médico autorizado permitido, owner não médico bloqueado. |
-| Financeiro core | 🟢 | Gate SQL limpo, cenários canônicos e smoke real concluídos. |
+| Financeiro core | 🟢 | Gate SQL limpo, cenários canônicos e smoke real concluídos; cancelamento pré-pago com resolução financeira explícita também validado em produção. |
 | Agenda core | 🟢 | Transições protegidas; cancelamento/remarcação e vínculo profissional validados no núcleo. |
 | Pacotes | 🟢 | Venda, saldo, consumo unitário, validade/esgotamento e bloqueio validados. |
 | Atendimento clínico | 🟡 | Fundação existe; falta consolidar experiência dedicada de atendimento em andamento e autoria final. |
@@ -57,21 +57,27 @@ A autorização do Nexus não depende apenas de papel interno. Para `nexus.acces
 
 Ser `owner`, `admin` ou possuir temporariamente `role='fisio'` não é suficiente.
 
-## Financeiro — pendências P1
+## Financeiro — estado do piloto
 
-1. Cancelamento após pagamento antecipado precisa de fluxo auditável de reembolso, crédito ou retenção. O PR #151 está aberto para fechar a fundação server-side desse caso e ainda não faz parte de `main`.
-2. Pagamento antecipado vinculado a atendimento precisa de fluxo próprio na UI.
-3. Financeiro avançado ainda deve evoluir para pagamento parcial, múltiplos meios, caixa, conciliação, repasses e documentos fiscais/recibos.
+O PR #151 já foi mergeado e validado em produção. O cancelamento de atendimento com pagamento liquidado agora exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
+
+O verifier `VERIFY_20260905_PREPAID_CANCELLATION_FINANCIAL_RESOLUTION.sql` passou integralmente em produção.
+
+Pendências financeiras restantes são evoluções de produto/UX, não bloqueadores do núcleo para piloto controlado:
+
+1. UX própria para cobrança antecipada e resolução financeira de exceções;
+2. pagamento parcial e múltiplos meios;
+3. caixa, conciliação, repasses e documentos fiscais/recibos.
 
 ## Próximo foco recomendado
 
-1. Fechar o fluxo de cancelamento de atendimento pré-pago e sua UX financeira.
+1. Fechar Configurações / Entitlements / governança por clínica de ponta a ponta.
 2. Consolidar Atendimento clínico em andamento.
 3. Evoluir a UI do Assessment Engine: Avaliações padrão, Minhas avaliações e body map.
-4. Acabamento de Configurações e governança por clínica.
-5. Implantar ajuda contextual/manual dentro do painel usando a estrutura de `docs/IN_APP_HELP_PLAN.md`.
-6. Validar relatórios e indicadores com dados reais de piloto.
-7. Polir WhatsApp operacional e observabilidade.
+4. Implantar ajuda contextual/manual dentro do painel usando a estrutura de `docs/IN_APP_HELP_PLAN.md`.
+5. Validar relatórios e indicadores com dados reais de piloto.
+6. Polir WhatsApp operacional e observabilidade.
+7. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
 
 ## Regra de implantação
 
@@ -84,4 +90,4 @@ A branch `main` deve ser tratada como potencialmente produtiva. O ambiente Porta
 - migrations de produção devem ser aplicadas a partir de commit de merge conhecido;
 - validar com verifier canônico após aplicação;
 - mudanças de segurança devem ter teste funcional negativo e, quando possível, positivo;
-- merge de PR exige autorização explícita para o PR específico.
+- mudanças que exigem ação no servidor devem ser explicitamente destacadas antes da execução em produção.
