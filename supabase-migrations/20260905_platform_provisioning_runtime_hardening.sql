@@ -1,59 +1,6 @@
--- MEDICSPRO — Platform administration and idempotent clinic provisioning
+-- MEDICSPRO — hotfix: eliminate PL/pgSQL output-column ambiguity in clinic provisioning
 
 BEGIN;
-
-CREATE TABLE IF NOT EXISTS public.platform_admins (
-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  ativo boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.clinic_provisioning_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  idempotency_key text NOT NULL UNIQUE CHECK (length(idempotency_key) BETWEEN 8 AND 120),
-  requested_by uuid NOT NULL REFERENCES public.platform_admins(user_id) ON DELETE RESTRICT,
-  clinic_name text NOT NULL CHECK (length(trim(clinic_name)) BETWEEN 2 AND 160),
-  cnpj text,
-  owner_email text NOT NULL,
-  owner_name text NOT NULL CHECK (length(trim(owner_name)) BETWEEN 2 AND 160),
-  owner_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  clinic_id uuid REFERENCES public.clinics(id) ON DELETE RESTRICT,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','auth_created','completed','failed')),
-  error_message text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  completed_at timestamptz
-);
-
-CREATE INDEX IF NOT EXISTS clinic_provisioning_requests_status_idx
-  ON public.clinic_provisioning_requests (status, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS public.platform_audit_log (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  actor_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  action text NOT NULL,
-  target_type text NOT NULL,
-  target_id uuid,
-  detail jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS platform_audit_log_actor_created_idx
-  ON public.platform_audit_log (actor_user_id, created_at DESC);
-
-ALTER TABLE public.platform_admins ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.clinic_provisioning_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.platform_audit_log ENABLE ROW LEVEL SECURITY;
-
-REVOKE ALL ON public.platform_admins FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.clinic_provisioning_requests FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.platform_audit_log FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.platform_audit_log FROM service_role;
-GRANT ALL ON public.platform_admins TO service_role;
-GRANT ALL ON public.clinic_provisioning_requests TO service_role;
-GRANT SELECT, INSERT ON public.platform_audit_log TO service_role;
 
 CREATE OR REPLACE FUNCTION public.complete_clinic_provisioning(
   p_request_id uuid,
@@ -121,7 +68,6 @@ BEGIN
     trim(v_request.owner_name), 'owner', true, true
   );
 
-  -- A nova clínica nasce com automações pausadas até revisar provedor, textos e janela.
   INSERT INTO public.automation_settings (clinic_id, active)
   VALUES (v_clinic_id, false)
   ON CONFLICT DO NOTHING;
@@ -149,5 +95,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.complete_clinic_provisioning(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.complete_clinic_provisioning(uuid, uuid) TO service_role;
+
+COMMENT ON FUNCTION public.complete_clinic_provisioning(uuid, uuid)
+IS 'Idempotent clinic provisioning finalizer; qualified SQL avoids RETURNS TABLE output-variable ambiguity.';
 
 COMMIT;
