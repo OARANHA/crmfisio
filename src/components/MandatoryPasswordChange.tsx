@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { PulseMark } from './Ecg';
-import { IconAlert, IconLock } from '../lib/ui';
+import { IconAlert } from '../lib/ui';
+import { IconLock } from './icons';
 
 type MandatoryPasswordChangeProps = {
   onComplete: () => void;
