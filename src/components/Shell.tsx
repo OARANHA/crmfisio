@@ -11,6 +11,11 @@ import {
 } from '../lib/ui';
 import { IconLock, IconX, IconShield, IconWhats, IconCheck } from './icons';
 import { useColorTheme, type ColorTheme } from '../lib/colorTheme';
+import {
+  isModuleVisibleByEntitlement,
+  loadCurrentClinicModuleVisibility,
+  type ModuleEntitlementVisibility,
+} from '../lib/clinicEntitlementMenu';
 
 const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: string }) => React.ReactNode }[] = [
   { key: 'dashboard', to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
@@ -118,6 +123,7 @@ export function Shell() {
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
+  const [entitlementVisibility, setEntitlementVisibility] = useState<ModuleEntitlementVisibility>({});
   const { theme, toggleTheme } = useColorTheme();
 
   useEffect(() => {
@@ -139,6 +145,24 @@ export function Shell() {
   const effectiveUser = appUser;
   useEffect(() => { if (effectiveUser) setMobileOpen(false); }, [effectiveUser]);
 
+  useEffect(() => {
+    let active = true;
+    setEntitlementVisibility({});
+    if (!effectiveUser) return () => { active = false; };
+
+    void loadCurrentClinicModuleVisibility()
+      .then((visibility) => {
+        if (active) setEntitlementVisibility(visibility);
+      })
+      .catch((cause) => {
+        console.error('[Entitlements] navigation visibility:', cause);
+        // Keep navigation backward-compatible on lookup failure; route gates still fail safely.
+        if (active) setEntitlementVisibility({});
+      });
+
+    return () => { active = false; };
+  }, [effectiveUser?.id]);
+
   const handleLogout = async () => {
     if (signOut) await signOut(); else appLogout();
     nav('/');
@@ -146,7 +170,10 @@ export function Shell() {
 
   if (!effectiveUser || loading) return <Login theme={theme} onToggleTheme={toggleTheme} />;
 
-  const items = NAV.filter((n) => canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'));
+  const items = NAV.filter((n) =>
+    (canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'))
+    && isModuleVisibleByEntitlement(n.key, entitlementVisibility),
+  );
   const pendencias = transactions.filter((t) => t.status === 'atrasado').length + consents.filter((c) => !c.assinado).length;
   const rm = ROLE_META[effectiveUser.role];
 
