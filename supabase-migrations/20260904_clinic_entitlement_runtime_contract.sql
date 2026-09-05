@@ -38,7 +38,7 @@ BEGIN
     RAISE EXCEPTION 'unknown_clinic_entitlement' USING ERRCODE = '22023';
   END IF;
 
-  v_clinic_id := public.get_current_clinic_id();
+  v_clinic_id := public.current_clinic_id();
   IF v_clinic_id IS NULL THEN
     RAISE EXCEPTION 'clinic_context_required' USING ERRCODE = '42501';
   END IF;

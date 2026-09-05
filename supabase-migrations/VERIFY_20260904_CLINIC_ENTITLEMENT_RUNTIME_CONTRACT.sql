@@ -1,4 +1,4 @@
--- MEDICSPRO — structural verification for current_clinic_entitlement_state
+-- MEDICSPRO — structural + dependency verification for current_clinic_entitlement_state
 -- Read-only verifier. Expected result: CLINIC_ENTITLEMENT_RUNTIME_CONTRACT_OK
 
 DO $$
@@ -8,9 +8,10 @@ DECLARE
   v_search_path text;
   v_auth_exec boolean;
   v_anon_exec boolean;
+  v_definition text;
 BEGIN
-  SELECT p.oid, p.prosecdef
-    INTO v_oid, v_secdef
+  SELECT p.oid, p.prosecdef, pg_get_functiondef(p.oid)
+    INTO v_oid, v_secdef, v_definition
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public'
@@ -19,6 +20,18 @@ BEGIN
 
   IF v_oid IS NULL THEN
     RAISE EXCEPTION 'current_clinic_entitlement_state(text) ausente';
+  END IF;
+
+  IF to_regprocedure('public.current_clinic_id()') IS NULL THEN
+    RAISE EXCEPTION 'current_clinic_id() ausente';
+  END IF;
+
+  IF v_definition NOT LIKE '%public.current_clinic_id()%' THEN
+    RAISE EXCEPTION 'runtime contract nao usa helper canonico current_clinic_id()';
+  END IF;
+
+  IF v_definition LIKE '%public.get_current_clinic_id()%' THEN
+    RAISE EXCEPTION 'runtime contract referencia helper inexistente get_current_clinic_id()';
   END IF;
 
   IF NOT v_secdef THEN
@@ -49,6 +62,20 @@ BEGIN
     RAISE EXCEPTION 'platform_clinic_entitlements ausente';
   END IF;
 
-  RAISE NOTICE 'CLINIC_ENTITLEMENT_RUNTIME_CONTRACT_OK';
+  -- Runtime dependency smoke: without an authenticated request context, the
+  -- function must resolve current_clinic_id() successfully and fail only at the
+  -- expected clinic boundary. An undefined helper (42883) is intentionally not
+  -- swallowed here and therefore fails this verifier.
+  BEGIN
+    PERFORM * FROM public.current_clinic_entitlement_state('nexus.access');
+    RAISE EXCEPTION 'runtime contract deveria exigir contexto de clinica';
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      IF SQLERRM <> 'clinic_context_required' THEN
+        RAISE;
+      END IF;
+  END;
+
+  RAISE NOTICE 'CLINIC_ENTITLEMENT_RUNTIME_CONTRACT_OK helper=current_clinic_id runtime_dependency=true';
 END;
 $$;
