@@ -41,6 +41,7 @@ ON public.appointment_payment_resolutions
 FOR SELECT TO authenticated
 USING (
   clinic_id = public.current_clinic_id()
+  AND public.current_clinic_entitlement_allowed('finance.access')
   AND public.current_app_role() IN ('owner', 'admin', 'recep', 'financeiro')
 );
 
@@ -69,6 +70,11 @@ DECLARE
 BEGIN
   IF v_role NOT IN ('owner', 'admin', 'recep', 'fisio') OR v_clinic_id IS NULL THEN
     RAISE EXCEPTION 'Perfil sem permissão para consultar contexto de cancelamento'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT public.current_clinic_entitlement_allowed('finance.access') THEN
+    RAISE EXCEPTION 'Módulo financeiro não liberado para esta clínica'
       USING ERRCODE = '42501';
   END IF;
 
@@ -202,6 +208,11 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  IF NOT public.current_clinic_entitlement_allowed('finance.access') THEN
+    RAISE EXCEPTION 'Módulo financeiro não liberado para esta clínica'
+      USING ERRCODE = '42501';
+  END IF;
+
   IF nullif(trim(p_reason), '') IS NULL THEN
     RAISE EXCEPTION 'Informe o motivo do cancelamento' USING ERRCODE = '22023';
   END IF;
@@ -244,6 +255,15 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM public.appointment_payment_resolutions r
+    WHERE r.appointment_id = app.id
+  ) THEN
+    RAISE EXCEPTION 'Atendimento já possui resolução financeira registrada'
+      USING ERRCODE = '23505';
+  END IF;
+
   v_status := CASE WHEN p_resolution_type = 'retained' THEN 'settled' ELSE 'pending' END;
 
   INSERT INTO public.appointment_payment_resolutions (
@@ -272,17 +292,7 @@ BEGIN
     auth.uid(),
     CASE WHEN v_status = 'settled' THEN auth.uid() ELSE NULL END,
     CASE WHEN v_status = 'settled' THEN now() ELSE NULL END
-  )
-  ON CONFLICT (appointment_id) DO NOTHING;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.appointment_payment_resolutions r
-    WHERE r.appointment_id = app.id
-      AND r.payment_id = v_payment.id
-  ) THEN
-    RAISE EXCEPTION 'Não foi possível registrar a resolução financeira do cancelamento';
-  END IF;
+  );
 
   UPDATE public.appointments
   SET status = 'cancelado',
