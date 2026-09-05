@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { platformSupabase } from '../lib/platformSupabaseClient';
 import { isPlatformAdmin } from '../lib/platformAdmin';
 
 type ProvisionResult = {
@@ -50,7 +50,7 @@ export function PlatformClinicProvisioningPage() {
     setBusy(true);
     setMessage(null);
     try {
-      const { data, error } = await supabase.functions.invoke<ProvisionResult>('provision-clinic', {
+      const { data, error } = await platformSupabase.functions.invoke<ProvisionResult>('provision-clinic', {
         body: {
           idempotency_key: idempotencyKey.trim(),
           clinic: { name: clinicName.trim(), cnpj: cnpj.trim() || undefined },
