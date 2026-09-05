@@ -185,7 +185,7 @@ BEGIN
     now(),
     auth.uid()
   )
-  ON CONFLICT (clinic_id, entitlement_key) DO UPDATE
+  ON CONFLICT ON CONSTRAINT platform_clinic_entitlements_pkey DO UPDATE
   SET enabled = EXCLUDED.enabled,
       source = EXCLUDED.source,
       starts_at = EXCLUDED.starts_at,
