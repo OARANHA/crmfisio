@@ -10,6 +10,7 @@ import { AgendaOperational } from './pages/AgendaOperational';
 import { RecepcaoHoje } from './pages/RecepcaoHoje';
 import { PatientsRoleAware } from './pages/PatientsRoleAware';
 import { PatientEditPage } from './pages/PatientEditPage';
+import { ClinicAccessRequestPage } from './pages/ClinicAccessRequestPage';
 import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
 import { NexusGlobalPage } from './pages/NexusGlobalPage';
 import { NexusPatientEemPage } from './pages/NexusPatientEemPage';
@@ -70,6 +71,7 @@ export default function App() {
     <AppProvider>
       <HashRouter>
         <Routes>
+          <Route path="/solicitar-acesso" element={<ClinicAccessRequestPage />} />
           <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
           <Route path="/platform" element={<PlatformAdminHomePage />} />
           <Route path="/platform/governanca" element={<PlatformAdminPage />} />
