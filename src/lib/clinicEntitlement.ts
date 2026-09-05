@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import type { ModuleKey } from './types';
 import type { PlatformClinicEntitlementKey, PlatformClinicEntitlementSource } from './platformAdmin';
 
 export type CurrentClinicEntitlementState = {
@@ -13,7 +14,20 @@ export type CurrentClinicEntitlementState = {
   updatedAt: string | null;
 };
 
+export const MODULE_ENTITLEMENT: Partial<Record<ModuleKey, PlatformClinicEntitlementKey>> = {
+  financeiro: 'finance.access',
+  crm: 'crm.access',
+  mensagens: 'whatsapp.access',
+  relatorios: 'reports.access',
+};
+
 const db = supabase as any;
+
+export function isCurrentClinicEntitlementAllowed(state: CurrentClinicEntitlementState): boolean {
+  // Existing clinics may still be unseeded. Only an explicitly configured entitlement
+  // becomes an application-level rollout boundary; this keeps rollout backward-compatible.
+  return !state.configured || state.effective;
+}
 
 export async function loadCurrentClinicEntitlementState(
   key: PlatformClinicEntitlementKey,
