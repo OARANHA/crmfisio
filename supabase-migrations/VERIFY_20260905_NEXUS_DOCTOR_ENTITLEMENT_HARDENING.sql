@@ -34,7 +34,10 @@ JOIN pg_namespace n ON n.oid=p.pronamespace
 WHERE n.nspname='public' AND p.proname='current_nexus_medical_identity_valid';
 
 \echo '5) Nexus results read policy requires nexus.access only'
-SELECT qual ILIKE '%has_professional_capability(''nexus.access'')%'
+SELECT (
+         qual ILIKE '%has_professional_capability(''nexus.access'')%'
+         OR qual ILIKE '%has_professional_capability(''nexus.access''::text)%'
+       )
    AND qual NOT ILIKE '%owner%'
    AND qual NOT ILIKE '%clinical.patient_timeline%'
    AS doctor_nexus_only
@@ -45,7 +48,15 @@ WHERE schemaname='public'
 
 \echo '6) Nexus red flags read/ack policies require nexus.access'
 SELECT policyname,
-       coalesce(qual,'') ILIKE '%has_professional_capability(''nexus.access'')%'
+       (
+         coalesce(qual,'') ILIKE '%has_professional_capability(''nexus.access'')%'
+         OR coalesce(qual,'') ILIKE '%has_professional_capability(''nexus.access''::text)%'
+       )
+       AND (
+         policyname <> 'nexus_red_flags_acknowledge'
+         OR coalesce(with_check,'') ILIKE '%has_professional_capability(''nexus.access'')%'
+         OR coalesce(with_check,'') ILIKE '%has_professional_capability(''nexus.access''::text)%'
+       )
        AS nexus_gate
 FROM pg_policies
 WHERE schemaname='public'
@@ -54,7 +65,10 @@ WHERE schemaname='public'
 ORDER BY policyname;
 
 \echo '7) Nexus evidence is no longer readable by every authenticated user'
-SELECT qual ILIKE '%has_professional_capability(''nexus.evidence'')%'
+SELECT (
+         qual ILIKE '%has_professional_capability(''nexus.evidence'')%'
+         OR qual ILIKE '%has_professional_capability(''nexus.evidence''::text)%'
+       )
    AS nexus_evidence_gate
 FROM pg_policies
 WHERE schemaname='public'
