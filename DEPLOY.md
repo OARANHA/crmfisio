@@ -1,181 +1,125 @@
-# 🚀 DEPLOYMENT GUIDE - MEDICSPRO CRM FISIOTERAPIA
+# MedicsPro — Deployment Guide
 
-## ✅ FASE 1 COMPLETA - INTEGRAÇÃO SUPABASE AUTH + SCHEMA
+## Estado atual
 
-### 📋 O QUE FOI ENTREGUE
+O frontend MedicsPro é publicado em container Docker e operado pelo **Portainer**.
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/lib/supabaseClient.ts` | Cliente Supabase tipado com auto-refresh de sessão |
-| `src/lib/database.types.ts` | Types TypeScript gerados do schema PostgreSQL |
-| `src/lib/useAuth.ts` | Hook React para autenticação JWT real |
-| `.env.example` | Variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` |
-| `supabase-schema.sql` | **Script SQL completo** com tabelas, RLS, triggers, storage |
+- App: `https://app.medicspro.com.br`
+- Supabase self-hosted: `https://supabase.medicspro.com.br`
+- Supabase Studio: `https://studio.medicspro.com.br`
+- Repositório: `OARANHA/crmfisio`
+- Branch potencialmente produtiva: `main`
+- O stack Portainer atual acompanha o GitHub em ciclos curtos, aproximadamente a cada 5 minutos.
 
----
+> **Regra crítica:** trate qualquer merge em `main` como potencial deploy. Não use `main` para experimentação.
 
-## 🔧 PASSOS PARA DEPLOY (ORDEM OBRIGATÓRIA)
+## Arquitetura de deploy
 
-### **PASSO 1: Executar Schema no Supabase** ⚠️ CRÍTICO
+### Aplicação
 
-1. Acesse o **Supabase Studio**: https://studio.medicspro.com.br
-2. Faça login com credenciais admin do Supabase
-3. Selecione o projeto **default** (ou crie um novo)
-4. Vá em **SQL Editor** (menu lateral)
-5. Clique em **+ New query**
-6. Copie o conteúdo do arquivo `supabase-schema.sql` deste repositório
-7. Cole no editor e execute (**Run**)
-8. **Valide** que todas as tabelas foram criadas:
-   - `clinics`, `profiles`, `patients`, `appointments`
-   - `physiotherapy_evaluations`, `physiotherapy_evolutions`
-   - `payments`, `session_packages`, `patient_packages`
-   - `consent_terms`, `nps_surveys`, `wa_logs`, `audit_log`
+- React + TypeScript + Vite.
+- Build em Docker.
+- Container servido por Nginx.
+- Stack gerenciado no Portainer.
 
-> ✅ Se algum erro aparecer, verifique logs e corrija antes de prosseguir.
+### Backend / dados
 
----
+- Supabase self-hosted em stack própria.
+- PostgreSQL, Auth, PostgREST, Edge Functions e demais serviços separados da aplicação frontend.
+- Migrations do MedicsPro ficam versionadas em `supabase-migrations/`.
+- Edge Functions relevantes ficam versionadas no repositório e precisam ser implantadas na stack Supabase de forma controlada.
 
-### **PASSO 2: Obter ANON_KEY do Supabase**
+## Variáveis de ambiente do frontend
 
-1. No **Supabase Studio**, vá em **Settings** (engrenagem) → **API**
-2. Copie a **Project URL**: deve ser `https://supabase.medicspro.com.br`
-3. Copie a **anon public key** (começa com `eyJ...`)
-4. **NUNCA** compartilhe a `service_role_key` no frontend!
+O frontend precisa, no mínimo, de:
 
----
-
-### **PASSO 3: Configurar Environment Variables no Portainer**
-
-1. Acesse o **Portainer** no 28server
-2. Vá em **Stacks** → **crmfisio**
-3. Clique em **Advanced configuration** → **Environment variables**
-4. Adicione as seguintes variáveis:
-
-```
+```text
 VITE_SUPABASE_URL=https://supabase.medicspro.com.br
-VITE_SUPABASE_ANON_KEY=<cole_a_anon_key_aqui>
+VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-5. Clique em **Save** (ou **Update stack**)
+Nunca colocar `service_role` no frontend ou no repositório.
 
-> ⚠️ **IMPORTANTE**: Não commitar `.env` no repositório. Use apenas variáveis do Portainer.
+## Regra de compatibilidade para deploy automático
 
----
+Como o Portainer pode atualizar a aplicação poucos minutos após um merge em `main`:
 
-### **PASSO 4: Provisionar clínicas e usuários**
+1. mudanças de frontend em `main` devem estar prontas para produção;
+2. migrations incompatíveis não podem depender de um frontend ainda não publicado;
+3. preferir rollout backward-compatible: banco primeiro quando seguro, aplicação depois;
+4. mudanças de banco devem ser versionadas, idempotentes quando possível e acompanhadas de verifier;
+5. Edge Functions devem ser implantadas com paridade de versão quando a mudança depender delas;
+6. mudanças documentais também podem provocar rebuild/redeploy dependendo da configuração atual do stack.
 
-Não insira registros diretamente em `auth.users`. Senhas e identidades são gerenciadas
-exclusivamente pela API administrativa do Supabase Auth em código server-side.
+## Fluxo recomendado para mudanças
 
-- O bootstrap único de `platform_admin` e a criação segura da primeira clínica estão em
-  `docs/PLATFORM_PROVISIONING.md`.
-- O primeiro usuário de cada clínica é criado como `owner` pela Edge Function
-  `provision-clinic`.
-- Usuários adicionais são criados por `owner/admin` pela Edge Function `admin-team` e
-  sempre herdam o `clinic_id` do chamador autenticado.
-- A `SUPABASE_SERVICE_ROLE_KEY` nunca deve ser exposta no frontend ou em comandos
-  executados em computadores não confiáveis.
+1. Criar branch a partir de `main`.
+2. Implementar a menor alteração coerente.
+3. Rodar o gate local/CI aplicável:
 
----
+```bash
+npm ci
+npm test
+npm run typecheck
+npm run build
+```
 
-### **PASSO 5: Redeploy no Portainer**
+4. Abrir PR para `main`.
+5. Revisar efeitos em banco, Edge Functions, RLS/RPCs e compatibilidade de deploy.
+6. Aplicar migrations/Edge Functions em ordem segura quando necessário.
+7. Fazer merge apenas quando a revisão estiver deploy-safe.
+8. Acompanhar atualização do Portainer e validar app/logs.
 
-1. No **Portainer**, vá em **Stacks** → **crmfisio**
-2. Clique em **Redeploy from git repository**
-3. Aguarde o build e deploy (≈2-3 minutos)
-4. Verifique os logs do container para garantir que não há erros de ambiente
+## Migrations no Supabase self-hosted
 
----
+Não tratar `supabase-schema.sql` como mecanismo de atualização contínua de produção. Para mudanças incrementais, usar as migrations versionadas em `supabase-migrations/`.
 
-### **PASSO 6: Testar Login Real**
+Boas práticas:
 
-1. Acesse: https://app.medicspro.com.br
-2. A tela de login deve aparecer (sem seleção mockada de usuários)
-3. Faça login com:
-   - Email: `admin@medicspro.com.br`
-   - Senha: `<senha_definida_no_passo_4>`
-4. Valide que:
-   - O dashboard carrega
-   - O menu mostra módulos conforme RBAC do perfil
-   - O logout funciona
+- inspecionar o schema real antes de aplicar alterações;
+- fazer backup antes de migrations de risco;
+- preferir migration pinada a commit/hash quando executada manualmente;
+- executar verifier após a migration;
+- preservar compatibilidade com a aplicação já publicada;
+- não executar comandos destrutivos sem plano explícito de recuperação.
 
----
+## Provisionamento de clínicas e usuários
 
-## 🔒 SEGURANÇA E LGPD
+Não inserir identidades diretamente em `auth.users`.
 
-### Row Level Security (RLS) Ativado
+- Bootstrap e regras de Platform Admin: documentação em `docs/`.
+- Nova clínica + primeiro owner: Edge Function `provision-clinic`.
+- Usuários adicionais: Edge Function `admin-team` por owner/admin autenticado.
+- `platform_admin` é domínio separado e não implica acesso aos dados clínicos/financeiros das clínicas.
+- Credenciais `service_role` permanecem server-side.
 
-Todas as tabelas clínicas possuem RLS habilitado:
-- Isolamento obrigatório por `clinic_id`
-- Políticas específicas por perfil (`owner`, `admin`, `fisio`, `recep`, `financeiro`)
-- Audit log append-only (somente INSERT)
+## Estado de readiness
 
-### Storage Privado
+Consultar:
 
-Bucket `clinical-attachments` configurado:
-- Acesso restrito a usuários autenticados da mesma clínica
-- Tamanho máximo: 10MB por arquivo
-- Tipos permitidos: JPEG, PNG, PDF
+- `docs/BETA_READINESS.md`
+- `docs/FINANCIAL_PILOT_ACCEPTANCE.md`
+- `PRODUCT_ROADMAP.md`
+- `AGENTS.md`
 
-### Dados Sensíveis
+Em 2026-09-05 o núcleo financeiro está GREEN para piloto controlado; o próximo gate é Configurações / Entitlements / governança por clínica.
 
-- CPF mascarado na UI (função `maskCpf` já implementada)
-- Anamnese armazenada como JSONB criptografado em repouso
-- Direito ao esquecimento: campo `anonimizado` para soft delete
+## Validação pós-deploy
 
----
+Após atualização da aplicação:
 
-## 🐛 TROUBLESHOOTING
+1. abrir `https://app.medicspro.com.br`;
+2. validar login;
+3. validar que o tenant e papel corretos foram carregados;
+4. validar navegação/entitlements do usuário;
+5. fazer smoke do fluxo alterado;
+6. conferir erros no console e logs do container;
+7. em mudanças financeiras ou de autorização, rodar os verificadores canônicos correspondentes.
 
-### Erro: "Invalid API key"
+## Segurança
 
-**Causa**: `VITE_SUPABASE_ANON_KEY` incorreta ou faltando  
-**Solução**: Revisar Passo 2 e Passo 3
-
-### Erro: "Row not found" ou "Permission denied"
-
-**Causa**: RLS bloqueando acesso fora da clínica  
-**Solução**: 
-- Verificar se `clinic_id` do profile está correto
-- Confirmar que o usuário pertence à clínica esperada
-
-### Login funciona, mas dados não carregam
-
-**Causa**: Tabelas vazias ou schema não executado  
-**Solução**: Revisar Passo 1 e validar tabelas no SQL Editor
-
-### Container não sobe após redeploy
-
-**Causa**: Variável de ambiente mal formatada  
-**Solução**: Checar logs no Portainer e corrigir `.env`
-
----
-
-## 📊 PRÓXIMAS FASES (ROADMAP)
-
-| Fase | Entrega | Status |
-|------|---------|--------|
-| **Fase 1** | Auth + Schema + RLS | ✅ Concluída |
-| **Fase 2** | CRUD Pacientes + Prontuário | 🔄 Em progresso |
-| **Fase 3** | Agenda + Recorrência | ⏳ Pendente |
-| **Fase 4** | Financeiro + Pacotes | ⏳ Pendente |
-| **Fase 5** | WhatsApp Integration | ⏳ Pendente |
-| **Fase 6** | LGPD Self-Service (export/anon) | ⏳ Pendente |
-| **Fase 7** | Teleatendimento (Jitsi) | ⏳ Futuro |
-
----
-
-## 📞 CONTATO E SUPORTE
-
-Em caso de dúvidas durante o deploy:
-- Revisar este guia passo-a-passo
-- Verificar logs do container no Portainer
-- Consultar SQL de criação de tabelas
-
-**Repositório**: https://github.com/OARANHA/crmfisio  
-**Supabase Studio**: https://studio.medicspro.com.br  
-**App Produção**: https://app.medicspro.com.br
-
----
-
-*Documento gerado automaticamente após commit da Fase 1 - MedicsPro Team*
+- RLS é boundary de segurança; menu escondido não é autorização.
+- Não expor secrets em commits, logs ou comandos compartilhados.
+- Usar tokens/senhas apenas em variáveis temporárias e limpá-las após uso.
+- Dados clínicos e financeiros devem permanecer isolados por clínica.
+- Ações sensíveis devem ser server-side, auditáveis e deny-by-default.
