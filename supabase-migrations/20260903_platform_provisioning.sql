@@ -62,16 +62,16 @@ CREATE OR REPLACE FUNCTION public.complete_clinic_provisioning(
 RETURNS TABLE (clinic_id uuid, owner_user_id uuid)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_request public.clinic_provisioning_requests%ROWTYPE;
   v_clinic_id uuid;
   v_cnpj text;
 BEGIN
-  SELECT * INTO v_request
-  FROM public.clinic_provisioning_requests
-  WHERE id = p_request_id
+  SELECT cpr.* INTO v_request
+  FROM public.clinic_provisioning_requests AS cpr
+  WHERE cpr.id = p_request_id
   FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -90,11 +90,11 @@ BEGIN
     RAISE EXCEPTION 'Estado de provisionamento inválido: %', v_request.status;
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_owner_user_id) THEN
+  IF NOT EXISTS (SELECT 1 FROM auth.users AS au WHERE au.id = p_owner_user_id) THEN
     RAISE EXCEPTION 'Usuário owner não existe no Supabase Auth';
   END IF;
 
-  IF EXISTS (SELECT 1 FROM public.profiles WHERE id = p_owner_user_id) THEN
+  IF EXISTS (SELECT 1 FROM public.profiles AS p WHERE p.id = p_owner_user_id) THEN
     RAISE EXCEPTION 'Usuário owner já possui vínculo com uma clínica';
   END IF;
 
@@ -102,9 +102,9 @@ BEGIN
   IF v_cnpj IS NOT NULL THEN
     PERFORM pg_advisory_xact_lock(hashtextextended('clinic-cnpj:' || v_cnpj, 0));
     IF EXISTS (
-      SELECT 1 FROM public.clinics
-      WHERE deleted_at IS NULL
-        AND regexp_replace(coalesce(cnpj, ''), '\D', '', 'g') = v_cnpj
+      SELECT 1 FROM public.clinics AS c
+      WHERE c.deleted_at IS NULL
+        AND regexp_replace(coalesce(c.cnpj, ''), '\D', '', 'g') = v_cnpj
     ) THEN
       RAISE EXCEPTION 'Já existe uma clínica ativa com este CNPJ';
     END IF;
@@ -124,13 +124,13 @@ BEGIN
   -- A nova clínica nasce com automações pausadas até revisar provedor, textos e janela.
   INSERT INTO public.automation_settings (clinic_id, active)
   VALUES (v_clinic_id, false)
-  ON CONFLICT (clinic_id) DO NOTHING;
+  ON CONFLICT DO NOTHING;
 
-  UPDATE public.clinic_provisioning_requests
+  UPDATE public.clinic_provisioning_requests AS cpr
   SET status = 'completed', clinic_id = v_clinic_id,
       owner_user_id = p_owner_user_id, error_message = NULL,
       updated_at = now(), completed_at = now()
-  WHERE id = p_request_id;
+  WHERE cpr.id = p_request_id;
 
   INSERT INTO public.platform_audit_log (
     actor_user_id, action, target_type, target_id, detail
