@@ -12,7 +12,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 });
 
 type TeamPayload = {
-  action: 'create' | 'update' | 'set_active' | 'reset_password';
+  action: 'create' | 'update' | 'set_active' | 'reset_password' | 'change_own_password';
   id?: string;
   email?: string;
   password?: string;
@@ -54,8 +54,8 @@ Deno.serve(async (req) => {
     .eq('id', authData.user.id)
     .single();
 
-  if (callerError || !caller?.ativo || !['owner', 'admin'].includes(caller.role)) {
-    return json({ error: 'Apenas administradores podem gerenciar a equipe' }, 403);
+  if (callerError || !caller?.ativo) {
+    return json({ error: 'Usuário sem perfil ativo' }, 403);
   }
 
   let payload: TeamPayload;
@@ -65,31 +65,60 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400);
   }
 
-  const syncUnits = async (profileId: string, unitIds: string[] | undefined) => {
-    if (!unitIds) return;
-    const uniqueIds = [...new Set(unitIds.filter(Boolean))];
-    const { error: deleteError } = await admin.from('profile_units').delete().eq('profile_id', profileId).eq('clinic_id', caller.clinic_id);
-    if (deleteError) throw deleteError;
-    if (uniqueIds.length === 0) return;
-
-    const { data: validUnits, error: unitsError } = await admin
-      .from('units')
-      .select('id')
-      .eq('clinic_id', caller.clinic_id)
-      .eq('ativo', true)
-      .in('id', uniqueIds);
-    if (unitsError) throw unitsError;
-    if ((validUnits ?? []).length !== uniqueIds.length) throw new Error('Uma ou mais unidades são inválidas para esta clínica');
-
-    const { error: insertError } = await admin.from('profile_units').insert(uniqueIds.map((unitId) => ({
-      profile_id: profileId,
-      unit_id: unitId,
-      clinic_id: caller.clinic_id,
-    })));
-    if (insertError) throw insertError;
-  };
-
   try {
+    // Self-service path used by the mandatory first-login password flow.
+    // It deliberately runs before the owner/admin management gate, but can only
+    // mutate the authenticated caller's own Auth account and profile flag.
+    if (payload.action === 'change_own_password') {
+      if (!payload.password || payload.password.length < 8) {
+        return json({ error: 'A nova senha deve ter ao menos 8 caracteres' }, 400);
+      }
+
+      const currentMetadata = authData.user.user_metadata ?? {};
+      const { error: passwordError } = await admin.auth.admin.updateUserById(caller.id, {
+        password: payload.password,
+        user_metadata: { ...currentMetadata, must_change_password: false },
+      });
+      if (passwordError) throw passwordError;
+
+      const { error: profileError } = await admin
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', caller.id)
+        .eq('clinic_id', caller.clinic_id);
+      if (profileError) throw profileError;
+
+      return json({ id: caller.id, password_changed: true, must_change_password: false });
+    }
+
+    if (!['owner', 'admin'].includes(caller.role)) {
+      return json({ error: 'Apenas administradores podem gerenciar a equipe' }, 403);
+    }
+
+    const syncUnits = async (profileId: string, unitIds: string[] | undefined) => {
+      if (!unitIds) return;
+      const uniqueIds = [...new Set(unitIds.filter(Boolean))];
+      const { error: deleteError } = await admin.from('profile_units').delete().eq('profile_id', profileId).eq('clinic_id', caller.clinic_id);
+      if (deleteError) throw deleteError;
+      if (uniqueIds.length === 0) return;
+
+      const { data: validUnits, error: unitsError } = await admin
+        .from('units')
+        .select('id')
+        .eq('clinic_id', caller.clinic_id)
+        .eq('ativo', true)
+        .in('id', uniqueIds);
+      if (unitsError) throw unitsError;
+      if ((validUnits ?? []).length !== uniqueIds.length) throw new Error('Uma ou mais unidades são inválidas para esta clínica');
+
+      const { error: insertError } = await admin.from('profile_units').insert(uniqueIds.map((unitId) => ({
+        profile_id: profileId,
+        unit_id: unitId,
+        clinic_id: caller.clinic_id,
+      })));
+      if (insertError) throw insertError;
+    };
+
     if (payload.action === 'create') {
       if (!payload.email || !payload.password || !payload.nome || !payload.role) {
         return json({ error: 'Nome, e-mail, perfil e senha inicial são obrigatórios' }, 400);
