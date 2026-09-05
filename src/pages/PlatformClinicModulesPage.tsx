@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import { isPlatformAdmin } from '../lib/platformAdmin';
-import { supabase } from '../lib/supabaseClient';
+import { platformSupabase } from '../lib/platformSupabaseClient';
 
 export function PlatformClinicModulesPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -18,12 +18,20 @@ export function PlatformClinicModulesPage() {
         if (active) setAuthorized(false);
       }
     };
-    void supabase.auth.getSession().then(({ data }) => {
+    void platformSupabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       if (!data.session) setAuthorized(false);
       else void validate();
     });
-    return () => { active = false; };
+    const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      if (!session) setAuthorized(false);
+      else void validate();
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;

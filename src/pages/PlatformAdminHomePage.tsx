@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { platformSupabase } from '../lib/platformSupabaseClient';
 import { isPlatformAdmin } from '../lib/platformAdmin';
 
 export function PlatformAdminHomePage() {
@@ -20,12 +20,12 @@ export function PlatformAdminHomePage() {
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
+    void platformSupabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       if (!data.session) setAuthorized(false);
       else void validate();
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       if (!session) setAuthorized(false);
       else void validate();
@@ -39,7 +39,7 @@ export function PlatformAdminHomePage() {
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { error: signInError } = await platformSupabase.auth.signInWithPassword({ email: email.trim(), password });
     if (signInError) {
       setError(signInError.message);
       setAuthorized(false);
@@ -78,7 +78,7 @@ export function PlatformAdminHomePage() {
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mint">MedicsPro Platform Admin</p>
             <h1 className="font-display text-xl font-bold">Central da plataforma</h1>
           </div>
-          <button onClick={() => void supabase.auth.signOut()} className="ml-auto text-[11px] font-semibold text-pulse hover:underline">Encerrar sessão</button>
+          <button onClick={() => void platformSupabase.auth.signOut()} className="ml-auto text-[11px] font-semibold text-pulse hover:underline">Encerrar sessão</button>
         </div>
       </header>
 

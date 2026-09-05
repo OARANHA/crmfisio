@@ -10,6 +10,8 @@ import {
   type PlatformClinicSummary,
 } from '../lib/platformAdmin';
 
+const SELECTED_CLINIC_STORAGE_KEY = 'medicspro-platform-selected-clinic';
+
 const ENTITLEMENT_META: Record<PlatformClinicEntitlementKey, { title: string; description: string }> = {
   'nexus.access': { title: 'Nexus', description: 'Disponibiliza o Clinical Intelligence Engine para a clínica; capabilities continuam separadas.' },
   'finance.access': { title: 'Financeiro', description: 'Disponibiliza os módulos financeiros contratados para a clínica.' },
@@ -38,7 +40,9 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
     void loadPlatformClinics().then((items) => {
       if (!active) return;
       setClinics(items);
-      setClinicId((current) => current || items[0]?.id || '');
+      const storedClinicId = window.localStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
+      const storedClinicStillExists = storedClinicId && items.some((item) => item.id === storedClinicId);
+      setClinicId(storedClinicStillExists ? storedClinicId : (items[0]?.id || ''));
     }).catch((cause) => {
       console.error('[Platform Admin] clinics:', cause);
       if (active) setError('Não foi possível carregar as clínicas da plataforma.');
@@ -51,6 +55,7 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
       setEntitlements([]);
       return;
     }
+    window.localStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, clinicId);
     let active = true;
     setLoading(true);
     setError(null);
@@ -76,7 +81,7 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
       onAuditChanged?.(await loadPlatformAuditLog(40));
     } catch (cause) {
       console.error('[Platform Admin] entitlement:', cause);
-      setError('Não foi possível alterar o módulo. O estado anterior foi preservado.');
+      setError('Não foi possível alterar o módulo. O estado anterior foi preservado. Verifique a sessão do Platform Admin.');
     } finally {
       setBusyKey(null);
     }

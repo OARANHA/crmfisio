@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { platformSupabase } from './platformSupabaseClient';
 
 export type PlatformAutomationKey =
   | 'automation.enabled'
@@ -67,7 +67,7 @@ export type PlatformAuditEntry = {
   createdAt: string;
 };
 
-const db = supabase as any;
+const db = platformSupabase as any;
 
 export async function isPlatformAdmin(): Promise<boolean> {
   const { data, error } = await db.rpc('is_platform_admin');
