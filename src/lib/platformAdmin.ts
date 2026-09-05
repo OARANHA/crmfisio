@@ -43,11 +43,12 @@ export type PlatformClinicEntitlementSource = 'manual' | 'plan' | 'trial' | 'mig
 
 export type PlatformClinicEntitlement = {
   key: PlatformClinicEntitlementKey;
+  configured: boolean;
   enabled: boolean;
-  source: PlatformClinicEntitlementSource;
+  source: PlatformClinicEntitlementSource | null;
   startsAt: string | null;
   expiresAt: string | null;
-  updatedAt: string;
+  updatedAt: string | null;
 };
 
 export type PlatformClinicSummary = {
@@ -142,16 +143,17 @@ export async function loadPlatformClinics(): Promise<PlatformClinicSummary[]> {
 function mapClinicEntitlement(row: any): PlatformClinicEntitlement {
   return {
     key: row.entitlement_key as PlatformClinicEntitlementKey,
+    configured: Boolean(row.configured),
     enabled: Boolean(row.enabled),
-    source: row.source as PlatformClinicEntitlementSource,
+    source: row.source ? row.source as PlatformClinicEntitlementSource : null,
     startsAt: row.starts_at ? String(row.starts_at) : null,
     expiresAt: row.expires_at ? String(row.expires_at) : null,
-    updatedAt: String(row.updated_at),
+    updatedAt: row.updated_at ? String(row.updated_at) : null,
   };
 }
 
 export async function loadPlatformClinicEntitlements(clinicId: string): Promise<PlatformClinicEntitlement[]> {
-  const { data, error } = await db.rpc('platform_get_clinic_entitlements', {
+  const { data, error } = await db.rpc('platform_get_clinic_entitlements_v2', {
     p_clinic_id: clinicId,
   });
   if (error) throw error;
@@ -178,7 +180,19 @@ export async function setPlatformClinicEntitlement(input: {
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error('Entitlement não retornado pelo servidor');
-  return mapClinicEntitlement(row);
+  return mapClinicEntitlement({ ...row, configured: true });
+}
+
+export async function resetPlatformClinicEntitlement(input: {
+  clinicId: string;
+  key: PlatformClinicEntitlementKey;
+}): Promise<boolean> {
+  const { data, error } = await db.rpc('platform_reset_clinic_entitlement', {
+    p_clinic_id: input.clinicId,
+    p_entitlement_key: input.key,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 export async function loadPlatformAuditLog(limit = 30): Promise<PlatformAuditEntry[]> {
