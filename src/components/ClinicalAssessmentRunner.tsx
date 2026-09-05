@@ -19,6 +19,8 @@ import {
   type ClinicalAssessment,
 } from '../lib/assessmentEngine';
 
+type TemplateScope = 'standard' | 'mine';
+
 export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const { user, appointments, toast } = useApp();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
@@ -27,6 +29,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const [schema, setSchema] = useState<AssessmentTemplateSchema | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [bodyPoints, setBodyPoints] = useState<AssessmentBodyPoint[]>([]);
+  const [templateScope, setTemplateScope] = useState<TemplateScope>('standard');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -37,6 +40,15 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     [appointments, patient.id],
   );
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
+  const standardTemplates = useMemo(
+    () => templates.filter((template) => template.ownerType === 'platform'),
+    [templates],
+  );
+  const myTemplates = useMemo(
+    () => templates.filter((template) => template.ownerType === 'clinic'),
+    [templates],
+  );
+  const visibleTemplates = templateScope === 'standard' ? standardTemplates : myTemplates;
 
   const openDraft = async (assessment: ClinicalAssessment) => {
     const versions = await listPublishedTemplateVersions(assessment.templateId);
@@ -60,7 +72,11 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
         listAvailableAssessmentTemplates(),
         listPatientClinicalAssessments(patient.id),
       ]);
-      setTemplates(available.filter((template) => template.status === 'active'));
+      const activeTemplates = available.filter((template) => template.status === 'active');
+      setTemplates(activeTemplates);
+      if (!activeTemplates.some((template) => template.ownerType === 'platform') && activeTemplates.some((template) => template.ownerType === 'clinic')) {
+        setTemplateScope('mine');
+      }
       setAssessments(history);
       if (clinicalWrite && user) {
         const ownDraft = history.find((item) => item.status === 'draft' && item.professionalId === user.id) ?? null;
@@ -158,28 +174,54 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
         ) : (
           <>
             {clinicalWrite && !draft && (
-              <div>
-                <p className="font-display font-semibold text-[13.5px]">Escolha um modelo</p>
-                <div className="mt-3 grid md:grid-cols-2 gap-2">
-                  {templates.map((template) => (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div>
+                    <p className="font-display font-semibold text-[13.5px]">Escolha uma avaliação</p>
+                    <p className="mt-1 text-[11px] text-fog">Use um modelo padrão MedicsPro ou um modelo personalizado já publicado pela clínica.</p>
+                  </div>
+                  <div className="ml-auto inline-flex rounded-xl border border-line bg-deep p-1">
+                    <button
+                      type="button"
+                      onClick={() => setTemplateScope('standard')}
+                      className={`rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${templateScope === 'standard' ? 'bg-aqua/15 text-aqua' : 'text-fog hover:bg-raise hover:text-paper'}`}
+                    >
+                      Avaliações padrão ({standardTemplates.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemplateScope('mine')}
+                      className={`rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${templateScope === 'mine' ? 'bg-mint/15 text-mint' : 'text-fog hover:bg-raise hover:text-paper'}`}
+                    >
+                      Minhas avaliações ({myTemplates.length})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-2">
+                  {visibleTemplates.map((template) => (
                     <button
                       type="button"
                       key={template.id}
                       onClick={() => void startAssessment(template)}
                       disabled={busy}
-                      className="text-left rounded-xl border border-line bg-deep p-4 hover:border-mint/45 transition-colors disabled:opacity-40"
+                      className="text-left rounded-xl border border-line bg-deep p-4 hover:border-mint/45 hover:bg-raise/30 transition-colors disabled:opacity-40"
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-display font-semibold text-[13px]">{template.name}</p>
                         <Chip className={template.ownerType === 'platform' ? 'border-aqua/40 text-aqua' : 'border-mint/40 text-mint'}>
-                          {template.ownerType === 'platform' ? 'padrão' : 'minha avaliação'}
+                          {template.ownerType === 'platform' ? 'padrão MedicsPro' : 'minha avaliação'}
                         </Chip>
                       </div>
                       <p className="text-[11px] text-fog mt-2">{template.description || 'Modelo clínico sem descrição.'}</p>
+                      {template.specialty && <p className="mt-3 font-mono text-[9.5px] uppercase tracking-[0.08em] text-fog/70">{template.specialty}</p>}
                     </button>
                   ))}
-                  {templates.length === 0 && (
-                    <Empty title="Nenhum modelo publicado" sub="Publique um modelo em Configurações para iniciar avaliações estruturadas." />
+                  {visibleTemplates.length === 0 && templateScope === 'standard' && (
+                    <Empty title="Nenhuma avaliação padrão disponível" sub="Os modelos padrão liberados pelo MedicsPro aparecerão aqui." />
+                  )}
+                  {visibleTemplates.length === 0 && templateScope === 'mine' && (
+                    <Empty title="Nenhuma avaliação personalizada publicada" sub="Crie ou duplique um modelo em Configurações → Modelos de avaliações e publique a versão para usá-la no prontuário." />
                   )}
                 </div>
               </div>
