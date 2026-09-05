@@ -13,6 +13,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 type ProvisionPayload = {
   idempotency_key?: string;
+  access_request_id?: string;
   clinic?: { name?: string; cnpj?: string };
   owner?: { email?: string; name?: string; temporary_password?: string };
 };
@@ -70,6 +71,7 @@ Deno.serve(async (req) => {
   }
 
   const idempotencyKey = normalized(payload.idempotency_key);
+  const accessRequestId = normalized(payload.access_request_id);
   const clinicName = normalized(payload.clinic?.name);
   const cnpj = normalized(payload.clinic?.cnpj);
   const ownerEmail = normalized(payload.owner?.email).toLowerCase();
@@ -82,6 +84,29 @@ Deno.serve(async (req) => {
   if (!/^\S+@\S+\.\S+$/.test(ownerEmail)) return json({ error: 'E-mail do proprietário inválido' }, 400);
   if (ownerName.length < 2 || ownerName.length > 160) return json({ error: 'Nome do proprietário inválido' }, 400);
   if (temporaryPassword.length < 10) return json({ error: 'A senha temporária deve ter ao menos 10 caracteres' }, 400);
+
+  let accessRequest: any = null;
+  if (accessRequestId) {
+    const loaded = await admin.from('clinic_access_requests').select('*').eq('id', accessRequestId).maybeSingle();
+    if (loaded.error) return json({ error: 'Não foi possível validar a solicitação de acesso' }, 500);
+    accessRequest = loaded.data;
+    if (!accessRequest) return json({ error: 'Solicitação de acesso não encontrada' }, 404);
+    if (accessRequest.status === 'provisioned' && accessRequest.provisioning_request_id) {
+      const existingProvision = await admin.from('clinic_provisioning_requests').select('*').eq('id', accessRequest.provisioning_request_id).maybeSingle();
+      if (existingProvision.data?.status === 'completed') {
+        return json({ clinic_id: existingProvision.data.clinic_id, owner_user_id: existingProvision.data.owner_user_id, idempotent: true });
+      }
+    }
+    if (accessRequest.status !== 'pending') return json({ error: 'Solicitação não está pendente para aprovação' }, 409);
+
+    const accessCnpj = normalized(accessRequest.cnpj ?? '');
+    if (accessRequest.clinic_name.trim() !== clinicName ||
+        accessCnpj !== cnpj ||
+        accessRequest.owner_email.trim().toLowerCase() !== ownerEmail ||
+        accessRequest.owner_name.trim() !== ownerName) {
+      return json({ error: 'Dados de aprovação divergem da solicitação original' }, 409);
+    }
+  }
 
   const requestValues = {
     idempotency_key: idempotencyKey,
@@ -110,6 +135,12 @@ Deno.serve(async (req) => {
     return json({ error: 'Chave de idempotência já utilizada com outros dados' }, 409);
   }
   if (provision.status === 'completed') {
+    if (accessRequest) {
+      await admin.from('clinic_access_requests').update({
+        status: 'provisioned', reviewed_by: authData.user.id, reviewed_at: new Date().toISOString(),
+        provisioning_request_id: provision.id, updated_at: new Date().toISOString(),
+      }).eq('id', accessRequest.id).eq('status', 'pending');
+    }
     return json({ clinic_id: provision.clinic_id, owner_user_id: provision.owner_user_id, idempotent: true });
   }
 
@@ -157,6 +188,26 @@ Deno.serve(async (req) => {
     if (completed.error) throw completed.error;
 
     const result = Array.isArray(completed.data) ? completed.data[0] : completed.data;
+
+    if (accessRequest) {
+      const marked = await admin.from('clinic_access_requests').update({
+        status: 'provisioned', review_note: null, reviewed_by: authData.user.id,
+        reviewed_at: new Date().toISOString(), provisioning_request_id: provision.id,
+        updated_at: new Date().toISOString(),
+      }).eq('id', accessRequest.id).eq('status', 'pending').select('id').single();
+      if (marked.error) throw marked.error;
+
+      await admin.from('platform_audit_log').insert({
+        actor_user_id: authData.user.id,
+        action: 'CLINIC_ACCESS_REQUEST_APPROVED',
+        target_type: 'clinic_access_request',
+        target_id: accessRequest.id,
+        entity_type: 'clinic_access_request',
+        entity_key: accessRequest.id,
+        detail: { provisioning_request_id: provision.id, clinic_id: result?.clinic_id, owner_email: ownerEmail },
+      });
+    }
+
     return json({ ...result, idempotent: provision.status === 'auth_created' });
   } catch (error) {
     if (shouldCompensate && ownerUser) await admin.auth.admin.deleteUser(ownerUser.id);
@@ -173,7 +224,7 @@ Deno.serve(async (req) => {
       target_id: provision.id,
       entity_type: 'provisioning_request',
       entity_key: provision.id,
-      detail: { owner_email: ownerEmail, error: error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida' },
+      detail: { owner_email: ownerEmail, access_request_id: accessRequest?.id ?? null, error: error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida' },
     });
     console.error('[provision-clinic]', error);
     return json({ error: 'Não foi possível provisionar a clínica com segurança' }, 400);
