@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabaseClient';
+import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
   isPlatformAdmin,
   loadPlatformAuditLog,
@@ -132,12 +132,12 @@ export function PlatformAdminPage() {
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
+    void platformSupabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
       setLoadingAuth(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
       setAuthorized(null);
@@ -166,7 +166,7 @@ export function PlatformAdminPage() {
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await platformSupabase.auth.signInWithPassword({ email, password });
     if (signInError) setError(signInError.message);
   };
 
@@ -225,7 +225,7 @@ export function PlatformAdminPage() {
           <h1 className="mt-2 font-display text-2xl font-bold">Esta conta não é Platform Admin</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-fog">Ter perfil owner/admin em uma clínica não concede administração do SaaS.</p>
           {error && <p className="mt-3 text-[12px] text-amber">{error}</p>}
-          <button onClick={() => void supabase.auth.signOut()} className="mt-6 rounded-xl border border-line px-4 py-2.5 text-[13px] font-semibold text-fog hover:text-paper">Sair</button>
+          <button onClick={() => void platformSupabase.auth.signOut()} className="mt-6 rounded-xl border border-line px-4 py-2.5 text-[13px] font-semibold text-fog hover:text-paper">Sair</button>
         </div>
       </div>
     );
@@ -241,7 +241,7 @@ export function PlatformAdminPage() {
           </div>
           <div className="ml-auto text-right">
             <p className="text-[12px] text-fog">{session.user.email}</p>
-            <button onClick={() => void supabase.auth.signOut()} className="mt-1 text-[11px] font-semibold text-pulse hover:underline">Encerrar sessão</button>
+            <button onClick={() => void platformSupabase.auth.signOut()} className="mt-1 text-[11px] font-semibold text-pulse hover:underline">Encerrar sessão</button>
           </div>
         </div>
       </header>
