@@ -133,9 +133,20 @@ BEGIN
   WHERE cpr.id = p_request_id;
 
   INSERT INTO public.platform_audit_log (
-    actor_user_id, action, target_type, target_id, detail
+    actor_user_id,
+    action,
+    target_type,
+    target_id,
+    entity_type,
+    entity_key,
+    detail
   ) VALUES (
-    v_request.requested_by, 'clinic.provisioned', 'clinic', v_clinic_id,
+    v_request.requested_by,
+    'clinic.provisioned',
+    'clinic',
+    v_clinic_id,
+    'clinic',
+    v_clinic_id::text,
     jsonb_build_object(
       'request_id', p_request_id,
       'owner_user_id', p_owner_user_id,
