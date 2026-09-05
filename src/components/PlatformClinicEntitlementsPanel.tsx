@@ -3,6 +3,7 @@ import {
   loadPlatformAuditLog,
   loadPlatformClinicEntitlements,
   loadPlatformClinics,
+  resetPlatformClinicEntitlement,
   setPlatformClinicEntitlement,
   type PlatformAuditEntry,
   type PlatformClinicEntitlement,
@@ -21,8 +22,16 @@ const ENTITLEMENT_META: Record<PlatformClinicEntitlementKey, { title: string; de
   'whatsapp.access': { title: 'WhatsApp', description: 'Disponibiliza recursos de mensageria; configuração do provedor permanece separada.' },
 };
 
-function Switch({ enabled, disabled, onClick }: { enabled: boolean; disabled?: boolean; onClick: () => void }) {
-  return <button type="button" role="switch" aria-checked={enabled} disabled={disabled} onClick={onClick} className={`relative h-7 w-12 rounded-full border transition-colors disabled:cursor-wait disabled:opacity-60 ${enabled ? 'border-mint/60 bg-mint/25' : 'border-line bg-deep'}`}><span className={`absolute top-1 h-5 w-5 rounded-full transition-all ${enabled ? 'left-6 bg-mint' : 'left-1 bg-fog/70'}`} /></button>;
+type EntitlementMode = 'inherited' | 'enabled' | 'disabled';
+
+function modeOf(item: PlatformClinicEntitlement): EntitlementMode {
+  if (!item.configured) return 'inherited';
+  return item.enabled ? 'enabled' : 'disabled';
+}
+
+function modeLabel(item: PlatformClinicEntitlement): string {
+  if (!item.configured) return item.key === 'nexus.access' ? 'Não configurado · Nexus bloqueado' : 'Herdado · rollout compatível';
+  return item.enabled ? 'Liberado explicitamente' : 'Bloqueado explicitamente';
 }
 
 export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditChanged?: (items: PlatformAuditEntry[]) => void }) {
@@ -68,17 +77,37 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
     return () => { active = false; };
   }, [clinicId]);
 
-  const toggle = async (item: PlatformClinicEntitlement) => {
-    if (!clinicId || busyKey) return;
-    const next = !item.enabled;
-    if (item.key === 'nexus.access' && !next && !window.confirm(`Desativar Nexus para ${selectedClinic?.name ?? 'esta clínica'}? Isto não altera capabilities, mas remove o entitlement contratual quando o enforcement for conectado.`)) return;
+  const refreshAudit = async () => {
+    if (onAuditChanged) onAuditChanged(await loadPlatformAuditLog(40));
+  };
+
+  const setMode = async (item: PlatformClinicEntitlement, nextMode: EntitlementMode) => {
+    if (!clinicId || busyKey || modeOf(item) === nextMode) return;
+
+    if (nextMode === 'inherited') {
+      const message = item.key === 'nexus.access'
+        ? `Voltar Nexus de ${selectedClinic?.name ?? 'esta clínica'} para “não configurado”? Nexus ficará bloqueado até uma liberação explícita.`
+        : `Remover a decisão explícita de ${ENTITLEMENT_META[item.key].title} para ${selectedClinic?.name ?? 'esta clínica'} e voltar ao comportamento herdado do rollout?`;
+      if (!window.confirm(message)) return;
+    }
 
     setBusyKey(item.key);
     setError(null);
     try {
-      const updated = await setPlatformClinicEntitlement({ clinicId, key: item.key, enabled: next, source: 'manual' });
-      setEntitlements((current) => current.map((entry) => entry.key === updated.key ? updated : entry));
-      onAuditChanged?.(await loadPlatformAuditLog(40));
+      if (nextMode === 'inherited') {
+        await resetPlatformClinicEntitlement({ clinicId, key: item.key });
+        const refreshed = await loadPlatformClinicEntitlements(clinicId);
+        setEntitlements(refreshed);
+      } else {
+        const updated = await setPlatformClinicEntitlement({
+          clinicId,
+          key: item.key,
+          enabled: nextMode === 'enabled',
+          source: 'manual',
+        });
+        setEntitlements((current) => current.map((entry) => entry.key === updated.key ? updated : entry));
+      }
+      await refreshAudit();
     } catch (cause) {
       console.error('[Platform Admin] entitlement:', cause);
       setError('Não foi possível alterar o módulo. O estado anterior foi preservado. Verifique a sessão do Platform Admin.');
@@ -102,15 +131,43 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
       </label>
     </div>
 
+    <div className="mt-4 rounded-xl border border-aqua/20 bg-aqua/[0.04] px-4 py-3 text-[11.5px] leading-relaxed text-fog">
+      <strong className="text-paper">Três estados:</strong> Herdado remove a decisão explícita. Nos módulos comuns, ausência de configuração mantém o rollout compatível; no Nexus, ausência de configuração é bloqueada por segurança.
+    </div>
+
     {selectedClinic && <div className="mt-4 rounded-xl border border-line/70 bg-deep/55 px-4 py-3"><p className="font-display text-[13px] font-semibold">{selectedClinic.name}</p><p className="mt-1 font-mono text-[9.5px] text-fog">{selectedClinic.id}{selectedClinic.cnpj ? ` · CNPJ ${selectedClinic.cnpj}` : ''}</p></div>}
     {error && <div className="mt-4 rounded-xl border border-amber/35 bg-amber/5 p-3 text-[12.5px] text-amber">{error}</div>}
 
     <div className="mt-4 divide-y divide-line/60">
       {entitlements.map((item) => {
         const meta = ENTITLEMENT_META[item.key];
-        return <div key={item.key} className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center">
-          <div><div className="flex flex-wrap items-center gap-2"><p className="font-display text-[14px] font-semibold">{meta.title}</p><span className="rounded-full border border-line px-2 py-0.5 font-mono text-[9px] text-fog">{item.source}</span></div><p className="mt-1 text-[12px] leading-relaxed text-fog">{meta.description}</p><p className="mt-1 font-mono text-[9.5px] text-fog/60">{item.key}{item.updatedAt !== '1970-01-01T00:00:00+00:00' ? ` · atualizado ${new Date(item.updatedAt).toLocaleString('pt-BR')}` : ' · ainda não configurado'}</p></div>
-          <div className="flex items-center gap-2 md:justify-end"><span className={`text-[11px] font-semibold ${item.enabled ? 'text-mint' : 'text-fog'}`}>{item.enabled ? 'Liberado' : 'Bloqueado'}</span><Switch enabled={item.enabled} disabled={busyKey !== null || loading} onClick={() => void toggle(item)} /></div>
+        const mode = modeOf(item);
+        return <div key={item.key} className="grid gap-3 py-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-display text-[14px] font-semibold">{meta.title}</p>
+              <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] ${!item.configured ? 'border-aqua/30 text-aqua' : item.enabled ? 'border-mint/30 text-mint' : 'border-line text-fog'}`}>{modeLabel(item)}</span>
+              {item.source && <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[9px] text-fog">{item.source}</span>}
+            </div>
+            <p className="mt-1 text-[12px] leading-relaxed text-fog">{meta.description}</p>
+            <p className="mt-1 font-mono text-[9.5px] text-fog/60">{item.key}{item.updatedAt ? ` · atualizado ${new Date(item.updatedAt).toLocaleString('pt-BR')}` : ' · sem decisão explícita'}</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5 lg:justify-end" role="group" aria-label={`Estado de ${meta.title}`}>
+            {([
+              ['inherited', 'Herdado'],
+              ['enabled', 'Liberado'],
+              ['disabled', 'Bloqueado'],
+            ] as Array<[EntitlementMode, string]>).map(([candidate, label]) => (
+              <button
+                key={candidate}
+                type="button"
+                disabled={busyKey !== null || loading}
+                onClick={() => void setMode(item, candidate)}
+                className={`rounded-lg border px-3 py-2 text-[10.5px] font-semibold transition-colors disabled:cursor-wait disabled:opacity-50 ${mode === candidate ? 'border-mint/50 bg-mint/10 text-mint' : 'border-line bg-deep text-fog hover:text-paper'}`}
+                aria-pressed={mode === candidate}
+              >{label}</button>
+            ))}
+          </div>
         </div>;
       })}
       {!loading && clinicId && entitlements.length === 0 && <p className="py-5 text-[12px] text-fog">Nenhum entitlement retornado para esta clínica.</p>}
