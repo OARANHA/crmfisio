@@ -1,8 +1,10 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/store';
+import { useAuth } from './lib/useAuth';
 import { Shell } from './components/Shell';
 import { ClinicEntitlementGate } from './components/ClinicEntitlementGate';
 import { ModuleAccessGate } from './components/ModuleAccessGate';
+import { MandatoryPasswordChange } from './components/MandatoryPasswordChange';
 import { DashboardRoleAware } from './pages/DashboardRoleAware';
 import { AgendaOperational } from './pages/AgendaOperational';
 import { RecepcaoHoje } from './pages/RecepcaoHoje';
@@ -30,6 +32,25 @@ function Home() {
   return <Navigate to={first} replace />;
 }
 
+function ClinicSessionGate({ children }: { children: React.ReactNode }) {
+  const { user, profile, signOut, loading } = useAuth();
+  const mustChangePassword = Boolean((profile as (typeof profile & { must_change_password?: boolean }))?.must_change_password);
+
+  if (loading) return <div className="app-surface min-h-screen" />;
+  if (!user || !profile) return <>{children}</>;
+
+  if (mustChangePassword) {
+    return (
+      <MandatoryPasswordChange
+        onComplete={() => window.location.reload()}
+        onSignOut={signOut}
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
 const entitlementGate = (entitlement: 'nexus.access' | 'finance.access' | 'crm.access' | 'reports.access' | 'whatsapp.access', element: React.ReactNode) => (
   <ClinicEntitlementGate entitlement={entitlement}>{element}</ClinicEntitlementGate>
 );
@@ -54,7 +75,7 @@ export default function App() {
           <Route path="/platform/governanca" element={<PlatformAdminPage />} />
           <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
           <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
-          <Route element={<Shell />}>
+          <Route element={<ClinicSessionGate><Shell /></ClinicSessionGate>}>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={moduleGate('dashboard', <DashboardRoleAware />)} />
             <Route path="/nexus" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusGlobalPage />))} />
