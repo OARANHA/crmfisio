@@ -64,3 +64,39 @@ FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname = 'cancel_prepaid_appointment_with_resolution';
+
+\echo '9) prepaid financial resolution obeys finance entitlement'
+SELECT pg_get_functiondef(p.oid) ILIKE '%current_clinic_entitlement_allowed(''finance.access'')%'
+   AS finance_gate
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'cancel_prepaid_appointment_with_resolution';
+
+\echo '10) cancellation context and resolution ledger reads obey finance entitlement'
+SELECT
+  EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'get_appointment_cancellation_context'
+      AND pg_get_functiondef(p.oid) ILIKE '%current_clinic_entitlement_allowed(''finance.access'')%'
+  ) AS context_finance_gate,
+  EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'appointment_payment_resolutions'
+      AND policyname = 'appointment_payment_resolutions_read_financial'
+      AND coalesce(qual, '') ILIKE '%current_clinic_entitlement_allowed%finance.access%'
+  ) AS ledger_read_finance_gate;
+
+\echo '11) duplicate financial resolution is rejected, never silently reused'
+SELECT pg_get_functiondef(p.oid) ILIKE '%já possui resolução financeira registrada%'
+   AND pg_get_functiondef(p.oid) NOT ILIKE '%ON CONFLICT%DO NOTHING%'
+   AS strict_duplicate_handling
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'cancel_prepaid_appointment_with_resolution';
