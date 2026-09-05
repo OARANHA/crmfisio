@@ -12,7 +12,9 @@ export function ModuleAccessGate({ module, children }: ModuleAccessGateProps) {
   const { user, canView } = useApp();
 
   if (!user) return <Navigate to="/" replace />;
-  if (!canView(module)) return <Navigate to="/" replace />;
+
+  const receptionDashboard = module === 'dashboard' && user.role === 'recep';
+  if (!canView(module) && !receptionDashboard) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
