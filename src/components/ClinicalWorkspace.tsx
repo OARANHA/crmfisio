@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useApp, userName } from '../lib/store';
-import { STATUS_META, dayOf, fmtBRL, type Appointment, type Patient } from '../lib/types';
+import { STATUS_META, dayOf, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
 import { isClinicManager } from '../lib/permissions';
@@ -70,13 +70,14 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 };
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
-  const { user, users, appointments, consents, setAppointmentStatus, signConsent, toast } = useApp();
+  const { user, users, appointments, consents, refreshClinicData, signConsent, toast } = useApp();
   const [tab, setTab] = useState<Tab>('resumo');
   const [assessmentTab, setAssessmentTab] = useState<AssessmentTab>('atual');
   const [evaluations, setEvaluations] = useState<ClinicalEvaluation[]>([]);
   const [evolutions, setEvolutions] = useState<ClinicalEvolution[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [transitioningSessionId, setTransitioningSessionId] = useState<string | null>(null);
   const [evaluationDraft, setEvaluationDraft] = useState(emptyEvaluation());
   const [evolutionText, setEvolutionText] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -227,15 +228,44 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
     toast('Evolução vinculada à sessão.');
   };
 
-  const startSession = (session: Appointment) => {
+  const transitionSession = async (session: Appointment, status: AppointmentStatus) => {
+    if (!clinicalWrite || transitioningSessionId) return false;
+    setTransitioningSessionId(session.id);
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status })
+        .eq('id', session.id);
+      if (error) {
+        console.error('[MedicsPro] transição de atendimento:', error);
+        const message = error.code === '23505'
+          ? 'Já existe outro atendimento em andamento para este profissional ou paciente.'
+          : 'O atendimento não pôde mudar de status. Verifique as regras clínicas e tente novamente.';
+        toast(message, 'warn');
+        return false;
+      }
+      try {
+        await refreshClinicData();
+      } catch (refreshError) {
+        console.error('[MedicsPro] recarregar atendimento após transição:', refreshError);
+        toast('A transição foi registrada, mas os dados não puderam ser atualizados agora.', 'warn');
+      }
+      return true;
+    } finally {
+      setTransitioningSessionId(null);
+    }
+  };
+
+  const startSession = async (session: Appointment) => {
     if (!clinicalWrite) return;
-    setAppointmentStatus(session.id, 'em_atendimento');
+    const accepted = await transitionSession(session, 'em_atendimento');
+    if (!accepted) return;
     setSessionId(session.id);
     setTab('evolucoes');
     toast('Atendimento iniciado. Registre a evolução antes de finalizar.', 'info');
   };
 
-  const finishSession = (session: Appointment) => {
+  const finishSession = async (session: Appointment) => {
     if (!clinicalWrite) return;
     const hasEvolution = evolutions.some((e) => e.sessionId === session.id);
     if (!hasEvolution) {
@@ -244,7 +274,8 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
       setTab('evolucoes');
       return;
     }
-    setAppointmentStatus(session.id, 'finalizado');
+    const accepted = await transitionSession(session, 'finalizado');
+    if (!accepted) return;
     toast('Sessão finalizada com prontuário vinculado.');
   };
 
@@ -404,6 +435,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
               {sessions.map((session) => {
                 const meta = STATUS_META[session.status];
                 const hasEvolution = evolutions.some((e) => e.sessionId === session.id);
+                const transitioning = transitioningSessionId === session.id;
                 return (
                   <li key={session.id} className="px-5 py-4 flex flex-wrap items-center gap-3">
                     <span className="w-2 h-2 rounded-full" style={{ background: meta.dot }} />
@@ -414,8 +446,8 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
                     <Chip className={meta.chip}>{meta.label}</Chip>
                     {hasEvolution && <Chip className="border-mint/40 text-mint">prontuário ✓</Chip>}
                     <span className="font-mono text-[11.5px] text-mint ml-auto">{fmtBRL(session.valor)}</span>
-                    {clinicalWrite && ['agendado', 'confirmado'].includes(session.status) && <Btn variant="subtle" onClick={() => startSession(session)}>Iniciar atendimento</Btn>}
-                    {clinicalWrite && session.status === 'em_atendimento' && <Btn onClick={() => finishSession(session)}>Finalizar sessão</Btn>}
+                    {clinicalWrite && ['agendado', 'confirmado'].includes(session.status) && <Btn variant="subtle" disabled={transitioningSessionId !== null} onClick={() => void startSession(session)}>{transitioning ? 'Iniciando…' : 'Iniciar atendimento'}</Btn>}
+                    {clinicalWrite && session.status === 'em_atendimento' && <Btn disabled={transitioningSessionId !== null} onClick={() => void finishSession(session)}>{transitioning ? 'Finalizando…' : 'Finalizar sessão'}</Btn>}
                   </li>
                 );
               })}
