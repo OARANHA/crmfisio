@@ -13,6 +13,8 @@ type Props = {
 
 type ThemeMode = 'dark' | 'light' | 'system';
 
+const SELECTED_CLINIC_STORAGE_KEY = 'medicspro-platform-selected-clinic';
+
 const BUSINESS_NAV = [
   { to: '/platform', label: 'Visão geral', icon: '⌂', tone: 'mint' },
   { to: '/platform/comercial', label: 'Comercial', icon: '↗', tone: 'aqua' },
@@ -34,6 +36,12 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
   const location = useLocation();
   const [theme, setTheme] = useState<ThemeMode>(() => (localStorage.getItem('medicspro-platform-theme') as ThemeMode | null) ?? 'system');
   const isActive = (to: string) => to === '/platform' ? location.pathname === to : location.pathname.startsWith(to);
+
+  const signOutPlatform = async () => {
+    window.sessionStorage.removeItem(SELECTED_CLINIC_STORAGE_KEY);
+    window.localStorage.removeItem(SELECTED_CLINIC_STORAGE_KEY);
+    await platformSupabase.auth.signOut();
+  };
 
   useEffect(() => {
     applyTheme(theme);
@@ -84,7 +92,7 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
 
             <button
               type="button"
-              onClick={() => void platformSupabase.auth.signOut()}
+              onClick={() => void signOutPlatform()}
               className="w-full rounded-xl border border-pulse/20 bg-pulse/[0.04] px-3.5 py-2.5 text-[11px] font-semibold text-pulse transition hover:border-pulse/35 hover:bg-pulse/[0.08]"
             >
               Sair da plataforma
@@ -109,7 +117,7 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
                 <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-fog" title="Alternar tema">
                   {theme === 'light' ? '☀' : '●'}
                 </button>
-                <button onClick={() => void platformSupabase.auth.signOut()} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-pulse">Sair</button>
+                <button onClick={() => void signOutPlatform()} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-pulse">Sair</button>
               </div>
             </div>
           </header>
