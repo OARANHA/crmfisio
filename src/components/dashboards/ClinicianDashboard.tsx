@@ -3,6 +3,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../lib/store';
+import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
 import { STATUS_META } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
@@ -10,7 +11,8 @@ import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 export function ClinicianDashboard() {
-  const { user, appointments, patients, evolutions } = useApp();
+  const { user, appointments, patients } = useApp();
+  const { evolutions } = useClinical();
   const { patientPackages, packages } = usePackages();
   const today = format(new Date(), 'yyyy-MM-dd');
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../lib/store';
+import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
 import { Card, CardHead, Btn, Chip, IconStar, IconPhone, IconAlert } from '../lib/ui';
@@ -11,7 +12,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
-  const { patients, appointments, transactions, setFunilStage, surveys, toast } = useApp();
+  const { patients, appointments, transactions, setFunilStage, toast } = useApp();
+  const { surveys } = useClinical();
   const { patientPackages } = usePackages();
   const navigate = useNavigate();
   const [dragId, setDragId] = useState<string | null>(null);

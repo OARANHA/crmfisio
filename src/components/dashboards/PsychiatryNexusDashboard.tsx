@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../lib/store';
+import { useClinical } from '../../lib/clinicalContext';
 import { STATUS_META } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
@@ -18,7 +19,8 @@ const NEXUS_DOMAINS = [
 ] as const;
 
 export function PsychiatryNexusDashboard() {
-  const { user, appointments, patients, evolutions } = useApp();
+  const { user, appointments, patients } = useApp();
+  const { evolutions } = useClinical();
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const ownAppointments = useMemo(
