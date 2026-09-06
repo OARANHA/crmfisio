@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addDays, format } from 'date-fns';
 import { createAppointmentSeries, previewAppointmentSeries, type RecurrencePreviewSlot } from '../lib/appointmentRecurrence';
-import { loadInfrastructure } from '../lib/infrastructure';
-import { resolveClinicId } from '../lib/repository';
+import { useAgenda } from '../lib/agendaContext';
+import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp } from '../lib/store';
-import type { Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Input, Select } from '../lib/ui';
 
 const DAYS = [
@@ -12,10 +11,10 @@ const DAYS = [
 ] as const;
 
 export function AppointmentRecurrencePanel() {
-  const { user, users, patients, refreshClinicData, toast } = useApp();
+  const { user, users, patients, toast } = useApp();
+  const { refreshAgenda } = useAgenda();
+  const { rooms, unidades: units } = useInfrastructure();
   const [open, setOpen] = useState(false);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [units, setUnits] = useState<Unidade[]>([]);
   const [patientId, setPatientId] = useState('');
   const [professionalId, setProfessionalId] = useState(user?.role === 'fisio' ? user.id : '');
   const [unitId, setUnitId] = useState('');
@@ -38,22 +37,10 @@ export function AppointmentRecurrencePanel() {
   }, [user?.id, user?.role, professionalId]);
 
   useEffect(() => {
-    let active = true;
-    if (!user?.id || !open) return;
-    resolveClinicId(user.id).then(loadInfrastructure).then((data) => {
-      if (!active) return;
-      setRooms(data.rooms);
-      setUnits(data.unidades);
-      if (!unitId && data.unidades[0]) {
-        setUnitId(data.unidades[0].id);
-        setRoomId(data.rooms.find((room) => room.unidadeId === data.unidades[0].id)?.id ?? '');
-      }
-    }).catch((error) => {
-      console.error('[MedicsPro] recorrência/infraestrutura:', error);
-      toast('Não foi possível carregar a estrutura da clínica.', 'warn');
-    });
-    return () => { active = false; };
-  }, [user?.id, open]);
+    if (!open || unitId || !units[0]) return;
+    setUnitId(units[0].id);
+    setRoomId(rooms.find((room) => room.unidadeId === units[0].id)?.id ?? '');
+  }, [open, unitId, units, rooms]);
 
   const professionals = useMemo(() => {
     const active = users.filter((item) => item.role === 'fisio' && item.ativo);
@@ -100,7 +87,7 @@ export function AppointmentRecurrencePanel() {
       toast(`Série criada: ${result.created} sessão(ões)${result.skipped ? `, ${result.skipped} conflito(s) ignorado(s)` : ''}.`);
       setPreview([]);
       setOpen(false);
-      await refreshClinicData();
+      await refreshAgenda();
     } catch (error) {
       console.error('[MedicsPro] criar recorrência:', error);
       toast('Não foi possível criar a série recorrente.', 'warn');
