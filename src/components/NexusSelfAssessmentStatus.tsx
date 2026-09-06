@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
+import { acknowledgeNexusRedFlag, hasProfessionalCapability } from '../lib/nexusClinical';
 import { Btn, Chip } from '../lib/ui';
 
 type InviteRow = {
@@ -35,6 +37,8 @@ type RedFlagRow = {
   flag_code: string;
   severity: string;
   title: string;
+  message: string;
+  required_action: string | null;
   created_at: string;
   acknowledged_at: string | null;
 };
@@ -62,15 +66,25 @@ function fmtDate(value: string | null | undefined) {
 }
 
 export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
+  const { user, toast } = useApp();
   const [items, setItems] = useState<AssessmentStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allowed, setAllowed] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const db = supabase as any;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const canReadScales = await hasProfessionalCapability('nexus.scales');
+      setAllowed(canReadScales);
+      if (!canReadScales) {
+        setItems([]);
+        return;
+      }
+
       const { data: invites, error: inviteError } = await db
         .from('nexus_self_assessment_invites')
         .select('id,scale_key,rule_version,status,created_at,opened_at,submitted_at,expires_at,processed_result_id,processing_attempts,last_processing_error')
@@ -86,7 +100,7 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
       if (resultIds.length > 0) {
         const [{ data: resultData, error: resultError }, { data: flagData, error: flagError }] = await Promise.all([
           db.from('nexus_clinical_results').select('id,tool_key,rule_version,status,total_score,max_score,classification,severity,finalized_at').in('id', resultIds),
-          db.from('nexus_red_flags').select('id,result_id,flag_code,severity,title,created_at,acknowledged_at').in('result_id', resultIds),
+          db.from('nexus_red_flags').select('id,result_id,flag_code,severity,title,message,required_action,created_at,acknowledged_at').in('result_id', resultIds),
         ]);
         if (resultError) throw resultError;
         if (flagError) throw flagError;
@@ -109,7 +123,25 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
   }, [patient.id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const acknowledge = async (flagId: string) => {
+    if (!user || acknowledgingId) return;
+    setAcknowledgingId(flagId);
+    try {
+      await acknowledgeNexusRedFlag(flagId, user.id);
+      toast('Alerta Nexus reconhecido. O registro clínico permanece preservado no histórico.', 'info');
+      await load();
+    } catch (cause) {
+      console.error('[MedicsPro] reconhecer red flag Nexus:', cause);
+      toast('Não foi possível reconhecer o alerta Nexus.', 'warn');
+    } finally {
+      setAcknowledgingId(null);
+    }
+  };
+
   const openFlags = useMemo(() => items.flatMap((item) => item.redFlags).filter((flag) => !flag.acknowledged_at), [items]);
+
+  if (allowed === false) return null;
 
   return <section className="rounded-2xl border border-line bg-panel/70 p-4">
     <div className="flex flex-wrap items-start gap-3">
@@ -138,7 +170,8 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
           </div>
           {item.status === 'submitted' && item.processing_attempts === 0 && <p className="mt-2 text-[11.5px] text-aqua">Resposta recebida. O processor automático deve concluir no próximo ciclo.</p>}
           {item.last_processing_error && <p className="mt-2 rounded-lg border border-pulse/25 bg-pulse/[0.04] px-2.5 py-2 text-[11.5px] text-pulse">Falha de processamento registrada. O dado clínico não foi finalizado silenciosamente.</p>}
-          {item.redFlags.length > 0 && <div className="mt-2 space-y-1.5">{item.redFlags.map((flag) => <div key={flag.id} className="rounded-lg border border-pulse/25 bg-pulse/[0.035] px-2.5 py-2"><div className="flex flex-wrap items-center gap-2"><span className="text-[11.5px] font-semibold text-pulse">{flag.title}</span><span className="font-mono text-[10px] uppercase text-fog">{flag.severity}</span>{flag.acknowledged_at ? <span className="text-[10.5px] text-mint">reconhecido</span> : <span className="text-[10.5px] text-pulse">aberto</span>}</div></div>)}</div>}
+          {item.redFlags.length > 0 && <div className="mt-2 space-y-1.5">{item.redFlags.map((flag) => <div key={flag.id} className="rounded-lg border border-pulse/25 bg-pulse/[0.035] px-2.5 py-2"><div className="flex flex-wrap items-start gap-2"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-[11.5px] font-semibold text-pulse">{flag.title}</span><span className="font-mono text-[10px] uppercase text-fog">{flag.severity}</span>{flag.acknowledged_at ? <span className="text-[10.5px] text-mint">reconhecido</span> : <span className="text-[10.5px] text-pulse">aberto</span>}</div><p className="mt-1 text-[11px] leading-relaxed text-fog">{flag.message}</p>{flag.required_action && <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-pulse">{flag.required_action}</p>}</div>{!flag.acknowledged_at && <Btn variant="ghost" onClick={() => void acknowledge(flag.id)} disabled={acknowledgingId !== null}>{acknowledgingId === flag.id ? 'Reconhecendo…' : 'Reconhecer alerta'}</Btn>}</div></div>)}</div>}
+          {item.redFlags.some((flag) => flag.acknowledged_at) && <p className="mt-2 text-[10.5px] leading-relaxed text-fog">Reconhecer confirma revisão do alerta; não apaga o achado nem substitui avaliação, registro ou conduta clínica.</p>}
         </article>;
       })}
     </div>}
