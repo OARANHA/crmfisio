@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
-import { isPlatformAdmin } from '../lib/platformAdmin';
-
-const PIPELINE_STEPS = [
-  { key: 'lead', title: 'Leads', description: 'Entradas vindas do site e demais canais.', tone: 'aqua' },
-  { key: 'qualified', title: 'Qualificação', description: 'Score, SLA e estágio comercial normalizados.', tone: 'mint' },
-  { key: 'opportunity', title: 'Oportunidades', description: 'Demonstrações, negociações e negócios em andamento.', tone: 'amber' },
-  { key: 'ready', title: 'Prontos para onboarding', description: 'Venda aprovada e pronta para provisioning.', tone: 'pulse' },
-] as const;
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 
 export function PlatformCommercialPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
 
   useEffect(() => {
     let active = true;
-    void isPlatformAdmin()
+    void validatePlatformAdminAccess()
       .then((allowed) => { if (active) setAuthorized(allowed); })
       .catch(() => { if (active) setAuthorized(false); });
     return () => { active = false; };
@@ -30,105 +23,102 @@ export function PlatformCommercialPage() {
       title="Comercial"
       description="Visibilidade executiva da aquisição e conversão sem transformar o Platform Admin em um CRM completo."
     >
-      <section className="grid gap-4 2xl:grid-cols-[1.6fr_0.65fr]">
-        <div className="relative overflow-hidden rounded-[28px] border border-aqua/20 bg-gradient-to-br from-aqua/[0.14] via-panel to-panel p-6 md:p-8">
-          <div className="pointer-events-none absolute -right-20 -top-16 h-72 w-72 rounded-full bg-aqua/[0.10] blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 right-28 h-32 w-32 rounded-full bg-mint/[0.07] blur-2xl" />
+      <section className="grid gap-4 2xl:grid-cols-[1.55fr_0.7fr]">
+        <div className="relative overflow-hidden rounded-[28px] border border-aqua/20 bg-gradient-to-br from-aqua/[0.11] via-panel to-panel p-6 md:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-aqua/[0.09] blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-24 h-32 w-32 rounded-full bg-mint/[0.07] blur-2xl" />
           <div className="relative max-w-4xl">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-aqua">Aquisição & conversão</p>
-            <h2 className="mt-3 font-display text-[30px] font-bold leading-tight tracking-tight md:text-[38px]">Do primeiro contato à venda pronta para onboarding.</h2>
-            <p className="mt-3 max-w-3xl text-[12.5px] leading-relaxed text-fog">O Platform Admin acompanha o funil em nível executivo. O CRM continua responsável por pipeline, cadência e histórico operacional; aqui entram somente estados consolidados e indicadores reais.</p>
+            <h2 className="mt-3 font-display text-[30px] font-bold leading-tight tracking-tight md:text-[38px]">Da captação à decisão comercial, sem transformar o Platform Admin em CRM.</h2>
+            <p className="mt-3 max-w-3xl text-[12.5px] leading-relaxed text-fog">O site e o n8n já formam a fundação de entrada comercial. Esta área será a leitura executiva da aquisição, qualificação e conversão quando o bridge factual com o CRM estiver conectado.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Link to="/platform/provisionar" className="rounded-xl bg-aqua px-4 py-3 text-[11.5px] font-semibold text-on-accent shadow-sm">Abrir onboarding →</Link>
-              <Link to="/platform" className="rounded-xl border border-line bg-panel/80 px-4 py-3 text-[11.5px] font-semibold text-paper">Voltar à visão geral</Link>
+              <StatusPill tone="mint" label="Entrada" value="Site ativo" />
+              <StatusPill tone="aqua" label="Orquestração" value="n8n" />
+              <StatusPill tone="amber" label="CRM bridge" value="Pendente" />
             </div>
           </div>
         </div>
 
-        <aside className="rounded-[28px] border border-line bg-panel p-5 md:p-6">
+        <div className="rounded-[28px] border border-line bg-panel p-5 md:p-6">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-fog">Integração comercial</p>
-              <p className="mt-2 font-display text-[27px] font-bold text-aqua">Preparada</p>
-            </div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-fog">Status comercial</p><p className="mt-2 font-display text-[27px] font-bold text-aqua">Preparado</p></div>
             <span className="grid h-11 w-11 place-items-center rounded-full border border-aqua/25 bg-aqua/[0.08] text-aqua">↗</span>
           </div>
-          <div className="mt-5 space-y-3">
-            <StatusLine label="Site comercial" value="Ativo" tone="mint" />
-            <StatusLine label="n8n comercial" value="Ativo" tone="mint" />
-            <StatusLine label="CRM bridge" value="Pendente" tone="amber" />
-            <StatusLine label="Métricas executivas" value="Aguardando fonte" tone="aqua" />
+          <p className="mt-3 text-[11.5px] leading-relaxed text-fog">A estrutura visual está pronta. Os números entram somente quando o Platform Admin puder consumir uma fonte comercial canônica e auditável.</p>
+          <div className="mt-5 space-y-2.5 border-t border-line/60 pt-4">
+            <IntegrationRow label="Site" value="ativo" tone="mint" />
+            <IntegrationRow label="n8n" value="fundação ativa" tone="aqua" />
+            <IntegrationRow label="CRM / read model" value="não conectado" tone="amber" />
+            <IntegrationRow label="Métricas factuais" value="aguardando fonte" tone="fog" />
           </div>
-          <p className="mt-5 border-t border-line/60 pt-4 text-[10.5px] leading-relaxed text-fog">Enquanto a fonte comercial consolidada não estiver conectada, esta página não exibe números artificiais.</p>
-        </aside>
+        </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
-        {PIPELINE_STEPS.map((step, index) => (
-          <article key={step.key} className="relative overflow-hidden rounded-[22px] border border-line bg-panel p-5">
-            <div className={`absolute inset-x-0 top-0 h-1 ${toneBg(step.tone)}`} />
-            <div className="flex items-start gap-3">
-              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-deep font-display text-[12px] font-bold ${toneText(step.tone)}`}>{String(index + 1).padStart(2, '0')}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-display text-[16px] font-semibold">{step.title}</h3>
-                  <span className="rounded-full border border-line px-2 py-1 text-[9px] font-semibold text-fog">em preparação</span>
-                </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-fog">{step.description}</p>
-              </div>
-            </div>
-          </article>
-        ))}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <PreparedCard step="01" tone="mint" title="Leads" sub="Novos contatos vindos do site e demais canais." />
+        <PreparedCard step="02" tone="aqua" title="Qualificação" sub="Score, SLA e estágio comercial normalizados pelo n8n/CRM." />
+        <PreparedCard step="03" tone="amber" title="Oportunidades" sub="Demonstrações, negociações e negócios ganhos." />
+        <PreparedCard step="04" tone="pulse" title="Prontos para onboarding" sub="Venda aprovada com ação explícita para provisioning." />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mint">Fronteira de domínio</p>
-              <h3 className="mt-1 font-display text-[20px] font-bold">O lead nunca vira clínica sozinho.</h3>
-              <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-fog">A jornada comercial termina em um estado equivalente a <code className="rounded bg-deep px-1.5 py-0.5 text-paper">ready_for_provisioning</code>. A partir daí, criação de tenant, primeiro owner, módulos e lifecycle continuam sob controle do Platform Admin.</p>
+          <div className="flex items-start gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-mint/20 bg-mint/[0.07] text-mint">✓</span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mint">Boundary comercial</p>
+              <h3 className="mt-1 font-display text-[20px] font-bold">O lead não vira clínica automaticamente.</h3>
+              <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-fog">O pipeline termina em um estado equivalente a <code className="text-paper">ready_for_provisioning</code>. Tenant, primeiro owner e lifecycle continuam dentro do onboarding controlado da plataforma.</p>
             </div>
-            <Link to="/platform/provisionar" className="rounded-xl border border-mint/25 bg-mint/[0.06] px-4 py-3 text-[11.5px] font-semibold text-mint">Abrir onboarding →</Link>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <BoundaryTag text="CRM = pipeline operacional" />
+            <BoundaryTag text="Platform Admin = cockpit executivo" />
+            <BoundaryTag text="Onboarding = criação do tenant" />
           </div>
         </div>
 
-        <div className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber">Quando o CRM entrar</p>
-          <h3 className="mt-1 font-display text-[20px] font-bold">O que aparecerá aqui</h3>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <FutureMetric title="Leads" detail="volume real por período" />
-            <FutureMetric title="Qualificação" detail="score e SLA comercial" />
-            <FutureMetric title="Conversão" detail="taxa factual por etapa" />
-            <FutureMetric title="Origem" detail="canal e campanha" />
+        <div className="rounded-[26px] border border-aqua/20 bg-aqua/[0.04] p-5 md:p-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Quando a fonte entrar</p>
+          <h3 className="mt-1 font-display text-[18px] font-bold">KPIs que passam a fazer sentido</h3>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-[10.5px]">
+            <FutureMetric label="Leads" />
+            <FutureMetric label="Qualificados" />
+            <FutureMetric label="Conversão" />
+            <FutureMetric label="Tempo até venda" />
           </div>
+          <Link to="/platform/provisionar" className="mt-5 inline-flex rounded-xl border border-aqua/25 bg-panel px-4 py-3 text-[11.5px] font-semibold text-aqua">Abrir onboarding →</Link>
         </div>
       </section>
     </PlatformAdminShell>
   );
 }
 
-function StatusLine({ label, value, tone }: { label: string; value: string; tone: 'mint' | 'amber' | 'aqua' }) {
-  const toneClass = tone === 'mint' ? 'text-mint' : tone === 'amber' ? 'text-amber' : 'text-aqua';
-  return <div className="flex items-center gap-3 rounded-xl border border-line/70 bg-deep/45 px-3.5 py-3"><span className={`h-2.5 w-2.5 rounded-full ${tone === 'mint' ? 'bg-mint' : tone === 'amber' ? 'bg-amber' : 'bg-aqua'}`} /><span className="flex-1 text-[11px] text-fog">{label}</span><span className={`text-[11px] font-semibold ${toneClass}`}>{value}</span></div>;
-}
-
-function FutureMetric({ title, detail }: { title: string; detail: string }) {
-  return <div className="rounded-2xl border border-dashed border-line bg-deep/35 p-4"><p className="font-display text-[14px] font-semibold">{title}</p><p className="mt-1 text-[10.5px] text-fog">{detail}</p><p className="mt-3 text-[9.5px] font-semibold text-amber">fonte ainda não conectada</p></div>;
-}
-
 function toneText(tone: string) {
-  if (tone === 'mint') return 'text-mint';
+  if (tone === 'aqua') return 'text-aqua';
   if (tone === 'amber') return 'text-amber';
   if (tone === 'pulse') return 'text-pulse';
-  return 'text-aqua';
+  return 'text-mint';
 }
 
-function toneBg(tone: string) {
-  if (tone === 'mint') return 'bg-mint';
-  if (tone === 'amber') return 'bg-amber';
-  if (tone === 'pulse') return 'bg-pulse';
-  return 'bg-aqua';
+function StatusPill({ tone, label, value }: { tone: string; label: string; value: string }) {
+  return <span className="rounded-full border border-line bg-panel/80 px-3 py-2 text-[10px] font-semibold text-fog"><span className={toneText(tone)}>{label}</span> · {value}</span>;
+}
+
+function IntegrationRow({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return <div className="flex items-center justify-between gap-3 text-[10.5px]"><span className="text-fog">{label}</span><span className={`font-semibold ${toneText(tone)}`}>{value}</span></div>;
+}
+
+function PreparedCard({ step, tone, title, sub }: { step: string; tone: string; title: string; sub: string }) {
+  return <article className="rounded-[22px] border border-line bg-panel p-4.5"><div className="flex items-start justify-between gap-3"><span className={`grid h-8 w-8 place-items-center rounded-xl bg-deep text-[10px] font-bold ${toneText(tone)}`}>{step}</span><span className="rounded-full border border-line px-2 py-1 text-[9px] font-semibold text-fog">em preparação</span></div><p className="mt-4 font-display text-[15px] font-semibold">{title}</p><p className="mt-2 text-[11px] leading-relaxed text-fog">{sub}</p></article>;
+}
+
+function BoundaryTag({ text }: { text: string }) {
+  return <span className="rounded-full border border-line bg-deep/55 px-3 py-2 text-[10px] font-semibold text-fog">{text}</span>;
+}
+
+function FutureMetric({ label }: { label: string }) {
+  return <div className="rounded-xl border border-line bg-panel px-3 py-3"><p className="text-fog">{label}</p><p className="mt-1 font-display text-[13px] font-semibold text-paper">aguardando fonte</p></div>;
 }
 
 function AccessDenied() {
