@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cancelAppointmentSeries, listAppointmentSeries, type AppointmentSeriesSummary } from '../lib/appointmentRecurrence';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp, patientName, userName } from '../lib/store';
 import { Btn, Card, Input } from '../lib/ui';
 
@@ -16,7 +17,8 @@ const DAY_LABEL: Record<number, string> = {
 const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 
 export function AppointmentSeriesManager() {
-  const { user, users, patients, appointments, refreshClinicData, toast } = useApp();
+  const { user, users, patients, appointments, toast } = useApp();
+  const { refreshAgenda } = useAgenda();
   const [series, setSeries] = useState<AppointmentSeriesSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -64,7 +66,7 @@ export function AppointmentSeriesManager() {
       toast(`Série cancelada. ${cancelled} sessão(ões) futura(s) cancelada(s).`);
       setCancellingId(null);
       setReason('Tratamento interrompido ou replanejado');
-      await Promise.all([load(), refreshClinicData()]);
+      await Promise.all([load(), refreshAgenda()]);
     } catch (error) {
       console.error('[MedicsPro] cancelar série recorrente:', error);
       toast('Não foi possível cancelar a série recorrente.', 'warn');
