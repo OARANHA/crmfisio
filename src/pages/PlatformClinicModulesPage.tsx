@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import { PlatformClinicLifecyclePanel } from '../components/PlatformClinicLifecyclePanel';
 import { isPlatformAdmin } from '../lib/platformAdmin';
@@ -51,20 +52,18 @@ export function PlatformClinicModulesPage() {
   }
 
   return (
-    <div className="app-surface min-h-screen">
-      <header className="border-b border-line/70 bg-deep/90 px-5 py-4 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mint">MedicsPro Platform Admin</p>
-            <h1 className="font-display text-xl font-bold">Governança por clínica</h1>
-          </div>
-          <Link to="/platform" className="ml-auto text-[11px] font-semibold text-aqua hover:underline">Central da plataforma</Link>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl space-y-6 p-5 md:p-8">
-        <PlatformClinicLifecyclePanel />
-        <PlatformClinicEntitlementsPanel />
-      </main>
-    </div>
+    <PlatformAdminShell
+      eyebrow="MedicsPro Platform Admin"
+      title="Módulos e governança por clínica"
+      description="Controle lifecycle e entitlements comerciais sem misturar governança SaaS com permissões internas do tenant."
+    >
+      <section className="overflow-hidden rounded-[22px] border border-aqua/20 bg-gradient-to-br from-aqua/[0.07] via-panel to-panel p-5 md:p-6">
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Controle comercial</p>
+        <h2 className="mt-1 font-display text-[21px] font-bold tracking-tight">Defina o que cada clínica contratou e pode utilizar.</h2>
+        <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-fog">Nexus, Financeiro, CRM, Relatórios, Avaliações customizadas e WhatsApp permanecem independentes do papel do usuário dentro da clínica.</p>
+      </section>
+      <PlatformClinicLifecyclePanel />
+      <PlatformClinicEntitlementsPanel />
+    </PlatformAdminShell>
   );
 }
