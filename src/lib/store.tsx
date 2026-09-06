@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
@@ -14,8 +14,9 @@ import { useCommunication } from './communicationContext';
 import { useAudit } from './auditContext';
 import { useLgpdActions } from './lgpdActions';
 import { useCurrentUserAccess } from './currentUserAccess';
+import { useToast, type Toast } from './toastContext';
 
-export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
+export type { Toast } from './toastContext';
 
 interface AppState {
   user: User | null;
@@ -52,7 +53,6 @@ interface AppState {
 }
 
 const Ctx = createContext<AppState | null>(null);
-let seq = 1000;
 
 /**
  * Compatibility facade for screens still using useApp().
@@ -71,13 +71,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const communication = useCommunication();
   const auditDomain = useAudit();
   const lgpd = useLgpdActions();
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
-    const id = ++seq;
-    setToasts((current) => [...current.slice(-3), { id, msg, kind }]);
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4400);
-  }, []);
+  const { toasts, toast: pushToast } = useToast();
 
   // Temporary compatibility refresh for the final two legacy consumers.
   // Its scope is intentionally limited to the domains those flows can mutate.

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useApp, type Toast } from '../lib/store';
+import { useToast, type Toast } from '../lib/toastContext';
 import { useAuth } from '../lib/useAuth';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -104,7 +104,7 @@ function Login({ theme, onToggleTheme }: { theme: ColorTheme; onToggleTheme: () 
 }
 
 function Toasts() {
-  const { toasts } = useApp();
+  const { toasts } = useToast();
   const meta: Record<Toast['kind'], { cls: string; Icon: (p: { className?: string }) => React.ReactNode }> = {
     ok: { cls: 'border-mint/50 text-mint', Icon: IconCheck },
     warn: { cls: 'border-amber/50 text-amber', Icon: IconAlert },
