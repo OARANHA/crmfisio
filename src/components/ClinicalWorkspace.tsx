@@ -6,6 +6,7 @@ import { useApp, userName } from '../lib/store';
 import { useAgenda } from '../lib/agendaContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
+import { useClinical } from '../lib/clinicalContext';
 import { STATUS_META, dayOf, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
@@ -73,7 +74,8 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 };
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
-  const { user, users, appointments, consents, signConsent, toast } = useApp();
+  const { user, users, appointments, toast } = useApp();
+  const { consents, signConsent } = useClinical();
   const { refreshAgenda } = useAgenda();
   const { refreshFinance } = useFinance();
   const { refreshPackages } = usePackages();
@@ -476,7 +478,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
                     <p className="font-mono text-[10.5px] text-fog mt-0.5">versão {term.versao}{term.dataAssinatura ? ` · ${format(new Date(term.dataAssinatura), 'dd/MM/yyyy HH:mm')}` : ''}</p>
                   </div>
                   <Chip className={term.assinado ? 'border-mint/40 text-mint' : 'border-amber/40 text-amber'}>{term.assinado ? 'assinado ✓' : 'pendente'}</Chip>
-                  {!term.assinado && documentWrite && <Btn variant="subtle" onClick={() => signConsent(term.id)}>Coletar aceite</Btn>}
+                  {!term.assinado && documentWrite && <Btn variant="subtle" onClick={() => void signConsent(term.id)}>Coletar aceite</Btn>}
                 </li>
               ))}
             </ul>
