@@ -16,8 +16,6 @@ import { useLgpdActions } from './lgpdActions';
 import { useCurrentUserAccess } from './currentUserAccess';
 import { useToast, type Toast } from './toastContext';
 
-export type { Toast } from './toastContext';
-
 interface AppState {
   user: User | null;
   users: User[];
@@ -32,7 +30,6 @@ interface AppState {
   surveys: NpsSurvey[];
   waLogs: WaLog[];
   audit: AuditEntry[];
-  toasts: Toast[];
   access: (m: ModuleKey) => Access;
   canView: (m: ModuleKey) => boolean;
   toast: (msg: string, kind?: Toast['kind']) => void;
@@ -70,7 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const communication = useCommunication();
   const auditDomain = useAudit();
   const lgpd = useLgpdActions();
-  const { toasts, toast: pushToast } = useToast();
+  const { toast: pushToast } = useToast();
 
   const value = useMemo<AppState>(() => {
     const persistError = (label: string, error: unknown) => {
@@ -92,7 +89,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       surveys: clinical.surveys,
       waLogs: communication.waLogs,
       audit: auditDomain.audit,
-      toasts,
       access,
       canView,
       toast: pushToast,
@@ -120,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     user, access, canView, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
-    toasts, pushToast,
+    pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
