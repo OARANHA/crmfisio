@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
-import { isPlatformAdmin } from '../lib/platformAdmin';
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 
 export function PlatformRevenuePage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
 
   useEffect(() => {
     let active = true;
-    void isPlatformAdmin()
+    void validatePlatformAdminAccess()
       .then((allowed) => { if (active) setAuthorized(allowed); })
       .catch(() => { if (active) setAuthorized(false); });
     return () => { active = false; };
