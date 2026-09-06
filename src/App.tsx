@@ -10,6 +10,7 @@ import { PackageProvider } from './lib/packageContext';
 import { CommunicationProvider } from './lib/communicationContext';
 import { AuditProvider } from './lib/auditContext';
 import { InfrastructureProvider } from './lib/infrastructureContext';
+import { ToastProvider } from './lib/toastContext';
 import { ClinicDataBoundary } from './lib/ClinicDataBoundary';
 import { useCurrentUserAccess } from './lib/currentUserAccess';
 import { Shell } from './components/Shell';
@@ -130,39 +131,41 @@ export default function App() {
                     <CommunicationProvider>
                       <AuditProvider>
                         <InfrastructureProvider>
-                          <AppProvider>
-                            <HashRouter>
-                              <Routes>
-                                <Route path="/solicitar-acesso" element={<ClinicAccessRequestPage />} />
-                                <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
-                                <Route path="/platform" element={<PlatformAdminHomePage />} />
-                                <Route path="/platform/comercial" element={<PlatformCommercialPage />} />
-                                <Route path="/platform/receita" element={<PlatformRevenuePage />} />
-                                <Route path="/platform/governanca" element={<PlatformAdminPage />} />
-                                <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
-                                <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
-                                <Route element={<ClinicSessionGate><Shell /></ClinicSessionGate>}>
-                                  <Route path="/" element={<Home />} />
-                                  <Route path="/dashboard" element={moduleGate('dashboard', <DashboardRoleAware />)} />
-                                  <Route path="/nexus" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusGlobalPage />))} />
-                                  <Route path="/agenda" element={moduleGate('agenda', <AgendaOperational />)} />
-                                  <Route path="/hoje" element={moduleGate('agenda', <RecepcaoHoje />)} />
-                                  <Route path="/pacientes" element={moduleGate('pacientes', <PatientsRoleAware />)} />
-                                  <Route path="/pacientes/:id/editar" element={moduleGate('pacientes', <PatientEditPage />)} />
-                                  <Route path="/pacientes/:id" element={moduleGate('pacientes', <PatientsRoleAware />)} />
-                                  <Route path="/pacientes/:id/nexus" element={moduleGate('clinico', entitlementGate('nexus.access', <PatientsRoleAware />))} />
-                                  <Route path="/pacientes/:id/nexus/eem" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusPatientEemPage />))} />
-                                  <Route path="/pacientes/:id/nexus/evolution" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusPatientEvolutionPage />))} />
-                                  <Route path="/financeiro" element={protectedModule('financeiro', 'finance.access', <FinanceiroOperational />)} />
-                                  <Route path="/crm" element={protectedModule('crm', 'crm.access', <CrmOperational />)} />
-                                  <Route path="/mensagens" element={protectedModule('mensagens', 'whatsapp.access', <MensagensOperational />)} />
-                                  <Route path="/relatorios" element={protectedModule('relatorios', 'reports.access', <RelatoriosHub />)} />
-                                  <Route path="/config" element={moduleGate('config', <ConfigPremium />)} />
-                                  <Route path="*" element={<Home />} />
-                                </Route>
-                              </Routes>
-                            </HashRouter>
-                          </AppProvider>
+                          <ToastProvider>
+                            <AppProvider>
+                              <HashRouter>
+                                <Routes>
+                                  <Route path="/solicitar-acesso" element={<ClinicAccessRequestPage />} />
+                                  <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
+                                  <Route path="/platform" element={<PlatformAdminHomePage />} />
+                                  <Route path="/platform/comercial" element={<PlatformCommercialPage />} />
+                                  <Route path="/platform/receita" element={<PlatformRevenuePage />} />
+                                  <Route path="/platform/governanca" element={<PlatformAdminPage />} />
+                                  <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
+                                  <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
+                                  <Route element={<ClinicSessionGate><Shell /></ClinicSessionGate>}>
+                                    <Route path="/" element={<Home />} />
+                                    <Route path="/dashboard" element={moduleGate('dashboard', <DashboardRoleAware />)} />
+                                    <Route path="/nexus" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusGlobalPage />))} />
+                                    <Route path="/agenda" element={moduleGate('agenda', <AgendaOperational />)} />
+                                    <Route path="/hoje" element={moduleGate('agenda', <RecepcaoHoje />)} />
+                                    <Route path="/pacientes" element={moduleGate('pacientes', <PatientsRoleAware />)} />
+                                    <Route path="/pacientes/:id/editar" element={moduleGate('pacientes', <PatientEditPage />)} />
+                                    <Route path="/pacientes/:id" element={moduleGate('pacientes', <PatientsRoleAware />)} />
+                                    <Route path="/pacientes/:id/nexus" element={moduleGate('clinico', entitlementGate('nexus.access', <PatientsRoleAware />))} />
+                                    <Route path="/pacientes/:id/nexus/eem" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusPatientEemPage />))} />
+                                    <Route path="/pacientes/:id/nexus/evolution" element={moduleGate('clinico', entitlementGate('nexus.access', <NexusPatientEvolutionPage />))} />
+                                    <Route path="/financeiro" element={protectedModule('financeiro', 'finance.access', <FinanceiroOperational />)} />
+                                    <Route path="/crm" element={protectedModule('crm', 'crm.access', <CrmOperational />)} />
+                                    <Route path="/mensagens" element={protectedModule('mensagens', 'whatsapp.access', <MensagensOperational />)} />
+                                    <Route path="/relatorios" element={protectedModule('relatorios', 'reports.access', <RelatoriosHub />)} />
+                                    <Route path="/config" element={moduleGate('config', <ConfigPremium />)} />
+                                    <Route path="*" element={<Home />} />
+                                  </Route>
+                                </Routes>
+                              </HashRouter>
+                            </AppProvider>
+                          </ToastProvider>
                         </InfrastructureProvider>
                       </AuditProvider>
                     </CommunicationProvider>
