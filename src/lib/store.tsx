@@ -59,7 +59,7 @@ interface AppState {
   addPatient: (p: Omit<Patient, 'id' | 'createdAt' | 'anamnese'> & { anamnese?: Patient['anamnese'] }) => void;
   setFunilStage: (id: string, stage: FunilStage) => void;
   addEvolution: (e: Omit<Evolution, 'id'>) => void;
-  signConsent: (id: string, assinaturaUrl?: string) => void;
+  signConsent: (id: string) => Promise<void>;
   setTxStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => void;
   addTransaction: (t: Omit<FinancialTransaction, 'id'>) => void;
   answerNps: (id: string, nota: number) => void;
@@ -274,14 +274,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .catch((error) => persistError('Falha ao salvar evolução clínica', error));
       },
 
-      signConsent: (id, assinaturaUrl) => {
-        const anterior = consents.find((c) => c.id === id);
-        const agora = new Date().toISOString();
-        setConsents((prev) => prev.map((c) => c.id === id ? { ...c, assinado: true, dataAssinatura: agora, assinaturaUrl: assinaturaUrl ?? c.assinaturaUrl } : c));
-        void updateConsent(id, assinaturaUrl).catch((error) => {
-          if (anterior) setConsents((prev) => prev.map((c) => c.id === id ? anterior : c));
+      signConsent: async (id) => {
+        try {
+          const persisted = await updateConsent(id);
+          setConsents((prev) => prev.map((c) => c.id === id ? persisted : c));
+          pushToast('Consentimento registrado com sucesso.');
+        } catch (error) {
           persistError('Falha ao registrar consentimento', error);
-        });
+        }
       },
 
       setTxStatus: (id, status, metodo) => {
