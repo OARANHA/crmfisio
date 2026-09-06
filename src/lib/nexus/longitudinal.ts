@@ -12,7 +12,7 @@ export type LongitudinalPoint = {
 };
 
 const TOOL_TITLES: Record<string,string> = {
-  'phq-9':'PHQ-9','gad-7':'GAD-7','hcl-32':'HCL-32','cssrs':'C-SSRS','audit':'AUDIT','audit-c':'AUDIT-C','cage':'CAGE','asrs-18':'ASRS-18','ybocs':'Y-BOCS','epds':'EPDS','srq-20':'SRQ-20','phq-15':'PHQ-15','snap-iv':'SNAP-IV','isi':'ISI','ham-a':'HAM-A','mdq':'MDQ','pc-ptsd-5':'PC-PTSD-5','pcl-5':'PCL-5','meem':'MEEM','egfr-ckdepi':'CKD-EPI 2021','cv-risk-sbc':'Risco Cardiovascular','eem':'EEM',
+  'phq9':'PHQ-9','phq-9':'PHQ-9','gad7':'GAD-7','gad-7':'GAD-7','hcl-32':'HCL-32','cssrs':'C-SSRS','audit':'AUDIT','audit-c':'AUDIT-C','cage':'CAGE','asrs-18':'ASRS-18','ybocs':'Y-BOCS','epds':'EPDS','srq-20':'SRQ-20','phq-15':'PHQ-15','snap-iv':'SNAP-IV','isi':'ISI','ham-a':'HAM-A','mdq':'MDQ','pc-ptsd-5':'PC-PTSD-5','pcl-5':'PCL-5','meem':'MEEM','egfr-ckdepi':'CKD-EPI 2021','cv-risk-sbc':'Risco Cardiovascular','eem':'EEM',
 };
 
 export function toolTitle(toolKey:string){ return TOOL_TITLES[toolKey] ?? toolKey; }
@@ -59,7 +59,9 @@ export function availableLongitudinalTools(results:NexusClinicalResult[]) {
 }
 
 export const RADAR_LABELS: Record<string,string[]> = {
+  'phq9':['Anedonia','Humor deprimido','Sono','Energia','Apetite','Culpa/autoestima','Concentração','Psicomotricidade','Ideação/segurança'],
   'phq-9':['Anedonia','Humor deprimido','Sono','Energia','Apetite','Culpa/autoestima','Concentração','Psicomotricidade','Ideação/segurança'],
+  'gad7':['Nervosismo/tensão','Controle da preocupação','Preocupação excessiva','Dificuldade de relaxar','Inquietação','Irritabilidade','Medo do pior'],
   'gad-7':['Nervosismo/tensão','Controle da preocupação','Preocupação excessiva','Dificuldade de relaxar','Inquietação','Irritabilidade','Medo do pior'],
   'audit':['Frequência','Quantidade','Binge','Perda de controle','Obrigações','Uso matinal','Culpa','Amnésia','Lesões','Preocupação externa'],
   'epds':['Humor leve','Futuro','Culpa','Ansiedade','Pânico','Sobrecarga','Sono','Tristeza','Choro','Autoagressão'],
@@ -67,9 +69,10 @@ export const RADAR_LABELS: Record<string,string[]> = {
 };
 
 export function radarComparison(points:LongitudinalPoint[]) {
-  if(points.length<1) return [];
+  if(points.length<2) return [];
   const first=points[0]; const last=points[points.length-1];
   const size=Math.max(first.answers.length,last.answers.length);
+  if(size===0) return [];
   const labels=RADAR_LABELS[first.toolKey]??Array.from({length:size},(_,i)=>`Item ${i+1}`);
   return Array.from({length:size},(_,i)=>({domain:labels[i]??`Item ${i+1}`,baseline:first.answers[i]??0,current:last.answers[i]??0}));
 }
