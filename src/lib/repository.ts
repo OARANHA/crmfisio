@@ -197,8 +197,6 @@ export interface ClinicData {
   users: User[];
   patients: Patient[];
   appointments: Appointment[];
-  transactions: FinancialTransaction[];
-  commissions: Commission[];
   evolutions: Evolution[];
   consents: ConsentTerm[];
   surveys: NpsSurvey[];
@@ -252,12 +250,10 @@ async function loadPatientClinicalSnapshot(role: AppRole): Promise<PatientClinic
 
 export async function loadClinicData(userId: string): Promise<ClinicData> {
   const { clinicId, role } = await resolveClinicContext(userId);
-  const [profiles, patients, appointments, payments, commissions, evolutions, consents, surveys, patientPackages, packages, waLogs, audit, clinicalSnapshot] = await Promise.all([
+  const [profiles, patients, appointments, evolutions, consents, surveys, patientPackages, packages, waLogs, audit, clinicalSnapshot] = await Promise.all([
     supabase.from('profiles').select('*').eq('clinic_id', clinicId).eq('ativo', true).order('nome'),
     supabase.from('patients').select(PATIENT_OPERATIONAL_SELECT).eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('appointments').select('*').eq('clinic_id', clinicId).order('data', { ascending: false }),
-    supabase.from('payments').select('*').eq('clinic_id', clinicId).order('vencimento', { ascending: false }),
-    supabase.from('commission_settlements').select('*').eq('clinic_id', clinicId).order('period', { ascending: false }),
     supabase.from('physiotherapy_evolutions').select('*').eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('consent_terms').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }),
     supabase.from('nps_surveys').select('*').eq('clinic_id', clinicId).order('data', { ascending: false }),
@@ -268,7 +264,7 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     loadPatientClinicalSnapshot(role),
   ]);
 
-  const requiredFailure = [profiles.error, patients.error, appointments.error, payments.error].find(Boolean);
+  const requiredFailure = [profiles.error, patients.error, appointments.error].find(Boolean);
   if (requiredFailure) throw requiredFailure;
 
   const clinicalByPatient = new Map(clinicalSnapshot.map((row) => [row.patient_id, row]));
@@ -287,8 +283,6 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     users: (profiles.data ?? []).map(mapProfile),
     patients: mappedPatients,
     appointments: (appointments.data ?? []).map(mapAppointment),
-    transactions: (payments.data ?? []).map(mapPayment),
-    commissions: optionalRows('repasses', commissions).map(mapCommission),
     evolutions: optionalRows('evoluções', evolutions).map(mapEvolution),
     consents: optionalRows('consentimentos', consents).map(mapConsent),
     surveys: optionalRows('NPS', surveys).map(mapNps),
