@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { useApp, useUnitFilter } from '../../lib/store';
+import { useApp } from '../../lib/store';
+import { useUnitFilter } from '../../lib/infrastructureContext';
 import { loadAutomationRuns, type AutomationRun } from '../../lib/automation';
 import { Card, CardHead, Chip, IconChevronR } from '../../lib/ui';
 

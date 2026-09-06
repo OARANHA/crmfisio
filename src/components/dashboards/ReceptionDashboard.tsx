@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
-import { useApp, useUnitFilter } from '../../lib/store';
+import { useApp } from '../../lib/store';
+import { useInfrastructure, useUnitFilter } from '../../lib/infrastructureContext';
 import { STATUS_META, fmtBRL } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
@@ -17,7 +18,8 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, appointments, patients, patientPackages, consents, transactions, users, unidadeSel, unidades } = useApp();
+  const { user, appointments, patients, patientPackages, consents, transactions, users } = useApp();
+  const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
   const today = format(new Date(), 'yyyy-MM-dd');
   const unit = unidades.find((item) => item.id === unidadeSel);
