@@ -53,7 +53,7 @@ export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = fals
 
   useEffect(() => {
     if (clinicsLoading) return;
-    const storedClinicId = window.localStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
+    const storedClinicId = window.sessionStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
     const storedClinicStillExists = storedClinicId && clinics.some((item) => item.id === storedClinicId);
     setClinicId((current) => {
       if (current && clinics.some((item) => item.id === current)) return current;
@@ -66,7 +66,7 @@ export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = fals
       setEntitlements([]);
       return;
     }
-    window.localStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, clinicId);
+    window.sessionStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, clinicId);
     let active = true;
     setLoading(true);
     setError(null);
