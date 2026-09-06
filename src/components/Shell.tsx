@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApp, type Toast } from '../lib/store';
 import { useAuth } from '../lib/useAuth';
+import { useInfrastructure } from '../lib/infrastructureContext';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
 import {
@@ -122,7 +123,8 @@ function Toasts() {
 }
 
 export function Shell() {
-  const { user: effectiveUser, canView, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
+  const { user: effectiveUser, canView, transactions, consents } = useApp();
+  const { unidades, unidadeSel, setUnidadeSel } = useInfrastructure();
   const { signOut, loading } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -145,7 +147,6 @@ export function Shell() {
       })
       .catch((cause) => {
         console.error('[Entitlements] navigation visibility:', cause);
-        // Keep navigation backward-compatible on lookup failure; route gates still fail safely.
         if (active) setEntitlementVisibility({});
       });
 
