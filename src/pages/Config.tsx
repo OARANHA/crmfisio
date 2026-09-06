@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, userName } from '../lib/store';
-import { ROLE_META, maskCpf, type Access, type ModuleKey, type Role } from '../lib/types';
+import { useInfrastructure } from '../lib/infrastructureContext';
+import { ROLE_META, maskCpf, type Access, type ModuleKey } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Select } from '../lib/ui';
 import { IconLock, IconShield, IconCheck, IconX, IconEye, IconDb } from '../components/icons';
 import { Reveal } from '../components/Reveal';
@@ -35,7 +36,8 @@ const LGPD_PILLARS = [
 ];
 
 export function Config() {
-  const { patients, users, audit, access, exportarTitular, anonimizarPaciente, toast, unidades } = useApp();
+  const { patients, users, audit, access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { unidades } = useInfrastructure();
   const [tab, setTab] = useState<'rbac' | 'lgpd' | 'audit'>('rbac');
   const [exportando, setExportando] = useState('');
   const [anon, setAnon] = useState<string | null>(null);
@@ -276,7 +278,6 @@ export function Config() {
           </Card>
         </Reveal>
       )}
-
     </div>
   );
 }
