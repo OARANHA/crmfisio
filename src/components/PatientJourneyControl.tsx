@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { usePatients } from '../lib/patientContext';
 import { useApp } from '../lib/store';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
 import { Btn, Field, Modal, Select, Textarea } from '../lib/ui';
@@ -28,7 +29,8 @@ const REOPEN_REASONS = [
 ];
 
 export function PatientJourneyControl({ patient }: { patient: Patient }) {
-  const { user, refreshClinicData, toast } = useApp();
+  const { user, toast } = useApp();
+  const { refreshPatients } = usePatients();
   const [action, setAction] = useState<JourneyAction | null>(null);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -120,7 +122,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
         ? 'Tratamento reaberto; a alta anterior foi preservada no histórico.'
         : `Paciente movido para ${STAGE_META[action.to].label}.`);
 
-    await refreshClinicData();
+    await refreshPatients();
     close();
   };
 
