@@ -17,8 +17,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user, appointments, transactions, patients, consents, users } = useApp();
-  const { surveys } = useClinical();
+  const { user, appointments, transactions, patients, users } = useApp();
+  const { surveys, consents } = useClinical();
   const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
