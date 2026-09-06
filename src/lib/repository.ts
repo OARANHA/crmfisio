@@ -358,7 +358,7 @@ export async function insertEvolution(clinicId: string, evolution: Omit<Evolutio
   return mapEvolution(data);
 }
 
-export async function updateConsent(id: string): Promise<void> {
+export async function updateConsent(id: string): Promise<ConsentTerm> {
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null;
   const { error } = await supabase.rpc('accept_patient_consent', {
     p_consent_id: id,
@@ -366,6 +366,14 @@ export async function updateConsent(id: string): Promise<void> {
     p_user_agent: userAgent,
   });
   if (error) throw error;
+
+  const { data, error: readError } = await supabase
+    .from('consent_terms')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (readError || !data) throw readError ?? new Error('Consentimento aceito sem confirmação persistida');
+  return mapConsent(data);
 }
 
 export async function updateSurvey(id: string, nota: number): Promise<void> {
