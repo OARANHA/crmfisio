@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useClinical } from '../lib/clinicalContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
 import { fmtBRL, dayOf } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Input, IconDownload, IconChart } from '../lib/ui';
@@ -10,7 +11,8 @@ import { Reveal, CountUp } from '../components/Reveal';
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function Relatorios() {
-  const { access, users, appointments, transactions, surveys, toast } = useApp();
+  const { access, users, appointments, transactions, toast } = useApp();
+  const { surveys } = useClinical();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
