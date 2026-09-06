@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../lib/store';
+import { useInfrastructure } from '../lib/infrastructureContext';
 import {
   insertRoom,
   insertUnit,
@@ -16,7 +17,8 @@ import type { Room } from '../lib/types';
 import { Btn, Card, CardHead, Field, Input, Select } from '../lib/ui';
 
 export function InfrastructureAdmin() {
-  const { user, toast, refreshInfrastructure: refreshAppInfrastructure } = useApp();
+  const { user, toast } = useApp();
+  const { refreshInfrastructure: refreshAppInfrastructure } = useInfrastructure();
   const [clinicId, setClinicId] = useState('');
   const [units, setUnits] = useState<UnitAdminRow[]>([]);
   const [rooms, setRooms] = useState<RoomAdminRow[]>([]);
