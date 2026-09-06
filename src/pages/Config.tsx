@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, userName } from '../lib/store';
 import { useAudit } from '../lib/auditContext';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { ROLE_META, maskCpf, type Access, type ModuleKey } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Select } from '../lib/ui';
@@ -37,7 +38,8 @@ const LGPD_PILLARS = [
 ];
 
 export function Config() {
-  const { patients, users, access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { patients, access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { users } = useClinicDirectory();
   const { audit } = useAudit();
   const { unidades } = useInfrastructure();
   const [tab, setTab] = useState<'rbac' | 'lgpd' | 'audit'>('rbac');
