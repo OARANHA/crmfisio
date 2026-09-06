@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
-  isPlatformAdmin,
   loadPlatformAuditLog,
   loadPlatformAutomationRuns,
   loadPlatformAutomationSettings,
@@ -13,6 +12,7 @@ import {
   type PlatformAutomationSetting,
   type PlatformClinicSummary,
 } from '../lib/platformAdmin';
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 import { loadClinicAccessRequests, type ClinicAccessRequest } from '../lib/platformAccessRequests';
 
 type DashboardData = {
@@ -43,7 +43,7 @@ function auditLabel(action: string) {
 }
 
 export function PlatformAdminHomePage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function PlatformAdminHomePage() {
 
   const validate = useCallback(async () => {
     try {
-      const allowed = await isPlatformAdmin();
+      const allowed = await validatePlatformAdminAccess();
       setAuthorized(allowed);
       if (allowed) await refresh();
     } catch (cause) {
@@ -158,7 +158,6 @@ export function PlatformAdminHomePage() {
       eyebrow="MedicsPro Platform Admin"
       title="Visão geral"
       description="Cockpit executivo do SaaS com clientes, onboarding, automações e governança baseados somente em dados reais."
-      hideDesktopHeader
       actions={<button type="button" onClick={() => void refresh()} disabled={loadingData} className="rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[11px] font-semibold text-fog transition hover:border-mint/35 hover:text-paper disabled:opacity-50">{loadingData ? 'Atualizando…' : 'Atualizar dados'}</button>}
     >
       {error && <div className="rounded-[16px] border border-amber/35 bg-amber/[0.05] px-4 py-3 text-[12px] text-amber">{error}</div>}
