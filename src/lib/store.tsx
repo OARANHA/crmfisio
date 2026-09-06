@@ -6,18 +6,16 @@ import type {
 } from './types';
 import { loadInfrastructure } from './infrastructure';
 import {
-  anonymizePatient,
   insertEvolution,
-  insertPatient,
   loadClinicData,
   logPatientDataExport,
   updateConsent,
-  updatePatientStage,
   updateSurvey,
 } from './repository';
 import { accessFor } from './permissions';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
+import { usePatients } from './patientContext';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -75,12 +73,12 @@ const nid = (p: string) => `${p}${++seq}`;
 export function AppProvider({ children }: { children: ReactNode }) {
   const finance = useFinance();
   const agenda = useAgenda();
+  const patientDomain = usePatients();
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [evolutions, setEvolutions] = useState<Evolution[]>([]);
   const [consents, setConsents] = useState<ConsentTerm[]>([]);
   const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
@@ -104,7 +102,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUnidades(infrastructure.unidades);
     setRooms(infrastructure.rooms);
     setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
-    setPatients(data.patients);
     setEvolutions(data.evolutions);
     setConsents(data.consents);
     setSurveys(data.surveys);
@@ -120,9 +117,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadClinicData(user.id),
       finance.refreshFinance(),
       agenda.refreshAgenda(),
+      patientDomain.refreshPatients(),
     ]);
     await applyClinicData(data);
-  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, applyClinicData]);
+  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, applyClinicData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,7 +130,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnidades([]);
       setRooms([]);
       setUnidadeSel('all');
-      setPatients([]);
       setEvolutions([]);
       setConsents([]);
       setSurveys([]);
@@ -185,7 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshClinicData,
       packages,
       patientPackages,
-      patients,
+      patients: patientDomain.patients,
       appointments: agenda.appointments,
       transactions: finance.transactions,
       commissions: finance.commissions,
@@ -216,26 +213,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       addPatient: (patient) => {
-        if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        const payload: Omit<Patient, 'id' | 'createdAt'> = {
-          ...patient,
-          anamnese: patient.anamnese ?? { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
-        };
-        void insertPatient(clinicId, payload)
-          .then((created) => {
-            setPatients((current) => [created, ...current]);
-            pushToast('Paciente salvo no Supabase.');
-          })
+        void patientDomain.addPatient(patient)
+          .then(() => pushToast('Paciente salvo no Supabase.'))
           .catch((error) => persistError('Falha ao cadastrar paciente', error));
       },
 
       setFunilStage: (id, stage) => {
-        const previous = patients.find((p) => p.id === id)?.funilStage;
-        setPatients((current) => current.map((p) => p.id === id ? { ...p, funilStage: stage } : p));
-        void updatePatientStage(id, stage).catch((error) => {
-          if (previous) setPatients((current) => current.map((p) => p.id === id ? { ...p, funilStage: previous } : p));
-          persistError('Falha ao atualizar o funil', error);
-        });
+        void patientDomain.setFunilStage(id, stage)
+          .catch((error) => persistError('Falha ao atualizar o funil', error));
       },
 
       addEvolution: (evolution) => {
@@ -284,7 +269,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       exportarTitular: async (pacienteId) => {
         await logPatientDataExport(pacienteId);
         setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...current]);
-        const patient = patients.find((item) => item.id === pacienteId);
+        const patient = patientDomain.patients.find((item) => item.id === pacienteId);
         return {
           formato: 'LGPD-portabilidade-v1',
           exportadoEm: new Date().toISOString(),
@@ -300,19 +285,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       anonimizarPaciente: async (pacienteId) => {
-        await anonymizePatient(pacienteId);
+        await patientDomain.anonymizePatient(pacienteId);
         setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...current]);
-        setPatients((current) => current.map((item) => item.id === pacienteId ? {
-          ...item,
-          nome: 'Paciente Anonizado', cpf: '', telefone: '', email: '', queixaPrincipal: '', convenio: null,
-          cid10: [], ultimaVisita: null, optInWhats: false, status: 'inativo', anonimizado: true,
-          anamnese: { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
-        } : item));
       },
     };
   }, [
-    user, clinicId, users, unidades, rooms, patients, evolutions, consents, surveys,
+    user, clinicId, users, unidades, rooms, evolutions, consents, surveys,
     packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
+    patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
     finance.transactions, finance.commissions, finance.addTransaction, finance.setTransactionStatus,
     finance.closeCommissions, finance.setCommissionStatus,
