@@ -6,7 +6,7 @@
  * independentes de onAuthStateChange e consultas duplicadas de perfil/tenant.
  */
 
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase, type User, type Session } from './supabaseClient';
 import type { Database } from './database.types';
 import type { ModuleKey, Role } from './types';
@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tenantAccessState, setTenantAccessState] = useState<TenantAccessState>('unknown');
   const [loading, setLoading] = useState(true);
+  const resolutionVersion = useRef(0);
+  const actionVersion = useRef(0);
+  const sessionUserId = useRef<string | null>(null);
 
   const fetchTenantAccessState = useCallback(async (): Promise<TenantAccessState> => {
     try {
@@ -79,39 +82,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resolveSessionUser = useCallback(async (nextSession: Session | null) => {
+    const request = ++resolutionVersion.current;
+    const nextUserId = nextSession?.user.id ?? null;
+    if (sessionUserId.current !== nextUserId) {
+      // Never expose the previous user's profile while the next one resolves.
+      setUser(null);
+      setProfile(null);
+      setTenantAccessState(nextUserId ? 'unknown' : 'unauthenticated');
+    }
+    sessionUserId.current = nextUserId;
     setSession(nextSession);
     if (!nextSession?.user) {
       setTenantAccessState('unauthenticated');
       setUser(null);
       setProfile(null);
-      return;
+      return null;
     }
 
     const accessState = await fetchTenantAccessState();
-    setTenantAccessState(accessState);
-
+    if (request !== resolutionVersion.current) return null;
     if (accessState !== 'active') {
+      setTenantAccessState(accessState);
       setUser(null);
       setProfile(null);
-      return;
+      return { request, accessState, profile: null };
     }
 
     const prof = await fetchProfile(nextSession.user.id);
+    if (request !== resolutionVersion.current) return null;
+    setTenantAccessState(accessState);
     setUser(prof && isRole(prof.role) ? { ...nextSession.user, profile: prof, role: prof.role } : null);
     setProfile(prof);
+    return { request, accessState, profile: prof };
   }, [fetchProfile, fetchTenantAccessState]);
 
   useEffect(() => {
     let mounted = true;
+    const initialVersion = resolutionVersion.current;
 
     const initAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
-        if (!mounted) return;
+        if (!mounted || initialVersion !== resolutionVersion.current) return;
         await resolveSessionUser(initialSession);
       } catch (e) {
         console.error('[useAuth] Erro na inicialização:', e);
-        if (mounted) {
+        if (mounted && initialVersion === resolutionVersion.current) {
           setUser(null);
           setProfile(null);
           setTenantAccessState('unknown');
@@ -125,60 +141,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
+      if (_event === 'SIGNED_OUT') actionVersion.current += 1;
       await resolveSessionUser(newSession);
       if (mounted) setLoading(false);
     });
 
     return () => {
       mounted = false;
+      resolutionVersion.current += 1;
+      actionVersion.current += 1;
       subscription.unsubscribe();
     };
   }, [resolveSessionUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    const action = ++actionVersion.current;
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (action !== actionVersion.current) return { error: null };
       if (error) throw error;
 
       if (data.user) {
-        const accessState = await fetchTenantAccessState();
-        setTenantAccessState(accessState);
-
-        if (accessState === 'suspended') {
-          setUser(null);
-          setProfile(null);
-          return { error: null };
-        }
-
-        if (accessState !== 'active') {
+        const resolved = await resolveSessionUser(data.session);
+        // A newer auth event owns state and any decision to end the session.
+        if (!resolved || resolved.request !== resolutionVersion.current || action !== actionVersion.current) return { error: null };
+        if (resolved.accessState === 'suspended') return { error: null };
+        if (resolved.accessState !== 'active' || !resolved.profile || !isRole(resolved.profile.role)) {
           await supabase.auth.signOut();
           throw new Error('Usuário sem perfil ativo e válido');
         }
-
-        const prof = await fetchProfile(data.user.id);
-        if (!prof || !isRole(prof.role)) {
-          await supabase.auth.signOut();
-          throw new Error('Usuário sem perfil ativo e válido');
-        }
-        setSession(data.session);
-        setUser({ ...data.user, profile: prof, role: prof.role });
-        setProfile(prof);
       }
-
       return { error: null };
     } catch (e) {
       console.error('[signIn] Erro:', e);
       return { error: e instanceof Error ? e : new Error('Erro ao fazer login') };
     }
-  }, [fetchProfile, fetchTenantAccessState]);
+  }, [resolveSessionUser]);
 
   const signOut = useCallback(async () => {
+    actionVersion.current += 1;
+    // Invalidate pending profile/access reads immediately, before network logout.
+    await resolveSessionUser(null);
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setTenantAccessState('unauthenticated');
-  }, []);
+  }, [resolveSessionUser]);
 
   const canAccess = useCallback((module: ModuleKey): boolean => {
     if (!user?.role) return false;
