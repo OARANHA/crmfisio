@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../lib/store';
+import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
 import { useInfrastructure, useUnitFilter } from '../../lib/infrastructureContext';
 import { STATUS_META, fmtBRL } from '../../lib/types';
@@ -19,7 +20,8 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, appointments, patients, consents, transactions, users } = useApp();
+  const { user, appointments, patients, transactions, users } = useApp();
+  const { consents } = useClinical();
   const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
