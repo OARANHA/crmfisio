@@ -6,16 +6,14 @@ import type {
 } from './types';
 import { loadInfrastructure } from './infrastructure';
 import {
-  insertEvolution,
   loadClinicData,
   logPatientDataExport,
-  updateConsent,
-  updateSurvey,
 } from './repository';
 import { accessFor } from './permissions';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
+import { useClinical } from './clinicalContext';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -74,14 +72,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
+  const clinical = useClinical();
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [evolutions, setEvolutions] = useState<Evolution[]>([]);
-  const [consents, setConsents] = useState<ConsentTerm[]>([]);
-  const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
   const [packages, setPackages] = useState<SessionPackage[]>([]);
   const [patientPackages, setPatientPackages] = useState<PatientPackage[]>([]);
   const [waLogs, setWaLogs] = useState<WaLog[]>([]);
@@ -102,9 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUnidades(infrastructure.unidades);
     setRooms(infrastructure.rooms);
     setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
-    setEvolutions(data.evolutions);
-    setConsents(data.consents);
-    setSurveys(data.surveys);
     setPackages(data.packages);
     setPatientPackages(data.patientPackages);
     setWaLogs(data.waLogs);
@@ -118,9 +111,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finance.refreshFinance(),
       agenda.refreshAgenda(),
       patientDomain.refreshPatients(),
+      clinical.refreshClinical(),
     ]);
     await applyClinicData(data);
-  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, applyClinicData]);
+  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, clinical.refreshClinical, applyClinicData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,9 +124,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnidades([]);
       setRooms([]);
       setUnidadeSel('all');
-      setEvolutions([]);
-      setConsents([]);
-      setSurveys([]);
       setPackages([]);
       setPatientPackages([]);
       setWaLogs([]);
@@ -186,9 +177,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       appointments: agenda.appointments,
       transactions: finance.transactions,
       commissions: finance.commissions,
-      evolutions,
-      consents,
-      surveys,
+      evolutions: clinical.evolutions,
+      consents: clinical.consents,
+      surveys: clinical.surveys,
       waLogs,
       audit,
       toasts,
@@ -224,19 +215,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       addEvolution: (evolution) => {
-        if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        void insertEvolution(clinicId, evolution)
-          .then((created) => {
-            setEvolutions((current) => [created, ...current]);
-            pushToast('Evolução clínica salva.');
-          })
+        void clinical.addEvolution(evolution)
+          .then(() => pushToast('Evolução clínica salva.'))
           .catch((error) => persistError('Falha ao salvar evolução clínica', error));
       },
 
       signConsent: async (id) => {
         try {
-          const persisted = await updateConsent(id);
-          setConsents((current) => current.map((consent) => consent.id === id ? persisted : consent));
+          await clinical.signConsent(id);
           pushToast('Consentimento registrado com sucesso.');
         } catch (error) {
           persistError('Falha ao registrar consentimento', error);
@@ -255,12 +241,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       answerNps: (id, nota) => {
-        const previous = surveys.find((survey) => survey.id === id)?.nota ?? null;
-        setSurveys((current) => current.map((survey) => survey.id === id ? { ...survey, nota } : survey));
-        void updateSurvey(id, nota).catch((error) => {
-          setSurveys((current) => current.map((survey) => survey.id === id ? { ...survey, nota: previous } : survey));
-          persistError('Falha ao registrar NPS', error);
-        });
+        void clinical.answerNps(id, nota)
+          .catch((error) => persistError('Falha ao registrar NPS', error));
       },
 
       fecharRepasse: finance.closeCommissions,
@@ -276,9 +258,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           exportadoPor: user?.nome ?? 'sistema',
           titular: patient,
           sessoes: agenda.appointments.filter((appointment) => appointment.pacienteId === pacienteId),
-          evolucoes: evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
-          consentimentos: consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
-          pesquisas: surveys.filter((survey) => survey.pacienteId === pacienteId),
+          evolucoes: clinical.evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
+          consentimentos: clinical.consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
+          pesquisas: clinical.surveys.filter((survey) => survey.pacienteId === pacienteId),
           pacotes: patientPackages.filter((item) => item.pacienteId === pacienteId),
           financeiro: finance.transactions.filter((transaction) => transaction.pacienteId === pacienteId),
         };
@@ -290,9 +272,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, clinicId, users, unidades, rooms, evolutions, consents, surveys,
+    user, clinicId, users, unidades, rooms,
     packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
+    clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
     finance.transactions, finance.commissions, finance.addTransaction, finance.setTransactionStatus,
     finance.closeCommissions, finance.setCommissionStatus,
