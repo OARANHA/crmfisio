@@ -4,7 +4,7 @@ import type {
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   Room, SessionPackage, Unidade, User, WaLog,
 } from './types';
-import { useInfrastructure } from './useInfrastructure';
+import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
 import { accessFor } from './permissions';
 import { useAuth } from './useAuth';
