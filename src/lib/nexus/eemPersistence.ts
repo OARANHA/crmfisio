@@ -9,6 +9,8 @@ import {
 
 export type PersistEemInput = {
   patientId: string;
+  /** Legacy caller field; authorship is resolved server-side from auth.uid(). */
+  professionalId?: string;
   appointmentId?: string | null;
   state: NexusEemState;
 };
