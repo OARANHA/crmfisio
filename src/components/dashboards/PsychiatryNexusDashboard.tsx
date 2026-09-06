@@ -9,12 +9,12 @@ import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 const NEXUS_DOMAINS = [
-  { title: 'Saúde Mental', sub: 'depressão, ansiedade, bipolaridade, risco, TDAH, TOC e sono', status: 'prioritário' },
-  { title: 'Exame do Estado Mental', sub: 'EEM estruturado, narrativa e integração ao SOAP', status: 'Nexus' },
+  { title: 'Saúde Mental', sub: 'PHQ-9 e GAD-7 no fluxo de autoavaliação segura; outros rastreios seguem em expansão', status: 'ativo parcial' },
+  { title: 'Exame do Estado Mental', sub: 'EEM estruturado, narrativa e integração ao SOAP', status: 'ativo' },
   { title: 'Psicofarmacologia', sub: 'trocas, monitoramento e evidências com regra clínica versionada', status: 'restrito' },
-  { title: 'Cognição', sub: 'MEEM, domínios cognitivos e comparação longitudinal', status: 'Nexus' },
-  { title: 'Evolução longitudinal', sub: 'baseline, tendência por escala e comparação entre consultas', status: 'Nexus' },
-  { title: 'Evidências', sub: 'fontes, versões, validações e proveniência clínica', status: 'evidence' },
+  { title: 'Cognição', sub: 'MEEM, domínios cognitivos e comparação longitudinal', status: 'em integração' },
+  { title: 'Evolução longitudinal', sub: 'baseline, tendência por escala e comparação entre consultas', status: 'ativo' },
+  { title: 'Evidências', sub: 'fontes, versões, validações e proveniência clínica', status: 'fundação' },
 ] as const;
 
 export function PsychiatryNexusDashboard() {
