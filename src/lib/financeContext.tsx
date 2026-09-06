@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import {
@@ -29,24 +29,13 @@ interface FinanceState {
   error: string | null;
   refreshFinance: () => Promise<void>;
   addTransaction: (transaction: Omit<FinancialTransaction, 'id'>) => Promise<FinancialTransaction>;
-  setTransactionStatus: (
-    id: string,
-    status: FinancialTransaction['status'],
-    metodo?: FinancialTransaction['metodo'],
-  ) => Promise<FinancialTransaction>;
+  setTransactionStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => Promise<FinancialTransaction>;
   closeCommissions: (period: string) => Promise<number>;
   setCommissionStatus: (id: string, status: Commission['status']) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceState | null>(null);
 
-/**
- * Estado canônico do financeiro operacional da clínica.
- *
- * Este domínio é deliberadamente independente de qualquer PSP/gateway. Baixa manual,
- * PIX, cartão, boleto e futuros adaptadores (PagSeguro/Asaas/etc.) devem convergir para
- * os mesmos lançamentos persistidos em `payments`, sem acoplar o provider à UI.
- */
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const { profile, tenantAccessState } = useAuth();
   const clinicId = profile?.clinic_id ?? null;
@@ -54,11 +43,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
 
   const refreshFinance = useCallback(async () => {
+    const request = ++generation.current;
     if (!clinicId || tenantAccessState !== 'active') {
       setTransactions([]);
       setCommissions([]);
+      setLoading(false);
       setError(null);
       return;
     }
@@ -70,6 +62,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         supabase.from('commission_settlements').select('*').eq('clinic_id', clinicId).order('period', { ascending: false }),
       ]);
 
+      if (request !== generation.current) return;
       if (paymentsResult.error) throw paymentsResult.error;
       setTransactions((paymentsResult.data ?? []).map(mapPayment));
 
@@ -81,17 +74,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       }
       setError(null);
     } catch (cause) {
+      if (request !== generation.current) return;
       console.error('[MedicsPro] financeiro:', cause);
       setError('Não foi possível carregar os dados financeiros.');
       throw cause;
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
   }, [clinicId, tenantAccessState]);
 
-  useEffect(() => {
-    void refreshFinance().catch(() => undefined);
-  }, [refreshFinance]);
+  useEffect(() => { void refreshFinance().catch(() => undefined); }, [refreshFinance]);
 
   const addTransaction = useCallback(async (transaction: Omit<FinancialTransaction, 'id'>) => {
     if (!clinicId) throw new Error('Clínica não identificada');
@@ -100,11 +92,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return created;
   }, [clinicId]);
 
-  const setTransactionStatus = useCallback(async (
-    id: string,
-    status: FinancialTransaction['status'],
-    metodo?: FinancialTransaction['metodo'],
-  ) => {
+  const setTransactionStatus = useCallback(async (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => {
     const updated = await updatePayment(id, status, metodo);
     setTransactions((current) => current.map((item) => item.id === id ? updated : item));
     return updated;
@@ -113,10 +101,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const closeCommissions = useCallback(async (period: string) => {
     const previousIds = new Set(commissions.map((item) => item.id));
     const closed = await closeMonthlyCommissions(period);
-    setCommissions((current) => [
-      ...closed,
-      ...current.filter((item) => !closed.some((next) => next.id === item.id)),
-    ]);
+    setCommissions((current) => [...closed, ...current.filter((item) => !closed.some((next) => next.id === item.id))]);
     return closed.filter((item) => !previousIds.has(item.id)).length;
   }, [commissions]);
 
@@ -126,18 +111,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setCommissions((current) => current.map((item) => item.id === id ? paid : item));
   }, []);
 
-  const value = useMemo<FinanceState>(() => ({
-    transactions,
-    commissions,
-    loading,
-    error,
-    refreshFinance,
-    addTransaction,
-    setTransactionStatus,
-    closeCommissions,
-    setCommissionStatus,
-  }), [transactions, commissions, loading, error, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus]);
-
+  const value = useMemo<FinanceState>(() => ({ transactions, commissions, loading, error, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus }), [transactions, commissions, loading, error, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus]);
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
 

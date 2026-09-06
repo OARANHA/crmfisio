@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import { insertAppointment, mapAppointment, updateAppointmentStatus } from './repository';
@@ -28,10 +28,13 @@ export function AgendaProvider({ children }: { children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
 
   const refreshAgenda = useCallback(async () => {
+    const request = ++generation.current;
     if (!clinicId || tenantAccessState !== 'active') {
       setAppointments([]);
+      setLoading(false);
       setError(null);
       return;
     }
@@ -44,15 +47,17 @@ export function AgendaProvider({ children }: { children: ReactNode }) {
         .eq('clinic_id', clinicId)
         .order('data', { ascending: false });
 
+      if (request !== generation.current) return;
       if (queryError) throw queryError;
       setAppointments((data ?? []).map(mapAppointment));
       setError(null);
     } catch (cause) {
+      if (request !== generation.current) return;
       console.error('[MedicsPro] agenda:', cause);
       setError('Não foi possível carregar a agenda.');
       throw cause;
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
   }, [clinicId, tenantAccessState]);
 
