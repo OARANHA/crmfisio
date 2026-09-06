@@ -11,16 +11,20 @@ import {
 } from '../lib/ui';
 import { IconLock, IconX, IconShield, IconWhats, IconCheck } from './icons';
 import { useColorTheme, type ColorTheme } from '../lib/colorTheme';
+import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
+import { professionalIdentityLabel } from '../lib/professionalIdentity';
+import { hasProfessionalCapability } from '../lib/nexusClinical';
 import {
   isModuleVisibleByEntitlement,
   loadCurrentClinicModuleVisibility,
   type ModuleEntitlementVisibility,
 } from '../lib/clinicEntitlementMenu';
 
-const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: string }) => React.ReactNode }[] = [
+const NAV: { key: ModuleKey; to: string; label: string; Icon: (p: { className?: string }) => React.ReactNode; nexus?: boolean }[] = [
   { key: 'dashboard', to: '/dashboard', label: 'Dashboard', Icon: IconDashboard },
   { key: 'agenda', to: '/agenda', label: 'Agenda', Icon: IconCalendar },
   { key: 'pacientes', to: '/pacientes', label: 'Pacientes', Icon: IconUsers },
+  { key: 'clinico', to: '/nexus', label: 'Nexus', Icon: IconShield, nexus: true },
   { key: 'financeiro', to: '/financeiro', label: 'Financeiro', Icon: IconWallet },
   { key: 'crm', to: '/crm', label: 'CRM', Icon: IconTrend },
   { key: 'mensagens', to: '/mensagens', label: 'Mensagens', Icon: IconWhats },
@@ -124,6 +128,7 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
   const [entitlementVisibility, setEntitlementVisibility] = useState<ModuleEntitlementVisibility>({});
+  const [nexusVisible, setNexusVisible] = useState(false);
   const { theme, toggleTheme } = useColorTheme();
 
   useEffect(() => {
@@ -143,6 +148,7 @@ export function Shell() {
   }, [user?.id, profile?.id, profile?.role, profile?.nome, profile?.cor, setAuthenticatedUser]);
 
   const effectiveUser = appUser;
+  const { identity } = useProfessionalIdentity(effectiveUser?.id);
   useEffect(() => { if (effectiveUser) setMobileOpen(false); }, [effectiveUser]);
 
   useEffect(() => {
@@ -163,6 +169,23 @@ export function Shell() {
     return () => { active = false; };
   }, [effectiveUser?.id]);
 
+  useEffect(() => {
+    let active = true;
+    setNexusVisible(false);
+    if (!effectiveUser || !canView('clinico')) return () => { active = false; };
+
+    void hasProfessionalCapability('nexus.access')
+      .then((allowed) => {
+        if (active) setNexusVisible(allowed);
+      })
+      .catch((cause) => {
+        console.error('[Nexus] navigation authorization:', cause);
+        if (active) setNexusVisible(false);
+      });
+
+    return () => { active = false; };
+  }, [effectiveUser?.id, effectiveUser?.role]);
+
   const handleLogout = async () => {
     if (signOut) await signOut(); else appLogout();
     nav('/');
@@ -172,10 +195,14 @@ export function Shell() {
 
   const items = NAV.filter((n) =>
     (canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'))
+    && (!n.nexus || nexusVisible)
     && isModuleVisibleByEntitlement(n.key, entitlementVisibility),
   );
   const pendencias = transactions.filter((t) => t.status === 'atrasado').length + consents.filter((c) => !c.assinado).length;
   const rm = ROLE_META[effectiveUser.role];
+  const professionalLabel = effectiveUser.role === 'fisio' && identity
+    ? professionalIdentityLabel(identity)
+    : (rm?.label || 'Carregando...');
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -224,7 +251,7 @@ export function Shell() {
             </span>
             {!collapsed && <span className="min-w-0 flex-1">
               <span className="block font-display font-semibold text-[13.5px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span>
-              <span className={`block text-[12px] mt-0.5 ${rm?.text || 'text-fog'}`}>{rm?.label || 'Carregando...'}</span>
+              <span className={`block text-[12px] mt-0.5 ${rm?.text || 'text-fog'}`}>{professionalLabel}</span>
             </span>}
             {!collapsed && <button onClick={handleLogout} className="grid h-9 w-9 place-items-center rounded-lg text-fog hover:text-pulse hover:bg-raise/55 transition-colors" title="Sair"><IconLogout className="w-4.5 h-4.5" /></button>}
           </div>
