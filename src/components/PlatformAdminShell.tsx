@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { platformSupabase } from '../lib/platformSupabaseClient';
+import { validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 
 type Props = {
   eyebrow: string;
@@ -34,6 +35,10 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
   const location = useLocation();
   const [theme, setTheme] = useState<ThemeMode>(() => (localStorage.getItem('medicspro-platform-theme') as ThemeMode | null) ?? 'system');
   const isActive = (to: string) => to === '/platform' ? location.pathname === to : location.pathname.startsWith(to);
+
+  useEffect(() => {
+    void validatePlatformAdminAccess().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);
