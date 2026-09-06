@@ -39,12 +39,12 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
           </Link>
 
           <p className="mb-2 mt-8 px-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-fog">Áreas de negócio</p>
-          <nav className="space-y-1.5 text-[12px] font-semibold">
+          <nav className="space-y-1.5 text-[12px] font-semibold" aria-label="Áreas de negócio">
             {BUSINESS_NAV.map((item) => <PlatformNav key={item.to} {...item} active={isActive(item.to)} />)}
           </nav>
 
           <p className="mb-2 mt-7 px-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-fog">Operação</p>
-          <nav className="space-y-1 text-[11.5px] font-medium">
+          <nav className="space-y-1 text-[11.5px] font-medium" aria-label="Operação da plataforma">
             {OPERATION_NAV.map((item) => <PlatformNav key={item.to} {...item} active={isActive(item.to)} />)}
           </nav>
 
@@ -68,8 +68,12 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
             </div>
           </header>
 
-          <div className="flex gap-2 overflow-x-auto border-b border-line/45 bg-panel/30 px-4 py-3 lg:hidden">
-            {BUSINESS_NAV.map((item) => <MobileNav key={item.to} {...item} active={isActive(item.to)} />)}
+          <div className="border-b border-line/45 bg-panel/30 px-4 py-3 lg:hidden">
+            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Navegação do Platform Admin">
+              {BUSINESS_NAV.map((item) => <MobileNav key={item.to} {...item} active={isActive(item.to)} />)}
+              <span className="mx-1 w-px shrink-0 bg-line" aria-hidden="true" />
+              {OPERATION_NAV.map((item) => <MobileNav key={item.to} {...item} active={isActive(item.to)} />)}
+            </div>
           </div>
 
           <main className="space-y-5 p-4 md:p-6 xl:p-7">{children}</main>
@@ -81,7 +85,7 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
 
 function PlatformNav({ to, label, icon, active }: { to: string; label: string; icon: string; active: boolean }) {
   return (
-    <Link to={to} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition ${active ? 'border border-mint/25 bg-mint/[0.08] text-paper' : 'text-fog hover:bg-deep hover:text-paper'}`}>
+    <Link to={to} aria-current={active ? 'page' : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition ${active ? 'border border-mint/25 bg-mint/[0.08] text-paper' : 'text-fog hover:bg-deep hover:text-paper'}`}>
       <span className={active ? 'text-mint' : undefined}>{icon}</span>
       <span>{label}</span>
     </Link>
@@ -89,5 +93,5 @@ function PlatformNav({ to, label, icon, active }: { to: string; label: string; i
 }
 
 function MobileNav({ to, label, active }: { to: string; label: string; icon: string; active: boolean }) {
-  return <Link to={to} className={`shrink-0 rounded-full border px-3 py-2 text-[10.5px] font-semibold ${active ? 'border-mint/30 bg-mint/[0.09] text-mint' : 'border-line bg-panel text-fog'}`}>{label}</Link>;
+  return <Link to={to} aria-current={active ? 'page' : undefined} className={`shrink-0 rounded-full border px-3 py-2 text-[10.5px] font-semibold ${active ? 'border-mint/30 bg-mint/[0.09] text-mint' : 'border-line bg-panel text-fog'}`}>{label}</Link>;
 }
