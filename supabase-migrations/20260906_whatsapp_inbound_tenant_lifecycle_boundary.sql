@@ -87,8 +87,8 @@ BEGIN
     RETURN jsonb_build_object('matched', false, 'action', 'ambiguous_recipient');
   END IF;
 
-  SELECT l.*, l.patient_id
-    INTO v_log, v_patient
+  SELECT l.*
+    INTO v_log
   FROM public.wa_logs l
   JOIN public.patients p
     ON p.id = l.patient_id
@@ -129,6 +129,7 @@ BEGIN
     RETURN jsonb_build_object('matched', false, 'action', 'outbound_not_found');
   END IF;
 
+  v_patient := v_log.patient_id;
   v_confirm := v_text ~ '^(sim|s|ok|confirmo|confirmado|pode|pode sim|pode confirmar|quero)$';
 
   IF v_log.template = 'confirmacao' THEN
