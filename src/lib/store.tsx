@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   SessionPackage, User, WaLog,
 } from './types';
+import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
 import { accessFor } from './permissions';
 import { useAuth } from './useAuth';
@@ -21,6 +22,7 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
+  refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
   patients: Patient[];
@@ -70,6 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
+  const { refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -91,6 +94,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4400);
   }, []);
 
+  useEffect(() => {
+    if (infrastructureError) pushToast(infrastructureError, 'warn');
+  }, [infrastructureError, pushToast]);
+
+  const refreshClinicData = useCallback(async () => {
+    if (!user?.id) return;
+    await Promise.all([
+      finance.refreshFinance(),
+      agenda.refreshAgenda(),
+      patientDomain.refreshPatients(),
+      clinical.refreshClinical(),
+      directory.refreshDirectory(),
+      packageDomain.refreshPackages(),
+      communication.refreshCommunication(),
+      auditDomain.refreshAudit(),
+      refreshInfrastructure(),
+    ]);
+  }, [
+    user?.id,
+    finance.refreshFinance,
+    agenda.refreshAgenda,
+    patientDomain.refreshPatients,
+    clinical.refreshClinical,
+    directory.refreshDirectory,
+    packageDomain.refreshPackages,
+    communication.refreshCommunication,
+    auditDomain.refreshAudit,
+    refreshInfrastructure,
+  ]);
+
   const value = useMemo<AppState>(() => {
     const access = (module: ModuleKey): Access => accessFor(user?.role, module);
     const canView = (module: ModuleKey) => access(module) !== 'none';
@@ -102,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
+      refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
       patients: patientDomain.patients,
@@ -160,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     user, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
-    auditDomain.refreshAudit, toasts, pushToast,
+    auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
