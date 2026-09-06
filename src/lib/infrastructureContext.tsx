@@ -83,3 +83,12 @@ export function useInfrastructure() {
   if (!context) throw new Error('useInfrastructure deve ser usado dentro de InfrastructureProvider');
   return context;
 }
+
+export function useUnitFilter() {
+  const { rooms, unidadeSel } = useInfrastructure();
+  return useCallback((appointment: { roomId: string }) => {
+    if (unidadeSel === 'all') return true;
+    const room = rooms.find((item) => item.id === appointment.roomId);
+    return room ? room.unidadeId === unidadeSel : true;
+  }, [rooms, unidadeSel]);
+}
