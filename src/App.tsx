@@ -5,6 +5,7 @@ import { Shell } from './components/Shell';
 import { ClinicEntitlementGate } from './components/ClinicEntitlementGate';
 import { ModuleAccessGate } from './components/ModuleAccessGate';
 import { MandatoryPasswordChange } from './components/MandatoryPasswordChange';
+import { PulseMark } from './components/Ecg';
 import { DashboardRoleAware } from './pages/DashboardRoleAware';
 import { AgendaOperational } from './pages/AgendaOperational';
 import { RecepcaoHoje } from './pages/RecepcaoHoje';
@@ -33,11 +34,48 @@ function Home() {
   return <Navigate to={first} replace />;
 }
 
+function SuspendedClinicScreen({ onSignOut }: { onSignOut: () => Promise<void> }) {
+  return (
+    <div className="app-surface min-h-screen flex items-center justify-center p-5">
+      <div className="w-full max-w-lg overflow-hidden rounded-[24px] border border-amber/35 bg-panel shadow-[0_24px_80px_rgba(15,28,24,0.12)]">
+        <div className="px-8 pt-8">
+          <div className="flex items-center gap-2.5">
+            <PulseMark className="w-8 h-7" />
+            <span className="font-display font-bold text-xl tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>
+          </div>
+          <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber">Acesso temporariamente suspenso</p>
+          <h1 className="font-display text-[28px] font-bold mt-2 leading-tight tracking-tight">Esta clínica está suspensa</h1>
+          <p className="text-fog text-[14px] mt-3 leading-relaxed">
+            Sua autenticação é válida, mas o acesso operacional desta clínica foi suspenso pela administração da plataforma. Nenhum dado da clínica fica disponível enquanto a suspensão estiver ativa.
+          </p>
+        </div>
+        <div className="px-8 py-6 space-y-3">
+          <div className="rounded-xl border border-line/75 bg-deep/55 px-4 py-3 text-[12.5px] leading-relaxed text-fog">
+            Se você acredita que isso ocorreu por engano, entre em contato com o responsável pela contratação do MedicsPro ou com o suporte da plataforma.
+          </div>
+          <button
+            type="button"
+            onClick={() => void onSignOut()}
+            className="w-full min-h-12 rounded-xl border border-line bg-deep px-4 py-3 font-display text-[13px] font-semibold text-paper hover:bg-raise/60"
+          >
+            Encerrar sessão
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClinicSessionGate({ children }: { children: React.ReactNode }) {
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, session, profile, tenantAccessState, signOut, loading } = useAuth();
   const mustChangePassword = Boolean((profile as (typeof profile & { must_change_password?: boolean }))?.must_change_password);
 
   if (loading) return <div className="app-surface min-h-screen" />;
+
+  if (session && tenantAccessState === 'suspended') {
+    return <SuspendedClinicScreen onSignOut={signOut} />;
+  }
+
   if (!user || !profile) return <>{children}</>;
 
   if (mustChangePassword) {
