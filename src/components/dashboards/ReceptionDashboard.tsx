@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../lib/store';
+import { usePackages } from '../../lib/packageContext';
 import { useInfrastructure, useUnitFilter } from '../../lib/infrastructureContext';
 import { STATUS_META, fmtBRL } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
@@ -18,7 +19,8 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, appointments, patients, patientPackages, consents, transactions, users } = useApp();
+  const { user, appointments, patients, consents, transactions, users } = useApp();
+  const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -69,9 +71,7 @@ export function ReceptionDashboard() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">Bom trabalho, {user?.nome.split(' ')[0]}</h1>
-            <p className="text-fog text-[13px] mt-0.5">
-              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · central operacional da recepção
-            </p>
+            <p className="text-fog text-[13px] mt-0.5">{format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · central operacional da recepção</p>
           </div>
           <div className="ml-auto flex flex-col items-end gap-2">
             <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>{unit ? unit.nome : 'Todas as unidades'}</Chip>
@@ -95,9 +95,7 @@ export function ReceptionDashboard() {
           <Card>
             <CardHead title="Agenda operacional de hoje" sub="quem chega, horário, profissional e status" />
             <div className="divide-y divide-line/70">
-              {todayAppointments.length === 0 && (
-                <p className="font-mono text-[11px] text-fog text-center py-10">Nenhum atendimento agendado para hoje.</p>
-              )}
+              {todayAppointments.length === 0 && <p className="font-mono text-[11px] text-fog text-center py-10">Nenhum atendimento agendado para hoje.</p>}
               {todayAppointments.map((appointment) => {
                 const patient = patients.find((item) => item.id === appointment.pacienteId);
                 const professional = users.find((item) => item.id === appointment.fisioId);
@@ -105,10 +103,7 @@ export function ReceptionDashboard() {
                 return (
                   <Link key={appointment.id} to="/agenda" className="grid grid-cols-[64px_1fr_auto] gap-3 items-center px-5 py-3 hover:bg-raise/50 transition-colors">
                     <span className="font-mono text-[12px] text-mint">{appointment.inicio}</span>
-                    <span className="min-w-0">
-                      <span className="block font-display font-semibold text-[13px] truncate">{patient?.nome ?? 'Paciente'}</span>
-                      <span className="block font-mono text-[10px] text-fog truncate">{professional?.nome ?? 'Profissional'} · {appointment.tipo}</span>
-                    </span>
+                    <span className="min-w-0"><span className="block font-display font-semibold text-[13px] truncate">{patient?.nome ?? 'Paciente'}</span><span className="block font-mono text-[10px] text-fog truncate">{professional?.nome ?? 'Profissional'} · {appointment.tipo}</span></span>
                     <Chip className={status.chip}>{status.label}</Chip>
                   </Link>
                 );
@@ -122,13 +117,7 @@ export function ReceptionDashboard() {
             <CardHead title="Exigem ação" sub="pendências operacionais" right={<IconAlert className="w-4.5 h-4.5 text-amber" />} />
             <div className="divide-y divide-line/70">
               {actions.length === 0 && <p className="font-mono text-[11px] text-fog text-center py-10">Operação em dia. ✓</p>}
-              {actions.map((item, index) => (
-                <Link key={`${item.to}-${index}`} to={item.to} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group">
-                  <span>{item.icon}</span>
-                  <span className={`text-[12.5px] flex-1 leading-snug ${item.tone}`}>{item.label}</span>
-                  <IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint" />
-                </Link>
-              ))}
+              {actions.map((item, index) => <Link key={`${item.to}-${index}`} to={item.to} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group"><span>{item.icon}</span><span className={`text-[12.5px] flex-1 leading-snug ${item.tone}`}>{item.label}</span><IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint" /></Link>)}
             </div>
           </Card>
         </Reveal>
