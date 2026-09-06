@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import { PlatformClinicLifecyclePanel } from '../components/PlatformClinicLifecyclePanel';
-import { isPlatformAdmin, loadPlatformClinics, type PlatformClinicSummary } from '../lib/platformAdmin';
+import { loadPlatformClinics, type PlatformClinicSummary } from '../lib/platformAdmin';
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 
 export function PlatformClinicModulesPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
   const [clinics, setClinics] = useState<PlatformClinicSummary[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function PlatformClinicModulesPage() {
     let active = true;
     const validate = async () => {
       try {
-        const allowed = await isPlatformAdmin();
+        const allowed = await validatePlatformAdminAccess();
         if (!active) return;
         setAuthorized(allowed);
         if (allowed) void loadOverview();
