@@ -37,7 +37,7 @@ export function NexusPatientLauncher() {
           <button
             key={patient.id}
             type="button"
-            onClick={() => navigate(`/pacientes/${patient.id}`)}
+            onClick={() => navigate(`/pacientes/${patient.id}/nexus`)}
             className="rounded-xl border border-line/70 bg-deep/55 p-3 text-left transition-colors hover:border-aqua/35 hover:bg-raise/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/30"
           >
             <div className="flex items-start gap-2">
