@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp } from '../lib/store';
@@ -94,7 +93,7 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
 
         {flags.length > 0 && <div className="rounded-xl border border-pulse/40 bg-pulse/[0.05] p-4">
           <p className="font-display text-[13px] font-semibold text-pulse">Achados que exigem atenção</p>
-          <div className="mt-3 space-y-2">{flags.map((flag) => <div key={flag.flagCode} className="rounded-lg border border-pulse/25 bg-deep p-3"><p className="text-[11.5px] font-semibold text-paper">{flag.title}</p><p className="mt-1 text-[10.5px] text-fog">{flag.message}</p>{flag.requiredAction && <p className="mt-2 text-[10.5px] font-medium text-pulse">{flag.requiredAction}</p>}{flag.flagCode === 'eem.thought.suicidal-ideation' && <Link to={`/pacientes/${patient.id}/nexus/cssrs`} className="mt-2 inline-flex text-[10.5px] font-semibold text-pulse hover:text-paper">Abrir C-SSRS →</Link>}</div>)}</div>
+          <div className="mt-3 space-y-2">{flags.map((flag) => <div key={flag.flagCode} className="rounded-lg border border-pulse/25 bg-deep p-3"><p className="text-[11.5px] font-semibold text-paper">{flag.title}</p><p className="mt-1 text-[10.5px] text-fog">{flag.message}</p>{flag.requiredAction && <p className="mt-2 text-[10.5px] font-medium text-pulse">{flag.requiredAction}</p>}{flag.flagCode === 'eem.thought.suicidal-ideation' && <div className="mt-2 rounded-lg border border-pulse/25 bg-pulse/[0.04] px-3 py-2 text-[10.5px] leading-relaxed text-fog"><span className="font-semibold text-pulse">Protocolo dedicado de risco ainda não habilitado no Nexus.</span> Use o protocolo assistencial vigente da clínica e o julgamento clínico do profissional responsável.</div>}</div>)}</div>
         </div>}
 
         {canApply ? <div className="space-y-3">

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
+import { hasProfessionalCapability } from '../lib/nexusClinical';
 import {
   NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS,
   nexusSelfAssessmentScaleLabel,
@@ -27,11 +28,30 @@ export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient 
   const [busy, setBusy] = useState(false);
   const [lastInvite, setLastInvite] = useState<InviteResponse | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
+  const [canInvite, setCanInvite] = useState<boolean | null>(null);
 
-  const canInvite = user?.role === 'fisio';
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setCanInvite(false);
+      return () => { active = false; };
+    }
+
+    setCanInvite(null);
+    void hasProfessionalCapability('nexus.scales')
+      .then((allowed) => {
+        if (active) setCanInvite(allowed);
+      })
+      .catch((error) => {
+        console.error('[Nexus] self-assessment capability:', error);
+        if (active) setCanInvite(false);
+      });
+
+    return () => { active = false; };
+  }, [user?.id]);
 
   const sendInvite = async () => {
-    if (!canInvite || busy) return;
+    if (canInvite !== true || busy) return;
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke<InviteResponse>('nexus-self-assessment-invite', {
@@ -50,7 +70,7 @@ export function NexusSelfAssessmentInviteAction({ patient }: { patient: Patient 
     }
   };
 
-  if (!canInvite) return null;
+  if (canInvite !== true) return null;
   const selected = NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS.find((item) => item.value === scaleKey) ?? NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS[0];
 
   return <div className="space-y-3">

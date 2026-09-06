@@ -9,14 +9,14 @@ import { NexusPatientLauncher } from '../components/NexusPatientLauncher';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
 
 const DOMAINS = [
-  { key: 'mental-health', title: 'Saúde Mental', sub: 'Depressão, ansiedade, bipolaridade, risco, álcool e substâncias, TDAH, TOC, sono e funcionalidade.', state: 'ativo parcial' },
-  { key: 'eem', title: 'Exame do Estado Mental', sub: 'EEM estruturado, resumo narrativo e destino contextual para o prontuário/SOAP.', state: 'em integração' },
-  { key: 'psychopharm', title: 'Psicofarmacologia', sub: 'Troca de antidepressivos, monitoramentos e evidências com regra clínica versionada.', state: 'restrito' },
+  { key: 'mental-health', title: 'Saúde Mental', sub: 'PHQ-9 e GAD-7 com autoavaliação segura, processamento e acompanhamento longitudinal. Outros instrumentos seguem em expansão.', state: 'operacional parcial' },
+  { key: 'eem', title: 'Exame do Estado Mental', sub: 'EEM estruturado, narrativa determinística, red flags e histórico vinculado ao prontuário.', state: 'operacional' },
+  { key: 'psychopharm', title: 'Psicofarmacologia', sub: 'Trocas, monitoramentos e evidências com regra clínica versionada.', state: 'em integração' },
   { key: 'cognition', title: 'Cognição', sub: 'MEEM, domínios cognitivos e comparação longitudinal.', state: 'em integração' },
-  { key: 'calculators', title: 'Calculadoras Clínicas', sub: 'Função renal, risco cardiovascular e outros cálculos Nexus validados.', state: 'em integração' },
-  { key: 'longitudinal', title: 'Evolução Clínica', sub: 'Baseline, tendências por escala, comparação entre consultas e alertas persistentes.', state: 'em integração' },
+  { key: 'calculators', title: 'Calculadoras Clínicas', sub: 'Função renal, risco cardiovascular e outros cálculos clínicos versionados.', state: 'em integração' },
+  { key: 'longitudinal', title: 'Evolução Clínica', sub: 'Histórico de resultados Nexus, tendências e comparação temporal por paciente.', state: 'operacional' },
   { key: 'education', title: 'Educação em Saúde', sub: 'Conteúdo contextual para paciente e profissional, preservando proveniência clínica.', state: 'em integração' },
-  { key: 'evidence', title: 'Evidências', sub: 'Fontes, versões, validações, pontos de corte e histórico de revisão.', state: 'fundação ativa' },
+  { key: 'evidence', title: 'Evidências', sub: 'Estrutura de fontes, versões e proveniência clínica usada pelos recursos Nexus.', state: 'fundação ativa' },
 ] as const;
 
 export function NexusGlobalPage() {
@@ -99,7 +99,7 @@ export function NexusGlobalPage() {
                   <p className="font-display text-[14.5px] font-semibold">{domain.title}</p>
                   <p className="mt-1.5 text-[11.5px] leading-relaxed text-fog">{domain.sub}</p>
                 </div>
-                <Chip className="shrink-0 border-aqua/25 text-aqua">{domain.state}</Chip>
+                <Chip className={`shrink-0 ${domain.state === 'operacional' ? 'border-mint/30 text-mint' : domain.state === 'operacional parcial' || domain.state === 'fundação ativa' ? 'border-aqua/25 text-aqua' : 'border-line text-fog'}`}>{domain.state}</Chip>
               </div>
             </Card>
           ))}
@@ -110,8 +110,8 @@ export function NexusGlobalPage() {
         <section className="rounded-2xl border border-line/70 bg-deep/55 p-4">
           <p className="font-display text-[13.5px] font-semibold">Como usar o Nexus no MedicsPro</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">1 · Global</p><p className="mt-1.5 text-[11.5px] text-fog">Consulte instrumentos, evidências e ferramentas sem precisar abrir um paciente.</p></div>
-            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">2 · Contextual</p><p className="mt-1.5 text-[11.5px] text-fog">Selecione o paciente acima e continue no mesmo prontuário para executar recursos com contexto clínico.</p></div>
+            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">1 · Global</p><p className="mt-1.5 text-[11.5px] text-fog">Veja o catálogo do Nexus e identifique com clareza o que já está operacional e o que ainda está em integração.</p></div>
+            <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">2 · Contextual</p><p className="mt-1.5 text-[11.5px] text-fog">Selecione o paciente acima e continue no mesmo prontuário para executar os recursos disponíveis com contexto clínico.</p></div>
             <div className="rounded-xl border border-line/60 bg-panel/60 p-3"><p className="font-mono text-[10px] uppercase tracking-[0.1em] text-aqua">3 · Revisão humana</p><p className="mt-1.5 text-[11.5px] text-fog">Resultados, alertas e sugestões não substituem autoria, julgamento ou decisão clínica do profissional.</p></div>
           </div>
         </section>
