@@ -249,6 +249,17 @@ export async function finalizeNexusResult(resultId: string): Promise<NexusClinic
   return mapResult(data);
 }
 
+export async function getNexusResultById(resultId: string): Promise<NexusClinicalResult> {
+  const { data, error } = await db
+    .from('nexus_clinical_results')
+    .select('*')
+    .eq('id', resultId)
+    .single();
+
+  if (error || !data) throw error ?? new Error('Não foi possível carregar o resultado Nexus.');
+  return mapResult(data);
+}
+
 export async function acknowledgeNexusRedFlag(
   redFlagId: string,
   professionalId: string,
