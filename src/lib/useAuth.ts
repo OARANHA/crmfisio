@@ -6,7 +6,7 @@
  * independentes de onAuthStateChange e consultas duplicadas de perfil/tenant.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase, type User, type Session } from './supabaseClient';
 import type { Database } from './database.types';
 import type { ModuleKey, Role } from './types';
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canAccess,
   }), [user, session, profile, tenantAccessState, loading, signIn, signOut, canAccess]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return createElement(AuthContext.Provider, { value }, children);
 }
 
 export function useAuth(): UseAuthReturn {
