@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { addDays, addMonths, format, getDay, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { loadInfrastructure } from '../lib/infrastructure';
-import { resolveClinicId } from '../lib/repository';
 import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appointmentOperations';
 import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
+import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp, patientName } from '../lib/store';
-import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Room, type Unidade } from '../lib/types';
+import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { AppointmentCreateModal, type CreateAt } from '../components/AppointmentCreateModal';
@@ -38,11 +37,10 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 
 export function AgendaReal() {
   const { user, users, patients, appointments, addAppointment, setAppointmentStatus, refreshClinicData, toast } = useApp();
+  const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
   const nav = useNavigate();
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<View>('semana');
-  const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [unitFilter, setUnitFilter] = useState('all');
   const [fisioFilter, setFisioFilter] = useState(user?.role === 'fisio' ? user.id : 'all');
   const [roomFilter, setRoomFilter] = useState('all');
@@ -58,27 +56,12 @@ export function AgendaReal() {
   const [dragging, setDragging] = useState<Appointment | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
   const [operationBusy, setOperationBusy] = useState(false);
-  const [loadingInfra, setLoadingInfra] = useState(true);
   const [whatsappByAppointment, setWhatsappByAppointment] = useState<Map<string, AppointmentWhatsappState>>(new Map());
   const [prefillPatientId] = useState(() => {
     const query = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
     return new URLSearchParams(query).get('patient') ?? '';
   });
   const [prefillConsumed, setPrefillConsumed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    if (!user?.id) return;
-    resolveClinicId(user.id).then(loadInfrastructure).then((data) => {
-      if (!active) return;
-      setUnidades(data.unidades);
-      setRooms(data.rooms);
-    }).catch((error) => {
-      console.error('[MedicsPro] agenda/infraestrutura:', error);
-      toast('Não foi possível carregar unidades e salas.', 'warn');
-    }).finally(() => active && setLoadingInfra(false));
-    return () => { active = false; };
-  }, [user?.id]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
