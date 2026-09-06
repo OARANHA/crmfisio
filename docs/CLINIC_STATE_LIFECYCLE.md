@@ -13,14 +13,21 @@ or clinics is unsafe. The URL remains in the browser hash.
 Keep all clinic providers and their consumers inside this boundary. Do not move
 clinical or financial state above it. This does not cancel server operations already
 submitted and does not replace database authorization. It isolates client state
-according to the session/profile published by AuthProvider; it does not resolve
-competing asynchronous authentication results inside AuthProvider.
+according to the session/profile published by AuthProvider.
 
 The lifecycle tests mount the real Patient, Agenda, Finance and Clinical providers
 with deferred repository/network responses. They cover scope changes, late loads,
 late inserts, failed optimistic mutations, same-clinic re-login, and token renewal.
 They do not substitute for server-side tenant isolation tests.
 
-Remaining P1 follow-up: guard asynchronous AuthProvider session resolution itself
-against obsolete results. Also handle overlapping refreshes within one unchanged
-session separately; session isolation alone does not order those responses.
+AuthProvider versions access/profile resolution so obsolete results cannot publish
+state after a newer auth event, logout or unmount. Initial getSession snapshots
+cannot replace a newer auth event. Password login uses the same resolver and an
+action version so an obsolete response cannot decide to sign out a newer session.
+Changing user clears the old profile before loading the next one; token renewal
+for the same user retains the current profile while revalidating access.
+
+Remaining follow-up: overlapping domain refreshes within one unchanged session
+need ordering separately; session isolation alone does not order those responses.
+Server-side operations already submitted remain subject to Supabase authorization
+and completion; these client guards do not cancel them.
