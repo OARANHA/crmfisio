@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appointmentOperations';
 import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { useAgenda } from '../lib/agendaContext';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp, patientName } from '../lib/store';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
@@ -37,7 +38,8 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 };
 
 export function AgendaReal() {
-  const { user, users, patients, appointments, addAppointment, setAppointmentStatus, toast } = useApp();
+  const { user, patients, appointments, addAppointment, setAppointmentStatus, toast } = useApp();
+  const { users } = useClinicDirectory();
   const { refreshAgenda } = useAgenda();
   const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
   const nav = useNavigate();
