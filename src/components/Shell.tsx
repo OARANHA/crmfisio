@@ -3,6 +3,9 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApp, type Toast } from '../lib/store';
 import { useAuth } from '../lib/useAuth';
 import { useInfrastructure } from '../lib/infrastructureContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
+import { useFinance } from '../lib/financeContext';
+import { useClinical } from '../lib/clinicalContext';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
 import {
@@ -123,7 +126,9 @@ function Toasts() {
 }
 
 export function Shell() {
-  const { user: effectiveUser, canView, transactions, consents } = useApp();
+  const { user: effectiveUser, canView } = useCurrentUserAccess();
+  const { transactions } = useFinance();
+  const { consents } = useClinical();
   const { unidades, unidadeSel, setUnidadeSel } = useInfrastructure();
   const { signOut, loading } = useAuth();
   const nav = useNavigate();
@@ -168,7 +173,7 @@ export function Shell() {
       });
 
     return () => { active = false; };
-  }, [effectiveUser?.id, effectiveUser?.role]);
+  }, [effectiveUser?.id, effectiveUser?.role, canView]);
 
   const handleLogout = async () => {
     await signOut();
