@@ -119,8 +119,8 @@ export function PlatformClinicModulesPage() {
         <FlowCard step="03" title="Entitlements" text="Definir exatamente quais módulos a clínica contratou e pode utilizar." />
       </section>
 
-      <PlatformClinicLifecyclePanel />
-      <PlatformClinicEntitlementsPanel />
+      <PlatformClinicLifecyclePanel clinics={clinics} loading={loadingClinics} onClinicsChanged={setClinics} />
+      <PlatformClinicEntitlementsPanel clinics={clinics} clinicsLoading={loadingClinics} />
     </PlatformAdminShell>
   );
 }

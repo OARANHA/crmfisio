@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   loadPlatformAuditLog,
   loadPlatformClinicEntitlements,
-  loadPlatformClinics,
   resetPlatformClinicEntitlement,
   setPlatformClinicEntitlement,
   type PlatformAuditEntry,
@@ -24,6 +23,12 @@ const ENTITLEMENT_META: Record<PlatformClinicEntitlementKey, { title: string; de
 
 type EntitlementMode = 'inherited' | 'enabled' | 'disabled';
 
+type Props = {
+  clinics: PlatformClinicSummary[];
+  clinicsLoading?: boolean;
+  onAuditChanged?: (items: PlatformAuditEntry[]) => void;
+};
+
 function modeOf(item: PlatformClinicEntitlement): EntitlementMode {
   if (!item.configured) return 'inherited';
   return item.enabled ? 'enabled' : 'disabled';
@@ -34,11 +39,10 @@ function modeLabel(item: PlatformClinicEntitlement): string {
   return item.enabled ? 'Liberado' : 'Bloqueado';
 }
 
-export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditChanged?: (items: PlatformAuditEntry[]) => void }) {
-  const [clinics, setClinics] = useState<PlatformClinicSummary[]>([]);
+export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = false, onAuditChanged }: Props) {
   const [clinicId, setClinicId] = useState('');
   const [entitlements, setEntitlements] = useState<PlatformClinicEntitlement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<PlatformClinicEntitlementKey | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,19 +52,14 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
   const inheritedCount = entitlements.length - enabledCount - blockedCount;
 
   useEffect(() => {
-    let active = true;
-    void loadPlatformClinics().then((items) => {
-      if (!active) return;
-      setClinics(items);
-      const storedClinicId = window.localStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
-      const storedClinicStillExists = storedClinicId && items.some((item) => item.id === storedClinicId);
-      setClinicId(storedClinicStillExists ? storedClinicId : (items[0]?.id || ''));
-    }).catch((cause) => {
-      console.error('[Platform Admin] clinics:', cause);
-      if (active) setError('Não foi possível carregar as clínicas da plataforma.');
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
+    if (clinicsLoading) return;
+    const storedClinicId = window.localStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
+    const storedClinicStillExists = storedClinicId && clinics.some((item) => item.id === storedClinicId);
+    setClinicId((current) => {
+      if (current && clinics.some((item) => item.id === current)) return current;
+      return storedClinicStillExists ? storedClinicId : (clinics[0]?.id || '');
+    });
+  }, [clinics, clinicsLoading]);
 
   useEffect(() => {
     if (!clinicId) {
@@ -122,7 +121,7 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
       </div>
       <label className="w-full sm:w-[340px]">
         <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-fog">Clínica selecionada</span>
-        <select value={clinicId} onChange={(event) => setClinicId(event.target.value)} disabled={loading || clinics.length === 0} className="mt-1.5 w-full rounded-xl border border-line bg-deep/55 px-3.5 py-3 text-[11.5px] text-paper outline-none transition focus:border-aqua disabled:opacity-50">
+        <select value={clinicId} onChange={(event) => setClinicId(event.target.value)} disabled={clinicsLoading || loading || clinics.length === 0} className="mt-1.5 w-full rounded-xl border border-line bg-deep/55 px-3.5 py-3 text-[11.5px] text-paper outline-none transition focus:border-aqua disabled:opacity-50">
           {clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}
         </select>
       </label>
@@ -144,13 +143,13 @@ export function PlatformClinicEntitlementsPanel({ onAuditChanged }: { onAuditCha
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-display text-[13.5px] font-semibold">{meta.title}</p><span className={`rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${statusClass}`}>{modeLabel(item)}</span></div><p className="mt-1.5 text-[10.5px] leading-relaxed text-fog">{meta.description}</p></div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-1.5" role="group" aria-label={`Estado de ${meta.title}`}>
-            {([['inherited', 'Herdado'], ['enabled', 'Liberado'], ['disabled', 'Bloqueado']] as Array<[EntitlementMode, string]>).map(([candidate, label]) => <button key={candidate} type="button" disabled={busyKey !== null || loading} onClick={() => void setMode(item, candidate)} className={`rounded-lg border px-2 py-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-50 ${mode === candidate ? candidate === 'enabled' ? 'border-mint/45 bg-mint/[0.08] text-mint' : candidate === 'disabled' ? 'border-amber/45 bg-amber/[0.08] text-amber' : 'border-aqua/40 bg-aqua/[0.07] text-aqua' : 'border-line bg-panel/40 text-fog hover:text-paper'}`} aria-pressed={mode === candidate}>{busyKey === item.key && mode !== candidate ? label : label}</button>)}
+            {([['inherited', 'Herdado'], ['enabled', 'Liberado'], ['disabled', 'Bloqueado']] as Array<[EntitlementMode, string]>).map(([candidate, label]) => <button key={candidate} type="button" disabled={busyKey !== null || loading} onClick={() => void setMode(item, candidate)} className={`rounded-lg border px-2 py-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-50 ${mode === candidate ? candidate === 'enabled' ? 'border-mint/45 bg-mint/[0.08] text-mint' : candidate === 'disabled' ? 'border-amber/45 bg-amber/[0.08] text-amber' : 'border-aqua/40 bg-aqua/[0.07] text-aqua' : 'border-line bg-panel/40 text-fog hover:text-paper'}`} aria-pressed={mode === candidate}>{label}</button>)}
           </div>
           <p className="mt-3 border-t border-line/50 pt-2 text-[9.5px] text-fog/65">{item.source ? `Fonte: ${item.source}` : 'Sem decisão explícita'}{item.updatedAt ? ` · atualizado ${new Date(item.updatedAt).toLocaleString('pt-BR')}` : ''}</p>
         </article>;
       })}
       {!loading && clinicId && entitlements.length === 0 && <div className="lg:col-span-2 2xl:col-span-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[11.5px] text-fog">Nenhum entitlement retornado para esta clínica.</div>}
-      {!loading && clinics.length === 0 && <div className="lg:col-span-2 2xl:col-span-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[11.5px] text-fog">Nenhuma clínica encontrada.</div>}
+      {!clinicsLoading && !loading && clinics.length === 0 && <div className="lg:col-span-2 2xl:col-span-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[11.5px] text-fog">Nenhuma clínica encontrada.</div>}
     </div>
   </section>;
 }
