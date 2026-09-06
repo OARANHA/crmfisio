@@ -10,7 +10,6 @@ export function getCachedPlatformAdminAccess(): boolean | null {
 }
 
 export async function validatePlatformAdminAccess(): Promise<boolean> {
-  if (cachedAllowed !== null) return cachedAllowed;
   if (pendingValidation) return pendingValidation;
 
   pendingValidation = (async () => {
@@ -23,8 +22,12 @@ export async function validatePlatformAdminAccess(): Promise<boolean> {
       return false;
     }
 
-    if (cachedUserId && cachedUserId !== userId) cachedAllowed = null;
-    cachedUserId = userId;
+    if (cachedUserId !== userId) {
+      cachedUserId = userId;
+      cachedAllowed = null;
+    }
+
+    if (cachedAllowed !== null) return cachedAllowed;
 
     const allowed = await isPlatformAdmin();
     cachedAllowed = allowed;
@@ -42,7 +45,7 @@ platformSupabase.auth.onAuthStateChange((_event, session) => {
   const nextUserId = session?.user.id ?? null;
   if (nextUserId !== cachedUserId) {
     cachedUserId = nextUserId;
-    cachedAllowed = null;
+    cachedAllowed = nextUserId ? null : false;
     pendingValidation = null;
   }
 });
