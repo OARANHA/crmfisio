@@ -58,6 +58,23 @@ Deno.serve(async (req) => {
     return json({ error: 'Usuário sem perfil ativo' }, 403);
   }
 
+  // Service-role clients bypass tenant RLS, so this Edge Function must enforce
+  // clinic lifecycle explicitly before any user-management or password mutation.
+  const { data: callerClinic, error: callerClinicError } = await admin
+    .from('clinics')
+    .select('id,lifecycle_status,deleted_at')
+    .eq('id', caller.clinic_id)
+    .single();
+
+  if (
+    callerClinicError
+    || !callerClinic
+    || callerClinic.deleted_at
+    || callerClinic.lifecycle_status !== 'active'
+  ) {
+    return json({ error: 'Clínica suspensa ou indisponível', code: 'clinic_not_active' }, 403);
+  }
+
   let payload: TeamPayload;
   try {
     payload = await req.json();
