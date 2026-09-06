@@ -40,6 +40,7 @@ export type PlatformClinicEntitlementKey =
   | 'whatsapp.access';
 
 export type PlatformClinicEntitlementSource = 'manual' | 'plan' | 'trial' | 'migration';
+export type PlatformClinicLifecycleStatus = 'active' | 'suspended';
 
 export type PlatformClinicEntitlement = {
   key: PlatformClinicEntitlementKey;
@@ -55,6 +56,7 @@ export type PlatformClinicSummary = {
   id: string;
   name: string;
   cnpj: string | null;
+  lifecycleStatus: PlatformClinicLifecycleStatus;
   createdAt: string;
 };
 
@@ -136,8 +138,27 @@ export async function loadPlatformClinics(): Promise<PlatformClinicSummary[]> {
     id: String(row.clinic_id),
     name: String(row.clinic_name),
     cnpj: row.cnpj ? String(row.cnpj) : null,
+    lifecycleStatus: row.lifecycle_status === 'suspended' ? 'suspended' : 'active',
     createdAt: String(row.created_at),
   }));
+}
+
+export async function suspendPlatformClinic(clinicId: string, reason: string): Promise<boolean> {
+  const { data, error } = await db.rpc('platform_suspend_clinic', {
+    p_clinic_id: clinicId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
+export async function reactivatePlatformClinic(clinicId: string, reason: string): Promise<boolean> {
+  const { data, error } = await db.rpc('platform_reactivate_clinic', {
+    p_clinic_id: clinicId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 function mapClinicEntitlement(row: any): PlatformClinicEntitlement {
