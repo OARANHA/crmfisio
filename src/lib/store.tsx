@@ -17,6 +17,8 @@ import { usePackages } from './packageContext';
 import { useCommunication } from './communicationContext';
 import { useAudit } from './auditContext';
 
+export { useUnitFilter } from './infrastructureContext';
+
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
 interface AppState {
