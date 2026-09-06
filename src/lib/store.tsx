@@ -6,12 +6,14 @@ import type {
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
+import { useClinicDirectory } from './clinicDirectoryContext';
 import { useLgpdActions } from './lgpdActions';
 import { useCurrentUserAccess } from './currentUserAccess';
 import { useToast, type Toast } from './toastContext';
 
 interface AppState {
   user: User | null;
+  users: User[];
   patients: Patient[];
   appointments: Appointment[];
   transactions: FinancialTransaction[];
@@ -44,6 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
+  const directory = useClinicDirectory();
   const lgpd = useLgpdActions();
   const { toast: pushToast } = useToast();
 
@@ -55,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return {
       user,
+      users: directory.users,
       patients: patientDomain.patients,
       appointments: agenda.appointments,
       transactions: finance.transactions,
@@ -74,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       anonimizarPaciente: lgpd.anonymizePatient,
     };
   }, [
-    user, access, canView,
+    user, access, canView, directory.users,
     pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,
