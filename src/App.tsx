@@ -20,6 +20,8 @@ import { PlatformAdminHomePage } from './pages/PlatformAdminHomePage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { PlatformClinicModulesPage } from './pages/PlatformClinicModulesPage';
 import { PlatformClinicProvisioningPage } from './pages/PlatformClinicProvisioningPage';
+import { PlatformCommercialPage } from './pages/PlatformCommercialPage';
+import { PlatformRevenuePage } from './pages/PlatformRevenuePage';
 import { FinanceiroOperational } from './pages/FinanceiroOperational';
 import { CrmOperational } from './pages/CrmOperational';
 import { MensagensOperational } from './pages/MensagensOperational';
@@ -112,6 +114,8 @@ export default function App() {
           <Route path="/solicitar-acesso" element={<ClinicAccessRequestPage />} />
           <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
           <Route path="/platform" element={<PlatformAdminHomePage />} />
+          <Route path="/platform/comercial" element={<PlatformCommercialPage />} />
+          <Route path="/platform/receita" element={<PlatformRevenuePage />} />
           <Route path="/platform/governanca" element={<PlatformAdminPage />} />
           <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
           <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
