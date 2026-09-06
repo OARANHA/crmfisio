@@ -10,6 +10,7 @@ import type { ModuleKey, Role } from './types';
 import { accessFor, isRole } from './permissions';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
+export type TenantAccessState = 'active' | 'suspended' | 'inactive_profile' | 'clinic_unavailable' | 'no_profile' | 'unauthenticated' | 'unknown';
 
 interface AuthUser extends User {
   profile?: Profile;
@@ -20,6 +21,7 @@ interface UseAuthReturn {
   user: AuthUser | null;
   session: Session | null;
   profile: Profile | null;
+  tenantAccessState: TenantAccessState;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -30,9 +32,26 @@ export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [tenantAccessState, setTenantAccessState] = useState<TenantAccessState>('unknown');
   const [loading, setLoading] = useState(true);
 
-  // Buscar perfil do usuário no banco
+  const fetchTenantAccessState = useCallback(async (): Promise<TenantAccessState> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('current_tenant_access_state');
+      if (error) {
+        console.warn('[useAuth] Estado de acesso da clínica indisponível:', error);
+        return 'unknown';
+      }
+      const value = String(data ?? 'unknown') as TenantAccessState;
+      return ['active', 'suspended', 'inactive_profile', 'clinic_unavailable', 'no_profile', 'unauthenticated'].includes(value)
+        ? value
+        : 'unknown';
+    } catch (e) {
+      console.error('[useAuth] Erro ao resolver estado da clínica:', e);
+      return 'unknown';
+    }
+  }, []);
+
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -54,64 +73,63 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
-  // Carregar sessão inicial
+  const resolveSessionUser = useCallback(async (nextSession: Session | null) => {
+    setSession(nextSession);
+    if (!nextSession?.user) {
+      setTenantAccessState('unauthenticated');
+      setUser(null);
+      setProfile(null);
+      return;
+    }
+
+    const accessState = await fetchTenantAccessState();
+    setTenantAccessState(accessState);
+
+    if (accessState !== 'active') {
+      setUser(null);
+      setProfile(null);
+      return;
+    }
+
+    const prof = await fetchProfile(nextSession.user.id);
+    setUser(prof && isRole(prof.role) ? { ...nextSession.user, profile: prof, role: prof.role } : null);
+    setProfile(prof);
+  }, [fetchProfile, fetchTenantAccessState]);
+
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!mounted) return;
-        
-        setSession(session);
-        
-        if (session?.user) {
-          const prof = await fetchProfile(session.user.id);
-          if (mounted) {
-            setUser(prof && isRole(prof.role) ? { ...session.user, profile: prof, role: prof.role } : null);
-            setProfile(prof);
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
+        await resolveSessionUser(initialSession);
       } catch (e) {
         console.error('[useAuth] Erro na inicialização:', e);
         if (mounted) {
           setUser(null);
           setProfile(null);
+          setTenantAccessState('unknown');
         }
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    initAuth();
+    void initAuth();
 
-    // Listener para mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
-      
-      setSession(newSession);
-      
-      if (newSession?.user) {
-        const prof = await fetchProfile(newSession.user.id);
-        setUser(prof && isRole(prof.role) ? { ...newSession.user, profile: prof, role: prof.role } : null);
-        setProfile(prof);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
+      await resolveSessionUser(newSession);
+      if (mounted) setLoading(false);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [resolveSessionUser]);
 
-  // Login com email/senha
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -122,6 +140,20 @@ export function useAuth(): UseAuthReturn {
       if (error) throw error;
 
       if (data.user) {
+        const accessState = await fetchTenantAccessState();
+        setTenantAccessState(accessState);
+
+        if (accessState === 'suspended') {
+          setUser(null);
+          setProfile(null);
+          return { error: null };
+        }
+
+        if (accessState !== 'active') {
+          await supabase.auth.signOut();
+          throw new Error('Usuário sem perfil ativo e válido');
+        }
+
         const prof = await fetchProfile(data.user.id);
         if (!prof || !isRole(prof.role)) {
           await supabase.auth.signOut();
@@ -138,15 +170,14 @@ export function useAuth(): UseAuthReturn {
     }
   };
 
-  // Logout
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
+    setTenantAccessState('unauthenticated');
   };
 
-  // Verificar acesso por módulo
   const canAccess = useCallback((module: ModuleKey): boolean => {
     if (!user?.role) return false;
     return accessFor(user.role, module) !== 'none';
@@ -156,6 +187,7 @@ export function useAuth(): UseAuthReturn {
     user,
     session,
     profile,
+    tenantAccessState,
     loading,
     signIn,
     signOut,
