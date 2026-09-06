@@ -6,6 +6,7 @@ import {
   claimWaitlistSlot, createWaitlistEntry, loadWaitlist, updateWaitlistEntry, updateWaitlistStatus,
   WAITLIST_PERIOD_LABEL, type WaitlistEntry, type WaitlistPeriod,
 } from '../lib/waitlist';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useApp, patientName, userName } from '../lib/store';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Select, Input } from '../lib/ui';
@@ -16,7 +17,8 @@ interface Props { unidades: Unidade[]; rooms: Room[]; onRecovered: () => void }
 const dayLabels = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }];
 
 export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
-  const { user, users, patients, appointments, toast } = useApp();
+  const { user, patients, appointments, toast } = useApp();
+  const { users } = useClinicDirectory();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [clinicId, setClinicId] = useState('');
   const [expanded, setExpanded] = useState(false);
