@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { buildTreatmentContext } from '../lib/treatmentContext';
 import { useApp } from '../lib/store';
+import { usePackages } from '../lib/packageContext';
 import { Bar, Chip } from '../lib/ui';
 import { fmtBRL, type Appointment, type Patient } from '../lib/types';
 
 export function TreatmentJourneyContext({ patient, appointment }: { patient?: Patient; appointment: Appointment }) {
-  const { appointments, patientPackages, packages, transactions } = useApp();
+  const { appointments, transactions } = useApp();
+  const { patientPackages, packages } = usePackages();
   const context = useMemo(() => buildTreatmentContext({
     patient,
     appointment,
@@ -40,12 +42,8 @@ export function TreatmentJourneyContext({ patient, appointment }: { patient?: Pa
         <div className="space-y-2">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="font-display font-semibold text-[14px]">
-                Sessão {context.sessionCurrent}/{context.sessionTotal}
-              </p>
-              <p className="font-mono text-[9px] text-fog mt-0.5">
-                {context.packageName} · {context.sessionsUsed} usadas · {context.sessionsRemaining} restantes
-              </p>
+              <p className="font-display font-semibold text-[14px]">Sessão {context.sessionCurrent}/{context.sessionTotal}</p>
+              <p className="font-mono text-[9px] text-fog mt-0.5">{context.packageName} · {context.sessionsUsed} usadas · {context.sessionsRemaining} restantes</p>
             </div>
             <span className="font-mono text-[10px] text-mint">{context.progressPct}%</span>
           </div>
@@ -56,25 +54,12 @@ export function TreatmentJourneyContext({ patient, appointment }: { patient?: Pa
       )}
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="border border-line/70 p-2">
-          <span className="block font-display font-semibold text-[15px]">{context.completed}</span>
-          <span className="font-mono text-[8.5px] uppercase text-fog">realizadas</span>
-        </div>
-        <div className="border border-line/70 p-2">
-          <span className="block font-display font-semibold text-[15px]">{context.missed}</span>
-          <span className="font-mono text-[8.5px] uppercase text-fog">faltas</span>
-        </div>
-        <div className="border border-line/70 p-2">
-          <span className="block font-display font-semibold text-[15px]">{context.future}</span>
-          <span className="font-mono text-[8.5px] uppercase text-fog">futuras</span>
-        </div>
+        <div className="border border-line/70 p-2"><span className="block font-display font-semibold text-[15px]">{context.completed}</span><span className="font-mono text-[8.5px] uppercase text-fog">realizadas</span></div>
+        <div className="border border-line/70 p-2"><span className="block font-display font-semibold text-[15px]">{context.missed}</span><span className="font-mono text-[8.5px] uppercase text-fog">faltas</span></div>
+        <div className="border border-line/70 p-2"><span className="block font-display font-semibold text-[15px]">{context.future}</span><span className="font-mono text-[8.5px] uppercase text-fog">futuras</span></div>
       </div>
 
-      {context.interruptionRisk && (
-        <div className="border border-amber/35 bg-amber/[0.06] px-3 py-2 text-[11px] text-amber">
-          Atenção: paciente em tratamento, com sessões realizadas e sem continuidade futura registrada. Avaliar interrupção/retomada.
-        </div>
-      )}
+      {context.interruptionRisk && <div className="border border-amber/35 bg-amber/[0.06] px-3 py-2 text-[11px] text-amber">Atenção: paciente em tratamento, com sessões realizadas e sem continuidade futura registrada. Avaliar interrupção/retomada.</div>}
     </div>
   );
 }
