@@ -69,51 +69,20 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceRole || !evolutionUrl || !evolutionKey) {
     return json({ error: 'Integração Evolution não configurada no servidor' }, 503);
   }
+  if (!workerSecret) {
+    console.error('[evolution-worker] EVOLUTION_WORKER_SECRET ausente');
+    return json({ error: 'Worker interno não configurado' }, 503);
+  }
+  if (req.headers.get('x-worker-secret') !== workerSecret) {
+    return json({ error: 'Worker não autorizado' }, 401);
+  }
 
+  // This function uses service_role and reserves from a global queue. It must
+  // therefore be internal-only. Human clinic sessions enqueue messages through
+  // tenant-scoped flows; they never execute the global delivery worker directly.
   const admin = createClient(supabaseUrl, serviceRole, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-
-  const internalAuthorized = !!workerSecret && req.headers.get('x-worker-secret') === workerSecret;
-  if (!internalAuthorized) {
-    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-    if (!token) return json({ error: 'Sessão ausente' }, 401);
-
-    const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: 'Sessão inválida' }, 401);
-
-    const { data: caller } = await admin
-      .from('profiles')
-      .select('role,ativo,clinic_id')
-      .eq('id', authData.user.id)
-      .single();
-    if (!caller?.ativo || !caller.clinic_id || !['owner', 'admin', 'recep'].includes(caller.role)) {
-      return json({ error: 'Perfil sem permissão para disparar mensagens' }, 403);
-    }
-
-    const { data: callerClinic, error: clinicError } = await admin
-      .from('clinics')
-      .select('id,lifecycle_status,deleted_at')
-      .eq('id', caller.clinic_id)
-      .single();
-    if (clinicError || !clinicActive(callerClinic as ClinicLifecycleRow | null)) {
-      return json({ error: 'Clínica suspensa ou indisponível', code: 'clinic_not_active' }, 403);
-    }
-
-    const { data: entitlement, error: entitlementError } = await admin
-      .from('platform_clinic_entitlements')
-      .select('clinic_id,enabled,starts_at,expires_at')
-      .eq('clinic_id', caller.clinic_id)
-      .eq('entitlement_key', 'whatsapp.access')
-      .maybeSingle();
-    if (entitlementError) {
-      console.error('[evolution-worker] entitlement:', entitlementError);
-      return json({ error: 'Não foi possível validar o módulo WhatsApp' }, 503);
-    }
-    if (!entitlementEffective(entitlement as EntitlementRow | null)) {
-      return json({ error: 'Módulo WhatsApp não liberado para esta clínica' }, 403);
-    }
-  }
 
   let limit = 20;
   try {
