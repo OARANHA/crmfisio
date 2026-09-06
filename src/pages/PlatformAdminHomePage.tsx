@@ -44,7 +44,7 @@ function auditLabel(action: string) {
     'clinic.provision_review_sync_pending': 'Revisão de onboarding pendente',
     'platform_admin.activated': 'Platform Admin ativado',
   };
-  return labels[action] ?? action.replaceAll('.', ' · ');
+  return labels[action] ?? action.split('.').join(' · ');
 }
 
 export function PlatformAdminHomePage() {
