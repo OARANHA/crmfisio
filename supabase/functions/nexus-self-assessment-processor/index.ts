@@ -61,6 +61,8 @@ function requireIntegerRange(answers: Record<string, number>, ids: string[], min
   return values;
 }
 
+const CLINICIAN_REVIEW_NOTICE = 'Instrumento de rastreio: o escore não estabelece diagnóstico nem conduta isoladamente. Interpretar no contexto da entrevista, funcionalidade, comorbidades, riscos, preferências e julgamento clínico.';
+
 const PHQ9_RULE_VERSION = 'nexus-2026-09-03';
 const PHQ9: ProcessorDefinition = {
   toolKey: 'phq9',
@@ -78,42 +80,42 @@ const PHQ9: ProcessorDefinition = {
     let classification = '';
     let severity: Severity = 'low';
     let interpretation = '';
-    const recommendations: string[] = [];
+    const recommendations: string[] = [CLINICIAN_REVIEW_NOTICE];
 
     if (totalScore <= 4) {
-      classification = 'Sintomas depressivos mínimos ou ausentes';
-      interpretation = 'Escore baixo (0-4 pts), sem indicação de intervenção farmacológica para depressão.';
-      recommendations.push('Acompanhamento longitudinal de rotina na APS', 'Orientações gerais de estilo de vida e higiene do sono');
+      classification = 'Faixa mínima de sintomas depressivos';
+      interpretation = 'Escore PHQ-9 entre 0 e 4. O resultado deve ser contextualizado clinicamente e não exclui sofrimento, risco ou outra condição.';
+      recommendations.push('Revisar sintomas, funcionalidade e contexto clínico conforme a necessidade do atendimento.');
     } else if (totalScore <= 9) {
-      classification = 'Depressão leve';
-      interpretation = 'Sintomas leves (5-9 pts). Avaliar contexto psicossocial e impacto funcional.';
-      recommendations.push('Psicoeducação e suporte na APS', 'Ativação comportamental e atividade física orientada', 'Reavaliação em 4 a 8 semanas');
+      classification = 'Faixa leve de sintomas depressivos';
+      interpretation = 'Escore PHQ-9 entre 5 e 9, compatível com carga sintomática leve no instrumento.';
+      recommendations.push('Correlacionar o escore com duração, impacto funcional, contexto psicossocial e evolução longitudinal.');
     } else if (totalScore <= 14) {
-      classification = 'Depressão moderada';
+      classification = 'Faixa moderada de sintomas depressivos';
       severity = 'moderate';
-      interpretation = 'Sintomas moderados (10-14 pts, corte ≥ 10 atingido) com comprometimento das atividades diárias.';
-      recommendations.push('Considerar psicoterapia (TCC/interpessoal) e/ou farmacoterapia (ISRS de 1ª linha)', 'Pactuar plano de acompanhamento em APS');
+      interpretation = 'Escore PHQ-9 entre 10 e 14, acima do ponto de corte frequentemente utilizado para investigação clínica adicional.';
+      recommendations.push('Realizar avaliação clínica diagnóstica e discutir opções de cuidado apropriadas ao caso, sem inferir conduta apenas pelo escore.');
     } else if (totalScore <= 19) {
-      classification = 'Depressão moderadamente grave';
+      classification = 'Faixa moderadamente grave de sintomas depressivos';
       severity = 'high';
-      interpretation = 'Sintomas significativos (15-19 pts) exigindo intervenção clínica e medicamentosa estruturada.';
-      recommendations.push('Iniciar tratamento medicamentoso com ISRS', 'Pactuar retorno em 2 semanas', 'Avaliar suporte familiar e rede de apoio social');
+      interpretation = 'Escore PHQ-9 entre 15 e 19, indicando carga sintomática elevada no instrumento.';
+      recommendations.push('Priorizar revisão clínica abrangente, impacto funcional, riscos, comorbidades e plano de acompanhamento individualizado.');
     } else {
-      classification = 'Depressão grave';
+      classification = 'Faixa grave de sintomas depressivos';
       severity = 'severe';
-      interpretation = 'Sintomas graves (20-27 pts) com alto risco de prejuízo funcional e sofrimento psíquico severo.';
-      recommendations.push('Iniciar farmacoterapia combinada/otimizada', 'Investigar ativamente ideação e planejamento suicida', 'Considerar discussão de caso em Apoio Matricial / Psiquiatria');
+      interpretation = 'Escore PHQ-9 entre 20 e 27, indicando carga sintomática muito elevada no instrumento.';
+      recommendations.push('Priorizar avaliação clínica abrangente e definição de plano assistencial individualizado, considerando riscos e necessidade de maior suporte conforme julgamento profissional.');
     }
 
     const redFlags: RedFlag[] = [];
     if (answers.q9 > 0) {
-      recommendations.unshift('⚠️ ALERTA: Resposta positiva na pergunta 9 (ideação suicida/autolesão). Aplicar imediatamente o protocolo C-SSRS e pactuar Plano de Segurança.');
+      recommendations.unshift('⚠️ ALERTA: resposta positiva no item 9. Realizar avaliação clínica de segurança e risco de suicídio/autolesão conforme protocolo assistencial vigente; o PHQ-9 isoladamente não estratifica esse risco.');
       redFlags.push({
         flagCode: 'phq9.item9.positive',
         severity: 'critical',
         title: 'PHQ-9 item 9 positivo',
         message: 'Resposta positiva para pensamentos de morte ou autolesão no PHQ-9.',
-        requiredAction: 'Aplicar C-SSRS e realizar avaliação clínica de risco imediatamente.',
+        requiredAction: 'Realizar avaliação clínica de segurança e risco conforme protocolo assistencial vigente e registrar a conduta adotada.',
       });
     }
 
@@ -125,7 +127,7 @@ const PHQ9: ProcessorDefinition = {
       interpretation,
       recommendations,
       answersArray: values,
-      soapText: `PHQ-9: ${totalScore}/27 pts (${classification}) | Respostas: [${values.join(', ')}] | Fonte: Kroenke et al., 2001 (Validação BR: Osório, 2009)`,
+      soapText: `PHQ-9: ${totalScore}/27 pts (${classification}) | Respostas: [${values.join(', ')}] | Instrumento de rastreio; interpretar clinicamente | Fonte: Kroenke et al., 2001 (Validação BR: Osório, 2009)`,
       redFlags,
     };
   },
@@ -148,26 +150,26 @@ const GAD7: ProcessorDefinition = {
     let classification = '';
     let severity: Severity = 'low';
     let interpretation = '';
-    const recommendations: string[] = [];
+    const recommendations: string[] = [CLINICIAN_REVIEW_NOTICE];
 
     if (totalScore <= 4) {
-      classification = 'Ansiedade mínima ou ausente';
-      interpretation = 'Sintomas dentro do espectro fisiológico (0-4 pts).';
-      recommendations.push('Acompanhamento longitudinal habitual na APS', 'Orientações para manejo do estresse e estilo de vida');
+      classification = 'Faixa mínima de sintomas ansiosos';
+      interpretation = 'Escore GAD-7 entre 0 e 4. O resultado deve ser contextualizado clinicamente e não exclui sofrimento ou outra condição.';
+      recommendations.push('Revisar sintomas, funcionalidade e contexto clínico conforme a necessidade do atendimento.');
     } else if (totalScore <= 9) {
-      classification = 'Ansiedade leve';
-      interpretation = 'Sintomas leves (5-9 pts). Benefício com psicoeducação e técnicas de relaxamento.';
-      recommendations.push('Técnicas de respiração diafragmática e higiene do sono', 'Acompanhamento periódico na APS');
+      classification = 'Faixa leve de sintomas ansiosos';
+      interpretation = 'Escore GAD-7 entre 5 e 9, compatível com carga sintomática leve no instrumento.';
+      recommendations.push('Correlacionar o escore com duração, gatilhos, impacto funcional, comorbidades e evolução longitudinal.');
     } else if (totalScore <= 14) {
-      classification = 'Ansiedade moderada';
+      classification = 'Faixa moderada de sintomas ansiosos';
       severity = 'moderate';
-      interpretation = 'Sintomas moderados (10-14 pts, corte ≥ 10 atingido). Indicação de investigação detalhada para TAG.';
-      recommendations.push('Avaliar indicação de psicoterapia (TCC) e/ou farmacoterapia (ISRS)', 'Pactuar consultas de acompanhamento');
+      interpretation = 'Escore GAD-7 entre 10 e 14, acima do ponto de corte frequentemente utilizado para investigação clínica adicional.';
+      recommendations.push('Realizar avaliação clínica diagnóstica e discutir opções de cuidado apropriadas ao caso, sem inferir conduta apenas pelo escore.');
     } else {
-      classification = 'Ansiedade grave';
+      classification = 'Faixa grave de sintomas ansiosos';
       severity = 'severe';
-      interpretation = 'Sintomas graves (15-21 pts) com prejuízo funcional marcante.';
-      recommendations.push('Pactuar plano terapêutico medicamentoso e psicoterápico', 'Reavaliação em 2 semanas', 'Considerar apoio matricial se refratário');
+      interpretation = 'Escore GAD-7 entre 15 e 21, indicando carga sintomática elevada no instrumento.';
+      recommendations.push('Priorizar revisão clínica abrangente, impacto funcional, diagnósticos diferenciais, comorbidades e plano de acompanhamento individualizado.');
     }
 
     return {
@@ -178,7 +180,7 @@ const GAD7: ProcessorDefinition = {
       interpretation,
       recommendations,
       answersArray: values,
-      soapText: `GAD-7: ${totalScore}/21 pts (${classification}) | Respostas: [${values.join(', ')}] | Fonte: Spitzer et al., 2006 (Validação BR: Moreno, 2016)`,
+      soapText: `GAD-7: ${totalScore}/21 pts (${classification}) | Respostas: [${values.join(', ')}] | Instrumento de rastreio; interpretar clinicamente | Fonte: Spitzer et al., 2006 (Validação BR: Moreno, 2016)`,
       redFlags: [],
     };
   },
@@ -253,6 +255,7 @@ Deno.serve(async (req) => {
             recommendations: calculated.recommendations,
             answersArray: calculated.answersArray,
             selfAssessment: true,
+            guidanceMode: 'clinician-review',
           },
           totalScore: calculated.totalScore,
           maxScore: calculated.maxScore,
