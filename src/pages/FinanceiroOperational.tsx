@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useFinance } from '../lib/financeContext';
+import { usePackages } from '../lib/packageContext';
 import { dayOf, fmtBRL, type FinancialTransaction } from '../lib/types';
 import { Bar, Btn, Card, CardHead, Chip, Field, IconDollar, Input, Modal, Select } from '../lib/ui';
 import { IconCardPay, IconPlug } from '../components/icons';
@@ -32,8 +34,10 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 export function FinanceiroOperational() {
   const {
     user, access, transactions, setTxStatus, patientPackages, patients, packages,
-    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, refreshClinicData, toast,
+    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, toast,
   } = useApp();
+  const { refreshFinance } = useFinance();
+  const { refreshPackages: refreshPackageDomain } = usePackages();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);
   const [catalog, setCatalog] = useState<PackageCatalogItem[]>([]);
@@ -234,7 +238,7 @@ export function FinanceiroOperational() {
       {packageModal && <PackageCatalogModal initial={packageModal === 'new' ? null : packageModal} onClose={() => setPackageModal(null)} onSaved={async () => { setPackageModal(null); await refreshPackages(); toast('Catálogo de pacotes atualizado.'); }} />}
       {transactionModal && <TransactionModal tipo={transactionModal} patients={patients} onClose={() => setTransactionModal(null)} onSave={(transaction) => { addTransaction(transaction); setTransactionModal(null); }} />}
       {settling && <SettleTransactionModal transaction={settling} onClose={() => setSettling(null)} onConfirm={(method) => { setTxStatus(settling.id, 'pago', method); setSettling(null); }} />}
-      {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={async () => { const renewed = Boolean(sellModal.renewedFromId); setSellModal(null); await Promise.all([refreshClinicData(), refreshPackages()]); toast(renewed ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); }} />}
+      {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={async () => { const renewed = Boolean(sellModal.renewedFromId); setSellModal(null); await Promise.all([refreshFinance(), refreshPackageDomain(), refreshPackages()]); toast(renewed ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); }} />}
       {repasse && <RepasseModal onClose={() => setRepasse(false)} />}
     </div>
   );
