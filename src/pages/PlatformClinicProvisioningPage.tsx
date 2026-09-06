@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import { isPlatformAdmin } from '../lib/platformAdmin';
 import {
@@ -16,6 +17,12 @@ type ProvisionResult = {
 };
 
 const newIdempotencyKey = () => `clinic-${crypto.randomUUID()}`;
+
+function formatRequestedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
 
 export function PlatformClinicProvisioningPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -160,88 +167,125 @@ export function PlatformClinicProvisioningPage() {
   }
 
   return (
-    <div className="app-surface min-h-screen">
-      <header className="border-b border-line/70 bg-deep/90 px-5 py-4 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mint">MedicsPro Platform Admin</p>
-            <h1 className="font-display text-xl font-bold">Onboarding de clínicas</h1>
-          </div>
-          <Link to="/platform" className="ml-auto rounded-xl border border-line px-3 py-2 text-[12px] font-semibold text-fog hover:bg-raise hover:text-paper">Governança</Link>
+    <PlatformAdminShell
+      eyebrow="MedicsPro Platform Admin"
+      title="Onboarding de clínicas"
+      description="Transforme solicitações em clínicas operacionais mantendo aprovação humana, idempotência e trilha de auditoria."
+      actions={(
+        <button type="button" onClick={() => void refreshQueue()} disabled={loadingQueue} className="rounded-xl border border-line bg-panel/70 px-3 py-2 text-[11px] font-semibold text-fog transition hover:border-aqua/30 hover:text-paper disabled:opacity-50">
+          {loadingQueue ? 'Atualizando…' : 'Atualizar fila'}
+        </button>
+      )}
+    >
+      {message && (
+        <div className={`rounded-xl border px-4 py-3 text-[12px] ${message.kind === 'ok' ? 'border-mint/30 bg-mint/[0.05] text-mint' : 'border-amber/30 bg-amber/[0.05] text-amber'}`}>
+          {message.text}
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto max-w-6xl space-y-6 p-5 md:p-8">
-        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Aprovação</p>
-            <h2 className="mt-1 font-display text-xl font-bold">{accessRequestId ? 'Aprovar solicitação e provisionar' : 'Provisionamento manual'}</h2>
-            <p className="mt-1 max-w-3xl text-[12.5px] leading-relaxed text-fog">A criação efetiva continua server-side, idempotente e auditável. A senha temporária só é definida pelo Platform Admin no momento da aprovação.</p>
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Fila comercial</p>
+          <p className="mt-2 font-display text-[28px] font-bold tracking-tight">{requests.length}</p>
+          <p className="mt-1 text-[11px] text-fog">solicitação(ões) aguardando análise</p>
+        </div>
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Seleção atual</p>
+          <p className={`mt-2 font-display text-[18px] font-bold ${accessRequestId ? 'text-aqua' : 'text-paper'}`}>{accessRequestId ? 'Solicitação pública' : 'Manual'}</p>
+          <p className="mt-1 text-[11px] text-fog">dados públicos ficam bloqueados contra edição na aprovação</p>
+        </div>
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Boundary</p>
+          <p className="mt-2 font-display text-[18px] font-bold text-mint">Server-side</p>
+          <p className="mt-1 text-[11px] text-fog">criação idempotente, auditável e separada do tenant</p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[22px] border border-line bg-panel p-5">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Fila de entrada</p>
+              <h2 className="mt-1 font-display text-[18px] font-bold">Solicitações pendentes</h2>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-fog">Pedidos públicos não criam clínica nem usuário até a sua aprovação.</p>
+            </div>
+            <span className={`rounded-full border px-2 py-1 text-[9.5px] font-semibold ${requests.length ? 'border-amber/30 bg-amber/[0.07] text-amber' : 'border-mint/30 bg-mint/[0.07] text-mint'}`}>{requests.length} pendente(s)</span>
           </div>
 
-          {message && (
-            <div className={`mt-5 rounded-xl border px-4 py-3 text-[12.5px] ${message.kind === 'ok' ? 'border-mint/30 bg-mint/5 text-mint' : 'border-amber/30 bg-amber/5 text-amber'}`}>
-              {message.text}
+          <div className="mt-4 space-y-2.5">
+            {!loadingQueue && requests.length === 0 && (
+              <div className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-[11.5px] text-fog">Nenhuma solicitação pendente neste momento.</div>
+            )}
+            {requests.map((request) => {
+              const selected = request.id === accessRequestId;
+              return (
+                <article key={request.id} className={`rounded-xl border p-4 transition ${selected ? 'border-aqua/35 bg-aqua/[0.05]' : 'border-line/70 bg-deep/50'}`}>
+                  <div className="flex flex-wrap items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-display text-[14px] font-semibold">{request.clinicName}</p>
+                        {selected && <span className="rounded-full border border-aqua/30 px-2 py-0.5 text-[9px] font-semibold text-aqua">em análise</span>}
+                      </div>
+                      <p className="mt-1 text-[11px] text-fog">{request.ownerName} · {request.ownerEmail}</p>
+                      {request.ownerPhone && <p className="mt-0.5 text-[10.5px] text-fog">{request.ownerPhone}</p>}
+                      <p className="mt-2 font-mono text-[9px] text-fog/70">CNPJ: {request.cnpj || 'não informado'} · {formatRequestedAt(request.createdAt)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => selectRequest(request)} className="rounded-lg bg-mint px-3 py-2 text-[10.5px] font-semibold text-on-accent">Analisar</button>
+                      <button type="button" onClick={() => void rejectRequest(request)} className="rounded-lg border border-pulse/35 px-3 py-2 text-[10.5px] font-semibold text-pulse">Rejeitar</button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-[22px] border border-line bg-panel p-5">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-mint">Provisionamento</p>
+              <h2 className="mt-1 font-display text-[18px] font-bold">{accessRequestId ? 'Aprovar e criar clínica' : 'Provisionamento manual'}</h2>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-fog">O primeiro owner recebe senha temporária e deve alterá-la no primeiro acesso.</p>
             </div>
-          )}
+            {accessRequestId && <button type="button" onClick={clearForm} className="rounded-lg border border-line px-3 py-2 text-[10.5px] font-semibold text-fog hover:text-paper">Limpar seleção</button>}
+          </div>
 
           <form onSubmit={provision} className="mt-5 grid gap-4 md:grid-cols-2">
-            <label className="text-[12px] font-semibold text-paper/80">Nome da clínica
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none focus:border-mint" value={clinicName} onChange={(e) => setClinicName(e.target.value)} readOnly={Boolean(accessRequestId)} required />
+            <label className="text-[11.5px] font-semibold text-paper/80">Nome da clínica
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-75" value={clinicName} onChange={(e) => setClinicName(e.target.value)} readOnly={Boolean(accessRequestId)} required />
             </label>
-            <label className="text-[12px] font-semibold text-paper/80">CNPJ (opcional)
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none focus:border-mint" value={cnpj} onChange={(e) => setCnpj(e.target.value)} readOnly={Boolean(accessRequestId)} />
+            <label className="text-[11.5px] font-semibold text-paper/80">CNPJ (opcional)
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-75" value={cnpj} onChange={(e) => setCnpj(e.target.value)} readOnly={Boolean(accessRequestId)} />
             </label>
-            <label className="text-[12px] font-semibold text-paper/80">Nome do proprietário
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none focus:border-mint" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} readOnly={Boolean(accessRequestId)} required />
+            <label className="text-[11.5px] font-semibold text-paper/80">Nome do proprietário
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-75" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} readOnly={Boolean(accessRequestId)} required />
             </label>
-            <label className="text-[12px] font-semibold text-paper/80">E-mail do proprietário
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none focus:border-mint" type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} readOnly={Boolean(accessRequestId)} required />
+            <label className="text-[11.5px] font-semibold text-paper/80">E-mail do proprietário
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-75" type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} readOnly={Boolean(accessRequestId)} required />
             </label>
-            <label className="text-[12px] font-semibold text-paper/80">Senha temporária
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none focus:border-mint" type="password" minLength={10} value={temporaryPassword} onChange={(e) => setTemporaryPassword(e.target.value)} required />
+            <label className="text-[11.5px] font-semibold text-paper/80">Senha temporária
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-normal outline-none transition focus:border-mint" type="password" minLength={10} value={temporaryPassword} onChange={(e) => setTemporaryPassword(e.target.value)} required />
+              <span className="mt-1 block text-[9.5px] font-normal text-fog">mínimo de 10 caracteres</span>
             </label>
-            <label className="text-[12px] font-semibold text-paper/80">Chave idempotente
-              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-mono text-[11px] font-normal outline-none focus:border-mint" value={idempotencyKey} onChange={(e) => setIdempotencyKey(e.target.value)} readOnly={Boolean(accessRequestId)} required />
+            <label className="text-[11.5px] font-semibold text-paper/80">Chave idempotente
+              <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 font-mono text-[10.5px] font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-75" value={idempotencyKey} onChange={(e) => setIdempotencyKey(e.target.value)} readOnly={Boolean(accessRequestId)} required />
+              <span className="mt-1 block text-[9.5px] font-normal text-fog">protege contra criação duplicada</span>
             </label>
+
+            <div className="md:col-span-2 rounded-xl border border-aqua/20 bg-aqua/[0.04] p-3 text-[10.5px] leading-relaxed text-fog">
+              <strong className="font-semibold text-paper/85">Fluxo seguro:</strong> solicitação → aprovação → criação server-side → primeiro owner → troca obrigatória de senha → configuração de módulos. Platform Admin não recebe acesso implícito ao tenant.
+            </div>
+
             <div className="md:col-span-2 flex flex-wrap items-center gap-3 border-t border-line/60 pt-4">
-              <button type="submit" disabled={!canSubmit || busy} className="rounded-xl bg-mint px-4 py-3 font-display font-semibold text-on-accent disabled:opacity-50">{busy ? 'Provisionando…' : accessRequestId ? 'Aprovar e criar clínica' : 'Criar clínica e owner'}</button>
-              {accessRequestId && <button type="button" onClick={clearForm} className="rounded-xl border border-line px-4 py-3 text-[12px] font-semibold text-fog hover:text-paper">Cancelar seleção</button>}
-              <p className="max-w-2xl text-[11.5px] leading-relaxed text-fog">O owner será obrigado a trocar a senha temporária no primeiro acesso. Platform Admin não recebe acesso implícito ao tenant.</p>
+              <button type="submit" disabled={!canSubmit || busy} className="rounded-xl bg-mint px-4 py-3 font-display text-[12px] font-semibold text-on-accent shadow-sm disabled:opacity-50">
+                {busy ? 'Provisionando…' : accessRequestId ? 'Aprovar e criar clínica' : 'Criar clínica e owner'}
+              </button>
+              <p className="text-[10.5px] text-fog">A operação só é enviada quando todos os dados mínimos estão válidos.</p>
             </div>
           </form>
-        </section>
-
-        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
-          <div className="flex flex-wrap items-start gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Fila de entrada</p>
-              <h2 className="mt-1 font-display text-xl font-bold">Solicitações pendentes</h2>
-              <p className="mt-1 text-[12.5px] text-fog">Pedidos públicos não criam conta nem clínica até você aprovar.</p>
-            </div>
-            <button type="button" onClick={() => void refreshQueue()} disabled={loadingQueue} className="ml-auto rounded-xl border border-line px-3 py-2 text-[12px] font-semibold text-fog hover:text-paper disabled:opacity-50">{loadingQueue ? 'Atualizando…' : 'Atualizar'}</button>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {!loadingQueue && requests.length === 0 && <p className="rounded-xl border border-line bg-deep p-4 text-[12px] text-fog">Nenhuma solicitação pendente.</p>}
-            {requests.map((request) => (
-              <article key={request.id} className="rounded-xl border border-line bg-deep p-4">
-                <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-[15px] font-semibold">{request.clinicName}</p>
-                    <p className="mt-1 text-[11.5px] text-fog">{request.ownerName} · {request.ownerEmail}{request.ownerPhone ? ` · ${request.ownerPhone}` : ''}</p>
-                    <p className="mt-1 font-mono text-[9.5px] text-fog/70">CNPJ: {request.cnpj || 'não informado'} · solicitado {new Date(request.createdAt).toLocaleString('pt-BR')}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => selectRequest(request)} className="rounded-lg bg-mint px-3 py-2 text-[11px] font-semibold text-on-accent">Analisar / aprovar</button>
-                    <button type="button" onClick={() => void rejectRequest(request)} className="rounded-lg border border-pulse/35 px-3 py-2 text-[11px] font-semibold text-pulse">Rejeitar</button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </section>
+    </PlatformAdminShell>
   );
 }
