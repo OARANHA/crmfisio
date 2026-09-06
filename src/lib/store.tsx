@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
@@ -21,7 +21,6 @@ export type { Toast } from './toastContext';
 interface AppState {
   user: User | null;
   users: User[];
-  refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
   patients: Patient[];
@@ -73,24 +72,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const lgpd = useLgpdActions();
   const { toasts, toast: pushToast } = useToast();
 
-  // Temporary compatibility refresh for the final two legacy consumers.
-  // Its scope is intentionally limited to the domains those flows can mutate.
-  const refreshClinicData = useCallback(async () => {
-    if (!user?.id) return;
-    await Promise.all([
-      finance.refreshFinance(),
-      agenda.refreshAgenda(),
-      clinical.refreshClinical(),
-      packageDomain.refreshPackages(),
-    ]);
-  }, [
-    user?.id,
-    finance.refreshFinance,
-    agenda.refreshAgenda,
-    clinical.refreshClinical,
-    packageDomain.refreshPackages,
-  ]);
-
   const value = useMemo<AppState>(() => {
     const persistError = (label: string, error: unknown) => {
       console.error(`[MedicsPro] ${label}:`, error);
@@ -100,7 +81,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
-      refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
       patients: patientDomain.patients,
@@ -140,7 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     user, access, canView, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
-    toasts, pushToast, refreshClinicData,
+    toasts, pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,

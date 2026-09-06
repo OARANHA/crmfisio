@@ -3,6 +3,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useApp, userName } from '../lib/store';
+import { useAgenda } from '../lib/agendaContext';
+import { useFinance } from '../lib/financeContext';
+import { usePackages } from '../lib/packageContext';
 import { STATUS_META, dayOf, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
@@ -70,7 +73,10 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 };
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
-  const { user, users, appointments, consents, refreshClinicData, signConsent, toast } = useApp();
+  const { user, users, appointments, consents, signConsent, toast } = useApp();
+  const { refreshAgenda } = useAgenda();
+  const { refreshFinance } = useFinance();
+  const { refreshPackages } = usePackages();
   const [tab, setTab] = useState<Tab>('resumo');
   const [assessmentTab, setAssessmentTab] = useState<AssessmentTab>('atual');
   const [evaluations, setEvaluations] = useState<ClinicalEvaluation[]>([]);
@@ -245,7 +251,9 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
         return false;
       }
       try {
-        await refreshClinicData();
+        const refreshes: Promise<void>[] = [refreshAgenda()];
+        if (status === 'finalizado') refreshes.push(refreshFinance(), refreshPackages());
+        await Promise.all(refreshes);
       } catch (refreshError) {
         console.error('[MedicsPro] recarregar atendimento após transição:', refreshError);
         toast('A transição foi registrada, mas os dados não puderam ser atualizados agora.', 'warn');
