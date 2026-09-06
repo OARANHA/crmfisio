@@ -7,6 +7,7 @@ type Props = {
   title: string;
   description?: string;
   actions?: ReactNode;
+  hideDesktopHeader?: boolean;
   children: ReactNode;
 };
 
@@ -29,7 +30,7 @@ function applyTheme(mode: ThemeMode) {
   document.documentElement.dataset.theme = light ? 'light' : 'dark';
 }
 
-export function PlatformAdminShell({ eyebrow, title, description, actions, children }: Props) {
+export function PlatformAdminShell({ eyebrow, title, description, actions, hideDesktopHeader = false, children }: Props) {
   const location = useLocation();
   const [theme, setTheme] = useState<ThemeMode>(() => (localStorage.getItem('medicspro-platform-theme') as ThemeMode | null) ?? 'system');
   const isActive = (to: string) => to === '/platform' ? location.pathname === to : location.pathname.startsWith(to);
@@ -65,37 +66,53 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, child
             {OPERATION_NAV.map((item) => <PlatformNav key={item.to} {...item} active={isActive(item.to)} />)}
           </nav>
 
-          <div className="mt-7 rounded-[18px] border border-line/70 bg-deep/55 p-3.5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-fog">Aparência</p>
-            <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-panel p-1">
-              <ThemeButton active={theme === 'light'} label="Claro" icon="☀" onClick={() => setTheme('light')} />
-              <ThemeButton active={theme === 'dark'} label="Escuro" icon="●" onClick={() => setTheme('dark')} />
-              <ThemeButton active={theme === 'system'} label="Auto" icon="◐" onClick={() => setTheme('system')} />
+          <div className="mt-auto space-y-3 pt-8">
+            <div className="rounded-[18px] border border-line/70 bg-deep/55 p-3.5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-fog">Aparência</p>
+              <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-panel p-1">
+                <ThemeButton active={theme === 'light'} label="Claro" icon="☀" onClick={() => setTheme('light')} />
+                <ThemeButton active={theme === 'dark'} label="Escuro" icon="●" onClick={() => setTheme('dark')} />
+                <ThemeButton active={theme === 'system'} label="Auto" icon="◐" onClick={() => setTheme('system')} />
+              </div>
             </div>
-          </div>
 
-          <div className="mt-auto rounded-[20px] border border-line/70 bg-deep/60 p-4">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-fog">Domínio SaaS</p>
-            <p className="mt-2 text-[11.5px] font-semibold text-paper">Governança separada</p>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-fog">Negócio e lifecycle sem acesso implícito aos dados clínicos dos tenants.</p>
+            {actions && (
+              <div className="rounded-[18px] border border-line/70 bg-deep/45 p-2 [&>button]:w-full">
+                {actions}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void platformSupabase.auth.signOut()}
+              className="w-full rounded-xl border border-pulse/20 bg-pulse/[0.04] px-3.5 py-2.5 text-[11px] font-semibold text-pulse transition hover:border-pulse/35 hover:bg-pulse/[0.08]"
+            >
+              Sair da plataforma
+            </button>
+
+            <div className="rounded-[20px] border border-line/70 bg-deep/60 p-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-fog">Domínio SaaS</p>
+              <p className="mt-2 text-[11.5px] font-semibold text-paper">Governança separada</p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-fog">Negócio e lifecycle sem acesso implícito aos dados clínicos dos tenants.</p>
+            </div>
           </div>
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 border-b border-line/55 bg-ink/90 px-4 py-4 backdrop-blur-xl sm:px-5 md:px-7 2xl:px-9">
+          <header className={`${hideDesktopHeader ? 'lg:hidden' : ''} sticky top-0 z-30 border-b border-line/55 bg-ink/90 px-4 py-4 backdrop-blur-xl sm:px-5 md:px-7 2xl:px-9`}>
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-mint">{eyebrow}</p>
                 <h1 className="mt-0.5 font-display text-[21px] font-bold tracking-tight">{title}</h1>
                 {description && <p className="mt-1 max-w-4xl text-[11.5px] leading-relaxed text-fog">{description}</p>}
               </div>
-              {actions}
-              <div className="hidden rounded-xl border border-line bg-panel p-1 sm:flex lg:hidden">
-                <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-lg px-3 py-2 text-[11px] font-semibold text-fog hover:bg-deep hover:text-paper" title="Alternar tema">
-                  {theme === 'light' ? '☀ Claro' : '● Escuro'}
+              <div className="flex items-center gap-2 lg:hidden">
+                {actions}
+                <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-fog" title="Alternar tema">
+                  {theme === 'light' ? '☀' : '●'}
                 </button>
+                <button onClick={() => void platformSupabase.auth.signOut()} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-pulse">Sair</button>
               </div>
-              <button onClick={() => void platformSupabase.auth.signOut()} className="rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[11px] font-semibold text-pulse transition hover:bg-pulse/[0.05]">Sair</button>
             </div>
           </header>
 
