@@ -3,7 +3,6 @@ import type { Session } from '@supabase/supabase-js';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
-  isPlatformAdmin,
   loadPlatformAuditLog,
   loadPlatformAutomationRuns,
   loadPlatformAutomationSettings,
@@ -13,6 +12,7 @@ import {
   type PlatformAutomationRun,
   type PlatformAutomationSetting,
 } from '../lib/platformAdmin';
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 
 const SETTING_META: Record<PlatformAutomationKey, { title: string; description: string; group: string; critical?: boolean }> = {
   'automation.enabled': { title: 'Automação global', description: 'Chave-mestra do orquestrador da plataforma.', group: 'Orquestração', critical: true },
@@ -51,9 +51,10 @@ function auditTitle(action: string) {
 }
 
 export function PlatformAdminPage() {
+  const cachedAccess = getCachedPlatformAdminAccess();
   const [session, setSession] = useState<Session | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(cachedAccess === null);
+  const [authorized, setAuthorized] = useState<boolean | null>(cachedAccess);
   const [settings, setSettings] = useState<PlatformAutomationSetting[]>([]);
   const [runs, setRuns] = useState<PlatformAutomationRun[]>([]);
   const [audit, setAudit] = useState<PlatformAuditEntry[]>([]);
@@ -69,7 +70,7 @@ export function PlatformAdminPage() {
     setLoadingData(true);
     setError(null);
     try {
-      const allowed = await isPlatformAdmin();
+      const allowed = await validatePlatformAdminAccess();
       setAuthorized(allowed);
       if (!allowed) {
         setSettings([]); setRuns([]); setAudit([]);
@@ -117,14 +118,16 @@ export function PlatformAdminPage() {
     const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
-      setAuthorized(null);
+      if (!nextSession) setAuthorized(null);
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
     if (!session) {
-      setAuthorized(null); setSettings([]); setRuns([]); setAudit([]);
+      if (authorized !== true) {
+        setAuthorized(null); setSettings([]); setRuns([]); setAudit([]);
+      }
       return;
     }
     void refresh(AUDIT_STEP);
@@ -167,9 +170,9 @@ export function PlatformAdminPage() {
     }
   };
 
-  if (loadingAuth) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
+  if (loadingAuth && authorized !== true) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
 
-  if (!session) {
+  if (!session && authorized !== true) {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
         <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[28px] border border-line bg-panel shadow-[0_28px_90px_rgba(3,16,48,0.13)]">
@@ -191,7 +194,7 @@ export function PlatformAdminPage() {
     );
   }
 
-  if (loadingData || authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
+  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
   if (!authorized) return <div className="app-surface min-h-screen grid place-items-center p-5"><div className="w-full max-w-lg rounded-[24px] border border-pulse/30 bg-panel p-7"><p className="text-pulse">Acesso negado</p><h1 className="mt-2 font-display text-2xl font-bold">Esta conta não é Platform Admin</h1></div></div>;
 
   return (
