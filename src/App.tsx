@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useApp } from './lib/store';
+import { AppProvider } from './lib/store';
 import { AuthProvider, useAuth } from './lib/useAuth';
 import { FinanceProvider } from './lib/financeContext';
 import { AgendaProvider } from './lib/agendaContext';
@@ -11,6 +11,7 @@ import { CommunicationProvider } from './lib/communicationContext';
 import { AuditProvider } from './lib/auditContext';
 import { InfrastructureProvider } from './lib/infrastructureContext';
 import { ClinicDataBoundary } from './lib/ClinicDataBoundary';
+import { useCurrentUserAccess } from './lib/currentUserAccess';
 import { Shell } from './components/Shell';
 import { ClinicEntitlementGate } from './components/ClinicEntitlementGate';
 import { ModuleAccessGate } from './components/ModuleAccessGate';
@@ -39,7 +40,7 @@ import { RelatoriosHub } from './pages/RelatoriosHub';
 import { ConfigPremium } from './pages/ConfigPremium';
 
 function Home() {
-  const { user, canView } = useApp();
+  const { user, canView } = useCurrentUserAccess();
   if (!user) return <Navigate to="/" replace />;
   if (user.role === 'recep') return <Navigate to="/dashboard" replace />;
   const first = canView('dashboard') ? '/dashboard' : canView('agenda') ? '/agenda' : canView('pacientes') ? '/pacientes' : '/crm';
