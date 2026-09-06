@@ -33,11 +33,11 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 
 export function FinanceiroOperational() {
   const {
-    user, access, transactions, setTxStatus, patientPackages, patients, packages,
+    user, access, transactions, setTxStatus, patients,
     commissions, users, setCommissionStatus, fecharRepasse, addTransaction, toast,
   } = useApp();
   const { refreshFinance } = useFinance();
-  const { refreshPackages: refreshPackageDomain } = usePackages();
+  const { patientPackages, packages, refreshPackages: refreshPackageDomain } = usePackages();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);
   const [catalog, setCatalog] = useState<PackageCatalogItem[]>([]);
@@ -165,9 +165,7 @@ export function FinanceiroOperational() {
                     <td className={`px-4 py-3 text-right font-mono font-semibold ${t.tipo === 'pagar' ? 'text-pulse' : 'text-mint'}`}>{t.tipo === 'pagar' ? '−' : '+'}{fmtBRL(t.valor)}</td>
                     <td className="px-4 py-3 font-mono text-[11px] text-fog uppercase"><span className="inline-flex items-center gap-1.5">{t.metodo === 'cartao' && <IconCardPay className="w-3.5 h-3.5" />}{t.metodo ?? '—'}</span></td>
                     <td className="px-4 py-3"><Chip className={st.chip}>{st.label}</Chip></td>
-                    {canWriteTipo(tab) && <td className="px-4 py-3 text-right">{t.status !== 'pago' ? <div className="inline-flex gap-1.5">
-                      <Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => setSettling(t)}>Baixar</Btn>
-                    </div> : <span className="font-mono text-[10.5px] text-fog/60">liquidado ✓</span>}</td>}
+                    {canWriteTipo(tab) && <td className="px-4 py-3 text-right">{t.status !== 'pago' ? <div className="inline-flex gap-1.5"><Btn className="!px-2.5 !py-1 !text-[11px]" onClick={() => setSettling(t)}>Baixar</Btn></div> : <span className="font-mono text-[10.5px] text-fog/60">liquidado ✓</span>}</td>}
                   </tr>;
                 })}
               </tbody>
@@ -184,11 +182,7 @@ export function FinanceiroOperational() {
                 <CardHead title="Catálogo de pacotes" sub="produtos reais da clínica" right={isAdmin ? <Btn className="!px-3 !py-1.5 !text-[11px]" onClick={() => setPackageModal('new')}>Novo</Btn> : undefined} />
                 <ul className="divide-y divide-line/70">
                   {catalog.length === 0 && <li className="px-5 py-6 text-[12px] text-fog">Nenhum pacote cadastrado.</li>}
-                  {catalog.map((pk) => <li key={pk.id} className="px-5 py-3.5 flex items-center gap-3">
-                    <div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{pk.nome}</p><p className="font-mono text-[10.5px] text-fog">{pk.sessoes} sessões · {pk.validadeDias} dias · {fmtBRL(pk.preco)}</p>{pk.descricao && <p className="text-[11.5px] text-fog mt-1">{pk.descricao}</p>}</div>
-                    <Chip className={pk.ativo ? 'border-mint/40 text-mint' : 'border-line text-fog'}>{pk.ativo ? 'ativo' : 'inativo'}</Chip>
-                    {isAdmin && <Btn variant="ghost" className="!px-2.5 !py-1 !text-[11px]" onClick={() => setPackageModal(pk)}>Editar</Btn>}
-                  </li>)}
+                  {catalog.map((pk) => <li key={pk.id} className="px-5 py-3.5 flex items-center gap-3"><div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{pk.nome}</p><p className="font-mono text-[10.5px] text-fog">{pk.sessoes} sessões · {pk.validadeDias} dias · {fmtBRL(pk.preco)}</p>{pk.descricao && <p className="text-[11.5px] text-fog mt-1">{pk.descricao}</p>}</div><Chip className={pk.ativo ? 'border-mint/40 text-mint' : 'border-line text-fog'}>{pk.ativo ? 'ativo' : 'inativo'}</Chip>{isAdmin && <Btn variant="ghost" className="!px-2.5 !py-1 !text-[11px]" onClick={() => setPackageModal(pk)}>Editar</Btn>}</li>)}
                 </ul>
               </Card>
 
@@ -196,11 +190,7 @@ export function FinanceiroOperational() {
                 <CardHead title="Renovação / risco" sub="saldo baixo, vencimento e esgotamento" />
                 <ul className="divide-y divide-line/70">
                   {renewals.length === 0 && <li className="px-5 py-6 text-[12px] text-fog">Nenhum pacote exige atenção agora.</li>}
-                  {renewals.map((r) => <li key={r.patientPackageId} className="px-5 py-3.5 flex flex-wrap items-center gap-3">
-                    <div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{r.patientName}</p><p className="font-mono text-[10.5px] text-fog">{r.packageName} · restam {r.sessionsRemaining}/{r.sessionsTotal}{r.validUntil ? ` · até ${format(new Date(r.validUntil + 'T12:00'), 'dd/MM/yy')}` : ''}</p></div>
-                    <Chip className="border-amber/45 text-amber">{RISK_LABEL[r.riskReason]}</Chip>
-                    {canOperatePackages && <Btn className="!px-3 !py-1.5 !text-[11px]" onClick={() => setSellModal({ patientId: r.patientId, renewedFromId: r.patientPackageId, packageId: r.packageId })}>Renovar</Btn>}
-                  </li>)}
+                  {renewals.map((r) => <li key={r.patientPackageId} className="px-5 py-3.5 flex flex-wrap items-center gap-3"><div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{r.patientName}</p><p className="font-mono text-[10.5px] text-fog">{r.packageName} · restam {r.sessionsRemaining}/{r.sessionsTotal}{r.validUntil ? ` · até ${format(new Date(r.validUntil + 'T12:00'), 'dd/MM/yy')}` : ''}</p></div><Chip className="border-amber/45 text-amber">{RISK_LABEL[r.riskReason]}</Chip>{canOperatePackages && <Btn className="!px-3 !py-1.5 !text-[11px]" onClick={() => setSellModal({ patientId: r.patientId, renewedFromId: r.patientPackageId, packageId: r.packageId })}>Renovar</Btn>}</li>)}
                 </ul>
               </Card>
             </div>
@@ -213,12 +203,7 @@ export function FinanceiroOperational() {
                   const p = patients.find((y) => y.id === x.pacienteId);
                   const pk = catalog.find((y) => y.id === x.pacoteId) ?? packages.find((y) => y.id === x.pacoteId);
                   const restam = Math.max(0, x.sessoesTotais - x.sessoesUsadas);
-                  return <li key={x.id} className="px-5 py-4"><div className="flex flex-wrap items-center gap-3">
-                    <div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{p?.nome ?? 'Paciente'}</p><p className="font-mono text-[10.5px] text-fog mt-0.5">{pk?.nome ?? 'Pacote'} · compra {format(new Date(x.compraData + 'T12:00'), 'dd/MM/yy', { locale: ptBR })}</p></div>
-                    <span className={`font-mono text-[12px] font-semibold ${restam <= 2 ? 'text-pulse' : 'text-mint'}`}>{restam}/{x.sessoesTotais}</span>
-                    <Chip className={x.status === 'ativo' && restam > 2 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{x.status}</Chip>
-                    {canOperatePackages && restam <= 2 && <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11px]" onClick={() => setSellModal({ patientId: x.pacienteId, renewedFromId: x.id, packageId: x.pacoteId })}>Renovar</Btn>}
-                  </div><Bar pct={x.sessoesTotais ? (x.sessoesUsadas / x.sessoesTotais) * 100 : 0} color={restam <= 2 ? '#f2545b' : '#4fd1a5'} className="mt-2.5" /></li>;
+                  return <li key={x.id} className="px-5 py-4"><div className="flex flex-wrap items-center gap-3"><div className="min-w-0 flex-1"><p className="font-display font-semibold text-[13.5px]">{p?.nome ?? 'Paciente'}</p><p className="font-mono text-[10.5px] text-fog mt-0.5">{pk?.nome ?? 'Pacote'} · compra {format(new Date(x.compraData + 'T12:00'), 'dd/MM/yy', { locale: ptBR })}</p></div><span className={`font-mono text-[12px] font-semibold ${restam <= 2 ? 'text-pulse' : 'text-mint'}`}>{restam}/{x.sessoesTotais}</span><Chip className={x.status === 'ativo' && restam > 2 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{x.status}</Chip>{canOperatePackages && restam <= 2 && <Btn variant="subtle" className="!px-3 !py-1.5 !text-[11px]" onClick={() => setSellModal({ patientId: x.pacienteId, renewedFromId: x.id, packageId: x.pacoteId })}>Renovar</Btn>}</div><Bar pct={x.sessoesTotais ? (x.sessoesUsadas / x.sessoesTotais) * 100 : 0} color={restam <= 2 ? '#f2545b' : '#4fd1a5'} className="mt-2.5" /></li>;
                 })}
               </ul>
             </Card>
@@ -228,9 +213,7 @@ export function FinanceiroOperational() {
         {tab === 'repasse' && !isRecep && (
           <Card className="overflow-x-auto">
             <CardHead title="Repasse / comissão" sub="40% sobre sessões finalizadas" right={isAdmin ? <Btn className="!px-3 !py-1.5 !text-[12px]" onClick={() => setRepasse(true)}><IconDollar className="w-3.5 h-3.5" /> Fechar mês</Btn> : undefined} />
-            <table className="w-full min-w-[700px] text-[13px]"><thead><tr className="bg-deep border-b border-line font-mono text-[10.5px] uppercase tracking-[0.12em] text-fog"><th className="text-left px-4 py-3">Profissional</th><th className="text-left px-4 py-3">Período</th><th className="text-right px-4 py-3">Base</th><th className="text-right px-4 py-3">Comissão</th><th className="text-left px-4 py-3">Status</th>{isAdmin && <th className="px-4 py-3" />}</tr></thead>
-              <tbody>{commissions.filter((c) => !isFisio || c.fisioId === user?.id).map((c) => <tr key={c.id} className="border-b border-line/60 last:border-0"><td className="px-4 py-3 font-semibold">{userName(users, c.fisioId)}</td><td className="px-4 py-3 font-mono text-fog">{c.periodo}</td><td className="px-4 py-3 text-right font-mono">{fmtBRL(c.base)}</td><td className="px-4 py-3 text-right font-mono text-mint">{fmtBRL(Math.round(c.base * c.percentual / 100))}</td><td className="px-4 py-3"><Chip className={c.status === 'pago' ? STATUS_TX.pago.chip : STATUS_TX.pendente.chip}>{c.status}</Chip></td>{isAdmin && <td className="px-4 py-3 text-right">{c.status === 'aberto' && <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]" onClick={() => void payCommission(c.id)}>Marcar pago</Btn>}</td>}</tr>)}</tbody>
-            </table>
+            <table className="w-full min-w-[700px] text-[13px]"><thead><tr className="bg-deep border-b border-line font-mono text-[10.5px] uppercase tracking-[0.12em] text-fog"><th className="text-left px-4 py-3">Profissional</th><th className="text-left px-4 py-3">Período</th><th className="text-right px-4 py-3">Base</th><th className="text-right px-4 py-3">Comissão</th><th className="text-left px-4 py-3">Status</th>{isAdmin && <th className="px-4 py-3" />}</tr></thead><tbody>{commissions.filter((c) => !isFisio || c.fisioId === user?.id).map((c) => <tr key={c.id} className="border-b border-line/60 last:border-0"><td className="px-4 py-3 font-semibold">{userName(users, c.fisioId)}</td><td className="px-4 py-3 font-mono text-fog">{c.periodo}</td><td className="px-4 py-3 text-right font-mono">{fmtBRL(c.base)}</td><td className="px-4 py-3 text-right font-mono text-mint">{fmtBRL(Math.round(c.base * c.percentual / 100))}</td><td className="px-4 py-3"><Chip className={c.status === 'pago' ? STATUS_TX.pago.chip : STATUS_TX.pendente.chip}>{c.status}</Chip></td>{isAdmin && <td className="px-4 py-3 text-right">{c.status === 'aberto' && <Btn variant="subtle" className="!px-2.5 !py-1 !text-[11px]" onClick={() => void payCommission(c.id)}>Marcar pago</Btn>}</td>}</tr>)}</tbody></table>
           </Card>
         )}
       </Reveal>
@@ -260,27 +243,12 @@ function TransactionModal({ tipo, patients, onClose, onSave }: { tipo: 'receber'
     onSave({ tipo, descricao: descricao.trim(), categoria: categoria.trim(), valor: cents, vencimento, status: 'pendente', pacienteId: tipo === 'receber' && pacienteId ? pacienteId : null, metodo: null, paidAt: null });
   };
 
-  return <Modal open onClose={onClose} title={tipo === 'receber' ? 'Nova conta a receber' : 'Nova conta a pagar'}>
-    <div className="space-y-4">
-      <Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder={tipo === 'receber' ? 'Ex.: Avaliação fisioterapêutica' : 'Ex.: Aluguel da unidade'} /></Field>
-      <div className="grid grid-cols-2 gap-3"><Field label="Categoria"><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex.: Sessões" /></Field><Field label="Valor (R$)"><Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" /></Field></div>
-      <Field label="Vencimento"><Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} /></Field>
-      {tipo === 'receber' && <Field label="Paciente (opcional)"><Select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)}><option value="">Sem vínculo</option>{patients.filter((p) => !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>}
-      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={save} disabled={!valid}>Salvar lançamento</Btn></div>
-    </div>
-  </Modal>;
+  return <Modal open onClose={onClose} title={tipo === 'receber' ? 'Nova conta a receber' : 'Nova conta a pagar'}><div className="space-y-4"><Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder={tipo === 'receber' ? 'Ex.: Avaliação fisioterapêutica' : 'Ex.: Aluguel da unidade'} /></Field><div className="grid grid-cols-2 gap-3"><Field label="Categoria"><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex.: Sessões" /></Field><Field label="Valor (R$)"><Input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" /></Field></div><Field label="Vencimento"><Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} /></Field>{tipo === 'receber' && <Field label="Paciente (opcional)"><Select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)}><option value="">Sem vínculo</option>{patients.filter((p) => !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>}<div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={save} disabled={!valid}>Salvar lançamento</Btn></div></div></Modal>;
 }
 
 function SettleTransactionModal({ transaction, onClose, onConfirm }: { transaction: FinancialTransaction; onClose: () => void; onConfirm: (method: PaymentMethod) => void }) {
   const [method, setMethod] = useState<PaymentMethod>(transaction.tipo === 'receber' ? 'pix' : 'boleto');
-  return <Modal open onClose={onClose} title="Confirmar baixa manual">
-    <div className="space-y-4">
-      <div className="border border-line bg-deep p-3"><p className="font-semibold text-[13px]">{transaction.descricao}</p><p className="font-mono text-[12px] text-mint mt-1">{fmtBRL(transaction.valor)}</p></div>
-      <Field label="Método utilizado"><Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option></Select></Field>
-      <p className="text-[11.5px] text-fog">Esta ação apenas registra a liquidação no sistema; ela não processa o pagamento no banco ou na operadora.</p>
-      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => onConfirm(method)}>Confirmar baixa</Btn></div>
-    </div>
-  </Modal>;
+  return <Modal open onClose={onClose} title="Confirmar baixa manual"><div className="space-y-4"><div className="border border-line bg-deep p-3"><p className="font-semibold text-[13px]">{transaction.descricao}</p><p className="font-mono text-[12px] text-mint mt-1">{fmtBRL(transaction.valor)}</p></div><Field label="Método utilizado"><Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option></Select></Field><p className="text-[11.5px] text-fog">Esta ação apenas registra a liquidação no sistema; ela não processa o pagamento no banco ou na operadora.</p><div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => onConfirm(method)}>Confirmar baixa</Btn></div></div></Modal>;
 }
 
 function PackageCatalogModal({ initial, onClose, onSaved }: { initial: PackageCatalogItem | null; onClose: () => void; onSaved: () => Promise<void> }) {
@@ -291,26 +259,8 @@ function PackageCatalogModal({ initial, onClose, onSaved }: { initial: PackageCa
   const [descricao, setDescricao] = useState(initial?.descricao ?? '');
   const [ativo, setAtivo] = useState(initial?.ativo ?? true);
   const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    const cents = Math.round(Number(preco.replace(',', '.')) * 100);
-    if (!nome.trim() || Number(sessoes) <= 0 || !Number.isFinite(cents) || cents < 0 || Number(validade) <= 0) return;
-    setSaving(true);
-    try {
-      await upsertSessionPackage({ id: initial?.id, nome, sessoes: Number(sessoes), preco: cents, validadeDias: Number(validade), descricao, ativo });
-      await onSaved();
-    } finally { setSaving(false); }
-  };
-
-  return <Modal open onClose={onClose} title={initial ? 'Editar pacote' : 'Novo pacote de sessões'}>
-    <div className="space-y-4">
-      <Field label="Nome"><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fisioterapia 10 sessões" /></Field>
-      <div className="grid grid-cols-3 gap-3"><Field label="Sessões"><Input type="number" min="1" value={sessoes} onChange={(e) => setSessoes(e.target.value)} /></Field><Field label="Preço (R$)"><Input inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} /></Field><Field label="Validade (dias)"><Input type="number" min="1" value={validade} onChange={(e) => setValidade(e.target.value)} /></Field></div>
-      <Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Opcional" /></Field>
-      <label className="flex items-center gap-2 text-[12px] text-fog"><input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Disponível para novas vendas</label>
-      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => void save()} disabled={saving}>{saving ? 'Salvando…' : 'Salvar pacote'}</Btn></div>
-    </div>
-  </Modal>;
+  const save = async () => { const cents = Math.round(Number(preco.replace(',', '.')) * 100); if (!nome.trim() || Number(sessoes) <= 0 || !Number.isFinite(cents) || cents < 0 || Number(validade) <= 0) return; setSaving(true); try { await upsertSessionPackage({ id: initial?.id, nome, sessoes: Number(sessoes), preco: cents, validadeDias: Number(validade), descricao, ativo }); await onSaved(); } finally { setSaving(false); } };
+  return <Modal open onClose={onClose} title={initial ? 'Editar pacote' : 'Novo pacote de sessões'}><div className="space-y-4"><Field label="Nome"><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fisioterapia 10 sessões" /></Field><div className="grid grid-cols-3 gap-3"><Field label="Sessões"><Input type="number" min="1" value={sessoes} onChange={(e) => setSessoes(e.target.value)} /></Field><Field label="Preço (R$)"><Input inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} /></Field><Field label="Validade (dias)"><Input type="number" min="1" value={validade} onChange={(e) => setValidade(e.target.value)} /></Field></div><Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Opcional" /></Field><label className="flex items-center gap-2 text-[12px] text-fog"><input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Disponível para novas vendas</label><div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => void save()} disabled={saving}>{saving ? 'Salvando…' : 'Salvar pacote'}</Btn></div></div></Modal>;
 }
 
 function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { initial: { patientId?: string; renewedFromId?: string; packageId?: string }; catalog: PackageCatalogItem[]; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSaved: () => Promise<void> }) {
@@ -321,38 +271,15 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
   const [method, setMethod] = useState<'pix' | 'cartao' | 'dinheiro' | 'boleto'>('pix');
   const [saving, setSaving] = useState(false);
   const pk = catalog.find((x) => x.id === packageId);
-
-  const save = async () => {
-    if (!patientId || !packageId) return;
-    setSaving(true);
-    try {
-      await sellSessionPackage({ patientId, packageId, dueDate, paymentStatus: status, paymentMethod: status === 'pago' ? method : null, renewedFromId: initial.renewedFromId ?? null });
-      await onSaved();
-    } finally { setSaving(false); }
-  };
-
-  return <Modal open onClose={onClose} title={initial.renewedFromId ? 'Renovar pacote' : 'Vender pacote de sessões'}>
-    <div className="space-y-4">
-      <Field label="Paciente"><Select value={patientId} onChange={(e) => setPatientId(e.target.value)} disabled={Boolean(initial.patientId)}><option value="">Selecionar…</option>{patients.filter((p) => p.status === 'ativo' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
-      <Field label="Pacote"><Select value={packageId} onChange={(e) => setPackageId(e.target.value)}><option value="">Selecionar…</option>{catalog.map((p) => <option key={p.id} value={p.id}>{p.nome} — {fmtBRL(p.preco)}</option>)}</Select></Field>
-      <div className="grid grid-cols-2 gap-3"><Field label="Vencimento"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></Field><Field label="Situação"><Select value={status} onChange={(e) => setStatus(e.target.value as 'pendente' | 'pago')}><option value="pendente">Gerar a receber</option><option value="pago">Pago agora</option></Select></Field></div>
-      {status === 'pago' && <Field label="Método"><Select value={method} onChange={(e) => setMethod(e.target.value as typeof method)}><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option></Select></Field>}
-      {pk && <div className="border border-line bg-deep px-3 py-2.5 flex items-center justify-between font-mono text-[12px]"><span className="text-fog">{pk.sessoes} sessões · {pk.validadeDias} dias</span><span className="text-mint font-semibold">{fmtBRL(pk.preco)}</span></div>}
-      <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => void save()} disabled={!patientId || !packageId || saving}><IconDollar className="w-4 h-4" /> {saving ? 'Salvando…' : initial.renewedFromId ? 'Confirmar renovação' : 'Gerar venda'}</Btn></div>
-    </div>
-  </Modal>;
+  const save = async () => { if (!patientId || !packageId) return; setSaving(true); try { await sellSessionPackage({ patientId, packageId, dueDate, paymentStatus: status, paymentMethod: status === 'pago' ? method : null, renewedFromId: initial.renewedFromId ?? null }); await onSaved(); } finally { setSaving(false); } };
+  return <Modal open onClose={onClose} title={initial.renewedFromId ? 'Renovar pacote' : 'Vender pacote de sessões'}><div className="space-y-4"><Field label="Paciente"><Select value={patientId} onChange={(e) => setPatientId(e.target.value)} disabled={Boolean(initial.patientId)}><option value="">Selecionar…</option>{patients.filter((p) => p.status === 'ativo' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field><Field label="Pacote"><Select value={packageId} onChange={(e) => setPackageId(e.target.value)}><option value="">Selecionar…</option>{catalog.map((p) => <option key={p.id} value={p.id}>{p.nome} — {fmtBRL(p.preco)}</option>)}</Select></Field><div className="grid grid-cols-2 gap-3"><Field label="Vencimento"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></Field><Field label="Situação"><Select value={status} onChange={(e) => setStatus(e.target.value as 'pendente' | 'pago')}><option value="pendente">Gerar a receber</option><option value="pago">Pago agora</option></Select></Field></div>{status === 'pago' && <Field label="Método"><Select value={method} onChange={(e) => setMethod(e.target.value as typeof method)}><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option></Select></Field>}{pk && <div className="border border-line bg-deep px-3 py-2.5 flex items-center justify-between font-mono text-[12px]"><span className="text-fog">{pk.sessoes} sessões · {pk.validadeDias} dias</span><span className="text-mint font-semibold">{fmtBRL(pk.preco)}</span></div>}<div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => void save()} disabled={!patientId || !packageId || saving}><IconDollar className="w-4 h-4" /> {saving ? 'Salvando…' : initial.renewedFromId ? 'Confirmar renovação' : 'Gerar venda'}</Btn></div></div></Modal>;
 }
 
 function RepasseModal({ onClose }: { onClose: () => void }) {
   const { users, appointments, commissions, fecharRepasse, toast } = useApp();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
-  const linhas = fisios.map((f) => {
-    const sess = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes));
-    const base = sess.reduce((s, a) => s + a.valor, 0);
-    const jaFechado = commissions.some((c) => c.fisioId === f.id && c.periodo === mes);
-    return { f, n: sess.length, base, comissao: Math.round(base * 0.4), jaFechado };
-  });
+  const linhas = fisios.map((f) => { const sess = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes)); const base = sess.reduce((s, a) => s + a.valor, 0); const jaFechado = commissions.some((c) => c.fisioId === f.id && c.periodo === mes); return { f, n: sess.length, base, comissao: Math.round(base * 0.4), jaFechado }; });
   const fechaveis = linhas.filter((l) => !l.jaFechado && l.base > 0);
   const total = fechaveis.reduce((s, l) => s + l.comissao, 0);
   const fechar = async () => { try { const n = await fecharRepasse(mes); toast(n ? `Repasse fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info'); onClose(); } catch (error) { console.error('[MedicsPro] fechar repasse:', error); toast('Não foi possível fechar os repasses.', 'warn'); } };
