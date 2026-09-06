@@ -2,26 +2,23 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  Role, Room, SessionPackage, Unidade, User, WaLog,
+  Room, SessionPackage, Unidade, User, WaLog,
 } from './types';
 import { loadInfrastructure } from './infrastructure';
 import {
   anonymizePatient,
-  closeMonthlyCommissions,
   insertAppointment,
   insertEvolution,
   insertPatient,
-  insertPayment,
   loadClinicData,
   logPatientDataExport,
-  markCommissionPaid,
   updateAppointmentStatus,
   updateConsent,
   updatePatientStage,
-  updatePayment,
   updateSurvey,
 } from './repository';
 import { accessFor } from './permissions';
+import { useFinance } from './financeContext';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -75,7 +72,9 @@ const Ctx = createContext<AppState | null>(null);
 
 let seq = 1000;
 const nid = (p: string) => `${p}${++seq}`;
+
 export function AppProvider({ children }: { children: ReactNode }) {
+  const finance = useFinance();
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -83,8 +82,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
-  const [commissions, setCommissions] = useState<Commission[]>([]);
   const [evolutions, setEvolutions] = useState<Evolution[]>([]);
   const [consents, setConsents] = useState<ConsentTerm[]>([]);
   const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
@@ -101,9 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4400);
   }, []);
 
-  const refreshClinicData = useCallback(async () => {
-    if (!user?.id) return;
-    const data = await loadClinicData(user.id);
+  const applyClinicData = useCallback(async (data: Awaited<ReturnType<typeof loadClinicData>>) => {
     const infrastructure = await loadInfrastructure(data.clinicId);
     setClinicId(data.clinicId);
     setUsers(data.users);
@@ -112,8 +107,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
     setPatients(data.patients);
     setAppointments(data.appointments);
-    setTransactions(data.transactions);
-    setCommissions(data.commissions);
     setEvolutions(data.evolutions);
     setConsents(data.consents);
     setSurveys(data.surveys);
@@ -121,7 +114,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPatientPackages(data.patientPackages);
     setWaLogs(data.waLogs);
     setAudit(data.audit);
-  }, [user?.id]);
+  }, []);
+
+  const refreshClinicData = useCallback(async () => {
+    if (!user?.id) return;
+    const [data] = await Promise.all([
+      loadClinicData(user.id),
+      finance.refreshFinance(),
+    ]);
+    await applyClinicData(data);
+  }, [user?.id, finance.refreshFinance, applyClinicData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,8 +135,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnidadeSel('all');
       setPatients([]);
       setAppointments([]);
-      setTransactions([]);
-      setCommissions([]);
       setEvolutions([]);
       setConsents([]);
       setSurveys([]);
@@ -146,25 +146,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     loadClinicData(user.id)
-      .then(async (data) => ({ data, infrastructure: await loadInfrastructure(data.clinicId) }))
-      .then(({ data, infrastructure }) => {
+      .then(async (data) => {
         if (cancelled) return;
-        setClinicId(data.clinicId);
-        setUsers(data.users);
-        setUnidades(infrastructure.unidades);
-        setRooms(infrastructure.rooms);
-        setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
-        setPatients(data.patients);
-        setAppointments(data.appointments);
-        setTransactions(data.transactions);
-        setCommissions(data.commissions);
-        setEvolutions(data.evolutions);
-        setConsents(data.consents);
-        setSurveys(data.surveys);
-        setPackages(data.packages);
-        setPatientPackages(data.patientPackages);
-        setWaLogs(data.waLogs);
-        setAudit(data.audit);
+        await applyClinicData(data);
       })
       .catch((error) => {
         console.error('[MedicsPro] Falha ao carregar dados reais:', error);
@@ -174,7 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, pushToast]);
+  }, [user?.id, pushToast, applyClinicData]);
 
   const value = useMemo<AppState>(() => {
     const access = (m: ModuleKey): Access => accessFor(user?.role, m);
@@ -205,8 +189,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patientPackages,
       patients,
       appointments,
-      transactions,
-      commissions,
+      transactions: finance.transactions,
+      commissions: finance.commissions,
       evolutions,
       consents,
       surveys,
@@ -223,52 +207,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast: pushToast,
 
       setAppointmentStatus: (id, status) => {
-        const anterior = appointments.find((a) => a.id === id)?.status;
-        setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+        const previous = appointments.find((a) => a.id === id)?.status;
+        setAppointments((current) => current.map((a) => a.id === id ? { ...a, status } : a));
         void updateAppointmentStatus(id, status).catch((error) => {
-          if (anterior) setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: anterior } : a)));
+          if (previous) setAppointments((current) => current.map((a) => a.id === id ? { ...a, status: previous } : a));
           persistError('Falha ao atualizar o atendimento', error);
         });
       },
 
-      addAppointment: (a) => {
+      addAppointment: (appointment) => {
         if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        void insertAppointment(clinicId, a)
-          .then((novo) => {
-            setAppointments((prev) => [...prev, novo]);
+        void insertAppointment(clinicId, appointment)
+          .then((created) => {
+            setAppointments((current) => [...current, created]);
             pushToast('Agendamento salvo.');
           })
           .catch((error) => persistError('Falha ao salvar agendamento', error));
       },
 
-      addPatient: (p) => {
+      addPatient: (patient) => {
         if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
         const payload: Omit<Patient, 'id' | 'createdAt'> = {
-          ...p,
-          anamnese: p.anamnese ?? { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
+          ...patient,
+          anamnese: patient.anamnese ?? { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
         };
         void insertPatient(clinicId, payload)
-          .then((novo) => {
-            setPatients((prev) => [novo, ...prev]);
+          .then((created) => {
+            setPatients((current) => [created, ...current]);
             pushToast('Paciente salvo no Supabase.');
           })
           .catch((error) => persistError('Falha ao cadastrar paciente', error));
       },
 
       setFunilStage: (id, stage) => {
-        const anterior = patients.find((p) => p.id === id)?.funilStage;
-        setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, funilStage: stage } : p)));
+        const previous = patients.find((p) => p.id === id)?.funilStage;
+        setPatients((current) => current.map((p) => p.id === id ? { ...p, funilStage: stage } : p));
         void updatePatientStage(id, stage).catch((error) => {
-          if (anterior) setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, funilStage: anterior } : p)));
+          if (previous) setPatients((current) => current.map((p) => p.id === id ? { ...p, funilStage: previous } : p));
           persistError('Falha ao atualizar o funil', error);
         });
       },
 
-      addEvolution: (e) => {
+      addEvolution: (evolution) => {
         if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        void insertEvolution(clinicId, e)
-          .then((nova) => {
-            setEvolutions((prev) => [nova, ...prev]);
+        void insertEvolution(clinicId, evolution)
+          .then((created) => {
+            setEvolutions((current) => [created, ...current]);
             pushToast('Evolução clínica salva.');
           })
           .catch((error) => persistError('Falha ao salvar evolução clínica', error));
@@ -277,7 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       signConsent: async (id) => {
         try {
           const persisted = await updateConsent(id);
-          setConsents((prev) => prev.map((c) => c.id === id ? persisted : c));
+          setConsents((current) => current.map((consent) => consent.id === id ? persisted : consent));
           pushToast('Consentimento registrado com sucesso.');
         } catch (error) {
           persistError('Falha ao registrar consentimento', error);
@@ -285,81 +269,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       setTxStatus: (id, status, metodo) => {
-        const anterior = transactions.find((t) => t.id === id);
-        setTransactions((prev) => prev.map((t) => t.id === id ? { ...t, status, metodo: metodo ?? t.metodo } : t));
-        void updatePayment(id, status, metodo)
-          .then((updated) => setTransactions((prev) => prev.map((t) => t.id === id ? updated : t)))
-          .catch((error) => {
-            if (anterior) setTransactions((prev) => prev.map((t) => t.id === id ? anterior : t));
-            persistError('Falha ao atualizar financeiro', error);
-          });
+        void finance.setTransactionStatus(id, status, metodo)
+          .catch((error) => persistError('Falha ao atualizar financeiro', error));
       },
 
-      addTransaction: (t) => {
-        if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        void insertPayment(clinicId, t)
-          .then((novo) => {
-            setTransactions((prev) => [novo, ...prev]);
-            pushToast('Lançamento financeiro salvo.');
-          })
+      addTransaction: (transaction) => {
+        void finance.addTransaction(transaction)
+          .then(() => pushToast('Lançamento financeiro salvo.'))
           .catch((error) => persistError('Falha ao salvar lançamento financeiro', error));
       },
 
       answerNps: (id, nota) => {
-        const anterior = surveys.find((s) => s.id === id)?.nota ?? null;
-        setSurveys((prev) => prev.map((s) => (s.id === id ? { ...s, nota } : s)));
+        const previous = surveys.find((survey) => survey.id === id)?.nota ?? null;
+        setSurveys((current) => current.map((survey) => survey.id === id ? { ...survey, nota } : survey));
         void updateSurvey(id, nota).catch((error) => {
-          setSurveys((prev) => prev.map((s) => (s.id === id ? { ...s, nota: anterior } : s)));
+          setSurveys((current) => current.map((survey) => survey.id === id ? { ...survey, nota: previous } : survey));
           persistError('Falha ao registrar NPS', error);
         });
       },
 
-      fecharRepasse: async (periodo) => {
-        const anteriores = new Set(commissions.map((c) => c.id));
-        const fechadas = await closeMonthlyCommissions(periodo);
-        setCommissions((prev) => [
-          ...fechadas,
-          ...prev.filter((item) => !fechadas.some((closed) => closed.id === item.id)),
-        ]);
-        return fechadas.filter((item) => !anteriores.has(item.id)).length;
-      },
-
-      setCommissionStatus: async (id, status) => {
-        if (status !== 'pago') throw new Error('Somente a baixa de repasse é permitida');
-        const paid = await markCommissionPaid(id);
-        setCommissions((prev) => prev.map((item) => item.id === id ? paid : item));
-      },
+      fecharRepasse: finance.closeCommissions,
+      setCommissionStatus: finance.setCommissionStatus,
 
       exportarTitular: async (pacienteId) => {
         await logPatientDataExport(pacienteId);
-        setAudit((prev) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...prev]);
-        const p = patients.find((x) => x.id === pacienteId);
+        setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...current]);
+        const patient = patients.find((item) => item.id === pacienteId);
         return {
           formato: 'LGPD-portabilidade-v1',
           exportadoEm: new Date().toISOString(),
           exportadoPor: user?.nome ?? 'sistema',
-          titular: p,
-          sessoes: appointments.filter((a) => a.pacienteId === pacienteId),
-          evolucoes: evolutions.filter((e) => e.pacienteId === pacienteId),
-          consentimentos: consents.filter((c) => c.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...resto }) => resto),
-          pesquisas: surveys.filter((s) => s.pacienteId === pacienteId),
-          pacotes: patientPackages.filter((x) => x.pacienteId === pacienteId),
-          financeiro: transactions.filter((t) => t.pacienteId === pacienteId),
+          titular: patient,
+          sessoes: appointments.filter((appointment) => appointment.pacienteId === pacienteId),
+          evolucoes: evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
+          consentimentos: consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
+          pesquisas: surveys.filter((survey) => survey.pacienteId === pacienteId),
+          pacotes: patientPackages.filter((item) => item.pacienteId === pacienteId),
+          financeiro: finance.transactions.filter((transaction) => transaction.pacienteId === pacienteId),
         };
       },
 
       anonimizarPaciente: async (pacienteId) => {
         await anonymizePatient(pacienteId);
-        setAudit((prev) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...prev]);
-        setPatients((prev) => prev.map((x) => x.id === pacienteId ? {
-          ...x,
+        setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...current]);
+        setPatients((current) => current.map((item) => item.id === pacienteId ? {
+          ...item,
           nome: 'Paciente Anonizado', cpf: '', telefone: '', email: '', queixaPrincipal: '', convenio: null,
           cid10: [], ultimaVisita: null, optInWhats: false, status: 'inativo', anonimizado: true,
           anamnese: { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
-        } : x));
+        } : item));
       },
     };
-  }, [user, clinicId, users, unidades, rooms, patients, appointments, transactions, commissions, evolutions, consents, surveys, packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData]);
+  }, [
+    user, clinicId, users, unidades, rooms, patients, appointments, evolutions, consents, surveys,
+    packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
+    finance.transactions, finance.commissions, finance.addTransaction, finance.setTransactionStatus,
+    finance.closeCommissions, finance.setCommissionStatus,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -373,17 +339,17 @@ export function useApp() {
 export function useUnitFilter() {
   const { rooms, unidadeSel } = useApp();
   return useCallback(
-    (a: { roomId: string }) => {
+    (appointment: { roomId: string }) => {
       if (unidadeSel === 'all') return true;
-      const room = rooms.find((r) => r.id === a.roomId);
+      const room = rooms.find((item) => item.id === appointment.roomId);
       return room ? room.unidadeId === unidadeSel : true;
     },
-    [rooms, unidadeSel]
+    [rooms, unidadeSel],
   );
 }
 
 export const patientName = (patients: Patient[], id: string) =>
-  patients.find((p) => p.id === id)?.nome ?? '—';
+  patients.find((patient) => patient.id === id)?.nome ?? '—';
 
 export const userName = (users: User[], id: string) =>
-  users.find((u) => u.id === id)?.nome ?? '—';
+  users.find((user) => user.id === id)?.nome ?? '—';
