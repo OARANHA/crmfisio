@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
@@ -37,13 +37,11 @@ interface AppState {
   waLogs: WaLog[];
   audit: AuditEntry[];
   toasts: Toast[];
-
   login: (userId: string) => void;
   logout: () => void;
   access: (m: ModuleKey) => Access;
   canView: (m: ModuleKey) => boolean;
   toast: (msg: string, kind?: Toast['kind']) => void;
-
   setAppointmentStatus: (id: string, status: AppointmentStatus) => void;
   addAppointment: (a: Omit<Appointment, 'id'>) => void;
   addPatient: (p: Omit<Patient, 'id' | 'createdAt' | 'anamnese'> & { anamnese?: Patient['anamnese'] }) => void;
@@ -53,16 +51,13 @@ interface AppState {
   setTxStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => void;
   addTransaction: (t: Omit<FinancialTransaction, 'id'>) => void;
   answerNps: (id: string, nota: number) => void;
-
   fecharRepasse: (periodo: string) => Promise<number>;
   setCommissionStatus: (id: string, status: Commission['status']) => Promise<void>;
-
   exportarTitular: (pacienteId: string) => Promise<Record<string, unknown>>;
   anonimizarPaciente: (pacienteId: string) => Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
-
 let seq = 1000;
 const nid = (p: string) => `${p}${++seq}`;
 
@@ -79,6 +74,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [waLogs, setWaLogs] = useState<WaLog[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const clinicDataGeneration = useRef(0);
 
   const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
     const id = ++seq;
@@ -90,7 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (infrastructureError) pushToast(infrastructureError, 'warn');
   }, [infrastructureError, pushToast]);
 
-  const applyClinicData = useCallback(async (data: Awaited<ReturnType<typeof loadClinicShellData>>) => {
+  const applyClinicData = useCallback((data: Awaited<ReturnType<typeof loadClinicShellData>>) => {
     setUsers(data.users);
     setPackages(data.packages);
     setPatientPackages(data.patientPackages);
@@ -99,6 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshClinicData = useCallback(async () => {
+    const request = ++clinicDataGeneration.current;
     if (!user?.id) return;
     const [data] = await Promise.all([
       loadClinicShellData(user.id),
@@ -108,11 +105,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clinical.refreshClinical(),
       refreshInfrastructure(),
     ]);
-    await applyClinicData(data);
+    if (request !== clinicDataGeneration.current) return;
+    applyClinicData(data);
   }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, clinical.refreshClinical, refreshInfrastructure, applyClinicData]);
 
   useEffect(() => {
-    let cancelled = false;
+    const request = ++clinicDataGeneration.current;
     if (!user?.id) {
       setUsers([]);
       setPackages([]);
@@ -123,125 +121,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     loadClinicShellData(user.id)
-      .then(async (data) => {
-        if (cancelled) return;
-        await applyClinicData(data);
+      .then((data) => {
+        if (request !== clinicDataGeneration.current) return;
+        applyClinicData(data);
       })
       .catch((error) => {
+        if (request !== clinicDataGeneration.current) return;
         console.error('[MedicsPro] Falha ao carregar dados do shell da clínica:', error);
-        if (!cancelled) pushToast('Não foi possível carregar os dados da clínica.', 'warn');
+        pushToast('Não foi possível carregar os dados da clínica.', 'warn');
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { clinicDataGeneration.current += 1; };
   }, [user?.id, pushToast, applyClinicData]);
 
   const value = useMemo<AppState>(() => {
     const access = (m: ModuleKey): Access => accessFor(user?.role, m);
     const canView = (m: ModuleKey) => access(m) !== 'none';
-
     const persistError = (label: string, error: unknown) => {
       console.error(`[MedicsPro] ${label}:`, error);
       pushToast(`${label}. Tente novamente.`, 'warn');
     };
 
     return {
-      user,
-      setAuthenticatedUser: setUser,
-      users,
-      unidades,
-      unidadeSel,
-      setUnidadeSel,
-      rooms,
-      refreshInfrastructure,
-      refreshClinicData,
-      packages,
-      patientPackages,
-      patients: patientDomain.patients,
-      appointments: agenda.appointments,
-      transactions: finance.transactions,
-      commissions: finance.commissions,
-      evolutions: clinical.evolutions,
-      consents: clinical.consents,
-      surveys: clinical.surveys,
-      waLogs,
-      audit,
-      toasts,
-
-      login: () => {
-        // Login real é responsabilidade do useAuth/Supabase Auth.
-      },
+      user, setAuthenticatedUser: setUser, users, unidades, unidadeSel, setUnidadeSel, rooms,
+      refreshInfrastructure, refreshClinicData, packages, patientPackages,
+      patients: patientDomain.patients, appointments: agenda.appointments,
+      transactions: finance.transactions, commissions: finance.commissions,
+      evolutions: clinical.evolutions, consents: clinical.consents, surveys: clinical.surveys,
+      waLogs, audit, toasts,
+      login: () => {},
       logout: () => setUser(null),
-      access,
-      canView,
-      toast: pushToast,
-
-      setAppointmentStatus: (id, status) => {
-        void agenda.setAppointmentStatus(id, status)
-          .catch((error) => persistError('Falha ao atualizar o atendimento', error));
-      },
-
-      addAppointment: (appointment) => {
-        void agenda.addAppointment(appointment)
-          .then(() => pushToast('Agendamento salvo.'))
-          .catch((error) => persistError('Falha ao salvar agendamento', error));
-      },
-
-      addPatient: (patient) => {
-        void patientDomain.addPatient(patient)
-          .then(() => pushToast('Paciente salvo no Supabase.'))
-          .catch((error) => persistError('Falha ao cadastrar paciente', error));
-      },
-
-      setFunilStage: (id, stage) => {
-        void patientDomain.setFunilStage(id, stage)
-          .catch((error) => persistError('Falha ao atualizar o funil', error));
-      },
-
-      addEvolution: (evolution) => {
-        void clinical.addEvolution(evolution)
-          .then(() => pushToast('Evolução clínica salva.'))
-          .catch((error) => persistError('Falha ao salvar evolução clínica', error));
-      },
-
+      access, canView, toast: pushToast,
+      setAppointmentStatus: (id, status) => { void agenda.setAppointmentStatus(id, status).catch((error) => persistError('Falha ao atualizar o atendimento', error)); },
+      addAppointment: (appointment) => { void agenda.addAppointment(appointment).then(() => pushToast('Agendamento salvo.')).catch((error) => persistError('Falha ao salvar agendamento', error)); },
+      addPatient: (patient) => { void patientDomain.addPatient(patient).then(() => pushToast('Paciente salvo no Supabase.')).catch((error) => persistError('Falha ao cadastrar paciente', error)); },
+      setFunilStage: (id, stage) => { void patientDomain.setFunilStage(id, stage).catch((error) => persistError('Falha ao atualizar o funil', error)); },
+      addEvolution: (evolution) => { void clinical.addEvolution(evolution).then(() => pushToast('Evolução clínica salva.')).catch((error) => persistError('Falha ao salvar evolução clínica', error)); },
       signConsent: async (id) => {
-        try {
-          await clinical.signConsent(id);
-          pushToast('Consentimento registrado com sucesso.');
-        } catch (error) {
-          persistError('Falha ao registrar consentimento', error);
-        }
+        try { await clinical.signConsent(id); pushToast('Consentimento registrado com sucesso.'); }
+        catch (error) { persistError('Falha ao registrar consentimento', error); }
       },
-
-      setTxStatus: (id, status, metodo) => {
-        void finance.setTransactionStatus(id, status, metodo)
-          .catch((error) => persistError('Falha ao atualizar financeiro', error));
-      },
-
-      addTransaction: (transaction) => {
-        void finance.addTransaction(transaction)
-          .then(() => pushToast('Lançamento financeiro salvo.'))
-          .catch((error) => persistError('Falha ao salvar lançamento financeiro', error));
-      },
-
-      answerNps: (id, nota) => {
-        void clinical.answerNps(id, nota)
-          .catch((error) => persistError('Falha ao registrar NPS', error));
-      },
-
+      setTxStatus: (id, status, metodo) => { void finance.setTransactionStatus(id, status, metodo).catch((error) => persistError('Falha ao atualizar financeiro', error)); },
+      addTransaction: (transaction) => { void finance.addTransaction(transaction).then(() => pushToast('Lançamento financeiro salvo.')).catch((error) => persistError('Falha ao salvar lançamento financeiro', error)); },
+      answerNps: (id, nota) => { void clinical.answerNps(id, nota).catch((error) => persistError('Falha ao registrar NPS', error)); },
       fecharRepasse: finance.closeCommissions,
       setCommissionStatus: finance.setCommissionStatus,
-
       exportarTitular: async (pacienteId) => {
         await logPatientDataExport(pacienteId);
         setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...current]);
         const patient = patientDomain.patients.find((item) => item.id === pacienteId);
         return {
-          formato: 'LGPD-portabilidade-v1',
-          exportadoEm: new Date().toISOString(),
-          exportadoPor: user?.nome ?? 'sistema',
-          titular: patient,
+          formato: 'LGPD-portabilidade-v1', exportadoEm: new Date().toISOString(), exportadoPor: user?.nome ?? 'sistema', titular: patient,
           sessoes: agenda.appointments.filter((appointment) => appointment.pacienteId === pacienteId),
           evolucoes: clinical.evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
           consentimentos: clinical.consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
@@ -250,7 +180,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           financeiro: finance.transactions.filter((transaction) => transaction.pacienteId === pacienteId),
         };
       },
-
       anonimizarPaciente: async (pacienteId) => {
         await patientDomain.anonymizePatient(pacienteId);
         setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...current]);
@@ -277,18 +206,12 @@ export function useApp() {
 
 export function useUnitFilter() {
   const { rooms, unidadeSel } = useApp();
-  return useCallback(
-    (appointment: { roomId: string }) => {
-      if (unidadeSel === 'all') return true;
-      const room = rooms.find((item) => item.id === appointment.roomId);
-      return room ? room.unidadeId === unidadeSel : true;
-    },
-    [rooms, unidadeSel],
-  );
+  return useCallback((appointment: { roomId: string }) => {
+    if (unidadeSel === 'all') return true;
+    const room = rooms.find((item) => item.id === appointment.roomId);
+    return room ? room.unidadeId === unidadeSel : true;
+  }, [rooms, unidadeSel]);
 }
 
-export const patientName = (patients: Patient[], id: string) =>
-  patients.find((patient) => patient.id === id)?.nome ?? '—';
-
-export const userName = (users: User[], id: string) =>
-  users.find((user) => user.id === id)?.nome ?? '—';
+export const patientName = (patients: Patient[], id: string) => patients.find((patient) => patient.id === id)?.nome ?? '—';
+export const userName = (users: User[], id: string) => users.find((user) => user.id === id)?.nome ?? '—';
