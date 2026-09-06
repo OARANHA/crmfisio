@@ -4,8 +4,6 @@ import type {
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   SessionPackage, User, WaLog,
 } from './types';
-import { accessFor } from './permissions';
-import { useAuth } from './useAuth';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
@@ -15,6 +13,7 @@ import { usePackages } from './packageContext';
 import { useCommunication } from './communicationContext';
 import { useAudit } from './auditContext';
 import { useLgpdActions } from './lgpdActions';
+import { useCurrentUserAccess } from './currentUserAccess';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -62,7 +61,7 @@ let seq = 1000;
  * consume those providers directly instead of adding state or loaders here.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user: authUser, profile, tenantAccessState } = useAuth();
+  const { user, access, canView } = useCurrentUserAccess();
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
@@ -73,19 +72,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const auditDomain = useAudit();
   const lgpd = useLgpdActions();
   const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const user = useMemo<User | null>(() => {
-    if (!authUser || !profile || tenantAccessState !== 'active') return null;
-    return {
-      id: authUser.id,
-      nome: profile.nome || authUser.email?.split('@')[0] || 'Usuário',
-      email: authUser.email || '',
-      role: profile.role,
-      registro: profile.registro || '',
-      cor: profile.cor || '#cbd5e1',
-      ativo: profile.ativo,
-    };
-  }, [authUser, profile, tenantAccessState]);
 
   const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
     const id = ++seq;
@@ -112,8 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ]);
 
   const value = useMemo<AppState>(() => {
-    const access = (module: ModuleKey): Access => accessFor(user?.role, module);
-    const canView = (module: ModuleKey) => access(module) !== 'none';
     const persistError = (label: string, error: unknown) => {
       console.error(`[MedicsPro] ${label}:`, error);
       pushToast(`${label}. Tente novamente.`, 'warn');
@@ -160,7 +144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       anonimizarPaciente: lgpd.anonymizePatient,
     };
   }, [
-    user, directory.users,
+    user, access, canView, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     toasts, pushToast, refreshClinicData,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
