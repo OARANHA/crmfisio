@@ -7,18 +7,17 @@ import type {
 import { loadInfrastructure } from './infrastructure';
 import {
   anonymizePatient,
-  insertAppointment,
   insertEvolution,
   insertPatient,
   loadClinicData,
   logPatientDataExport,
-  updateAppointmentStatus,
   updateConsent,
   updatePatientStage,
   updateSurvey,
 } from './repository';
 import { accessFor } from './permissions';
 import { useFinance } from './financeContext';
+import { useAgenda } from './agendaContext';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -75,13 +74,13 @@ const nid = (p: string) => `${p}${++seq}`;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const finance = useFinance();
+  const agenda = useAgenda();
   const [user, setUser] = useState<User | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [evolutions, setEvolutions] = useState<Evolution[]>([]);
   const [consents, setConsents] = useState<ConsentTerm[]>([]);
   const [surveys, setSurveys] = useState<NpsSurvey[]>([]);
@@ -106,7 +105,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRooms(infrastructure.rooms);
     setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
     setPatients(data.patients);
-    setAppointments(data.appointments);
     setEvolutions(data.evolutions);
     setConsents(data.consents);
     setSurveys(data.surveys);
@@ -121,9 +119,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [data] = await Promise.all([
       loadClinicData(user.id),
       finance.refreshFinance(),
+      agenda.refreshAgenda(),
     ]);
     await applyClinicData(data);
-  }, [user?.id, finance.refreshFinance, applyClinicData]);
+  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, applyClinicData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +133,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRooms([]);
       setUnidadeSel('all');
       setPatients([]);
-      setAppointments([]);
       setEvolutions([]);
       setConsents([]);
       setSurveys([]);
@@ -188,7 +186,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       packages,
       patientPackages,
       patients,
-      appointments,
+      appointments: agenda.appointments,
       transactions: finance.transactions,
       commissions: finance.commissions,
       evolutions,
@@ -207,21 +205,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast: pushToast,
 
       setAppointmentStatus: (id, status) => {
-        const previous = appointments.find((a) => a.id === id)?.status;
-        setAppointments((current) => current.map((a) => a.id === id ? { ...a, status } : a));
-        void updateAppointmentStatus(id, status).catch((error) => {
-          if (previous) setAppointments((current) => current.map((a) => a.id === id ? { ...a, status: previous } : a));
-          persistError('Falha ao atualizar o atendimento', error);
-        });
+        void agenda.setAppointmentStatus(id, status)
+          .catch((error) => persistError('Falha ao atualizar o atendimento', error));
       },
 
       addAppointment: (appointment) => {
-        if (!clinicId) return persistError('Clínica não identificada', new Error('clinicId ausente'));
-        void insertAppointment(clinicId, appointment)
-          .then((created) => {
-            setAppointments((current) => [...current, created]);
-            pushToast('Agendamento salvo.');
-          })
+        void agenda.addAppointment(appointment)
+          .then(() => pushToast('Agendamento salvo.'))
           .catch((error) => persistError('Falha ao salvar agendamento', error));
       },
 
@@ -300,7 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           exportadoEm: new Date().toISOString(),
           exportadoPor: user?.nome ?? 'sistema',
           titular: patient,
-          sessoes: appointments.filter((appointment) => appointment.pacienteId === pacienteId),
+          sessoes: agenda.appointments.filter((appointment) => appointment.pacienteId === pacienteId),
           evolucoes: evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
           consentimentos: consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
           pesquisas: surveys.filter((survey) => survey.pacienteId === pacienteId),
@@ -321,8 +311,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, clinicId, users, unidades, rooms, patients, appointments, evolutions, consents, surveys,
+    user, clinicId, users, unidades, rooms, patients, evolutions, consents, surveys,
     packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
+    agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
     finance.transactions, finance.commissions, finance.addTransaction, finance.setTransactionStatus,
     finance.closeCommissions, finance.setCommissionStatus,
   ]);
