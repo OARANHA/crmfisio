@@ -1,10 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   SessionPackage, User, WaLog,
 } from './types';
-import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
 import { accessFor } from './permissions';
 import { useAuth } from './useAuth';
@@ -72,7 +71,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
-  const { refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -94,34 +92,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4400);
   }, []);
 
-  useEffect(() => {
-    if (infrastructureError) pushToast(infrastructureError, 'warn');
-  }, [infrastructureError, pushToast]);
-
+  // Temporary compatibility refresh for the final two legacy consumers.
+  // Its scope is intentionally limited to the domains those flows can mutate.
   const refreshClinicData = useCallback(async () => {
     if (!user?.id) return;
     await Promise.all([
       finance.refreshFinance(),
       agenda.refreshAgenda(),
-      patientDomain.refreshPatients(),
       clinical.refreshClinical(),
-      directory.refreshDirectory(),
       packageDomain.refreshPackages(),
-      communication.refreshCommunication(),
-      auditDomain.refreshAudit(),
-      refreshInfrastructure(),
     ]);
   }, [
     user?.id,
     finance.refreshFinance,
     agenda.refreshAgenda,
-    patientDomain.refreshPatients,
     clinical.refreshClinical,
-    directory.refreshDirectory,
     packageDomain.refreshPackages,
-    communication.refreshCommunication,
-    auditDomain.refreshAudit,
-    refreshInfrastructure,
   ]);
 
   const value = useMemo<AppState>(() => {
