@@ -38,7 +38,6 @@ function auditLabel(action: string) {
     'clinic.provisioned': 'Clínica provisionada',
     'clinic.provision_review_sync_pending': 'Revisão de onboarding pendente',
     'platform_admin.activated': 'Platform Admin ativado',
-    'platform.clinic.entitlement.changed': 'Entitlement alterado',
   };
   return labels[action] ?? action.split('.').join(' · ');
 }
@@ -98,7 +97,10 @@ export function PlatformAdminHomePage() {
         void validate();
       }
     });
-    return () => { active = false; listener.subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, [validate]);
 
   const signIn = async (event: React.FormEvent) => {
@@ -156,6 +158,7 @@ export function PlatformAdminHomePage() {
       eyebrow="MedicsPro Platform Admin"
       title="Visão geral"
       description="Cockpit executivo do SaaS com clientes, onboarding, automações e governança baseados somente em dados reais."
+      hideDesktopHeader
       actions={<button type="button" onClick={() => void refresh()} disabled={loadingData} className="rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[11px] font-semibold text-fog transition hover:border-mint/35 hover:text-paper disabled:opacity-50">{loadingData ? 'Atualizando…' : 'Atualizar dados'}</button>}
     >
       {error && <div className="rounded-[16px] border border-amber/35 bg-amber/[0.05] px-4 py-3 text-[12px] text-amber">{error}</div>}
@@ -212,43 +215,44 @@ export function PlatformAdminHomePage() {
               <PulseCard label="WhatsApp enviados" value={latestRun.workerSent} tone="mint" />
               <PulseCard label="Falhas do worker" value={latestRun.workerFailed} tone={latestRun.workerFailed ? 'pulse' : 'mint'} />
             </div>
-          ) : <div className="mt-5 rounded-2xl border border-dashed border-line p-7 text-center text-fog">Sem execução recente disponível.</div>}
+          ) : <div className="mt-5 rounded-2xl border border-dashed border-line p-7 text-center text-fog">Ainda não há execução operacional recente disponível.</div>}
         </div>
 
         <div className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
           <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-amber">Distribuição</p>
           <h3 className="mt-1 font-display text-[20px] font-bold">Base de clientes</h3>
           <div className="mx-auto mt-5 grid h-44 w-44 place-items-center rounded-full" style={{ background: `conic-gradient(var(--color-mint) 0 ${activePercent}%, var(--color-amber) ${activePercent}% 100%)` }}>
-            <div className="grid h-32 w-32 place-items-center rounded-full bg-panel text-center shadow-inner"><div><p className="text-[10px] text-fog">Ativas</p><p className="font-display text-[31px] font-bold">{activeClinics}</p><p className="text-[10px] text-fog">de {data.clinics.length}</p></div></div>
+            <div className="grid h-32 w-32 place-items-center rounded-full bg-panel text-center shadow-inner"><div><p className="text-[10px] text-fog">Ativas</p><p className="font-display text-[30px] font-bold">{activeClinics}</p><p className="text-[10px] text-fog">de {data.clinics.length}</p></div></div>
           </div>
-          <div className="mt-5 space-y-2.5"><LegendRow label="Ativas" value={activeClinics} tone="mint" /><LegendRow label="Suspensas" value={suspendedClinics} tone="amber" /><LegendRow label="Em análise" value={data.pendingRequests.length} tone="aqua" /></div>
+          <div className="mt-5 space-y-2.5 text-[11px]"><LegendRow label="Ativas" value={activeClinics} tone="mint" /><LegendRow label="Suspensas" value={suspendedClinics} tone="amber" /><LegendRow label="Em análise" value={data.pendingRequests.length} tone="aqua" /></div>
         </div>
       </section>
 
       <section className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
-        <div><p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-fog">Áreas de negócio</p><h3 className="mt-1 font-display text-[20px] font-bold">Quatro frentes, uma operação</h3></div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-fog">Áreas de negócio</p>
+        <h3 className="mt-1 font-display text-[20px] font-bold">Quatro frentes, uma operação</h3>
         <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
-          <AreaCard to="/platform" title="Visão geral" description="Indicadores reais e saúde operacional do SaaS." status="Ativo" tone="mint" />
-          <AreaCard to="/platform/comercial" title="Comercial" description="Leads, qualificação, oportunidades e conversões quando o bridge entrar." status="Fonte em preparação" tone="aqua" />
-          <AreaCard to="/platform/modulos" title="Clientes & Plataforma" description="Lifecycle, módulos, entitlements e operação da base." status="Ativo" tone="amber" />
-          <AreaCard to="/platform/receita" title="Receita & Assinaturas" description="Assinaturas, pagamentos e MRR após integração factual com billing." status="Integração futura" tone="pulse" />
+          <BusinessAreaCard to="/platform" eyebrow="Ativo" title="Visão geral" description="Indicadores reais e saúde operacional do SaaS." tone="mint" />
+          <BusinessAreaCard to="/platform/comercial" eyebrow="Fonte em preparação" title="Comercial" description="Leads, qualificação, oportunidades e conversões quando o bridge entrar." tone="aqua" />
+          <BusinessAreaCard to="/platform/modulos" eyebrow="Ativo" title="Clientes & Plataforma" description="Lifecycle, módulos, entitlements e operação da base." tone="amber" />
+          <BusinessAreaCard to="/platform/receita" eyebrow="Integração futura" title="Receita & Assinaturas" description="Assinaturas, pagamentos e MRR após integração factual com billing." tone="pulse" />
         </div>
       </section>
 
-      <section className="grid gap-4 2xl:grid-cols-[1fr_1fr]">
+      <section className="grid gap-4 2xl:grid-cols-2">
         <div className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
           <div className="flex items-start gap-3"><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-amber">Onboarding</p><h3 className="mt-1 font-display text-[20px] font-bold">Solicitações pendentes</h3></div><Link to="/platform/provisionar" className="text-[11px] font-semibold text-amber">Abrir fila →</Link></div>
-          <div className="mt-4 space-y-2.5">
-            {data.pendingRequests.slice(0, 5).map((request) => <Link key={request.id} to="/platform/provisionar" className="flex flex-wrap items-center gap-3 rounded-2xl border border-line/70 bg-deep/40 px-4 py-3.5 transition hover:border-amber/30"><div className="grid h-9 w-9 place-items-center rounded-xl bg-amber/[0.08] font-display font-bold text-amber">{request.clinicName.slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="truncate font-display text-[13px] font-semibold">{request.clinicName}</p><p className="mt-0.5 truncate text-[10.5px] text-fog">{request.ownerName} · {request.ownerEmail}</p></div><span className="rounded-full border border-amber/30 bg-amber/[0.07] px-2.5 py-1 text-[9.5px] font-semibold text-amber">pendente</span></Link>)}
+          <div className="mt-4 space-y-2">
+            {data.pendingRequests.slice(0, 4).map((request) => <Link key={request.id} to="/platform/provisionar" className="flex items-center gap-3 rounded-2xl border border-line/70 bg-deep/40 px-4 py-3.5 hover:border-amber/30"><div className="grid h-9 w-9 place-items-center rounded-xl bg-amber/[0.08] font-display font-bold text-amber">{request.clinicName.slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="truncate font-display text-[13px] font-semibold">{request.clinicName}</p><p className="truncate text-[10.5px] text-fog">{request.ownerName} · {request.ownerEmail}</p></div><span className="rounded-full border border-amber/25 bg-amber/[0.06] px-2 py-1 text-[9.5px] font-semibold text-amber">pendente</span></Link>)}
             {!data.pendingRequests.length && <div className="rounded-2xl border border-dashed border-line p-7 text-center text-[11.5px] text-fog">Nenhuma solicitação pendente.</div>}
           </div>
         </div>
 
         <div className="rounded-[26px] border border-line bg-panel p-5 md:p-6">
           <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-aqua">Governança</p><h3 className="mt-1 font-display text-[20px] font-bold">Atividade recente</h3></div><Link to="/platform/governanca" className="text-[11px] font-semibold text-aqua">Auditoria →</Link></div>
-          <div className="mt-4 grid gap-2.5 xl:grid-cols-2">
-            {data.audit.map((entry) => <div key={entry.id} className="rounded-2xl border border-line/65 bg-deep/40 px-3.5 py-3"><div className="flex items-start gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-aqua" /><div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold text-paper">{auditLabel(entry.action)}</p><p className="mt-0.5 truncate text-[9.5px] text-fog">{entry.entityType} · {entry.entityKey}</p><p className="mt-1 text-[9px] text-fog">{formatDate(entry.createdAt)}</p></div></div></div>)}
-            {!data.audit.length && <div className="col-span-full rounded-2xl border border-dashed border-line p-6 text-center text-[11.5px] text-fog">Sem atividade recente.</div>}
+          <div className="mt-4 grid gap-2 xl:grid-cols-2">
+            {data.audit.slice(0, 6).map((entry) => <div key={entry.id} className="rounded-2xl border border-line/65 bg-deep/40 px-3.5 py-3"><div className="flex items-start gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-aqua" /><div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold text-paper">{auditLabel(entry.action)}</p><p className="mt-0.5 truncate text-[9.5px] text-fog">{entry.entityType} · {entry.entityKey}</p></div><span className="shrink-0 text-[9px] text-fog">{formatDate(entry.createdAt)}</span></div></div>)}
+            {!data.audit.length && <div className="col-span-full rounded-2xl border border-dashed border-line p-5 text-center text-[11.5px] text-fog">Sem atividade recente disponível.</div>}
           </div>
         </div>
       </section>
@@ -264,31 +268,9 @@ export function PlatformAdminHomePage() {
   );
 }
 
-function toneClass(tone: 'mint' | 'aqua' | 'amber' | 'pulse' | 'fog') {
-  if (tone === 'aqua') return 'text-aqua';
-  if (tone === 'amber') return 'text-amber';
-  if (tone === 'pulse') return 'text-pulse';
-  if (tone === 'fog') return 'text-fog';
-  return 'text-mint';
-}
-
-function MetricCard({ label, value, detail, tone, icon }: { label: string; value: string; detail: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' | 'fog'; icon: string }) {
-  return <article className="rounded-[22px] border border-line bg-panel p-4.5 shadow-[0_10px_28px_rgba(3,16,48,0.03)]"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-fog">{label}</p><p className={`mt-2 font-display text-[29px] font-bold tracking-tight ${toneClass(tone)}`}>{value}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{detail}</p></div><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-deep ${toneClass(tone)}`}>{icon}</span></div></article>;
-}
-
-function MiniStat({ label, value, tone }: { label: string; value: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) {
-  return <div className="rounded-xl border border-line/65 bg-deep/45 p-3"><p className="text-[9.5px] text-fog">{label}</p><p className={`mt-1 font-display text-[18px] font-bold ${toneClass(tone)}`}>{value}</p></div>;
-}
-
-function PulseCard({ label, value, tone }: { label: string; value: number; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) {
-  return <div className="rounded-[18px] border border-line/70 bg-deep/35 p-4"><p className="text-[10px] text-fog">{label}</p><p className={`mt-2 font-display text-[24px] font-bold ${toneClass(tone)}`}>{value}</p></div>;
-}
-
-function AreaCard({ to, title, description, status, tone }: { to: string; title: string; description: string; status: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) {
-  return <Link to={to} className="group rounded-[20px] border border-line/70 bg-deep/35 p-4 transition hover:-translate-y-0.5 hover:border-line2"><div className="flex items-start gap-3"><span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${tone === 'mint' ? 'bg-mint' : tone === 'aqua' ? 'bg-aqua' : tone === 'amber' ? 'bg-amber' : 'bg-pulse'}`} /><div className="min-w-0 flex-1"><p className="font-display text-[14px] font-bold">{title}</p><p className="mt-2 text-[10.5px] leading-relaxed text-fog">{description}</p><p className={`mt-3 text-[9.5px] font-semibold ${toneClass(tone)}`}>{status}</p></div><span className="text-fog transition group-hover:translate-x-0.5 group-hover:text-paper">→</span></div></Link>;
-}
-
-function LegendRow({ label, value, tone }: { label: string; value: number; tone: 'mint' | 'amber' | 'aqua' }) {
-  const dot = tone === 'mint' ? 'bg-mint' : tone === 'amber' ? 'bg-amber' : 'bg-aqua';
-  return <div className="flex items-center gap-2.5"><span className={`h-2.5 w-2.5 rounded-full ${dot}`} /><span className="flex-1 text-fog">{label}</span><span className="font-display font-bold text-paper">{value}</span></div>;
-}
+function toneText(tone: string) { return tone === 'aqua' ? 'text-aqua' : tone === 'amber' ? 'text-amber' : tone === 'pulse' ? 'text-pulse' : tone === 'fog' ? 'text-fog' : 'text-mint'; }
+function MetricCard({ label, value, detail, tone, icon }: { label: string; value: string; detail: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' | 'fog'; icon: string }) { return <article className="rounded-[22px] border border-line bg-panel p-4.5"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-fog">{label}</p><p className={`mt-2 font-display text-[29px] font-bold tracking-tight ${toneText(tone)}`}>{value}</p><p className="mt-1 text-[10.5px] text-fog">{detail}</p></div><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-deep ${toneText(tone)}`}>{icon}</span></div></article>; }
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) { return <div className="rounded-xl border border-line/60 bg-deep/50 p-3"><p className="text-[9.5px] text-fog">{label}</p><p className={`mt-1 font-display text-[18px] font-bold ${toneText(tone)}`}>{value}</p></div>; }
+function PulseCard({ label, value, tone }: { label: string; value: number; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) { return <div className="rounded-2xl border border-line/65 bg-deep/35 p-4"><p className="text-[10px] text-fog">{label}</p><p className={`mt-2 font-display text-[23px] font-bold ${toneText(tone)}`}>{value}</p></div>; }
+function LegendRow({ label, value, tone }: { label: string; value: number; tone: 'mint' | 'amber' | 'aqua' }) { const dot = tone === 'mint' ? 'bg-mint' : tone === 'amber' ? 'bg-amber' : 'bg-aqua'; return <div className="flex items-center gap-2.5"><span className={`h-2.5 w-2.5 rounded-full ${dot}`} /><span className="flex-1 text-fog">{label}</span><span className="font-display font-bold text-paper">{value}</span></div>; }
+function BusinessAreaCard({ to, eyebrow, title, description, tone }: { to: string; eyebrow: string; title: string; description: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' }) { return <Link to={to} className="group rounded-2xl border border-line/70 bg-deep/35 p-4 transition hover:-translate-y-0.5 hover:border-line2"><div className="flex items-start gap-3"><span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone === 'mint' ? 'bg-mint' : tone === 'aqua' ? 'bg-aqua' : tone === 'amber' ? 'bg-amber' : 'bg-pulse'}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="font-display text-[14px] font-bold">{title}</p><span className="ml-auto text-fog transition group-hover:translate-x-0.5">→</span></div><p className="mt-2 text-[10.5px] leading-relaxed text-fog">{description}</p><p className={`mt-3 text-[9.5px] font-semibold ${toneText(tone)}`}>{eyebrow}</p></div></div></Link>; }
