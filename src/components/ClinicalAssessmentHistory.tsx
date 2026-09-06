@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import type { Patient } from '../lib/types';
 import { Card, CardHead, Chip, Empty } from '../lib/ui';
 import { useApp, userName } from '../lib/store';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { isClinicManager } from '../lib/permissions';
 import {
   listAvailableAssessmentTemplates,
@@ -13,7 +14,8 @@ import {
 } from '../lib/assessmentEngine';
 
 export function ClinicalAssessmentHistory({ patient }: { patient: Patient }) {
-  const { user, users, toast } = useApp();
+  const { user, toast } = useApp();
+  const { users } = useClinicDirectory();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);
   const [loading, setLoading] = useState(true);
