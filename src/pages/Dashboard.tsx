@@ -3,6 +3,7 @@ import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
@@ -17,7 +18,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user, appointments, transactions, patients, users } = useApp();
+  const { user, appointments, transactions, patients } = useApp();
+  const { users } = useClinicDirectory();
   const { surveys, consents } = useClinical();
   const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
