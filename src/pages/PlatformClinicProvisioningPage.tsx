@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
-import { isPlatformAdmin } from '../lib/platformAdmin';
+import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 import {
   loadClinicAccessRequests,
   rejectClinicAccessRequest,
@@ -25,7 +25,7 @@ function formatRequestedAt(value: string) {
 }
 
 export function PlatformClinicProvisioningPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
   const [busy, setBusy] = useState(false);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null);
@@ -52,7 +52,7 @@ export function PlatformClinicProvisioningPage() {
 
   useEffect(() => {
     let active = true;
-    void isPlatformAdmin()
+    void validatePlatformAdminAccess()
       .then((allowed) => {
         if (!active) return;
         setAuthorized(allowed);
