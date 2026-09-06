@@ -7,6 +7,7 @@ import type {
 import { useInfrastructure } from './useInfrastructure';
 import { logPatientDataExport } from './repository';
 import { accessFor } from './permissions';
+import { useAuth } from './useAuth';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
@@ -21,6 +22,7 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
+  /** @deprecated Identity is owned by AuthProvider. Kept temporarily for compatibility. */
   setAuthenticatedUser: (user: User | null) => void;
   unidades: Unidade[];
   unidadeSel: string;
@@ -40,7 +42,9 @@ interface AppState {
   waLogs: WaLog[];
   audit: AuditEntry[];
   toasts: Toast[];
+  /** @deprecated Authentication is owned by useAuth(). */
   login: (userId: string) => void;
+  /** @deprecated Prefer useAuth().signOut(). */
   logout: () => void;
   access: (m: ModuleKey) => Access;
   canView: (m: ModuleKey) => boolean;
@@ -66,10 +70,11 @@ let seq = 1000;
 /**
  * Compatibility facade for screens still using useApp().
  *
- * Canonical domain state lives in dedicated providers. New code should consume
- * those providers directly instead of adding new state or data loaders here.
+ * Canonical auth and domain state live in dedicated providers. New code should
+ * consume those providers directly instead of adding state or loaders here.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user: authUser, profile, tenantAccessState, signOut } = useAuth();
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
@@ -79,8 +84,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const communication = useCommunication();
   const auditDomain = useAudit();
   const { unidades, rooms, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
-  const [user, setUser] = useState<User | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const user = useMemo<User | null>(() => {
+    if (!authUser || !profile || tenantAccessState !== 'active') return null;
+    return {
+      id: authUser.id,
+      nome: profile.nome || authUser.email?.split('@')[0] || 'Usuário',
+      email: authUser.email || '',
+      role: profile.role,
+      registro: profile.registro || '',
+      cor: profile.cor || '#cbd5e1',
+      ativo: profile.ativo,
+    };
+  }, [authUser, profile, tenantAccessState]);
 
   const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
     const id = ++seq;
@@ -128,7 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return {
       user,
-      setAuthenticatedUser: setUser,
+      setAuthenticatedUser: () => {},
       users: directory.users,
       unidades,
       unidadeSel,
@@ -149,7 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       audit: auditDomain.audit,
       toasts,
       login: () => {},
-      logout: () => setUser(null),
+      logout: () => { void signOut(); },
       access,
       canView,
       toast: pushToast,
@@ -194,7 +211,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
+    user, signOut, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     auditDomain.refreshAudit, toasts, unidadeSel, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
