@@ -136,10 +136,34 @@ Deno.serve(async (req) => {
   }
   if (provision.status === 'completed') {
     if (accessRequest) {
-      await admin.from('clinic_access_requests').update({
+      const reconciled = await admin.from('clinic_access_requests').update({
         status: 'provisioned', reviewed_by: authData.user.id, reviewed_at: new Date().toISOString(),
         provisioning_request_id: provision.id, updated_at: new Date().toISOString(),
-      }).eq('id', accessRequest.id).eq('status', 'pending');
+      }).eq('id', accessRequest.id).eq('status', 'pending').select('id').maybeSingle();
+
+      if (reconciled.error) {
+        console.error('[provision-clinic] completed provisioning review reconciliation failed', reconciled.error);
+        await admin.from('platform_audit_log').insert({
+          actor_user_id: authData.user.id,
+          action: 'clinic.provision_review_sync_pending',
+          target_type: 'provisioning_request',
+          target_id: provision.id,
+          entity_type: 'clinic_access_request',
+          entity_key: accessRequest.id,
+          detail: {
+            clinic_id: provision.clinic_id,
+            owner_user_id: provision.owner_user_id,
+            access_request_id: accessRequest.id,
+            error: reconciled.error.message?.slice(0, 500) ?? 'Falha ao reconciliar solicitação',
+          },
+        });
+        return json({
+          clinic_id: provision.clinic_id,
+          owner_user_id: provision.owner_user_id,
+          idempotent: true,
+          review_sync_pending: true,
+        }, 202);
+      }
     }
     return json({ clinic_id: provision.clinic_id, owner_user_id: provision.owner_user_id, idempotent: true });
   }
@@ -194,8 +218,26 @@ Deno.serve(async (req) => {
         status: 'provisioned', review_note: null, reviewed_by: authData.user.id,
         reviewed_at: new Date().toISOString(), provisioning_request_id: provision.id,
         updated_at: new Date().toISOString(),
-      }).eq('id', accessRequest.id).eq('status', 'pending').select('id').single();
-      if (marked.error) throw marked.error;
+      }).eq('id', accessRequest.id).eq('status', 'pending').select('id').maybeSingle();
+
+      if (marked.error) {
+        console.error('[provision-clinic] provisioning completed but access-request sync failed', marked.error);
+        await admin.from('platform_audit_log').insert({
+          actor_user_id: authData.user.id,
+          action: 'clinic.provision_review_sync_pending',
+          target_type: 'provisioning_request',
+          target_id: provision.id,
+          entity_type: 'clinic_access_request',
+          entity_key: accessRequest.id,
+          detail: {
+            clinic_id: result?.clinic_id ?? null,
+            owner_user_id: ownerUser.id,
+            access_request_id: accessRequest.id,
+            error: marked.error.message?.slice(0, 500) ?? 'Falha ao sincronizar solicitação',
+          },
+        });
+        return json({ ...result, idempotent: provision.status === 'auth_created', review_sync_pending: true }, 202);
+      }
 
       await admin.from('platform_audit_log').insert({
         actor_user_id: authData.user.id,
