@@ -1,9 +1,12 @@
 /**
- * Hook de autenticação com Supabase Auth
- * Substitui o login mockado por autenticação real JWT
+ * Autenticação canônica da aplicação com Supabase Auth.
+ *
+ * O estado de sessão/perfil é resolvido uma única vez pelo AuthProvider e
+ * compartilhado por todos os consumidores. Isso evita múltiplas assinaturas
+ * independentes de onAuthStateChange e consultas duplicadas de perfil/tenant.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase, type User, type Session } from './supabaseClient';
 import type { Database } from './database.types';
 import type { ModuleKey, Role } from './types';
@@ -28,7 +31,9 @@ interface UseAuthReturn {
   canAccess: (module: ModuleKey) => boolean;
 }
 
-export function useAuth(): UseAuthReturn {
+const AuthContext = createContext<UseAuthReturn | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -130,13 +135,9 @@ export function useAuth(): UseAuthReturn {
     };
   }, [resolveSessionUser]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
       if (data.user) {
@@ -159,6 +160,7 @@ export function useAuth(): UseAuthReturn {
           await supabase.auth.signOut();
           throw new Error('Usuário sem perfil ativo e válido');
         }
+        setSession(data.session);
         setUser({ ...data.user, profile: prof, role: prof.role });
         setProfile(prof);
       }
@@ -168,22 +170,22 @@ export function useAuth(): UseAuthReturn {
       console.error('[signIn] Erro:', e);
       return { error: e instanceof Error ? e : new Error('Erro ao fazer login') };
     }
-  };
+  }, [fetchProfile, fetchTenantAccessState]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
     setTenantAccessState('unauthenticated');
-  };
+  }, []);
 
   const canAccess = useCallback((module: ModuleKey): boolean => {
     if (!user?.role) return false;
     return accessFor(user.role, module) !== 'none';
   }, [user?.role]);
 
-  return {
+  const value = useMemo<UseAuthReturn>(() => ({
     user,
     session,
     profile,
@@ -192,7 +194,15 @@ export function useAuth(): UseAuthReturn {
     signIn,
     signOut,
     canAccess,
-  };
+  }), [user, session, profile, tenantAccessState, loading, signIn, signOut, canAccess]);
+
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth(): UseAuthReturn {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth deve ser usado dentro de AuthProvider');
+  return context;
 }
 
 export type { AuthUser, Profile, Role };
