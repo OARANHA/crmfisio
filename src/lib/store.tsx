@@ -23,8 +23,6 @@ interface AppState {
   user: User | null;
   users: User[];
   unidades: Unidade[];
-  unidadeSel: string;
-  setUnidadeSel: (v: string) => void;
   refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
@@ -75,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
-  const { unidades, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
+  const { unidades, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -139,8 +137,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user,
       users: directory.users,
       unidades,
-      unidadeSel,
-      setUnidadeSel,
       refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
@@ -198,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, directory.users, unidades, unidadeSel, setUnidadeSel,
+    user, directory.users, unidades,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,

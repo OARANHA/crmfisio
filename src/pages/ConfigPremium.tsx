@@ -5,6 +5,7 @@ import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
 import { StorageAdmin } from '../components/StorageAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
 import { useApp } from '../lib/store';
+import { useInfrastructure } from '../lib/infrastructureContext';
 import { Config } from './Config';
 
 type ConfigSection = 'estrutura' | 'equipe' | 'modelos' | 'governanca';
@@ -47,7 +48,8 @@ const SECTION_META: Array<{
 ];
 
 export function ConfigPremium() {
-  const { unidades, users } = useApp();
+  const { users } = useApp();
+  const { unidades } = useInfrastructure();
   const [section, setSection] = useState<ConfigSection>('estrutura');
 
   const activeUnits = unidades.length;
