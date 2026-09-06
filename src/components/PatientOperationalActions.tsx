@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
+import { useClinical } from '../lib/clinicalContext';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
 import { Btn, Chip, Select } from '../lib/ui';
@@ -26,7 +27,8 @@ type ConsentRow = {
 };
 
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
-  const { user, refreshClinicData, toast } = useApp();
+  const { user, toast } = useApp();
+  const { refreshClinical } = useClinical();
   const nav = useNavigate();
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
   const [consents, setConsents] = useState<ConsentRow[]>([]);
@@ -80,7 +82,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
       const { error } = await db.rpc('accept_patient_consent', { p_consent_id: id, p_ip: null, p_user_agent: navigator.userAgent });
       if (error) throw error;
       await load();
-      await refreshClinicData();
+      await refreshClinical();
       toast('Aceite registrado com data, usuário e versão do termo.');
     } catch (error) {
       console.error('[MedicsPro] aceitar consentimento:', error);
