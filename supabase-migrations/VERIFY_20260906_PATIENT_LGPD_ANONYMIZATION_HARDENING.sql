@@ -25,7 +25,7 @@ SELECT to_regprocedure('public.anonymize_patient_lgpd(uuid)') IS NOT NULL AS ok;
 
 \echo '7) anonymization RPC remains owner/admin only'
 SELECT
-  position("v_role NOT IN ('owner','admin')" in pg_get_functiondef('public.anonymize_patient_lgpd(uuid)'::regprocedure)) > 0
+  position('v_role NOT IN (''owner'',''admin'')' in pg_get_functiondef('public.anonymize_patient_lgpd(uuid)'::regprocedure)) > 0
   AS owner_admin_guarded;
 
 \echo '8) anonymization clears patient registry v2 identifiers'
