@@ -5,10 +5,8 @@ import type {
   Room, SessionPackage, Unidade, User, WaLog,
 } from './types';
 import { loadInfrastructure } from './infrastructure';
-import {
-  loadClinicData,
-  logPatientDataExport,
-} from './repository';
+import { logPatientDataExport } from './repository';
+import { loadClinicShellData } from './clinicShellData';
 import { accessFor } from './permissions';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
@@ -91,7 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4400);
   }, []);
 
-  const applyClinicData = useCallback(async (data: Awaited<ReturnType<typeof loadClinicData>>) => {
+  const applyClinicData = useCallback(async (data: Awaited<ReturnType<typeof loadClinicShellData>>) => {
     const infrastructure = await loadInfrastructure(data.clinicId);
     setClinicId(data.clinicId);
     setUsers(data.users);
@@ -107,7 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshClinicData = useCallback(async () => {
     if (!user?.id) return;
     const [data] = await Promise.all([
-      loadClinicData(user.id),
+      loadClinicShellData(user.id),
       finance.refreshFinance(),
       agenda.refreshAgenda(),
       patientDomain.refreshPatients(),
@@ -131,13 +129,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    loadClinicData(user.id)
+    loadClinicShellData(user.id)
       .then(async (data) => {
         if (cancelled) return;
         await applyClinicData(data);
       })
       .catch((error) => {
-        console.error('[MedicsPro] Falha ao carregar dados reais:', error);
+        console.error('[MedicsPro] Falha ao carregar dados do shell da clínica:', error);
         if (!cancelled) pushToast('Não foi possível carregar os dados da clínica.', 'warn');
       });
 
