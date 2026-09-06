@@ -4,7 +4,7 @@ import { ConsentTemplatesAdmin } from '../components/ConsentTemplatesAdmin';
 import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
 import { StorageAdmin } from '../components/StorageAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
-import { useApp } from '../lib/store';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { Config } from './Config';
 
@@ -48,7 +48,7 @@ const SECTION_META: Array<{
 ];
 
 export function ConfigPremium() {
-  const { users } = useApp();
+  const { users } = useClinicDirectory();
   const { unidades } = useInfrastructure();
   const [section, setSection] = useState<ConfigSection>('estrutura');
 
