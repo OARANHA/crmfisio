@@ -164,6 +164,7 @@ export function PlatformAdminPage() {
   const activeAutomations = settings.filter((setting) => setting.enabled).length;
   const pausedAutomations = settings.length - activeAutomations;
   const masterEnabled = settingMap.get('automation.enabled')?.enabled !== false;
+  const healthPercent = settings.length ? Math.round((activeAutomations / settings.length) * 100) : 0;
 
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -193,17 +194,15 @@ export function PlatformAdminPage() {
     }
   };
 
-  if (loadingAuth) {
-    return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
-  }
+  if (loadingAuth) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
 
   if (!session) {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
-        <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[24px] border border-line bg-panel shadow-[0_24px_80px_rgba(3,16,48,0.12)]">
-          <div className="border-b border-line/70 bg-gradient-to-br from-aqua/[0.09] via-panel to-panel px-7 py-6">
+        <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[28px] border border-line bg-panel shadow-[0_28px_90px_rgba(3,16,48,0.13)]">
+          <div className="border-b border-line/70 bg-gradient-to-br from-mint/[0.10] via-panel to-panel px-7 py-7">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mint">MedicsPro Platform</p>
-            <h1 className="mt-2 font-display text-[26px] font-bold tracking-tight">Administração da plataforma</h1>
+            <h1 className="mt-2 font-display text-[27px] font-bold tracking-tight">Governança da plataforma</h1>
             <p className="mt-2 text-[13px] leading-relaxed text-fog">Domínio separado da administração interna das clínicas.</p>
           </div>
           <div className="p-7">
@@ -219,14 +218,12 @@ export function PlatformAdminPage() {
     );
   }
 
-  if (loadingData || authorized === null) {
-    return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
-  }
+  if (loadingData || authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
 
   if (!authorized) {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
-        <div className="w-full max-w-lg rounded-2xl border border-pulse/30 bg-panel p-7">
+        <div className="w-full max-w-lg rounded-[24px] border border-pulse/30 bg-panel p-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-pulse">Acesso negado</p>
           <h1 className="mt-2 font-display text-2xl font-bold">Esta conta não é Platform Admin</h1>
           <p className="mt-3 text-[13px] leading-relaxed text-fog">Ter perfil owner/admin em uma clínica não concede administração do SaaS.</p>
@@ -240,145 +237,103 @@ export function PlatformAdminPage() {
   return (
     <PlatformAdminShell
       eyebrow="MedicsPro Platform Admin"
-      title="Governança da plataforma"
-      description="Controle automações, observe a saúde operacional e acompanhe cada mudança administrativa em um único lugar."
+      title="Governança"
+      description="Controle automações, acompanhe a saúde operacional e revise cada mudança administrativa em uma visão executiva única."
       actions={(
-        <button onClick={() => void refresh()} disabled={loadingData} className="rounded-xl border border-line bg-panel/70 px-3 py-2 text-[11px] font-semibold text-fog transition hover:border-aqua/30 hover:text-paper disabled:opacity-50">
+        <button onClick={() => void refresh()} disabled={loadingData} className="rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[11px] font-semibold text-fog transition hover:border-mint/35 hover:text-paper disabled:opacity-50">
           {loadingData ? 'Atualizando…' : 'Atualizar dados'}
         </button>
       )}
     >
-      {error && <div className="rounded-xl border border-amber/35 bg-amber/[0.05] px-4 py-3 text-[12px] text-amber">{error}</div>}
+      {error && <div className="rounded-[16px] border border-amber/35 bg-amber/[0.05] px-4 py-3 text-[12px] text-amber">{error}</div>}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[20px] border border-line bg-panel p-4">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Orquestrador</p>
-          <p className={`mt-2 font-display text-[20px] font-bold ${masterEnabled ? 'text-mint' : 'text-amber'}`}>{masterEnabled ? 'Ativo' : 'Pausado'}</p>
-          <p className="mt-1 text-[11px] text-fog">chave-mestra da operação automatizada</p>
+      <section className="grid gap-4 xl:grid-cols-[1.45fr_0.55fr]">
+        <div className="relative overflow-hidden rounded-[26px] border border-mint/20 bg-gradient-to-br from-mint/[0.10] via-panel to-panel p-6 md:p-7">
+          <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-mint/[0.08] blur-3xl" />
+          <div className="relative">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-mint">Controle operacional</p>
+            <h2 className="mt-2 max-w-3xl font-display text-[27px] font-bold leading-tight tracking-tight md:text-[32px]">Saúde da plataforma sem perder rastreabilidade.</h2>
+            <p className="mt-3 max-w-2xl text-[12.5px] leading-relaxed text-fog">Acompanhe orquestração, mensageria, automações Nexus e execução recente sem misturar este domínio com permissões internas das clínicas.</p>
+          </div>
         </div>
-        <div className="rounded-[20px] border border-line bg-panel p-4">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Automações</p>
-          <p className="mt-2 font-display text-[28px] font-bold tracking-tight">{activeAutomations}</p>
-          <p className="mt-1 text-[11px] text-fog">ativas · {pausedAutomations} pausada(s)</p>
-        </div>
-        <div className="rounded-[20px] border border-line bg-panel p-4">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Falhas recentes</p>
-          <p className={`mt-2 font-display text-[28px] font-bold tracking-tight ${failedRuns.length ? 'text-pulse' : 'text-mint'}`}>{failedRuns.length}</p>
-          <p className="mt-1 text-[11px] text-fog">entre as {runs.length} execuções carregadas</p>
-        </div>
-        <div className="rounded-[20px] border border-line bg-panel p-4">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Último ciclo</p>
-          <p className="mt-2 font-display text-[20px] font-bold">{latestRun?.clinicsProcessed ?? 0} clínicas</p>
-          <p className="mt-1 text-[11px] text-fog">{latestRun ? new Date(latestRun.startedAt).toLocaleString('pt-BR') : 'sem execução recente'}</p>
+
+        <div className="rounded-[26px] border border-line bg-panel p-5 shadow-[0_14px_36px_rgba(3,16,48,0.04)]">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Estado geral</p><p className={`mt-2 font-display text-[25px] font-bold ${masterEnabled && failedRuns.length === 0 ? 'text-mint' : 'text-amber'}`}>{masterEnabled && failedRuns.length === 0 ? 'Saudável' : 'Atenção'}</p></div>
+            <span className={`grid h-10 w-10 place-items-center rounded-full border ${masterEnabled && failedRuns.length === 0 ? 'border-mint/25 bg-mint/[0.08] text-mint' : 'border-amber/25 bg-amber/[0.08] text-amber'}`}>{masterEnabled && failedRuns.length === 0 ? '✓' : '!'}</span>
+          </div>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-deep"><div className="h-full rounded-full bg-mint" style={{ width: `${healthPercent}%` }} /></div>
+          <div className="mt-4 grid grid-cols-2 gap-3"><MiniMetric label="Ativas" value={String(activeAutomations)} /><MiniMetric label="Pausadas" value={String(pausedAutomations)} /></div>
         </div>
       </section>
 
-      <section className="rounded-[22px] border border-line bg-panel p-5">
-        <div>
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Automação</p>
-          <h2 className="mt-1 font-display text-[18px] font-bold">Controles globais</h2>
-          <p className="mt-1 max-w-3xl text-[11.5px] leading-relaxed text-fog">O scheduler do servidor continua ativo. Estes controles governam o que o orquestrador pode executar em cada ciclo.</p>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <GovernanceMetric label="Orquestrador" value={masterEnabled ? 'Ativo' : 'Pausado'} detail="chave-mestra operacional" tone={masterEnabled ? 'mint' : 'amber'} />
+        <GovernanceMetric label="Automações" value={String(activeAutomations)} detail={`${pausedAutomations} pausada(s)`} tone="aqua" />
+        <GovernanceMetric label="Falhas recentes" value={String(failedRuns.length)} detail={`entre ${runs.length} execuções carregadas`} tone={failedRuns.length ? 'pulse' : 'mint'} />
+        <GovernanceMetric label="Último ciclo" value={`${latestRun?.clinicsProcessed ?? 0} clínicas`} detail={latestRun ? new Date(latestRun.startedAt).toLocaleString('pt-BR') : 'sem execução recente'} tone="fog" />
+      </section>
+
+      <section className="rounded-[24px] border border-line bg-panel p-5 md:p-6 shadow-[0_12px_32px_rgba(3,16,48,0.03)]">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Automações</p><h2 className="mt-1 font-display text-[19px] font-bold">Controles globais</h2><p className="mt-1 max-w-3xl text-[11.5px] leading-relaxed text-fog">O scheduler do servidor permanece ativo. Estes controles definem o que o orquestrador pode executar em cada ciclo.</p></div>
+          <div className="rounded-full border border-line bg-deep/45 px-3 py-1.5 text-[10px] font-semibold text-fog">{settings.length} controles</div>
         </div>
 
-        <div className="mt-5 divide-y divide-line/60">
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {ORDER.map((key) => {
             const setting = settingMap.get(key);
             const meta = SETTING_META[key];
             if (!setting) return null;
             const dependencyBlocked = (key === 'waitlist.recovery' || key === 'reactivation.auto') && settingMap.get('automation.core_tick')?.enabled === false;
             return (
-              <div key={key} className="grid gap-3 py-4 md:grid-cols-[140px_1fr_auto] md:items-center">
-                <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog/80">{meta.group}</span>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-display text-[13.5px] font-semibold">{meta.title}</p>
-                    {meta.critical && <span className="rounded-full border border-pulse/20 px-2 py-0.5 text-[9px] font-semibold text-pulse">crítico</span>}
-                    {dependencyBlocked && <span className="rounded-full border border-amber/30 bg-amber/[0.05] px-2 py-0.5 text-[9px] font-semibold text-amber">dependência pausada</span>}
+              <article key={key} className={`rounded-[18px] border p-4 ${setting.enabled ? 'border-line/70 bg-deep/38' : 'border-amber/20 bg-amber/[0.025]'}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-[12px] ${setting.enabled ? 'border-mint/20 bg-mint/[0.06] text-mint' : 'border-line bg-panel text-fog'}`}>{setting.enabled ? '✓' : '‖'}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><p className="font-display text-[13.5px] font-semibold">{meta.title}</p>{meta.critical && <span className="rounded-full border border-pulse/20 bg-pulse/[0.04] px-2 py-0.5 text-[9px] font-semibold text-pulse">crítico</span>}{dependencyBlocked && <span className="rounded-full border border-amber/25 bg-amber/[0.05] px-2 py-0.5 text-[9px] font-semibold text-amber">dependência pausada</span>}</div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-fog">{meta.description}</p>
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-line/55 pt-3"><span className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-fog">{meta.group}</span><div className="flex items-center gap-2"><span className={`text-[10.5px] font-semibold ${setting.enabled ? 'text-mint' : 'text-fog'}`}>{setting.enabled ? 'Ativo' : 'Pausado'}</span><Toggle enabled={setting.enabled} disabled={busyKey !== null} onClick={() => void toggle(key)} /></div></div>
                   </div>
-                  <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{meta.description}</p>
-                  <p className="mt-1 font-mono text-[9px] text-fog/60">{key} · atualizado {new Date(setting.updatedAt).toLocaleString('pt-BR')}</p>
                 </div>
-                <div className="flex items-center gap-2 md:justify-end">
-                  <span className={`text-[10.5px] font-semibold ${setting.enabled ? 'text-mint' : 'text-fog'}`}>{setting.enabled ? 'Ativo' : 'Pausado'}</span>
-                  <Toggle enabled={setting.enabled} disabled={busyKey !== null} onClick={() => void toggle(key)} />
-                </div>
-              </div>
+              </article>
             );
           })}
         </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[22px] border border-line bg-panel p-5">
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Observabilidade</p>
-              <h2 className="mt-1 font-display text-[18px] font-bold">Execuções recentes</h2>
-              <p className="mt-1 text-[11.5px] text-fog">Telemetria operacional somente do domínio Platform Admin.</p>
-            </div>
-            {latestRun && <span className={`rounded-full border px-2 py-1 text-[9.5px] font-semibold ${runStatusClass(latestRun.status)}`}>{latestRun.status}</span>}
-          </div>
-
-          <div className="mt-4 overflow-x-auto rounded-xl border border-line/70">
+        <div className="rounded-[24px] border border-line bg-panel p-5 md:p-6">
+          <div className="flex flex-wrap items-start gap-3"><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Observabilidade</p><h2 className="mt-1 font-display text-[19px] font-bold">Execuções recentes</h2><p className="mt-1 text-[11.5px] text-fog">Telemetria operacional do domínio Platform Admin.</p></div>{latestRun && <span className={`rounded-full border px-2.5 py-1 text-[9.5px] font-semibold ${runStatusClass(latestRun.status)}`}>{latestRun.status}</span>}</div>
+          <div className="mt-5 overflow-x-auto rounded-[18px] border border-line/70">
             <table className="min-w-full text-left text-[10.5px]">
-              <thead className="bg-deep text-fog">
-                <tr>
-                  <th className="px-3 py-2.5 font-semibold">Início</th>
-                  <th className="px-3 py-2.5 font-semibold">Status</th>
-                  <th className="px-3 py-2.5 font-semibold">Trigger</th>
-                  <th className="px-3 py-2.5 font-semibold">Clínicas</th>
-                  <th className="px-3 py-2.5 font-semibold">WA</th>
-                  <th className="px-3 py-2.5 font-semibold">Falhas</th>
-                </tr>
-              </thead>
+              <thead className="bg-deep/75 text-fog"><tr><th className="px-3 py-3 font-semibold">Início</th><th className="px-3 py-3 font-semibold">Status</th><th className="px-3 py-3 font-semibold">Trigger</th><th className="px-3 py-3 font-semibold">Clínicas</th><th className="px-3 py-3 font-semibold">WA</th><th className="px-3 py-3 font-semibold">Falhas</th></tr></thead>
               <tbody className="divide-y divide-line/60 bg-panel/40">
-                {runs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-fog">Nenhuma execução recente disponível.</td></tr>
-                ) : runs.map((run) => (
-                  <tr key={run.id}>
-                    <td className="px-3 py-3 font-mono text-[9.5px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')}</td>
-                    <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${runStatusClass(run.status)}`}>{run.status}</span></td>
-                    <td className="px-3 py-3 text-fog">{run.triggerSource}</td>
-                    <td className="px-3 py-3 text-paper">{run.clinicsProcessed}</td>
-                    <td className="px-3 py-3 text-paper">{run.workerSent}</td>
-                    <td className={`px-3 py-3 font-semibold ${run.workerFailed > 0 ? 'text-pulse' : 'text-mint'}`}>{run.workerFailed}</td>
-                  </tr>
-                ))}
+                {runs.length === 0 ? <tr><td colSpan={6} className="px-3 py-7 text-center text-fog">Nenhuma execução recente disponível.</td></tr> : runs.map((run) => <tr key={run.id} className="transition hover:bg-deep/35"><td className="px-3 py-3 text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')}</td><td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${runStatusClass(run.status)}`}>{run.status}</span></td><td className="px-3 py-3 text-fog">{run.triggerSource}</td><td className="px-3 py-3 text-paper">{run.clinicsProcessed}</td><td className="px-3 py-3 text-paper">{run.workerSent}</td><td className={`px-3 py-3 font-semibold ${run.workerFailed > 0 ? 'text-pulse' : 'text-mint'}`}>{run.workerFailed}</td></tr>)}
               </tbody>
             </table>
           </div>
-
-          {failedRuns.some((run) => run.errorMessage) && (
-            <div className="mt-4 rounded-xl border border-pulse/25 bg-pulse/[0.04] p-3">
-              <p className="text-[11px] font-semibold text-pulse">Falhas recentes registradas</p>
-              <div className="mt-2 space-y-1.5">
-                {failedRuns.filter((run) => run.errorMessage).slice(0, 3).map((run) => (
-                  <p key={run.id} className="font-mono text-[9.5px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.errorMessage}</p>
-                ))}
-              </div>
-            </div>
-          )}
+          {failedRuns.some((run) => run.errorMessage) && <div className="mt-4 rounded-[16px] border border-pulse/25 bg-pulse/[0.04] p-3"><p className="text-[11px] font-semibold text-pulse">Falhas recentes registradas</p><div className="mt-2 space-y-1.5">{failedRuns.filter((run) => run.errorMessage).slice(0, 3).map((run) => <p key={run.id} className="text-[9.5px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.errorMessage}</p>)}</div></div>}
         </div>
 
-        <div className="rounded-[22px] border border-line bg-panel p-5">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Auditoria</p>
-          <h2 className="mt-1 font-display text-[18px] font-bold">Mudanças de governança</h2>
+        <div className="rounded-[24px] border border-line bg-panel p-5 md:p-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Auditoria</p>
+          <h2 className="mt-1 font-display text-[19px] font-bold">Mudanças de governança</h2>
           <p className="mt-1 text-[11.5px] text-fog">Registro append-only das ações administrativas recentes.</p>
-          <div className="mt-4 divide-y divide-line/60">
-            {audit.length === 0 ? (
-              <p className="py-6 text-[11.5px] text-fog">Nenhuma alteração registrada.</p>
-            ) : audit.slice(0, 12).map((entry) => (
-              <div key={entry.id} className="py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="min-w-0 flex-1 truncate text-[11.5px] font-semibold">{entry.entityKey}</p>
-                  <span className="font-mono text-[8.5px] text-fog">{new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
-                </div>
-                <p className="mt-1 break-words text-[10px] leading-relaxed text-fog">{entry.action} · {JSON.stringify(entry.detail)}</p>
-              </div>
-            ))}
+          <div className="mt-5 space-y-2.5">
+            {audit.length === 0 ? <div className="rounded-[16px] border border-dashed border-line p-6 text-center text-[11.5px] text-fog">Nenhuma alteração registrada.</div> : audit.slice(0, 12).map((entry) => <div key={entry.id} className="rounded-[16px] border border-line/65 bg-deep/38 p-3.5"><div className="flex items-start gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-aqua" /><div className="min-w-0 flex-1"><p className="truncate text-[11.5px] font-semibold">{entry.entityKey}</p><p className="mt-1 break-words text-[10px] leading-relaxed text-fog">{entry.action} · {JSON.stringify(entry.detail)}</p><p className="mt-2 text-[9px] text-fog/70">{new Date(entry.createdAt).toLocaleString('pt-BR')}</p></div></div></div>)}
           </div>
         </div>
       </section>
     </PlatformAdminShell>
   );
+}
+
+function GovernanceMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: 'mint' | 'aqua' | 'amber' | 'pulse' | 'fog' }) {
+  const toneClass = tone === 'mint' ? 'text-mint' : tone === 'aqua' ? 'text-aqua' : tone === 'amber' ? 'text-amber' : tone === 'pulse' ? 'text-pulse' : 'text-paper';
+  return <div className="rounded-[20px] border border-line bg-panel p-4.5"><p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-fog">{label}</p><p className={`mt-2 font-display text-[22px] font-bold tracking-tight ${toneClass}`}>{value}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{detail}</p></div>;
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-[14px] border border-line/70 bg-deep/45 p-3"><p className="text-[9.5px] text-fog">{label}</p><p className="mt-1 font-display text-[17px] font-bold">{value}</p></div>;
 }
