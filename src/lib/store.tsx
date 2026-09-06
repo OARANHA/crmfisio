@@ -1,8 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type {
-  Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
+  Access, Appointment, AppointmentStatus, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  SessionPackage, User, WaLog,
+  SessionPackage, User,
 } from './types';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
@@ -10,8 +10,6 @@ import { usePatients } from './patientContext';
 import { useClinical } from './clinicalContext';
 import { useClinicDirectory } from './clinicDirectoryContext';
 import { usePackages } from './packageContext';
-import { useCommunication } from './communicationContext';
-import { useAudit } from './auditContext';
 import { useLgpdActions } from './lgpdActions';
 import { useCurrentUserAccess } from './currentUserAccess';
 import { useToast, type Toast } from './toastContext';
@@ -28,8 +26,6 @@ interface AppState {
   evolutions: Evolution[];
   consents: ConsentTerm[];
   surveys: NpsSurvey[];
-  waLogs: WaLog[];
-  audit: AuditEntry[];
   access: (m: ModuleKey) => Access;
   canView: (m: ModuleKey) => boolean;
   toast: (msg: string, kind?: Toast['kind']) => void;
@@ -64,8 +60,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clinical = useClinical();
   const directory = useClinicDirectory();
   const packageDomain = usePackages();
-  const communication = useCommunication();
-  const auditDomain = useAudit();
   const lgpd = useLgpdActions();
   const { toast: pushToast } = useToast();
 
@@ -87,8 +81,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       evolutions: clinical.evolutions,
       consents: clinical.consents,
       surveys: clinical.surveys,
-      waLogs: communication.waLogs,
-      audit: auditDomain.audit,
       access,
       canView,
       toast: pushToast,
@@ -115,7 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [
     user, access, canView, directory.users,
-    packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
+    packageDomain.packages, packageDomain.patientPackages,
     pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,

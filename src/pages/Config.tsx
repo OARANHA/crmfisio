@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp, userName } from '../lib/store';
+import { useAudit } from '../lib/auditContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { ROLE_META, maskCpf, type Access, type ModuleKey } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Select } from '../lib/ui';
@@ -36,7 +37,8 @@ const LGPD_PILLARS = [
 ];
 
 export function Config() {
-  const { patients, users, audit, access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { patients, users, access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { audit } = useAudit();
   const { unidades } = useInfrastructure();
   const [tab, setTab] = useState<'rbac' | 'lgpd' | 'audit'>('rbac');
   const [exportando, setExportando] = useState('');
