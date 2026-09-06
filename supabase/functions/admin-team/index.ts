@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
   const { data: caller, error: callerError } = await admin
     .from('profiles')
-    .select('id,clinic_id,role,ativo')
+    .select('id,clinic_id,role,ativo,must_change_password')
     .eq('id', authData.user.id)
     .single();
 
@@ -80,6 +80,13 @@ Deno.serve(async (req) => {
     payload = await req.json();
   } catch {
     return json({ error: 'JSON inválido' }, 400);
+  }
+
+  // While a temporary password is pending, this service-role Edge Function must
+  // expose only the minimal self-service password-change operation. All normal
+  // team/domain actions stay fail-closed even though the caller is authenticated.
+  if (caller.must_change_password && payload.action !== 'change_own_password') {
+    return json({ error: 'Troca de senha obrigatória antes de continuar', code: 'password_change_required' }, 403);
   }
 
   try {

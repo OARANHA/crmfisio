@@ -59,11 +59,14 @@ Deno.serve(async (req) => {
 
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select('id,clinic_id,nome,ativo')
+    .select('id,clinic_id,nome,ativo,must_change_password')
     .eq('id', authData.user.id)
     .single();
   if (profileError || !profile?.ativo || !profile.clinic_id) {
     return json({ error: 'Perfil profissional inválido' }, 403);
+  }
+  if (profile.must_change_password) {
+    return json({ error: 'Troca de senha obrigatória antes de continuar', code: 'password_change_required' }, 403);
   }
 
   const { data: clinic, error: clinicError } = await admin
