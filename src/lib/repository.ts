@@ -27,6 +27,18 @@ type SessionPackageRow = Database['public']['Tables']['session_packages']['Row']
 type WaLogRow = Database['public']['Tables']['wa_logs']['Row'];
 type AuditRow = Database['public']['Tables']['audit_log']['Row'];
 type CommissionRow = Database['public']['Tables']['commission_settlements']['Row'];
+type AppRole = ProfileRow['role'];
+
+type PatientClinicalSnapshot = {
+  patient_id: string;
+  queixa_principal: string | null;
+  cid10: string[] | null;
+  anamnese: Json | null;
+};
+
+const PATIENT_OPERATIONAL_SELECT = 'id,clinic_id,nome,nascimento,telefone,email,cpf,convenio,funil_stage,status,ultima_visita,opt_in_whats,anonimizado,created_at,updated_at,deleted_at' as const;
+
+const CLINICAL_ROLES: AppRole[] = ['owner', 'admin', 'fisio'];
 
 const emptyAnamnese: Patient['anamnese'] = {
   historia: '',
@@ -196,10 +208,24 @@ export interface ClinicData {
   audit: AuditEntry[];
 }
 
-export async function resolveClinicId(userId: string): Promise<string> {
-  const { data, error } = await supabase.from('profiles').select('clinic_id').eq('id', userId).single();
+interface ClinicContext {
+  clinicId: string;
+  role: AppRole;
+}
+
+async function resolveClinicContext(userId: string): Promise<ClinicContext> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('clinic_id,role')
+    .eq('id', userId)
+    .eq('ativo', true)
+    .single();
   if (error || !data?.clinic_id) throw error ?? new Error('Perfil sem clínica vinculada');
-  return data.clinic_id;
+  return { clinicId: data.clinic_id, role: data.role };
+}
+
+export async function resolveClinicId(userId: string): Promise<string> {
+  return (await resolveClinicContext(userId)).clinicId;
 }
 
 const optionalRows = <T>(label: string, result: { data: T[] | null; error: unknown }): T[] => {
@@ -210,11 +236,25 @@ const optionalRows = <T>(label: string, result: { data: T[] | null; error: unkno
   return result.data ?? [];
 };
 
+async function loadPatientClinicalSnapshot(role: AppRole): Promise<PatientClinicalSnapshot[]> {
+  if (!CLINICAL_ROLES.includes(role)) return [];
+
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      name: 'list_patient_clinical_snapshot',
+      args?: Record<string, never>,
+    ) => Promise<{ data: PatientClinicalSnapshot[] | null; error: unknown }>;
+  }).rpc('list_patient_clinical_snapshot');
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function loadClinicData(userId: string): Promise<ClinicData> {
-  const clinicId = await resolveClinicId(userId);
-  const [profiles, patients, appointments, payments, commissions, evolutions, consents, surveys, patientPackages, packages, waLogs, audit] = await Promise.all([
+  const { clinicId, role } = await resolveClinicContext(userId);
+  const [profiles, patients, appointments, payments, commissions, evolutions, consents, surveys, patientPackages, packages, waLogs, audit, clinicalSnapshot] = await Promise.all([
     supabase.from('profiles').select('*').eq('clinic_id', clinicId).eq('ativo', true).order('nome'),
-    supabase.from('patients').select('*').eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('patients').select(PATIENT_OPERATIONAL_SELECT).eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('appointments').select('*').eq('clinic_id', clinicId).order('data', { ascending: false }),
     supabase.from('payments').select('*').eq('clinic_id', clinicId).order('vencimento', { ascending: false }),
     supabase.from('commission_settlements').select('*').eq('clinic_id', clinicId).order('period', { ascending: false }),
@@ -225,15 +265,27 @@ export async function loadClinicData(userId: string): Promise<ClinicData> {
     supabase.from('session_packages').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }),
     supabase.from('wa_logs').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }),
     supabase.from('audit_log').select('*').eq('clinic_id', clinicId).order('ts', { ascending: false }).limit(250),
+    loadPatientClinicalSnapshot(role),
   ]);
 
   const requiredFailure = [profiles.error, patients.error, appointments.error, payments.error].find(Boolean);
   if (requiredFailure) throw requiredFailure;
 
+  const clinicalByPatient = new Map(clinicalSnapshot.map((row) => [row.patient_id, row]));
+  const mappedPatients = (patients.data ?? []).map((row) => {
+    const clinical = clinicalByPatient.get(row.id);
+    return mapPatient({
+      ...row,
+      queixa_principal: clinical?.queixa_principal ?? null,
+      cid10: clinical?.cid10 ?? [],
+      anamnese: clinical?.anamnese ?? null,
+    } as PatientRow);
+  });
+
   return {
     clinicId,
     users: (profiles.data ?? []).map(mapProfile),
-    patients: (patients.data ?? []).map(mapPatient),
+    patients: mappedPatients,
     appointments: (appointments.data ?? []).map(mapAppointment),
     transactions: (payments.data ?? []).map(mapPayment),
     commissions: optionalRows('repasses', commissions).map(mapCommission),
@@ -276,9 +328,14 @@ export async function insertPatient(clinicId: string, patient: Omit<Patient, 'id
     opt_in_whats: patient.optInWhats,
     anonimizado: patient.anonimizado ?? false,
     anamnese: patient.anamnese as unknown as Json,
-  }).select('*').single();
+  }).select(PATIENT_OPERATIONAL_SELECT).single();
   if (error || !data) throw error ?? new Error('Falha ao cadastrar paciente');
-  return mapPatient(data);
+  return mapPatient({
+    ...data,
+    queixa_principal: patient.queixaPrincipal || null,
+    cid10: patient.cid10,
+    anamnese: patient.anamnese as unknown as Json,
+  } as PatientRow);
 }
 
 export async function updatePatientStage(id: string, stage: Patient['funilStage']): Promise<void> {
