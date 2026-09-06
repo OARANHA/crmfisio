@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  Room, SessionPackage, Unidade, User, WaLog,
+  SessionPackage, User, WaLog,
 } from './types';
 import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
@@ -22,11 +22,6 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
-  unidades: Unidade[];
-  unidadeSel: string;
-  setUnidadeSel: (v: string) => void;
-  rooms: Room[];
-  refreshInfrastructure: () => Promise<void>;
   refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
@@ -77,7 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
-  const { unidades, rooms, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
+  const { refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -140,11 +135,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
-      unidades,
-      unidadeSel,
-      setUnidadeSel,
-      rooms,
-      refreshInfrastructure,
       refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
@@ -202,9 +192,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
+    user, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
-    auditDomain.refreshAudit, toasts, unidadeSel, pushToast, refreshClinicData,
+    auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
@@ -219,15 +209,6 @@ export function useApp() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useApp fora do AppProvider');
   return ctx;
-}
-
-export function useUnitFilter() {
-  const { rooms, unidadeSel } = useApp();
-  return useCallback((appointment: { roomId: string }) => {
-    if (unidadeSel === 'all') return true;
-    const room = rooms.find((item) => item.id === appointment.roomId);
-    return room ? room.unidadeId === unidadeSel : true;
-  }, [rooms, unidadeSel]);
 }
 
 export const patientName = (patients: Patient[], id: string) => patients.find((patient) => patient.id === id)?.nome ?? '—';
