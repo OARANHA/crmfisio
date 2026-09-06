@@ -66,6 +66,15 @@ Deno.serve(async (req) => {
     return json({ error: 'Perfil profissional inválido' }, 403);
   }
 
+  const { data: clinic, error: clinicError } = await admin
+    .from('clinics')
+    .select('id,lifecycle_status,deleted_at')
+    .eq('id', profile.clinic_id)
+    .single();
+  if (clinicError || !clinic || clinic.deleted_at || clinic.lifecycle_status !== 'active') {
+    return json({ error: 'Clínica suspensa ou indisponível', code: 'clinic_not_active' }, 403);
+  }
+
   const { data: patient, error: patientError } = await admin
     .from('patients')
     .select('id,clinic_id,nome,telefone,opt_in_whats,deleted_at,anonimizado')
