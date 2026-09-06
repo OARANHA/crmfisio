@@ -4,7 +4,7 @@ import type {
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   Room, SessionPackage, Unidade, User, WaLog,
 } from './types';
-import { loadInfrastructure } from './infrastructure';
+import { useInfrastructure } from './useInfrastructure';
 import { logPatientDataExport } from './repository';
 import { loadClinicShellData } from './clinicShellData';
 import { accessFor } from './permissions';
@@ -71,17 +71,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const agenda = useAgenda();
   const patientDomain = usePatients();
   const clinical = useClinical();
+  const { unidades, rooms, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [user, setUser] = useState<User | null>(null);
-  const [clinicId, setClinicId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [packages, setPackages] = useState<SessionPackage[]>([]);
   const [patientPackages, setPatientPackages] = useState<PatientPackage[]>([]);
   const [waLogs, setWaLogs] = useState<WaLog[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [unidadeSel, setUnidadeSel] = useState<string>('all');
 
   const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
     const id = ++seq;
@@ -89,13 +86,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4400);
   }, []);
 
+  useEffect(() => {
+    if (infrastructureError) pushToast(infrastructureError, 'warn');
+  }, [infrastructureError, pushToast]);
+
   const applyClinicData = useCallback(async (data: Awaited<ReturnType<typeof loadClinicShellData>>) => {
-    const infrastructure = await loadInfrastructure(data.clinicId);
-    setClinicId(data.clinicId);
     setUsers(data.users);
-    setUnidades(infrastructure.unidades);
-    setRooms(infrastructure.rooms);
-    setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
     setPackages(data.packages);
     setPatientPackages(data.patientPackages);
     setWaLogs(data.waLogs);
@@ -110,18 +106,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agenda.refreshAgenda(),
       patientDomain.refreshPatients(),
       clinical.refreshClinical(),
+      refreshInfrastructure(),
     ]);
     await applyClinicData(data);
-  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, clinical.refreshClinical, applyClinicData]);
+  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, clinical.refreshClinical, refreshInfrastructure, applyClinicData]);
 
   useEffect(() => {
     let cancelled = false;
     if (!user?.id) {
-      setClinicId(null);
       setUsers([]);
-      setUnidades([]);
-      setRooms([]);
-      setUnidadeSel('all');
       setPackages([]);
       setPatientPackages([]);
       setWaLogs([]);
@@ -161,13 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unidadeSel,
       setUnidadeSel,
       rooms,
-      refreshInfrastructure: async () => {
-        if (!clinicId) throw new Error('Clínica não identificada');
-        const infrastructure = await loadInfrastructure(clinicId);
-        setUnidades(infrastructure.unidades);
-        setRooms(infrastructure.rooms);
-        setUnidadeSel((current) => current === 'all' || infrastructure.unidades.some((unit) => unit.id === current) ? current : 'all');
-      },
+      refreshInfrastructure,
       refreshClinicData,
       packages,
       patientPackages,
@@ -270,7 +257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, clinicId, users, unidades, rooms,
+    user, users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
     packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
