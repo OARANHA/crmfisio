@@ -12,7 +12,7 @@ export function getCachedPlatformAdminAccess(): boolean | null {
 export async function validatePlatformAdminAccess(): Promise<boolean> {
   if (pendingValidation) return pendingValidation;
 
-  pendingValidation = (async () => {
+  const validation = (async () => {
     const { data } = await platformSupabase.auth.getSession();
     const userId = data.session?.user.id ?? null;
 
@@ -30,14 +30,23 @@ export async function validatePlatformAdminAccess(): Promise<boolean> {
     if (cachedAllowed !== null) return cachedAllowed;
 
     const allowed = await isPlatformAdmin();
+
+    // Authentication may change while the RPC is in flight. Never let a result
+    // calculated for the previous user overwrite the cache of the new session.
+    if (cachedUserId !== userId) return false;
+
     cachedAllowed = allowed;
     return allowed;
   })();
 
+  pendingValidation = validation;
+
   try {
-    return await pendingValidation;
+    return await validation;
   } finally {
-    pendingValidation = null;
+    // A sign-in/sign-out event can start a newer validation before this one
+    // finishes. Only clear the promise that belongs to this invocation.
+    if (pendingValidation === validation) pendingValidation = null;
   }
 }
 
