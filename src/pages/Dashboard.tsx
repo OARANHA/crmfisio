@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
-import { useApp, useUnitFilter } from '../lib/store';
+import { useApp } from '../lib/store';
+import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
 import { fmtBRL, STATUS_META, dayOf } from '../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../lib/ui';
 import { Reveal, CountUp } from '../components/Reveal';
@@ -14,7 +15,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user, appointments, transactions, patients, patientPackages, surveys, consents, users, unidadeSel, unidades } = useApp();
+  const { user, appointments, transactions, patients, patientPackages, surveys, consents, users } = useApp();
+  const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
 
   const mes = format(new Date(), 'yyyy-MM');
