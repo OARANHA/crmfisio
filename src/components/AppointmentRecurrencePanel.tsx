@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { addDays, format } from 'date-fns';
 import { createAppointmentSeries, previewAppointmentSeries, type RecurrencePreviewSlot } from '../lib/appointmentRecurrence';
 import { useAgenda } from '../lib/agendaContext';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp } from '../lib/store';
 import { Btn, Card, Field, Input, Select } from '../lib/ui';
@@ -11,7 +12,8 @@ const DAYS = [
 ] as const;
 
 export function AppointmentRecurrencePanel() {
-  const { user, users, patients, toast } = useApp();
+  const { user, patients, toast } = useApp();
+  const { users } = useClinicDirectory();
   const { refreshAgenda } = useAgenda();
   const { rooms, unidades: units } = useInfrastructure();
   const [open, setOpen] = useState(false);
