@@ -9,6 +9,7 @@ import {
   updatePatientRegistry,
   uploadPatientAvatar,
 } from '../lib/patientRegistry';
+import { usePatients } from '../lib/patientContext';
 import { useApp } from '../lib/store';
 import { Btn, Card, Field, Input, Select, Textarea, IconChevronL, IconPlus } from '../lib/ui';
 import { Reveal } from './Reveal';
@@ -22,7 +23,8 @@ type Props = { patient?: Patient };
 
 export function PatientRegistryForm({ patient }: Props) {
   const editing = Boolean(patient);
-  const { user, refreshClinicData, toast } = useApp();
+  const { user, toast } = useApp();
+  const { refreshPatients } = usePatients();
   const nav = useNavigate();
   const [name, setName] = useState(patient?.nome ?? '');
   const [preferredName, setPreferredName] = useState(patient?.preferredName ?? '');
@@ -132,7 +134,7 @@ export function PatientRegistryForm({ patient }: Props) {
       if (removeStoredAvatar && !avatar) await removePatientAvatar(patientId, storedAvatarPath);
       if (avatar) await uploadPatientAvatar(user.id, patientId, avatar);
 
-      await refreshClinicData();
+      await refreshPatients();
       toast(editing ? 'Cadastro do paciente atualizado.' : 'Paciente cadastrado com segurança.');
       nav(`/pacientes/${patientId}`);
     } catch (saveError) {
