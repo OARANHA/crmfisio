@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   loadPlatformClinics,
   reactivatePlatformClinic,
@@ -6,9 +6,13 @@ import {
   type PlatformClinicSummary,
 } from '../lib/platformAdmin';
 
-export function PlatformClinicLifecyclePanel() {
-  const [clinics, setClinics] = useState<PlatformClinicSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+type Props = {
+  clinics: PlatformClinicSummary[];
+  loading?: boolean;
+  onClinicsChanged: (items: PlatformClinicSummary[]) => void;
+};
+
+export function PlatformClinicLifecyclePanel({ clinics, loading = false, onClinicsChanged }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -16,20 +20,8 @@ export function PlatformClinicLifecyclePanel() {
 
   const refresh = async () => {
     const items = await loadPlatformClinics();
-    setClinics(items);
+    onClinicsChanged(items);
   };
-
-  useEffect(() => {
-    let active = true;
-    void loadPlatformClinics()
-      .then((items) => { if (active) setClinics(items); })
-      .catch((cause) => {
-        console.error('[Platform Admin] clinic lifecycle:', cause);
-        if (active) setError('Não foi possível carregar o estado das clínicas.');
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
 
   const visibleClinics = useMemo(() => {
     const normalized = query.trim().toLowerCase();
