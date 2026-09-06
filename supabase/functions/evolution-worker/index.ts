@@ -37,6 +37,12 @@ type EntitlementRow = {
   expires_at: string | null;
 };
 
+type ClinicLifecycleRow = {
+  id: string;
+  lifecycle_status: string;
+  deleted_at: string | null;
+};
+
 const entitlementEffective = (row: EntitlementRow | null | undefined, now = Date.now()) => {
   // Controlled rollout: no explicit row means legacy access remains allowed.
   if (!row) return true;
@@ -45,6 +51,9 @@ const entitlementEffective = (row: EntitlementRow | null | undefined, now = Date
   if (row.expires_at && Date.parse(row.expires_at) <= now) return false;
   return true;
 };
+
+const clinicActive = (row: ClinicLifecycleRow | null | undefined) =>
+  Boolean(row && !row.deleted_at && row.lifecycle_status === 'active');
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -82,6 +91,15 @@ Deno.serve(async (req) => {
       return json({ error: 'Perfil sem permissão para disparar mensagens' }, 403);
     }
 
+    const { data: callerClinic, error: clinicError } = await admin
+      .from('clinics')
+      .select('id,lifecycle_status,deleted_at')
+      .eq('id', caller.clinic_id)
+      .single();
+    if (clinicError || !clinicActive(callerClinic as ClinicLifecycleRow | null)) {
+      return json({ error: 'Clínica suspensa ou indisponível', code: 'clinic_not_active' }, 403);
+    }
+
     const { data: entitlement, error: entitlementError } = await admin
       .from('platform_clinic_entitlements')
       .select('clinic_id,enabled,starts_at,expires_at')
@@ -113,23 +131,48 @@ Deno.serve(async (req) => {
   const rows = (data ?? []) as QueueRow[];
   const clinicIds = [...new Set(rows.map((row) => row.clinic_id).filter(Boolean))];
   const entitlementByClinic = new Map<string, EntitlementRow>();
+  const lifecycleByClinic = new Map<string, ClinicLifecycleRow>();
   if (clinicIds.length) {
-    const { data: entitlementRows, error: entitlementError } = await admin
-      .from('platform_clinic_entitlements')
-      .select('clinic_id,enabled,starts_at,expires_at')
-      .in('clinic_id', clinicIds)
-      .eq('entitlement_key', 'whatsapp.access');
-    if (entitlementError) {
-      console.error('[evolution-worker] queue entitlements:', entitlementError);
+    const [entitlementResult, clinicResult] = await Promise.all([
+      admin
+        .from('platform_clinic_entitlements')
+        .select('clinic_id,enabled,starts_at,expires_at')
+        .in('clinic_id', clinicIds)
+        .eq('entitlement_key', 'whatsapp.access'),
+      admin
+        .from('clinics')
+        .select('id,lifecycle_status,deleted_at')
+        .in('id', clinicIds),
+    ]);
+
+    if (entitlementResult.error) {
+      console.error('[evolution-worker] queue entitlements:', entitlementResult.error);
       return json({ error: 'Não foi possível validar os módulos WhatsApp da fila' }, 503);
     }
-    for (const row of (entitlementRows ?? []) as EntitlementRow[]) entitlementByClinic.set(row.clinic_id, row);
+    if (clinicResult.error) {
+      console.error('[evolution-worker] queue clinics:', clinicResult.error);
+      return json({ error: 'Não foi possível validar as clínicas da fila' }, 503);
+    }
+
+    for (const row of (entitlementResult.data ?? []) as EntitlementRow[]) entitlementByClinic.set(row.clinic_id, row);
+    for (const row of (clinicResult.data ?? []) as ClinicLifecycleRow[]) lifecycleByClinic.set(row.id, row);
   }
 
   const results: Array<{ id: string; status: 'enviado' | 'falhou'; providerMessageId?: string }> = [];
   let blocked = 0;
 
   for (const row of rows) {
+    if (!clinicActive(lifecycleByClinic.get(row.clinic_id))) {
+      blocked += 1;
+      await admin.from('wa_logs').update({
+        status: 'fila',
+        scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        provider_status: 'CLINIC_BLOCKED',
+        error_message: 'Clínica suspensa ou indisponível',
+      }).eq('id', row.id);
+      continue;
+    }
+
     if (!entitlementEffective(entitlementByClinic.get(row.clinic_id))) {
       blocked += 1;
       await admin.from('wa_logs').update({
