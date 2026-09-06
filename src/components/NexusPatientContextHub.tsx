@@ -18,6 +18,7 @@ const DOMAINS = [
 
 export function NexusPatientContextHub({ patient }: { patient: Patient }) {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [assessmentRefreshKey, setAssessmentRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -74,8 +75,8 @@ export function NexusPatientContextHub({ patient }: { patient: Patient }) {
       </div>
 
       <div className="space-y-3 border-t border-line/60 p-4">
-        <NexusSelfAssessmentInviteAction patient={patient} />
-        <NexusSelfAssessmentStatus patient={patient} />
+        <NexusSelfAssessmentInviteAction patient={patient} onInviteCreated={() => setAssessmentRefreshKey((value) => value + 1)} />
+        <NexusSelfAssessmentStatus key={`${patient.id}:${assessmentRefreshKey}`} patient={patient} />
         <NexusLongitudinalPanel patient={patient} />
       </div>
     </section>
