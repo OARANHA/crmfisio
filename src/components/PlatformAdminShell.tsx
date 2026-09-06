@@ -30,7 +30,7 @@ function applyTheme(mode: ThemeMode) {
   document.documentElement.dataset.theme = light ? 'light' : 'dark';
 }
 
-export function PlatformAdminShell({ eyebrow, title, description, actions, hideDesktopHeader = false, children }: Props) {
+export function PlatformAdminShell({ eyebrow, title, description, actions, children }: Props) {
   const location = useLocation();
   const [theme, setTheme] = useState<ThemeMode>(() => (localStorage.getItem('medicspro-platform-theme') as ThemeMode | null) ?? 'system');
   const isActive = (to: string) => to === '/platform' ? location.pathname === to : location.pathname.startsWith(to);
@@ -99,14 +99,12 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, hideD
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className={`${hideDesktopHeader ? 'lg:hidden' : ''} sticky top-0 z-30 border-b border-line/55 bg-ink/90 px-4 py-4 backdrop-blur-xl sm:px-5 md:px-7 2xl:px-9`}>
-            <div className="flex flex-wrap items-center gap-3">
+          <header className="sticky top-0 z-30 border-b border-line/55 bg-ink/90 px-4 py-3 backdrop-blur-xl sm:px-5 lg:hidden">
+            <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-mint">{eyebrow}</p>
-                <h1 className="mt-0.5 font-display text-[21px] font-bold tracking-tight">{title}</h1>
-                {description && <p className="mt-1 max-w-4xl text-[11.5px] leading-relaxed text-fog">{description}</p>}
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-mint">{title || eyebrow}</p>
               </div>
-              <div className="flex items-center gap-2 lg:hidden">
+              <div className="flex items-center gap-2">
                 {actions}
                 <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-xl border border-line bg-panel px-3 py-2 text-[11px] font-semibold text-fog" title="Alternar tema">
                   {theme === 'light' ? '☀' : '●'}
@@ -116,7 +114,7 @@ export function PlatformAdminShell({ eyebrow, title, description, actions, hideD
             </div>
           </header>
 
-          <div className="sticky top-[73px] z-20 border-b border-line/45 bg-ink/92 px-3 py-2.5 backdrop-blur-xl lg:hidden">
+          <div className="sticky top-[61px] z-20 border-b border-line/45 bg-ink/92 px-3 py-2.5 backdrop-blur-xl lg:hidden">
             <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Navegação do Platform Admin">
               {BUSINESS_NAV.map((item) => <MobileNav key={item.to} {...item} active={isActive(item.to)} />)}
               <span className="mx-1 w-px shrink-0 bg-line" aria-hidden="true" />
