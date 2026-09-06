@@ -36,24 +36,7 @@ type PatientClinicalSnapshot = {
   anamnese: Json | null;
 };
 
-const PATIENT_OPERATIONAL_SELECT = [
-  'id',
-  'clinic_id',
-  'nome',
-  'nascimento',
-  'telefone',
-  'email',
-  'cpf',
-  'convenio',
-  'funil_stage',
-  'status',
-  'ultima_visita',
-  'opt_in_whats',
-  'anonimizado',
-  'created_at',
-  'updated_at',
-  'deleted_at',
-].join(',');
+const PATIENT_OPERATIONAL_SELECT = 'id,clinic_id,nome,nascimento,telefone,email,cpf,convenio,funil_stage,status,ultima_visita,opt_in_whats,anonimizado,created_at,updated_at,deleted_at' as const;
 
 const CLINICAL_ROLES: AppRole[] = ['owner', 'admin', 'fisio'];
 
