@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  SessionPackage, User, WaLog,
+  SessionPackage, Unidade, User, WaLog,
 } from './types';
 import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
@@ -22,6 +22,7 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
+  unidades: Unidade[];
   refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
@@ -72,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
-  const { refreshInfrastructure, error: infrastructureError } = useInfrastructure();
+  const { unidades, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -135,6 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
+      unidades,
       refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
@@ -192,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, directory.users,
+    user, directory.users, unidades,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
