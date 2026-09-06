@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
   isPlatformAdmin,
@@ -71,9 +72,7 @@ function Toggle({ enabled, disabled, onClick }: { enabled: boolean; disabled?: b
       aria-checked={enabled}
       disabled={disabled}
       onClick={onClick}
-      className={`relative h-7 w-12 rounded-full border transition-colors disabled:cursor-wait disabled:opacity-60 ${
-        enabled ? 'border-mint/60 bg-mint/25' : 'border-line bg-deep'
-      }`}
+      className={`relative h-7 w-12 rounded-full border transition-colors disabled:cursor-wait disabled:opacity-60 ${enabled ? 'border-mint/60 bg-mint/25' : 'border-line bg-deep'}`}
     >
       <span className={`absolute top-1 h-5 w-5 rounded-full transition-all ${enabled ? 'left-6 bg-mint' : 'left-1 bg-fog/70'}`} />
     </button>
@@ -162,6 +161,9 @@ export function PlatformAdminPage() {
   const settingMap = useMemo(() => new Map(settings.map((item) => [item.key, item])), [settings]);
   const latestRun = runs[0] ?? null;
   const failedRuns = useMemo(() => runs.filter((run) => run.workerFailed > 0 || ['failed', 'error'].includes(run.status.toLowerCase())), [runs]);
+  const activeAutomations = settings.filter((setting) => setting.enabled).length;
+  const pausedAutomations = settings.length - activeAutomations;
+  const masterEnabled = settingMap.get('automation.enabled')?.enabled !== false;
 
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -198,16 +200,20 @@ export function PlatformAdminPage() {
   if (!session) {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
-        <form onSubmit={signIn} className="w-full max-w-md rounded-2xl border border-line bg-panel p-7 shadow-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mint">MedicsPro Platform</p>
-          <h1 className="mt-2 font-display text-2xl font-bold">Administração da plataforma</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-fog">Domínio separado da administração interna das clínicas.</p>
-          {error && <div className="mt-5 rounded-xl border border-amber/35 bg-amber/5 p-3 text-[12.5px] text-amber">{error}</div>}
-          <label className="mt-6 block text-[12px] font-semibold text-paper/80">Email</label>
-          <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 outline-none focus:border-mint" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <label className="mt-4 block text-[12px] font-semibold text-paper/80">Senha</label>
-          <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 outline-none focus:border-mint" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <button className="mt-6 w-full rounded-xl bg-mint px-4 py-3 font-display font-semibold text-on-accent disabled:opacity-50" disabled={!email || !password}>Entrar</button>
+        <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[24px] border border-line bg-panel shadow-[0_24px_80px_rgba(3,16,48,0.12)]">
+          <div className="border-b border-line/70 bg-gradient-to-br from-aqua/[0.09] via-panel to-panel px-7 py-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-mint">MedicsPro Platform</p>
+            <h1 className="mt-2 font-display text-[26px] font-bold tracking-tight">Administração da plataforma</h1>
+            <p className="mt-2 text-[13px] leading-relaxed text-fog">Domínio separado da administração interna das clínicas.</p>
+          </div>
+          <div className="p-7">
+            {error && <div className="mb-5 rounded-xl border border-amber/35 bg-amber/[0.05] p-3 text-[12.5px] text-amber">{error}</div>}
+            <label className="block text-[12px] font-semibold text-paper/80">Email</label>
+            <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 outline-none transition focus:border-mint" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label className="mt-4 block text-[12px] font-semibold text-paper/80">Senha</label>
+            <input className="mt-2 w-full rounded-xl border border-line bg-deep px-4 py-3 outline-none transition focus:border-mint" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <button className="mt-6 w-full rounded-xl bg-mint px-4 py-3.5 font-display font-semibold text-on-accent shadow-sm disabled:opacity-50" disabled={!email || !password}>Entrar na governança</button>
+          </div>
         </form>
       </div>
     );
@@ -232,99 +238,96 @@ export function PlatformAdminPage() {
   }
 
   return (
-    <div className="app-surface min-h-screen">
-      <header className="border-b border-line/70 bg-deep/90 px-5 py-4 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-mint">MedicsPro Platform Admin</p>
-            <h1 className="font-display text-xl font-bold">Governança da plataforma</h1>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-[12px] text-fog">{session.user.email}</p>
-            <button onClick={() => void platformSupabase.auth.signOut()} className="mt-1 text-[11px] font-semibold text-pulse hover:underline">Encerrar sessão</button>
-          </div>
+    <PlatformAdminShell
+      eyebrow="MedicsPro Platform Admin"
+      title="Governança da plataforma"
+      description="Controle automações, observe a saúde operacional e acompanhe cada mudança administrativa em um único lugar."
+      actions={(
+        <button onClick={() => void refresh()} disabled={loadingData} className="rounded-xl border border-line bg-panel/70 px-3 py-2 text-[11px] font-semibold text-fog transition hover:border-aqua/30 hover:text-paper disabled:opacity-50">
+          {loadingData ? 'Atualizando…' : 'Atualizar dados'}
+        </button>
+      )}
+    >
+      {error && <div className="rounded-xl border border-amber/35 bg-amber/[0.05] px-4 py-3 text-[12px] text-amber">{error}</div>}
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Orquestrador</p>
+          <p className={`mt-2 font-display text-[20px] font-bold ${masterEnabled ? 'text-mint' : 'text-amber'}`}>{masterEnabled ? 'Ativo' : 'Pausado'}</p>
+          <p className="mt-1 text-[11px] text-fog">chave-mestra da operação automatizada</p>
         </div>
-      </header>
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Automações</p>
+          <p className="mt-2 font-display text-[28px] font-bold tracking-tight">{activeAutomations}</p>
+          <p className="mt-1 text-[11px] text-fog">ativas · {pausedAutomations} pausada(s)</p>
+        </div>
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Falhas recentes</p>
+          <p className={`mt-2 font-display text-[28px] font-bold tracking-tight ${failedRuns.length ? 'text-pulse' : 'text-mint'}`}>{failedRuns.length}</p>
+          <p className="mt-1 text-[11px] text-fog">entre as {runs.length} execuções carregadas</p>
+        </div>
+        <div className="rounded-[20px] border border-line bg-panel p-4">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Último ciclo</p>
+          <p className="mt-2 font-display text-[20px] font-bold">{latestRun?.clinicsProcessed ?? 0} clínicas</p>
+          <p className="mt-1 text-[11px] text-fog">{latestRun ? new Date(latestRun.startedAt).toLocaleString('pt-BR') : 'sem execução recente'}</p>
+        </div>
+      </section>
 
-      <main className="mx-auto max-w-6xl space-y-6 p-5 md:p-8">
-        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
-          <div className="flex flex-wrap items-start gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Automação</p>
-              <h2 className="mt-1 font-display text-xl font-bold">Controles globais</h2>
-              <p className="mt-1 max-w-3xl text-[12.5px] leading-relaxed text-fog">O scheduler do servidor continua ativo. Estes controles governam o que o orquestrador pode executar em cada ciclo.</p>
-            </div>
-            <button onClick={() => void refresh()} disabled={loadingData} className="ml-auto rounded-xl border border-line px-3 py-2 text-[12px] font-semibold text-fog hover:bg-raise hover:text-paper disabled:opacity-50">Atualizar</button>
-          </div>
+      <section className="rounded-[22px] border border-line bg-panel p-5">
+        <div>
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Automação</p>
+          <h2 className="mt-1 font-display text-[18px] font-bold">Controles globais</h2>
+          <p className="mt-1 max-w-3xl text-[11.5px] leading-relaxed text-fog">O scheduler do servidor continua ativo. Estes controles governam o que o orquestrador pode executar em cada ciclo.</p>
+        </div>
 
-          {error && <div className="mt-4 rounded-xl border border-amber/35 bg-amber/5 p-3 text-[12.5px] text-amber">{error}</div>}
-
-          <div className="mt-5 divide-y divide-line/60">
-            {ORDER.map((key) => {
-              const setting = settingMap.get(key);
-              const meta = SETTING_META[key];
-              if (!setting) return null;
-              const dependencyBlocked = (key === 'waitlist.recovery' || key === 'reactivation.auto') && settingMap.get('automation.core_tick')?.enabled === false;
-              return (
-                <div key={key} className="grid gap-3 py-4 md:grid-cols-[150px_1fr_auto] md:items-center">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog/80">{meta.group}</span>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-display text-[14px] font-semibold">{meta.title}</p>
-                      {dependencyBlocked && <span className="rounded-full border border-amber/30 bg-amber/5 px-2 py-0.5 text-[10px] font-semibold text-amber">dependência pausada</span>}
-                    </div>
-                    <p className="mt-1 text-[12px] leading-relaxed text-fog">{meta.description}</p>
-                    <p className="mt-1 font-mono text-[9.5px] text-fog/60">{key} · atualizado {new Date(setting.updatedAt).toLocaleString('pt-BR')}</p>
+        <div className="mt-5 divide-y divide-line/60">
+          {ORDER.map((key) => {
+            const setting = settingMap.get(key);
+            const meta = SETTING_META[key];
+            if (!setting) return null;
+            const dependencyBlocked = (key === 'waitlist.recovery' || key === 'reactivation.auto') && settingMap.get('automation.core_tick')?.enabled === false;
+            return (
+              <div key={key} className="grid gap-3 py-4 md:grid-cols-[140px_1fr_auto] md:items-center">
+                <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog/80">{meta.group}</span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-display text-[13.5px] font-semibold">{meta.title}</p>
+                    {meta.critical && <span className="rounded-full border border-pulse/20 px-2 py-0.5 text-[9px] font-semibold text-pulse">crítico</span>}
+                    {dependencyBlocked && <span className="rounded-full border border-amber/30 bg-amber/[0.05] px-2 py-0.5 text-[9px] font-semibold text-amber">dependência pausada</span>}
                   </div>
-                  <div className="flex items-center gap-2 md:justify-end">
-                    <span className={`text-[11px] font-semibold ${setting.enabled ? 'text-mint' : 'text-fog'}`}>{setting.enabled ? 'Ativo' : 'Pausado'}</span>
-                    <Toggle enabled={setting.enabled} disabled={busyKey !== null} onClick={() => void toggle(key)} />
-                  </div>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{meta.description}</p>
+                  <p className="mt-1 font-mono text-[9px] text-fog/60">{key} · atualizado {new Date(setting.updatedAt).toLocaleString('pt-BR')}</p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
-          <div className="flex flex-wrap items-start gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Observabilidade</p>
-              <h2 className="mt-1 font-display text-xl font-bold">Saúde das automações</h2>
-              <p className="mt-1 text-[12.5px] text-fog">Telemetria operacional da plataforma, visível somente no domínio Platform Admin.</p>
-            </div>
-            {latestRun && (
-              <div className="ml-auto rounded-xl border border-line bg-deep px-3 py-2 text-right">
-                <p className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-fog">Último ciclo</p>
-                <p className="mt-1 text-[12px] font-semibold text-paper">{new Date(latestRun.startedAt).toLocaleString('pt-BR')}</p>
+                <div className="flex items-center gap-2 md:justify-end">
+                  <span className={`text-[10.5px] font-semibold ${setting.enabled ? 'text-mint' : 'text-fog'}`}>{setting.enabled ? 'Ativo' : 'Pausado'}</span>
+                  <Toggle enabled={setting.enabled} disabled={busyKey !== null} onClick={() => void toggle(key)} />
+                </div>
               </div>
-            )}
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[22px] border border-line bg-panel p-5">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Observabilidade</p>
+              <h2 className="mt-1 font-display text-[18px] font-bold">Execuções recentes</h2>
+              <p className="mt-1 text-[11.5px] text-fog">Telemetria operacional somente do domínio Platform Admin.</p>
+            </div>
+            {latestRun && <span className={`rounded-full border px-2 py-1 text-[9.5px] font-semibold ${runStatusClass(latestRun.status)}`}>{latestRun.status}</span>}
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-line bg-deep p-4">
-              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Execuções carregadas</p>
-              <p className="mt-2 font-display text-2xl font-bold">{runs.length}</p>
-            </div>
-            <div className="rounded-xl border border-line bg-deep p-4">
-              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Com falha</p>
-              <p className={`mt-2 font-display text-2xl font-bold ${failedRuns.length > 0 ? 'text-pulse' : 'text-mint'}`}>{failedRuns.length}</p>
-            </div>
-            <div className="rounded-xl border border-line bg-deep p-4">
-              <p className="text-[10px] uppercase tracking-[0.08em] text-fog">Clínicas no último ciclo</p>
-              <p className="mt-2 font-display text-2xl font-bold">{latestRun?.clinicsProcessed ?? 0}</p>
-            </div>
-          </div>
-
-          <div className="mt-5 overflow-x-auto rounded-xl border border-line/70">
-            <table className="min-w-full text-left text-[11px]">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-line/70">
+            <table className="min-w-full text-left text-[10.5px]">
               <thead className="bg-deep text-fog">
                 <tr>
                   <th className="px-3 py-2.5 font-semibold">Início</th>
                   <th className="px-3 py-2.5 font-semibold">Status</th>
                   <th className="px-3 py-2.5 font-semibold">Trigger</th>
                   <th className="px-3 py-2.5 font-semibold">Clínicas</th>
-                  <th className="px-3 py-2.5 font-semibold">WA enviados</th>
+                  <th className="px-3 py-2.5 font-semibold">WA</th>
                   <th className="px-3 py-2.5 font-semibold">Falhas</th>
                 </tr>
               </thead>
@@ -333,8 +336,8 @@ export function PlatformAdminPage() {
                   <tr><td colSpan={6} className="px-3 py-6 text-center text-fog">Nenhuma execução recente disponível.</td></tr>
                 ) : runs.map((run) => (
                   <tr key={run.id}>
-                    <td className="px-3 py-3 font-mono text-[10px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')}</td>
-                    <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${runStatusClass(run.status)}`}>{run.status}</span></td>
+                    <td className="px-3 py-3 font-mono text-[9.5px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')}</td>
+                    <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${runStatusClass(run.status)}`}>{run.status}</span></td>
                     <td className="px-3 py-3 text-fog">{run.triggerSource}</td>
                     <td className="px-3 py-3 text-paper">{run.clinicsProcessed}</td>
                     <td className="px-3 py-3 text-paper">{run.workerSent}</td>
@@ -347,37 +350,35 @@ export function PlatformAdminPage() {
 
           {failedRuns.some((run) => run.errorMessage) && (
             <div className="mt-4 rounded-xl border border-pulse/25 bg-pulse/[0.04] p-3">
-              <p className="text-[11.5px] font-semibold text-pulse">Falhas recentes registradas</p>
+              <p className="text-[11px] font-semibold text-pulse">Falhas recentes registradas</p>
               <div className="mt-2 space-y-1.5">
                 {failedRuns.filter((run) => run.errorMessage).slice(0, 3).map((run) => (
-                  <p key={run.id} className="font-mono text-[10px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.errorMessage}</p>
+                  <p key={run.id} className="font-mono text-[9.5px] text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.errorMessage}</p>
                 ))}
               </div>
             </div>
           )}
-        </section>
+        </div>
 
-        <section className="rounded-2xl border border-line bg-panel p-5 md:p-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-aqua">Auditoria</p>
-            <h2 className="mt-1 font-display text-xl font-bold">Mudanças de governança</h2>
-            <p className="mt-1 text-[12.5px] text-fog">Registro append-only das alterações feitas neste domínio administrativo.</p>
-          </div>
-          <div className="mt-5 divide-y divide-line/60">
+        <div className="rounded-[22px] border border-line bg-panel p-5">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-aqua">Auditoria</p>
+          <h2 className="mt-1 font-display text-[18px] font-bold">Mudanças de governança</h2>
+          <p className="mt-1 text-[11.5px] text-fog">Registro append-only das ações administrativas recentes.</p>
+          <div className="mt-4 divide-y divide-line/60">
             {audit.length === 0 ? (
-              <p className="py-6 text-[12.5px] text-fog">Nenhuma alteração registrada.</p>
-            ) : audit.map((entry) => (
-              <div key={entry.id} className="grid gap-1 py-3 md:grid-cols-[170px_1fr]">
-                <span className="font-mono text-[10px] text-fog">{new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
-                <div>
-                  <p className="text-[12.5px] font-semibold">{entry.entityKey}</p>
-                  <p className="mt-0.5 text-[11px] text-fog">{entry.action} · {JSON.stringify(entry.detail)}</p>
+              <p className="py-6 text-[11.5px] text-fog">Nenhuma alteração registrada.</p>
+            ) : audit.slice(0, 12).map((entry) => (
+              <div key={entry.id} className="py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate text-[11.5px] font-semibold">{entry.entityKey}</p>
+                  <span className="font-mono text-[8.5px] text-fog">{new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
                 </div>
+                <p className="mt-1 break-words text-[10px] leading-relaxed text-fog">{entry.action} · {JSON.stringify(entry.detail)}</p>
               </div>
             ))}
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </section>
+    </PlatformAdminShell>
   );
 }
