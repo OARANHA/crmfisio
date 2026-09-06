@@ -122,8 +122,8 @@ function Toasts() {
 }
 
 export function Shell() {
-  const { user: appUser, canView, logout: appLogout, setAuthenticatedUser, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
-  const { user, profile, signOut, loading } = useAuth();
+  const { user: effectiveUser, canView, transactions, consents, unidades, unidadeSel, setUnidadeSel } = useApp();
+  const { signOut, loading } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
@@ -131,23 +131,6 @@ export function Shell() {
   const [nexusVisible, setNexusVisible] = useState(false);
   const { theme, toggleTheme } = useColorTheme();
 
-  useEffect(() => {
-    if (!user || !profile) {
-      setAuthenticatedUser(null);
-      return;
-    }
-    setAuthenticatedUser({
-      id: user.id,
-      nome: profile.nome || user.email?.split('@')[0] || 'Usuário',
-      email: user.email || '',
-      role: profile.role,
-      registro: profile.registro || '',
-      cor: profile.cor || '#cbd5e1',
-      ativo: profile.ativo,
-    });
-  }, [user?.id, profile?.id, profile?.role, profile?.nome, profile?.cor, setAuthenticatedUser]);
-
-  const effectiveUser = appUser;
   const { identity } = useProfessionalIdentity(effectiveUser?.id);
   useEffect(() => { if (effectiveUser) setMobileOpen(false); }, [effectiveUser]);
 
@@ -187,7 +170,7 @@ export function Shell() {
   }, [effectiveUser?.id, effectiveUser?.role]);
 
   const handleLogout = async () => {
-    if (signOut) await signOut(); else appLogout();
+    await signOut();
     nav('/');
   };
 

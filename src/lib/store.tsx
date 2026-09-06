@@ -22,8 +22,6 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
-  /** @deprecated Identity is owned by AuthProvider. Kept temporarily for compatibility. */
-  setAuthenticatedUser: (user: User | null) => void;
   unidades: Unidade[];
   unidadeSel: string;
   setUnidadeSel: (v: string) => void;
@@ -42,10 +40,6 @@ interface AppState {
   waLogs: WaLog[];
   audit: AuditEntry[];
   toasts: Toast[];
-  /** @deprecated Authentication is owned by useAuth(). */
-  login: (userId: string) => void;
-  /** @deprecated Prefer useAuth().signOut(). */
-  logout: () => void;
   access: (m: ModuleKey) => Access;
   canView: (m: ModuleKey) => boolean;
   toast: (msg: string, kind?: Toast['kind']) => void;
@@ -74,7 +68,7 @@ let seq = 1000;
  * consume those providers directly instead of adding state or loaders here.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user: authUser, profile, tenantAccessState, signOut } = useAuth();
+  const { user: authUser, profile, tenantAccessState } = useAuth();
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
@@ -145,7 +139,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return {
       user,
-      setAuthenticatedUser: () => {},
       users: directory.users,
       unidades,
       unidadeSel,
@@ -165,8 +158,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       waLogs: communication.waLogs,
       audit: auditDomain.audit,
       toasts,
-      login: () => {},
-      logout: () => { void signOut(); },
       access,
       canView,
       toast: pushToast,
@@ -211,7 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, signOut, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
+    user, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     auditDomain.refreshAudit, toasts, unidadeSel, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
