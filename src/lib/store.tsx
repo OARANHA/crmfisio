@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
@@ -6,12 +6,15 @@ import type {
 } from './types';
 import { useInfrastructure } from './useInfrastructure';
 import { logPatientDataExport } from './repository';
-import { loadClinicShellData } from './clinicShellData';
 import { accessFor } from './permissions';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
 import { useClinical } from './clinicalContext';
+import { useClinicDirectory } from './clinicDirectoryContext';
+import { usePackages } from './packageContext';
+import { useCommunication } from './communicationContext';
+import { useAudit } from './auditContext';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -59,107 +62,109 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 let seq = 1000;
-const nid = (p: string) => `${p}${++seq}`;
 
+/**
+ * Compatibility facade for screens still using useApp().
+ *
+ * Canonical domain state lives in dedicated providers. New code should consume
+ * those providers directly instead of adding new state or data loaders here.
+ */
 export function AppProvider({ children }: { children: ReactNode }) {
   const finance = useFinance();
   const agenda = useAgenda();
   const patientDomain = usePatients();
   const clinical = useClinical();
+  const directory = useClinicDirectory();
+  const packageDomain = usePackages();
+  const communication = useCommunication();
+  const auditDomain = useAudit();
   const { unidades, rooms, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [packages, setPackages] = useState<SessionPackage[]>([]);
-  const [patientPackages, setPatientPackages] = useState<PatientPackage[]>([]);
-  const [waLogs, setWaLogs] = useState<WaLog[]>([]);
-  const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const clinicDataGeneration = useRef(0);
 
   const pushToast = useCallback((msg: string, kind: Toast['kind'] = 'ok') => {
     const id = ++seq;
-    setToasts((t) => [...t.slice(-3), { id, msg, kind }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4400);
+    setToasts((current) => [...current.slice(-3), { id, msg, kind }]);
+    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4400);
   }, []);
 
   useEffect(() => {
     if (infrastructureError) pushToast(infrastructureError, 'warn');
   }, [infrastructureError, pushToast]);
 
-  const applyClinicData = useCallback((data: Awaited<ReturnType<typeof loadClinicShellData>>) => {
-    setUsers(data.users);
-    setPackages(data.packages);
-    setPatientPackages(data.patientPackages);
-    setWaLogs(data.waLogs);
-    setAudit(data.audit);
-  }, []);
-
   const refreshClinicData = useCallback(async () => {
-    const request = ++clinicDataGeneration.current;
     if (!user?.id) return;
-    const [data] = await Promise.all([
-      loadClinicShellData(user.id),
+    await Promise.all([
       finance.refreshFinance(),
       agenda.refreshAgenda(),
       patientDomain.refreshPatients(),
       clinical.refreshClinical(),
+      directory.refreshDirectory(),
+      packageDomain.refreshPackages(),
+      communication.refreshCommunication(),
+      auditDomain.refreshAudit(),
       refreshInfrastructure(),
     ]);
-    if (request !== clinicDataGeneration.current) return;
-    applyClinicData(data);
-  }, [user?.id, finance.refreshFinance, agenda.refreshAgenda, patientDomain.refreshPatients, clinical.refreshClinical, refreshInfrastructure, applyClinicData]);
-
-  useEffect(() => {
-    const request = ++clinicDataGeneration.current;
-    if (!user?.id) {
-      setUsers([]);
-      setPackages([]);
-      setPatientPackages([]);
-      setWaLogs([]);
-      setAudit([]);
-      return;
-    }
-
-    loadClinicShellData(user.id)
-      .then((data) => {
-        if (request !== clinicDataGeneration.current) return;
-        applyClinicData(data);
-      })
-      .catch((error) => {
-        if (request !== clinicDataGeneration.current) return;
-        console.error('[MedicsPro] Falha ao carregar dados do shell da clínica:', error);
-        pushToast('Não foi possível carregar os dados da clínica.', 'warn');
-      });
-
-    return () => { clinicDataGeneration.current += 1; };
-  }, [user?.id, pushToast, applyClinicData]);
+  }, [
+    user?.id,
+    finance.refreshFinance,
+    agenda.refreshAgenda,
+    patientDomain.refreshPatients,
+    clinical.refreshClinical,
+    directory.refreshDirectory,
+    packageDomain.refreshPackages,
+    communication.refreshCommunication,
+    auditDomain.refreshAudit,
+    refreshInfrastructure,
+  ]);
 
   const value = useMemo<AppState>(() => {
-    const access = (m: ModuleKey): Access => accessFor(user?.role, m);
-    const canView = (m: ModuleKey) => access(m) !== 'none';
+    const access = (module: ModuleKey): Access => accessFor(user?.role, module);
+    const canView = (module: ModuleKey) => access(module) !== 'none';
     const persistError = (label: string, error: unknown) => {
       console.error(`[MedicsPro] ${label}:`, error);
       pushToast(`${label}. Tente novamente.`, 'warn');
     };
 
     return {
-      user, setAuthenticatedUser: setUser, users, unidades, unidadeSel, setUnidadeSel, rooms,
-      refreshInfrastructure, refreshClinicData, packages, patientPackages,
-      patients: patientDomain.patients, appointments: agenda.appointments,
-      transactions: finance.transactions, commissions: finance.commissions,
-      evolutions: clinical.evolutions, consents: clinical.consents, surveys: clinical.surveys,
-      waLogs, audit, toasts,
+      user,
+      setAuthenticatedUser: setUser,
+      users: directory.users,
+      unidades,
+      unidadeSel,
+      setUnidadeSel,
+      rooms,
+      refreshInfrastructure,
+      refreshClinicData,
+      packages: packageDomain.packages,
+      patientPackages: packageDomain.patientPackages,
+      patients: patientDomain.patients,
+      appointments: agenda.appointments,
+      transactions: finance.transactions,
+      commissions: finance.commissions,
+      evolutions: clinical.evolutions,
+      consents: clinical.consents,
+      surveys: clinical.surveys,
+      waLogs: communication.waLogs,
+      audit: auditDomain.audit,
+      toasts,
       login: () => {},
       logout: () => setUser(null),
-      access, canView, toast: pushToast,
+      access,
+      canView,
+      toast: pushToast,
       setAppointmentStatus: (id, status) => { void agenda.setAppointmentStatus(id, status).catch((error) => persistError('Falha ao atualizar o atendimento', error)); },
       addAppointment: (appointment) => { void agenda.addAppointment(appointment).then(() => pushToast('Agendamento salvo.')).catch((error) => persistError('Falha ao salvar agendamento', error)); },
       addPatient: (patient) => { void patientDomain.addPatient(patient).then(() => pushToast('Paciente salvo no Supabase.')).catch((error) => persistError('Falha ao cadastrar paciente', error)); },
       setFunilStage: (id, stage) => { void patientDomain.setFunilStage(id, stage).catch((error) => persistError('Falha ao atualizar o funil', error)); },
       addEvolution: (evolution) => { void clinical.addEvolution(evolution).then(() => pushToast('Evolução clínica salva.')).catch((error) => persistError('Falha ao salvar evolução clínica', error)); },
       signConsent: async (id) => {
-        try { await clinical.signConsent(id); pushToast('Consentimento registrado com sucesso.'); }
-        catch (error) { persistError('Falha ao registrar consentimento', error); }
+        try {
+          await clinical.signConsent(id);
+          pushToast('Consentimento registrado com sucesso.');
+        } catch (error) {
+          persistError('Falha ao registrar consentimento', error);
+        }
       },
       setTxStatus: (id, status, metodo) => { void finance.setTransactionStatus(id, status, metodo).catch((error) => persistError('Falha ao atualizar financeiro', error)); },
       addTransaction: (transaction) => { void finance.addTransaction(transaction).then(() => pushToast('Lançamento financeiro salvo.')).catch((error) => persistError('Falha ao salvar lançamento financeiro', error)); },
@@ -168,26 +173,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCommissionStatus: finance.setCommissionStatus,
       exportarTitular: async (pacienteId) => {
         await logPatientDataExport(pacienteId);
-        setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'EXPORTACAO_LGPD', detalhe: `paciente_id=${pacienteId}; formato=JSON` }, ...current]);
+        await auditDomain.refreshAudit().catch(() => undefined);
         const patient = patientDomain.patients.find((item) => item.id === pacienteId);
         return {
-          formato: 'LGPD-portabilidade-v1', exportadoEm: new Date().toISOString(), exportadoPor: user?.nome ?? 'sistema', titular: patient,
+          formato: 'LGPD-portabilidade-v1',
+          exportadoEm: new Date().toISOString(),
+          exportadoPor: user?.nome ?? 'sistema',
+          titular: patient,
           sessoes: agenda.appointments.filter((appointment) => appointment.pacienteId === pacienteId),
           evolucoes: clinical.evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
           consentimentos: clinical.consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
           pesquisas: clinical.surveys.filter((survey) => survey.pacienteId === pacienteId),
-          pacotes: patientPackages.filter((item) => item.pacienteId === pacienteId),
+          pacotes: packageDomain.patientPackages.filter((item) => item.pacienteId === pacienteId),
           financeiro: finance.transactions.filter((transaction) => transaction.pacienteId === pacienteId),
         };
       },
       anonimizarPaciente: async (pacienteId) => {
         await patientDomain.anonymizePatient(pacienteId);
-        setAudit((current) => [{ id: nid('audit-'), ts: new Date().toISOString(), usuarioId: user!.id, acao: 'ANONIMIZACAO_LGPD', detalhe: `paciente_id=${pacienteId}; identificadores_diretos_removidos=true` }, ...current]);
+        await auditDomain.refreshAudit().catch(() => undefined);
       },
     };
   }, [
-    user, users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
-    packages, patientPackages, waLogs, audit, toasts, unidadeSel, pushToast, refreshClinicData,
+    user, directory.users, unidades, rooms, setUnidadeSel, refreshInfrastructure,
+    packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
+    auditDomain.refreshAudit, toasts, unidadeSel, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
