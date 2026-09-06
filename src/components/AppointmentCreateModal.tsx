@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { findAppointmentConflicts, conflictLabel } from '../lib/appointmentConflicts';
 import { useApp, patientName, userName } from '../lib/store';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { usePackages } from '../lib/packageContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
@@ -33,7 +34,8 @@ interface Props {
 }
 
 export function AppointmentCreateModal({ creating, onClose, rooms, unidades, prefillPatientId, onSave }: Props) {
-  const { user, users, patients, appointments } = useApp();
+  const { user, patients, appointments } = useApp();
+  const { users } = useClinicDirectory();
   const { patientPackages, packages } = usePackages();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [pacienteId, setPacienteId] = useState('');
