@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type {
   Access, Appointment, AppointmentStatus, AuditEntry, Commission, ConsentTerm, Evolution,
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  SessionPackage, Unidade, User, WaLog,
+  SessionPackage, User, WaLog,
 } from './types';
 import { useInfrastructure } from './infrastructureContext';
 import { logPatientDataExport } from './repository';
@@ -22,9 +22,6 @@ export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 interface AppState {
   user: User | null;
   users: User[];
-  unidades: Unidade[];
-  unidadeSel: string;
-  setUnidadeSel: (v: string) => void;
   refreshClinicData: () => Promise<void>;
   packages: SessionPackage[];
   patientPackages: PatientPackage[];
@@ -75,7 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
-  const { unidades, unidadeSel, setUnidadeSel, refreshInfrastructure, error: infrastructureError } = useInfrastructure();
+  const { refreshInfrastructure, error: infrastructureError } = useInfrastructure();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -138,9 +135,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
-      unidades,
-      unidadeSel,
-      setUnidadeSel,
       refreshClinicData,
       packages: packageDomain.packages,
       patientPackages: packageDomain.patientPackages,
@@ -198,7 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
     };
   }, [
-    user, directory.users, unidades, unidadeSel, setUnidadeSel,
+    user, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
     auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
