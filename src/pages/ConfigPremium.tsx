@@ -50,7 +50,7 @@ export function ConfigPremium() {
   const { unidades, users } = useApp();
   const [section, setSection] = useState<ConfigSection>('estrutura');
 
-  const activeUnits = useMemo(() => unidades.filter((item) => item.ativo !== false).length, [unidades]);
+  const activeUnits = unidades.length;
   const activeUsers = useMemo(() => users.filter((item) => item.ativo !== false).length, [users]);
 
   const readiness = [
