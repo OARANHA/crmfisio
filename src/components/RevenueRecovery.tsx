@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
+import { usePackages } from '../lib/packageContext';
 import { fmtBRL } from '../lib/types';
 import { Card, Chip, IconChevronR } from '../lib/ui';
 import { buildChurnRiskList } from '../lib/churnRisk';
 
 export function RevenueRecovery() {
-  const { transactions, patients, appointments, patientPackages } = useApp();
+  const { transactions, patients, appointments } = useApp();
+  const { patientPackages } = usePackages();
 
   const recovery = useMemo(() => {
     const overdue = transactions.filter((t) => t.tipo === 'receber' && t.status === 'atrasado');

@@ -3,6 +3,7 @@ import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
+import { usePackages } from '../lib/packageContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
 import { fmtBRL, STATUS_META, dayOf } from '../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../lib/ui';
@@ -15,7 +16,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user, appointments, transactions, patients, patientPackages, surveys, consents, users } = useApp();
+  const { user, appointments, transactions, patients, surveys, consents, users } = useApp();
+  const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
 
@@ -78,17 +80,11 @@ export function Dashboard() {
       <Reveal>
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">
-              Olá, {user?.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ')[0]}
-            </h1>
-            <p className="text-fog text-[13px] mt-0.5">
-              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · visão do gestor
-            </p>
+            <h1 className="font-display text-3xl font-bold tracking-tight">Olá, {user?.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ')[0]}</h1>
+            <p className="text-fog text-[13px] mt-0.5">{format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · visão do gestor</p>
           </div>
           <div className="ml-auto flex flex-col items-end gap-2">
-            <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>
-              {unidade ? unidade.nome : 'Consolidado · todas as unidades'}
-            </Chip>
+            <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>{unidade ? unidade.nome : 'Consolidado · todas as unidades'}</Chip>
             <DashboardQuickActions actions={[{ label: 'Abrir agenda', to: '/agenda', primary: true }, { label: 'Pacientes', to: '/pacientes' }, { label: 'Financeiro', to: '/financeiro' }]} />
           </div>
         </div>
@@ -104,17 +100,9 @@ export function Dashboard() {
         ]} />
       </Reveal>
 
-      <Reveal delay={95}>
-        <RevenueRecovery />
-      </Reveal>
-
-      <Reveal delay={105}>
-        <RecoveryImpactCard />
-      </Reveal>
-
-      <Reveal delay={110}>
-        <OperationalHealthCard />
-      </Reveal>
+      <Reveal delay={95}><RevenueRecovery /></Reveal>
+      <Reveal delay={105}><RecoveryImpactCard /></Reveal>
+      <Reveal delay={110}><OperationalHealthCard /></Reveal>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <Reveal delay={120}>
@@ -124,9 +112,7 @@ export function Dashboard() {
               <div className="flex items-end gap-2 h-40">
                 {semana.map((s) => (
                   <div key={s.dIso} className="flex-1 flex flex-col items-center gap-1.5 group h-full justify-end">
-                    <span className="font-mono text-[9.5px] text-fog opacity-0 group-hover:opacity-100 transition-opacity">
-                      {s.valor ? fmtBRL(s.valor) : '—'}
-                    </span>
+                    <span className="font-mono text-[9.5px] text-fog opacity-0 group-hover:opacity-100 transition-opacity">{s.valor ? fmtBRL(s.valor) : '—'}</span>
                     <div className="w-full bg-mint/70 group-hover:bg-mint transition-colors bar-anim" style={{ height: `${Math.max((s.valor / maxSemana) * 100, 3)}%` }} />
                     <span className="font-mono text-[10px] text-fog uppercase">{s.label}</span>
                   </div>
@@ -142,13 +128,7 @@ export function Dashboard() {
             <ul className="divide-y divide-line/70">
               {pendencias.length === 0 && <li className="px-5 py-8 text-center font-mono text-[11.5px] text-fog">Tudo em dia. 💚</li>}
               {pendencias.map((p, i) => (
-                <li key={i}>
-                  <Link to={p.to} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group">
-                    <span className="text-[15px]">{p.icon}</span>
-                    <span className="text-[12.5px] flex-1 leading-snug">{p.txt}</span>
-                    <IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint transition-colors shrink-0" />
-                  </Link>
-                </li>
+                <li key={i}><Link to={p.to} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group"><span className="text-[15px]">{p.icon}</span><span className="text-[12.5px] flex-1 leading-snug">{p.txt}</span><IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint transition-colors shrink-0" /></Link></li>
               ))}
             </ul>
           </Card>
@@ -163,20 +143,10 @@ export function Dashboard() {
             {prod.map((p) => (
               <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.f.cor }}>
-                    {p.f.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-display font-semibold text-[13.5px] truncate">{p.f.nome}</p>
-                    <p className="font-mono text-[10px] text-fog">{p.f.registro}</p>
-                  </div>
+                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.f.cor }}>{p.f.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
+                  <div className="min-w-0"><p className="font-display font-semibold text-[13.5px] truncate">{p.f.nome}</p><p className="font-mono text-[10px] text-fog">{p.f.registro}</p></div>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <div className="h-5 bg-deep border border-line relative overflow-hidden">
-                    <div className="h-full bar-anim" style={{ width: `${(p.valor / maxProd) * 100}%`, background: `${p.f.cor}cc` }} />
-                    <span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">{p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''} · {fmtBRL(p.valor)}</span>
-                  </div>
-                </div>
+                <div className="col-span-2 sm:col-span-1"><div className="h-5 bg-deep border border-line relative overflow-hidden"><div className="h-full bar-anim" style={{ width: `${(p.valor / maxProd) * 100}%`, background: `${p.f.cor}cc` }} /><span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">{p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''} · {fmtBRL(p.valor)}</span></div></div>
                 <div className="text-right"><Chip className={p.comp >= 85 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{p.comp}% pres.</Chip></div>
               </div>
             ))}
@@ -193,9 +163,7 @@ export function Dashboard() {
         </div>
       </Reveal>
 
-      <Reveal delay={260}>
-        <div className="h-16 overflow-hidden opacity-70 border-y border-line/50"><Ecg className="w-full h-full" /></div>
-      </Reveal>
+      <Reveal delay={260}><div className="h-16 overflow-hidden opacity-70 border-y border-line/50"><Ecg className="w-full h-full" /></div></Reveal>
     </div>
   );
 }

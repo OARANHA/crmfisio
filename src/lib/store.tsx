@@ -1,15 +1,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type {
   Access, Appointment, AppointmentStatus, Commission, ConsentTerm, Evolution,
-  FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
-  SessionPackage, User,
+  FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, User,
 } from './types';
 import { useFinance } from './financeContext';
 import { useAgenda } from './agendaContext';
 import { usePatients } from './patientContext';
 import { useClinical } from './clinicalContext';
 import { useClinicDirectory } from './clinicDirectoryContext';
-import { usePackages } from './packageContext';
 import { useLgpdActions } from './lgpdActions';
 import { useCurrentUserAccess } from './currentUserAccess';
 import { useToast, type Toast } from './toastContext';
@@ -17,8 +15,6 @@ import { useToast, type Toast } from './toastContext';
 interface AppState {
   user: User | null;
   users: User[];
-  packages: SessionPackage[];
-  patientPackages: PatientPackage[];
   patients: Patient[];
   appointments: Appointment[];
   transactions: FinancialTransaction[];
@@ -59,7 +55,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const patientDomain = usePatients();
   const clinical = useClinical();
   const directory = useClinicDirectory();
-  const packageDomain = usePackages();
   const lgpd = useLgpdActions();
   const { toast: pushToast } = useToast();
 
@@ -72,8 +67,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       user,
       users: directory.users,
-      packages: packageDomain.packages,
-      patientPackages: packageDomain.patientPackages,
       patients: patientDomain.patients,
       appointments: agenda.appointments,
       transactions: finance.transactions,
@@ -107,7 +100,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [
     user, access, canView, directory.users,
-    packageDomain.packages, packageDomain.patientPackages,
     pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
     patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,
