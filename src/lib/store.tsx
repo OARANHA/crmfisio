@@ -4,7 +4,6 @@ import type {
   FinancialTransaction, FunilStage, ModuleKey, NpsSurvey, Patient, PatientPackage,
   SessionPackage, User, WaLog,
 } from './types';
-import { logPatientDataExport } from './repository';
 import { accessFor } from './permissions';
 import { useAuth } from './useAuth';
 import { useFinance } from './financeContext';
@@ -15,6 +14,7 @@ import { useClinicDirectory } from './clinicDirectoryContext';
 import { usePackages } from './packageContext';
 import { useCommunication } from './communicationContext';
 import { useAudit } from './auditContext';
+import { useLgpdActions } from './lgpdActions';
 
 export interface Toast { id: number; msg: string; kind: 'ok' | 'warn' | 'info' }
 
@@ -71,6 +71,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const packageDomain = usePackages();
   const communication = useCommunication();
   const auditDomain = useAudit();
+  const lgpd = useLgpdActions();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const user = useMemo<User | null>(() => {
@@ -155,33 +156,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       answerNps: (id, nota) => { void clinical.answerNps(id, nota).catch((error) => persistError('Falha ao registrar NPS', error)); },
       fecharRepasse: finance.closeCommissions,
       setCommissionStatus: finance.setCommissionStatus,
-      exportarTitular: async (pacienteId) => {
-        await logPatientDataExport(pacienteId);
-        await auditDomain.refreshAudit().catch(() => undefined);
-        const patient = patientDomain.patients.find((item) => item.id === pacienteId);
-        return {
-          formato: 'LGPD-portabilidade-v1',
-          exportadoEm: new Date().toISOString(),
-          exportadoPor: user?.nome ?? 'sistema',
-          titular: patient,
-          sessoes: agenda.appointments.filter((appointment) => appointment.pacienteId === pacienteId),
-          evolucoes: clinical.evolutions.filter((evolution) => evolution.pacienteId === pacienteId),
-          consentimentos: clinical.consents.filter((consent) => consent.pacienteId === pacienteId).map(({ assinaturaUrl: _img, ...rest }) => rest),
-          pesquisas: clinical.surveys.filter((survey) => survey.pacienteId === pacienteId),
-          pacotes: packageDomain.patientPackages.filter((item) => item.pacienteId === pacienteId),
-          financeiro: finance.transactions.filter((transaction) => transaction.pacienteId === pacienteId),
-        };
-      },
-      anonimizarPaciente: async (pacienteId) => {
-        await patientDomain.anonymizePatient(pacienteId);
-        await auditDomain.refreshAudit().catch(() => undefined);
-      },
+      exportarTitular: lgpd.exportSubjectData,
+      anonimizarPaciente: lgpd.anonymizePatient,
     };
   }, [
     user, directory.users,
     packageDomain.packages, packageDomain.patientPackages, communication.waLogs, auditDomain.audit,
-    auditDomain.refreshAudit, toasts, pushToast, refreshClinicData,
-    patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage, patientDomain.anonymizePatient,
+    toasts, pushToast, refreshClinicData,
+    lgpd.exportSubjectData, lgpd.anonymizePatient,
+    patientDomain.patients, patientDomain.addPatient, patientDomain.setFunilStage,
     clinical.evolutions, clinical.consents, clinical.surveys, clinical.addEvolution, clinical.signConsent, clinical.answerNps,
     agenda.appointments, agenda.addAppointment, agenda.setAppointmentStatus,
     finance.transactions, finance.commissions, finance.addTransaction, finance.setTransactionStatus,
