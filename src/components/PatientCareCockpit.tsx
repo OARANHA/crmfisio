@@ -111,7 +111,7 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
                 Continuar atendimento
               </Btn>
             )}
-            <Btn variant={isOwnActiveSession ? 'subtle' : 'default'} onClick={() => nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`)}>
+            <Btn variant={isOwnActiveSession ? 'subtle' : 'primary'} onClick={() => nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`)}>
               Agendar próxima sessão
             </Btn>
             {canUseMessages && patient.telefone && (
