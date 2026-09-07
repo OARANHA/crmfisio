@@ -1,6 +1,5 @@
 import type { Access, ModuleKey, Role } from './types';
 
-/** Canonical roles rendered by the product. `fisio` is accepted only as a migration bridge. */
 export const ROLES: readonly Role[] = ['owner', 'admin', 'professional', 'recep', 'financeiro'];
 
 const PROFESSIONAL_ACCESS: Record<ModuleKey, Access> = {
@@ -11,13 +10,12 @@ export const ACCESS_MATRIX: Record<Role, Record<ModuleKey, Access>> = {
   owner: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
   admin: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
   professional: PROFESSIONAL_ACCESS,
-  fisio: PROFESSIONAL_ACCESS,
   recep: { dashboard: 'none', agenda: 'full', pacientes: 'full', clinico: 'none', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'none', config: 'none' },
   financeiro: { dashboard: 'read', agenda: 'read', pacientes: 'read', clinico: 'none', financeiro: 'full', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
 };
 
 export const isRole = (value: unknown): value is Role =>
-  typeof value === 'string' && (value === 'fisio' || ROLES.includes(value as Role));
+  typeof value === 'string' && ROLES.includes(value as Role);
 
 export const accessFor = (role: Role | null | undefined, module: ModuleKey): Access =>
   role ? ACCESS_MATRIX[role][module] : 'none';
@@ -28,8 +26,7 @@ export const isClinicManager = (role: Role | null | undefined): boolean =>
 export const isOperationalRole = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'recep';
 
-export const isClinicalRole = (role: Role | null | undefined): boolean =>
-  role === 'professional' || role === 'fisio';
+export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'professional';
 
 export const canTransitionClinicalAppointment = (
   role: Role | null | undefined,
