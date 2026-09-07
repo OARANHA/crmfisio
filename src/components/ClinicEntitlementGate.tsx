@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   isCurrentClinicEntitlementAllowed,
@@ -27,20 +27,6 @@ export function ClinicEntitlementGate({
 }) {
   const [state, setState] = useState<CurrentClinicEntitlementState | null>(null);
   const [error, setError] = useState(false);
-
-  const validate = useCallback(async (failClosedWhileChecking = false) => {
-    if (failClosedWhileChecking) setState(null);
-    setError(false);
-
-    try {
-      const next = await loadCurrentClinicEntitlementState(entitlement);
-      setState(next);
-    } catch (cause) {
-      console.error('[Entitlement] route gate:', entitlement, cause);
-      setState(null);
-      setError(true);
-    }
-  }, [entitlement]);
 
   useEffect(() => {
     let active = true;
