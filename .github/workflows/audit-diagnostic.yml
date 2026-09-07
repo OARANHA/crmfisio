@@ -18,3 +18,8 @@ jobs:
       - name: Full npm audit diagnostic
         shell: bash
         run: npm audit || true
+      - name: Find uuid imports and usages
+        shell: bash
+        run: |
+          echo '--- package references ---'
+          grep -RIn --exclude='package-lock.json' --exclude='package.json' --exclude-dir=node_modules --exclude-dir=.git -E "from ['\"]uuid['\"]|require\(['\"]uuid['\"]\)|uuidv[1-7]|\bv[1-7] as .*uuid" . || true
