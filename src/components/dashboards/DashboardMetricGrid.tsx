@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useClinicModuleEntitlementVisibility } from '../../hooks/useClinicModuleEntitlementVisibility';
+import type { ModuleKey } from '../../lib/types';
 import { IconChevronR } from '../../lib/ui';
 
 export type DashboardMetric = {
@@ -10,10 +12,33 @@ export type DashboardMetric = {
   to?: string;
 };
 
+const PROTECTED_ROUTE_MODULE: Array<[prefix: string, module: ModuleKey]> = [
+  ['/financeiro', 'financeiro'],
+  ['/crm', 'crm'],
+  ['/mensagens', 'mensagens'],
+  ['/relatorios', 'relatorios'],
+];
+
+function routeModule(to?: string): ModuleKey | null {
+  if (!to) return null;
+  return PROTECTED_ROUTE_MODULE.find(([prefix]) => to === prefix || to.startsWith(`${prefix}/`))?.[1] ?? null;
+}
+
+function useEntitledItems<T extends { to?: string }>(items: T[]) {
+  const { visibility, resolved } = useClinicModuleEntitlementVisibility();
+  return items.filter((item) => {
+    const module = routeModule(item.to);
+    if (!module) return true;
+    return resolved && visibility[module] === true;
+  });
+}
+
 export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
+  const visibleItems = useEntitledItems(items);
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const content = <>
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] font-semibold text-fog">{item.label}</p>
@@ -33,9 +58,11 @@ export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
 }
 
 export function DashboardQuickActions({ actions }: { actions: { label: string; to: string; primary?: boolean }[] }) {
+  const visibleActions = useEntitledItems(actions);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {actions.map((action) => (
+      {visibleActions.map((action) => (
         <Link
           key={action.to + action.label}
           to={action.to}
