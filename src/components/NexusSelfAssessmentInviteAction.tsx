@@ -29,6 +29,7 @@ type Props = {
 
 export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Props) {
   const { user } = useCurrentUserAccess();
+  const userId = user?.id;
   const { toast } = useToast();
   const [scaleKey, setScaleKey] = useState<NexusSelfAssessmentScaleKey>('phq9');
   const [busy, setBusy] = useState(false);
@@ -37,7 +38,7 @@ export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Pr
 
   useEffect(() => {
     let active = true;
-    if (!user) {
+    if (!userId) {
       setCanInvite(false);
       return () => { active = false; };
     }
@@ -53,7 +54,7 @@ export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Pr
       });
 
     return () => { active = false; };
-  }, [user?.id]);
+  }, [userId]);
 
   const sendInvite = async () => {
     if (canInvite !== true || busy) return;

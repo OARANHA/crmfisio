@@ -9,12 +9,13 @@ import { Card, Empty } from '../lib/ui';
 export function NexusPatientEvolutionPage() {
   const { id } = useParams();
   const { user } = useCurrentUserAccess();
+  const userId = user?.id;
   const { patients } = usePatients();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
-    if (!user) {
+    if (!userId) {
       setAuthorized(false);
       return () => {
         active = false;
@@ -33,7 +34,7 @@ export function NexusPatientEvolutionPage() {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [userId]);
 
   if (!user) return <Navigate to="/" replace />;
   if (authorized === null) return <Card><div className="p-6 text-[12px] text-fog">Validando acesso ao Nexus…</div></Card>;
