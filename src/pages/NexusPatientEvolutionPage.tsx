@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { NexusLongitudinalPanel } from '../components/NexusLongitudinalPanel';
-import { useApp } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { usePatients } from '../lib/patientContext';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
 import { Card, Empty } from '../lib/ui';
 
 export function NexusPatientEvolutionPage() {
   const { id } = useParams();
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { patients } = usePatients();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
