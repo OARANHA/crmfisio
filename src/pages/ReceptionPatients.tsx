@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { ageFrom, maskCpf, STAGE_META, type FunilStage } from '../lib/types';
 import {
@@ -107,7 +107,7 @@ function ReceptionPatientList() {
 
 function ReceptionNewPatientModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addPatient } = usePatients();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const [nome, setNome] = useState('');
   const [nascimento, setNascimento] = useState('1990-01-01');
   const [telefone, setTelefone] = useState('');
