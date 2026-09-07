@@ -7,7 +7,7 @@ import { usePatients } from '../lib/patientContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
-import { Card, CardHead, Btn, Chip, IconStar, IconPhone, IconAlert } from '../lib/ui';
+import { Card, CardHead, Btn, IconStar, IconPhone, IconAlert } from '../lib/ui';
 import { IconWhats, IconSend, IconArrow } from '../components/icons';
 import { Reveal, CountUp } from '../components/Reveal';
 import { buildChurnRiskList } from '../lib/churnRisk';

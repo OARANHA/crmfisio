@@ -26,7 +26,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const { toast } = useToast();
   const { appointments } = useAgenda();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
-  const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);
+  const [, setAssessments] = useState<ClinicalAssessment[]>([]);
   const [draft, setDraft] = useState<ClinicalAssessment | null>(null);
   const [schema, setSchema] = useState<AssessmentTemplateSchema | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});

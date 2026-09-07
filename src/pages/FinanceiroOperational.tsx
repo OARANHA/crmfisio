@@ -41,7 +41,7 @@ export function FinanceiroOperational() {
   const { user, access } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
-  const { transactions, commissions, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus } = useFinance();
+  const { transactions, commissions, refreshFinance, addTransaction, setTransactionStatus, setCommissionStatus } = useFinance();
   const { patientPackages, packages, refreshPackages: refreshPackageDomain } = usePackages();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);

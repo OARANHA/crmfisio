@@ -32,7 +32,7 @@ function applyTheme(mode: ThemeMode) {
   document.documentElement.dataset.theme = light ? 'light' : 'dark';
 }
 
-export function PlatformAdminShell({ eyebrow, title, description, actions, children }: Props) {
+export function PlatformAdminShell({ eyebrow, title, actions, children }: Props) {
   const location = useLocation();
   const [theme, setTheme] = useState<ThemeMode>(() => (localStorage.getItem('medicspro-platform-theme') as ThemeMode | null) ?? 'system');
   const isActive = (to: string) => to === '/platform' ? location.pathname === to : location.pathname.startsWith(to);

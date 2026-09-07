@@ -10,7 +10,7 @@ import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
 import { useClinical } from '../lib/clinicalContext';
-import { STATUS_META, dayOf, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
+import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
 import { isClinicManager } from '../lib/permissions';
