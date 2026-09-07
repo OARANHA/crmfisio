@@ -2,6 +2,7 @@ import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useMemo, useState } from 'react';
 import { buildProfessionalCapacity, CAPACITY_DAY_END, CAPACITY_DAY_START, formatMinutes } from '../lib/agendaCapacity';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp, patientName } from '../lib/store';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { STATUS_META, type Appointment } from '../lib/types';
@@ -15,7 +16,8 @@ const toMin = (value: string) => {
 };
 
 export function AgendaCapacityInsights() {
-  const { user, patients, appointments } = useApp();
+  const { user, patients } = useApp();
+  const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const [day, setDay] = useState(() => new Date());
   const dayIso = format(day, 'yyyy-MM-dd');
