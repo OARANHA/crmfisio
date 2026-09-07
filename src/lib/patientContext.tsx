@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import { anonymizePatient as persistAnonymizePatient, insertPatient, mapPatient, updatePatientStage } from './repository';
+import { canManagePatientFunnel } from './permissions';
 import type { Database, Json } from './database.types';
 import type { FunilStage, Patient } from './types';
 
@@ -72,11 +73,12 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   }, [clinicId]);
 
   const setFunilStage = useCallback(async (id: string, stage: FunilStage) => {
+    if (!canManagePatientFunnel(role)) throw new Error('Sem permissão para alterar o funil do CRM');
     let previous: Patient | undefined;
     setPatients((current) => current.map((patient) => { if (patient.id !== id) return patient; previous = patient; return { ...patient, funilStage: stage }; }));
     try { await updatePatientStage(id, stage); }
     catch (cause) { if (previous) { const rollback = previous; setPatients((current) => current.map((patient) => patient.id === id ? rollback : patient)); } throw cause; }
-  }, []);
+  }, [role]);
 
   const anonymizePatient = useCallback(async (id: string) => {
     await persistAnonymizePatient(id);
