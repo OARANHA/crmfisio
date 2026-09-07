@@ -13,10 +13,29 @@ WHERE n.nspname = 'public'
   AND p.proname = 'can_access_patient_clinical_record';
 
 \echo '3) helper grants are authenticated-only'
+WITH fn AS (
+  SELECT p.oid, coalesce(p.proacl, acldefault('f', p.proowner)) AS acl
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'can_access_patient_clinical_record'
+), expanded AS (
+  SELECT
+    CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END AS grantee,
+    x.privilege_type
+  FROM fn
+  CROSS JOIN LATERAL aclexplode(fn.acl) x
+)
 SELECT
-  NOT has_function_privilege('anon', 'public.can_access_patient_clinical_record(uuid)', 'EXECUTE') AS anon_denied,
-  NOT has_function_privilege('PUBLIC', 'public.can_access_patient_clinical_record(uuid)', 'EXECUTE') AS public_denied,
-  has_function_privilege('authenticated', 'public.can_access_patient_clinical_record(uuid)', 'EXECUTE') AS authenticated_allowed;
+  NOT EXISTS (
+    SELECT 1 FROM expanded WHERE grantee = 'anon' AND privilege_type = 'EXECUTE'
+  ) AS anon_denied,
+  NOT EXISTS (
+    SELECT 1 FROM expanded WHERE grantee = 'PUBLIC' AND privilege_type = 'EXECUTE'
+  ) AS public_denied,
+  EXISTS (
+    SELECT 1 FROM expanded WHERE grantee = 'authenticated' AND privilege_type = 'EXECUTE'
+  ) AS authenticated_allowed;
 
 \echo '4) helper encodes manager + fisio care relationship semantics'
 WITH fn AS (
