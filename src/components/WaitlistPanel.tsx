@@ -9,7 +9,7 @@ import {
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { patientName, userName } from '../lib/store';
+import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import { useToast } from '../lib/toastContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
@@ -138,22 +138,8 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
 
       {expanded && <div className="border-t border-line p-4 space-y-4">
         {releasedSlots.length > 0 && <div className="border border-mint/25 bg-mint/[0.025] p-3 space-y-2">
-          <div>
-            <p className="text-[12px] font-semibold text-mint">Recuperação inteligente de vagas</p>
-            <p className="text-[10px] text-fog mt-0.5">O MedicsPro prioriza os pacientes compatíveis e pode ofertar a vaga para até 3 pessoas. O primeiro SIM válido ocupa o horário; as demais ofertas são encerradas.</p>
-          </div>
-          <div className="space-y-2">
-            {releasedSlots.map((slot) => {
-              const candidates = compatibleFor(slot);
-              return <div key={slot.id} className="border border-line bg-deep/50 p-3 flex flex-col lg:flex-row lg:items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-display font-semibold text-[12px]">{new Date(`${slot.data}T12:00:00`).toLocaleDateString('pt-BR')} · {slot.inicio}–{slot.fim}</p>
-                  <p className="font-mono text-[9.5px] text-fog mt-1">{userName(users, slot.fisioId)} · {candidates.length} candidato(s) compatível(is)</p>
-                </div>
-                {candidates.length > 0 ? <Btn disabled={smartBusyId === slot.id || busy} onClick={() => void smartOffer(slot)}>{smartBusyId === slot.id ? 'Ofertando…' : `Ofertar para até ${Math.min(3, candidates.length)}`}</Btn> : <span className="font-mono text-[9.5px] text-fog">Sem candidato compatível</span>}
-              </div>;
-            })}
-          </div>
+          <div><p className="text-[12px] font-semibold text-mint">Recuperação inteligente de vagas</p><p className="text-[10px] text-fog mt-0.5">O MedicsPro prioriza os pacientes compatíveis e pode ofertar a vaga para até 3 pessoas. O primeiro SIM válido ocupa o horário; as demais ofertas são encerradas.</p></div>
+          <div className="space-y-2">{releasedSlots.map((slot) => { const candidates = compatibleFor(slot); return <div key={slot.id} className="border border-line bg-deep/50 p-3 flex flex-col lg:flex-row lg:items-center gap-3"><div className="min-w-0 flex-1"><p className="font-display font-semibold text-[12px]">{new Date(`${slot.data}T12:00:00`).toLocaleDateString('pt-BR')} · {slot.inicio}–{slot.fim}</p><p className="font-mono text-[9.5px] text-fog mt-1">{userName(users, slot.fisioId)} · {candidates.length} candidato(s) compatível(is)</p></div>{candidates.length > 0 ? <Btn disabled={smartBusyId === slot.id || busy} onClick={() => void smartOffer(slot)}>{smartBusyId === slot.id ? 'Ofertando…' : `Ofertar para até ${Math.min(3, candidates.length)}`}</Btn> : <span className="font-mono text-[9.5px] text-fog">Sem candidato compatível</span>}</div>; })}</div>
         </div>}
 
         <div className="border border-line bg-deep/50 p-3 space-y-3">
@@ -170,10 +156,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
         </div>
 
         <div className="space-y-2">
-          {entries.map((entry) => {
-            const patient = patients.find((item) => item.id === entry.patientId);
-            return <WaitlistEntryCard key={entry.id} entry={entry} patientName={patientName(patients, entry.patientId)} patientOptIn={!!patient?.optInWhats} users={users} unidades={unidades} matchingSlot={matchFor(entry)} busy={busy} onEdit={() => startEdit(entry)} onRemove={() => removeEntry(entry.id)} onClaim={(slot) => recoverSlot(entry, slot)} onOffer={(slot) => offerSlot(entry, slot)} />;
-          })}
+          {entries.map((entry) => { const patient = patients.find((item) => item.id === entry.patientId); return <WaitlistEntryCard key={entry.id} entry={entry} patientName={patientName(patients, entry.patientId)} patientOptIn={!!patient?.optInWhats} users={users} unidades={unidades} matchingSlot={matchFor(entry)} busy={busy} onEdit={() => startEdit(entry)} onRemove={() => removeEntry(entry.id)} onClaim={(slot) => recoverSlot(entry, slot)} onOffer={(slot) => offerSlot(entry, slot)} />; })}
           {entries.length === 0 && <div className="border border-dashed border-line p-6 text-center"><p className="text-[12px] text-paper">Nenhum paciente aguardando encaixe.</p><p className="text-[10px] text-fog mt-1">Adicione apenas quem realmente aceita antecipação ou horários alternativos.</p></div>}
         </div>
       </div>}
