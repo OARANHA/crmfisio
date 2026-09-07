@@ -12,11 +12,19 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role text := public.current_app_role();
+  v_jwt_role text := coalesce(auth.role(), '');
 BEGIN
-  -- Trusted internal/service operations without tenant app context remain
-  -- available for controlled repair, migrations and background automation.
-  IF v_role IS NULL THEN
+  -- Only the real Supabase service role or a direct trusted database session may
+  -- bypass this boundary. An authenticated user whose profile/clinic is inactive
+  -- must fail closed instead of being mistaken for an internal actor.
+  IF v_jwt_role = 'service_role'
+     OR (v_jwt_role = '' AND session_user IN ('postgres', 'supabase_admin')) THEN
     RETURN NEW;
+  END IF;
+
+  IF v_role IS NULL THEN
+    RAISE EXCEPTION 'appointment_active_tenant_role_required'
+      USING ERRCODE = '42501';
   END IF;
 
   IF TG_OP = 'INSERT' THEN
@@ -82,6 +90,6 @@ FOR EACH ROW
 EXECUTE FUNCTION public.guard_appointment_mutation_boundary();
 
 COMMENT ON FUNCTION public.guard_appointment_mutation_boundary() IS
-  'Fails closed on cross-professional fisio mutations and authenticated in-place changes to appointment structural/source fields; canonical reschedule remains insert + status update.';
+  'Fails closed on inactive tenant roles, cross-professional fisio mutations and authenticated in-place changes to appointment structural/source fields; canonical reschedule remains insert + status update.';
 
 COMMIT;
