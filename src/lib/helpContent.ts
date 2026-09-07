@@ -18,54 +18,54 @@ export type HelpContext = {
   safetyNote?: string;
 };
 
-const ALL_CLINIC_ROLES: readonly Role[] = ['owner', 'admin', 'fisio', 'recep', 'financeiro'];
+const ALL_CLINIC_ROLES: readonly Role[] = ['owner', 'admin', 'professional', 'recep', 'financeiro'];
 const MANAGERS_AND_RECEPTION: readonly Role[] = ['owner', 'admin', 'recep'];
 const FINANCE_WRITERS: readonly Role[] = ['owner', 'admin', 'recep', 'financeiro'];
-const REPORT_READERS: readonly Role[] = ['owner', 'admin', 'fisio', 'financeiro'];
+const REPORT_READERS: readonly Role[] = ['owner', 'admin', 'professional', 'financeiro'];
 
 const HELP_CONTEXTS: Record<HelpContextKey, HelpContext> = {
   agenda: {
     key: 'agenda',
     eyebrow: 'Ajuda · Agenda',
     title: 'Como usar a agenda com segurança',
-    summary: 'A agenda organiza disponibilidade, confirmação, chegada e o handoff para o atendimento clínico sem perder o histórico da sessão.',
+    summary: 'A agenda organiza disponibilidade, confirmação, chegada e o handoff para o atendimento clínico sem perder o histórico do atendimento.',
     allowedRoles: ALL_CLINIC_ROLES,
     steps: [
-      { title: 'Localize a sessão correta', body: 'Use data, unidade, profissional e sala/recurso para confirmar que está operando o atendimento certo antes de alterar qualquer status.' },
+      { title: 'Localize o atendimento correto', body: 'Use data, unidade, profissional e sala/recurso para confirmar que está operando o atendimento certo antes de alterar qualquer status.' },
       { title: 'Crie, remarque ou cancele com histórico', body: 'A recepção e a gestão devem usar os fluxos próprios de agendamento, remarcação e cancelamento. Evite criar atalhos manuais fora da agenda.', roles: MANAGERS_AND_RECEPTION },
       { title: 'Registre chegada e confirmação', body: 'Check-in e confirmação são etapas operacionais. Elas não substituem o início do atendimento pelo profissional responsável.', roles: MANAGERS_AND_RECEPTION },
-      { title: 'Inicie somente sua própria sessão', body: 'O fisioterapeuta inicia apenas atendimentos atribuídos a ele. Ao iniciar, siga para o prontuário e registre a evolução antes de finalizar.', roles: ['fisio'] },
+      { title: 'Inicie somente seu próprio atendimento', body: 'O profissional clínico inicia apenas atendimentos atribuídos a ele. Ao iniciar, siga para o prontuário e registre a evolução antes de finalizar.', roles: ['professional'] },
       { title: 'Consulta sem mutação clínica', body: 'Perfis com acesso somente de leitura podem consultar agenda e contexto operacional sem executar atos clínicos.', roles: ['financeiro'] },
     ],
-    safetyNote: 'Finalização clínica deve acontecer no prontuário, depois da evolução vinculada à sessão.',
+    safetyNote: 'Finalização clínica deve acontecer no prontuário, depois da evolução vinculada ao atendimento.',
   },
   pacientes: {
     key: 'pacientes',
     eyebrow: 'Ajuda · Pacientes',
     title: 'Cadastro operacional e acesso ao paciente',
-    summary: 'O cadastro básico pertence à clínica e serve para agenda, contato e operação. Conteúdo clínico sensível respeita a relação assistencial e o papel do usuário.',
+    summary: 'O cadastro básico pertence à clínica e serve para agenda, contato e operação. Conteúdo clínico sensível respeita a relação assistencial e as capacidades do usuário.',
     allowedRoles: ALL_CLINIC_ROLES,
     steps: [
-      { title: 'Procure antes de cadastrar', body: 'Pesquise por nome, telefone ou documento antes de criar um novo paciente para reduzir duplicidades no prontuário e no financeiro.', roles: ['owner', 'admin', 'recep', 'fisio'] },
-      { title: 'Mantenha o cadastro operacional objetivo', body: 'Use os campos administrativos para identificação, contato e convênio. Informações clínicas devem ficar no prontuário.', roles: ['owner', 'admin', 'recep', 'fisio'] },
+      { title: 'Procure antes de cadastrar', body: 'Pesquise por nome, telefone ou documento antes de criar um novo paciente para reduzir duplicidades no prontuário e no financeiro.', roles: ['owner', 'admin', 'recep', 'professional'] },
+      { title: 'Mantenha o cadastro operacional objetivo', body: 'Use os campos administrativos para identificação, contato e convênio. Informações clínicas devem ficar no prontuário.', roles: ['owner', 'admin', 'recep', 'professional'] },
       { title: 'Respeite o limite do prontuário', body: 'Ver o paciente na clínica não significa ter acesso automático ao conteúdo clínico. O sistema aplica o boundary de relação assistencial no backend.' },
-      { title: 'Use o paciente como ponto de partida', body: 'A partir do cadastro, siga para agenda, documentos, pacotes ou prontuário somente quando essas funções estiverem disponíveis para seu papel.' },
+      { title: 'Use o paciente como ponto de partida', body: 'A partir do cadastro, siga para agenda, documentos, pacotes ou prontuário somente quando essas funções estiverem disponíveis para seu papel e capacidades.' },
     ],
     safetyNote: 'Não copie anamnese, evolução ou informações sensíveis para observações administrativas só para contornar permissões.',
   },
   atendimento: {
     key: 'atendimento',
     eyebrow: 'Ajuda · Atendimento',
-    title: 'Sessão, prontuário e evolução no mesmo fluxo',
-    summary: 'O atendimento clínico canônico acontece no workspace do paciente e mantém sessão, autoria, avaliações e evolução ligados ao mesmo contexto assistencial.',
-    allowedRoles: ['owner', 'admin', 'fisio'],
+    title: 'Atendimento, prontuário e evolução no mesmo fluxo',
+    summary: 'O atendimento clínico canônico acontece no workspace do paciente e mantém agenda, autoria, avaliações e evolução ligados ao mesmo contexto assistencial.',
+    allowedRoles: ['owner', 'admin', 'professional'],
     steps: [
-      { title: 'Confirme a sessão em andamento', body: 'Verifique data, horário, tipo e profissional responsável. O fisioterapeuta só pode executar atos clínicos na própria sessão.' },
+      { title: 'Confirme o atendimento em andamento', body: 'Verifique data, horário, tipo e profissional responsável. Atos clínicos exigem capacidade válida e vínculo com o atendimento atribuído.' },
       { title: 'Revise o contexto clínico', body: 'Use resumo, avaliações e histórico para entender o estado atual antes de registrar nova conduta.' },
-      { title: 'Use Avaliação padrão ou Minhas avaliações conscientemente', body: 'Modelos padrão mantêm um núcleo clínico comum. Avaliações próprias devem ser usadas quando a clínica realmente precisa de um instrumento adicional e o módulo estiver liberado.', roles: ['fisio'] },
-      { title: 'Registre a evolução da sessão', body: 'Descreva achados, resposta ao tratamento, conduta, intercorrências, orientações e próximo plano. A evolução fica vinculada ao session_id.', roles: ['fisio'] },
-      { title: 'Finalize somente depois do registro', body: 'O banco exige evolução vinculada antes da finalização. Se a sessão não for sua, a transição clínica é bloqueada.', roles: ['fisio'] },
-      { title: 'Gestão acompanha sem assumir autoria clínica', body: 'Owner e administrador podem consultar o prontuário dentro das regras atuais, mas não devem produzir atos clínicos como se fossem o profissional responsável.', roles: ['owner', 'admin'] },
+      { title: 'Use Avaliação padrão ou Minhas avaliações conscientemente', body: 'Modelos padrão mantêm um núcleo clínico comum. Avaliações próprias devem ser usadas quando a clínica realmente precisa de um instrumento adicional e o módulo estiver liberado.', roles: ['professional'] },
+      { title: 'Registre a evolução do atendimento', body: 'Descreva achados, resposta, conduta, intercorrências, orientações e próximo plano. A evolução fica vinculada ao atendimento e ao profissional autenticado.', roles: ['professional'] },
+      { title: 'Finalize somente depois do registro', body: 'O banco exige evolução vinculada antes da finalização. Se o atendimento não for seu ou faltar capacidade clínica, a transição é bloqueada.', roles: ['professional'] },
+      { title: 'Gestão e clínica podem coexistir na mesma conta', body: 'Proprietário ou administrador com identidade profissional válida e capacidades concedidas pode atender sem trocar de login. Sem essas condições, permanece apenas no escopo gerencial.', roles: ['owner', 'admin'] },
     ],
     safetyNote: 'Paciente pertence à clínica; o prontuário pertence ao contexto assistencial e permanece auditável.',
   },
@@ -78,9 +78,9 @@ const HELP_CONTEXTS: Record<HelpContextKey, HelpContext> = {
     steps: [
       { title: 'Entenda o status antes de agir', body: 'Pendente significa ainda não liquidado; atrasado indica vencimento sem baixa; pago representa valor efetivamente recebido ou quitado.' },
       { title: 'Baixe somente quando o valor foi recebido', body: 'Use a baixa para refletir recebimento real. O lançamento pago preserva histórico e não deve ser corrigido por edição silenciosa.', roles: FINANCE_WRITERS },
-      { title: 'Pacote não é o mesmo que lançamento avulso', body: 'Venda e renovação de pacote devem usar o fluxo próprio para preservar saldo de sessões, validade, vínculo do paciente e consumo automático.', roles: FINANCE_WRITERS },
+      { title: 'Pacote não é o mesmo que lançamento avulso', body: 'Venda e renovação de pacote devem usar o fluxo próprio para preservar saldo de atendimentos, validade, vínculo do paciente e consumo automático.', roles: FINANCE_WRITERS },
       { title: 'Recepção opera recebíveis permitidos', body: 'A recepção pode executar operações financeiras autorizadas para cobrança do paciente, mas não ganha acesso a conteúdo clínico por isso.', roles: ['recep'] },
-      { title: 'Profissional clínico consulta sem operar caixa', body: 'O fisioterapeuta possui leitura financeira conforme a matriz de acesso e não deve usar o módulo como usuário de caixa.', roles: ['fisio'] },
+      { title: 'Profissional clínico consulta sem operar caixa', body: 'O papel profissional possui leitura financeira conforme a matriz de acesso e não deve usar o módulo como usuário de caixa.', roles: ['professional'] },
       { title: 'Exceções pré-pagas exigem resolução explícita', body: 'Cancelamentos com pagamento liquidado usam o fluxo de resolução financeira próprio, preservando o pagamento e registrando crédito, reembolso devido ou retenção.', roles: ['owner', 'admin', 'financeiro'] },
     ],
     safetyNote: 'Se o dinheiro ainda não entrou, não marque como pago apenas para “limpar” a pendência.',
@@ -93,7 +93,7 @@ const HELP_CONTEXTS: Record<HelpContextKey, HelpContext> = {
     allowedRoles: ALL_CLINIC_ROLES,
     steps: [
       { title: 'Use o funil para estado operacional', body: 'Atualize o estágio para representar a jornada do paciente: captação, avaliação, tratamento, retenção ou outro estágio configurado pela operação.', roles: MANAGERS_AND_RECEPTION },
-      { title: 'Fisioterapia e financeiro consultam sem mover o funil', body: 'Perfis read-only podem usar o contexto do CRM para entender a jornada, mas a mutação do funil permanece com gestão e recepção.', roles: ['fisio', 'financeiro'] },
+      { title: 'Profissional e financeiro consultam sem mover o funil operacional', body: 'Perfis read-only podem usar o contexto do CRM para entender a jornada, mas a mutação operacional do funil permanece com gestão e recepção. Decisões clínicas usam o fluxo clínico próprio.', roles: ['professional', 'financeiro'] },
       { title: 'Sinais de risco são apoio operacional', body: 'Risco de churn e continuidade são regras explicáveis para priorizar contato. Não são diagnóstico clínico nem previsão probabilística garantida.' },
       { title: 'Leve a conversa para o canal certo', body: 'Quando houver ação de contato, use a central de Mensagens/WhatsApp e preserve o histórico operacional em vez de registrar conversa solta no prontuário.', roles: ['owner', 'admin', 'recep'] },
     ],
@@ -110,7 +110,7 @@ const HELP_CONTEXTS: Record<HelpContextKey, HelpContext> = {
       { title: 'Resultado incerto não é falha definitiva', body: 'DELIVERY_UNCERTAIN significa que o sistema não conseguiu provar se o envio chegou ao provedor. Não reenvie automaticamente.', roles: ['owner', 'admin', 'recep'] },
       { title: 'Observe reconciliações', body: 'Quando um evento posterior identifica com segurança um único envio incerto, a central marca a reconciliação sem repetir a mensagem.' },
       { title: 'Use revisão humana quando necessário', body: 'Mensagens sensíveis, campanhas de reativação e situações ambíguas devem permanecer sob revisão operacional conforme o fluxo disponível.', roles: ['owner', 'admin', 'recep'] },
-      { title: 'Perfis de leitura acompanham sem disparar ações', body: 'Fisioterapia e financeiro podem consultar o contexto permitido sem transformar o módulo em canal de envio não autorizado.', roles: ['fisio', 'financeiro'] },
+      { title: 'Perfis de leitura acompanham sem disparar ações', body: 'Profissionais clínicos e financeiro podem consultar o contexto permitido sem transformar o módulo em canal de envio não autorizado.', roles: ['professional', 'financeiro'] },
     ],
     safetyNote: 'Nunca interprete DELIVERY_UNCERTAIN como autorização para reenviar a mesma mensagem automaticamente.',
   },

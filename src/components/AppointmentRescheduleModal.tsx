@@ -4,6 +4,7 @@ import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
 
@@ -60,14 +61,14 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
 
   const fim = toHHMM(toMin(inicio) + duracao);
   const availableRooms = rooms.filter((room) => !unitId || room.unidadeId === unitId);
-  const fisios = users.filter((user) => user.role === 'fisio');
+  const professionals = users.filter((item) => item.ativo && hasClinicalDirectoryIdentity(item.professionalType));
   const conflicts = useMemo(() => {
     if (!appointment || !data || !inicio || !fisioId || !roomId) return [];
     return findAppointmentConflicts(appointments, { pacienteId: appointment.pacienteId, fisioId, roomId, data, inicio, fim }, appointment.id);
   }, [appointment, appointments, data, inicio, fim, fisioId, roomId]);
 
   return (
-    <Modal open={!!appointment} onClose={onClose} title="Remarcar sessão" wide>
+    <Modal open={!!appointment} onClose={onClose} title="Remarcar atendimento" wide>
       {appointment && (
         <div className="space-y-4">
           <div className="border border-line bg-deep p-3 text-[12px]"><span className="font-mono text-[9px] uppercase text-fog block">Paciente</span>{patientName(patients, appointment.pacienteId)}{preset && <p className="font-mono text-[10px] text-mint mt-1">Movido pela agenda para {preset.data} às {preset.inicio}. Revise antes de confirmar.</p>}</div>
@@ -75,7 +76,7 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
             <Field label="Data"><Input type="date" value={data} onChange={(e) => setData(e.target.value)} /></Field>
             <Field label="Início"><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></Field>
             <Field label="Duração"><Select value={duracao} onChange={(e) => setDuracao(Number(e.target.value))}>{[30,40,50,60,90].map((d) => <option key={d} value={d}>{d} min</option>)}</Select></Field>
-            <Field label="Profissional"><Select value={fisioId} onChange={(e) => setFisioId(e.target.value)}>{fisios.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}</Select></Field>
+            <Field label="Profissional"><Select value={fisioId} onChange={(e) => setFisioId(e.target.value)}>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
             <Field label="Unidade"><Select value={unitId} onChange={(e) => { const id = e.target.value; setUnitId(id); setRoomId(rooms.find((room) => room.unidadeId === id)?.id ?? ''); }}>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select></Field>
             <Field label="Sala / recurso"><Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select></Field>
             <Field label="Motivo da remarcação"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: solicitação do paciente" /></Field>

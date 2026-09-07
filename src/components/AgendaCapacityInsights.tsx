@@ -7,6 +7,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { patientName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import { STATUS_META, type Appointment } from '../lib/types';
 import { Btn, Card } from '../lib/ui';
 
@@ -25,8 +26,8 @@ export function AgendaCapacityInsights() {
   const [day, setDay] = useState(() => new Date());
   const dayIso = format(day, 'yyyy-MM-dd');
   const professionals = useMemo(() => {
-    const all = users.filter((item) => item.role === 'fisio');
-    return user?.role === 'fisio' ? all.filter((item) => item.id === user.id) : all;
+    const all = users.filter((item) => hasClinicalDirectoryIdentity(item.professionalType));
+    return user?.role === 'professional' ? all.filter((item) => item.id === user.id) : all;
   }, [users, user?.id, user?.role]);
   const capacities = useMemo(() => buildProfessionalCapacity(appointments, professionals, dayIso), [appointments, professionals, dayIso]);
   const slots = useMemo(() => Array.from({ length: (CAPACITY_DAY_END - CAPACITY_DAY_START) / SLOT_MINUTES }, (_, index) => CAPACITY_DAY_START + index * SLOT_MINUTES), []);

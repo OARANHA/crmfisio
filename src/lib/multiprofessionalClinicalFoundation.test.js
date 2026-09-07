@@ -10,6 +10,9 @@ const model = readFileSync(
   fileURLToPath(new URL('../../docs/MULTIPROFESSIONAL_DOMAIN_MODEL.md', import.meta.url)),
   'utf8',
 );
+const agenda = readFileSync(fileURLToPath(new URL('../pages/AgendaReal.tsx', import.meta.url)), 'utf8');
+const dashboard = readFileSync(fileURLToPath(new URL('../pages/Dashboard.tsx', import.meta.url)), 'utf8');
+const reports = readFileSync(fileURLToPath(new URL('../pages/Relatorios.tsx', import.meta.url)), 'utf8');
 
 describe('multiprofessional clinical foundation', () => {
   it('separates operational role from clinical identity and capability', () => {
@@ -37,8 +40,16 @@ describe('multiprofessional clinical foundation', () => {
     expect(migration).not.toContain('current_user_can_author_physiotherapy()');
   });
 
-  it('keeps the fisio bridge explicitly temporary rather than canonical', () => {
+  it('keeps the legacy physiotherapy bridge explicitly temporary rather than canonical', () => {
     expect(model).toContain('`fisio` é legado de compatibilidade');
     expect(migration).toContain('Temporary compatibility bridge');
+  });
+
+  it('discovers care providers by professional identity rather than operational role', () => {
+    for (const source of [agenda, dashboard, reports]) {
+      expect(source).toContain('hasClinicalDirectoryIdentity');
+    }
+    expect(dashboard).toContain('u.ativo && hasClinicalDirectoryIdentity(u.professionalType)');
+    expect(reports).toContain('u.ativo && hasClinicalDirectoryIdentity(u.professionalType)');
   });
 });

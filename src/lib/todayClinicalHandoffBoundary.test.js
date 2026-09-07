@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 const page = readFileSync(fileURLToPath(new URL('../pages/RecepcaoHoje.tsx', import.meta.url)), 'utf8');
 
 describe('today queue clinical handoff', () => {
-  it('shows clinical actions only to the assigned physiotherapist', () => {
-    expect(page).toContain("user?.role === 'fisio' && item.professional_id === user.id");
+  it('shows clinical actions only with clinical.attend and self-assignment', () => {
+    expect(page).toContain("useClinicalCapability('clinical.attend'");
+    expect(page).toContain('item.professional_id === user.id');
     expect(page).toContain('isAssignedClinician && arrived');
   });
 

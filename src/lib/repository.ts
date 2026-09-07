@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { Database, Json } from './database.types';
+import { normalizeClinicRole } from './roleCompatibility';
 import type {
   Appointment,
   AuditEntry,
@@ -10,6 +11,7 @@ import type {
   NpsSurvey,
   Patient,
   PatientPackage,
+  Role,
   SessionPackage,
   User,
   WaLog,
@@ -27,7 +29,6 @@ type SessionPackageRow = Database['public']['Tables']['session_packages']['Row']
 type WaLogRow = Database['public']['Tables']['wa_logs']['Row'];
 type AuditRow = Database['public']['Tables']['audit_log']['Row'];
 type CommissionRow = Database['public']['Tables']['commission_settlements']['Row'];
-type AppRole = ProfileRow['role'];
 
 type PatientClinicalSnapshot = {
   patient_id: string;
@@ -38,7 +39,7 @@ type PatientClinicalSnapshot = {
 
 const PATIENT_OPERATIONAL_SELECT = 'id,clinic_id,nome,nascimento,telefone,email,cpf,convenio,funil_stage,status,ultima_visita,opt_in_whats,anonimizado,created_at,updated_at,deleted_at' as const;
 
-const CLINICAL_ROLES: AppRole[] = ['owner', 'admin', 'fisio'];
+const CLINICAL_ROLES: Role[] = ['owner', 'admin', 'professional'];
 
 const emptyAnamnese: Patient['anamnese'] = {
   historia: '',
@@ -60,15 +61,19 @@ const parseAnamnese = (value: Json | null): Patient['anamnese'] => {
   };
 };
 
-export const mapProfile = (row: ProfileRow): User => ({
-  id: row.id,
-  nome: row.nome,
-  email: row.email,
-  role: row.role,
-  registro: row.registro ?? '',
-  cor: row.cor ?? '#cbd5e1',
-  ativo: row.ativo,
-});
+export const mapProfile = (row: ProfileRow): User => {
+  const role = normalizeClinicRole((row as ProfileRow & { role: unknown }).role);
+  if (!role) throw new Error('Perfil com papel operacional inválido');
+  return {
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    role,
+    registro: row.registro ?? '',
+    cor: row.cor ?? '#cbd5e1',
+    ativo: row.ativo,
+  };
+};
 
 export const mapPatient = (row: PatientRow): Patient => ({
   id: row.id,
@@ -207,7 +212,7 @@ export interface ClinicData {
 
 interface ClinicContext {
   clinicId: string;
-  role: AppRole;
+  role: Role;
 }
 
 async function resolveClinicContext(userId: string): Promise<ClinicContext> {
@@ -218,7 +223,9 @@ async function resolveClinicContext(userId: string): Promise<ClinicContext> {
     .eq('ativo', true)
     .single();
   if (error || !data?.clinic_id) throw error ?? new Error('Perfil sem clínica vinculada');
-  return { clinicId: data.clinic_id, role: data.role };
+  const role = normalizeClinicRole(data.role);
+  if (!role) throw new Error('Perfil com papel operacional inválido');
+  return { clinicId: data.clinic_id, role };
 }
 
 export async function resolveClinicId(userId: string): Promise<string> {
@@ -233,7 +240,7 @@ const optionalRows = <T>(label: string, result: { data: T[] | null; error: unkno
   return result.data ?? [];
 };
 
-async function loadPatientClinicalSnapshot(role: AppRole): Promise<PatientClinicalSnapshot[]> {
+async function loadPatientClinicalSnapshot(role: Role): Promise<PatientClinicalSnapshot[]> {
   if (!CLINICAL_ROLES.includes(role)) return [];
 
   const { data, error } = await (supabase as unknown as {

@@ -4,13 +4,12 @@ import { useAuth } from './useAuth';
 import { anonymizePatient as persistAnonymizePatient, insertPatient, mapPatient, updatePatientStage } from './repository';
 import { canManagePatientFunnel } from './permissions';
 import type { Database, Json } from './database.types';
-import type { FunilStage, Patient } from './types';
+import type { FunilStage, Patient, Role } from './types';
 
 type PatientRow = Database['public']['Tables']['patients']['Row'];
-type AppRole = Database['public']['Tables']['profiles']['Row']['role'];
 type PatientClinicalSnapshot = { patient_id: string; queixa_principal: string | null; cid10: string[] | null; anamnese: Json | null };
 const PATIENT_OPERATIONAL_SELECT = 'id,clinic_id,nome,nascimento,telefone,email,cpf,convenio,funil_stage,status,ultima_visita,opt_in_whats,anonimizado,created_at,updated_at,deleted_at' as const;
-const CLINICAL_ROLES: AppRole[] = ['owner', 'admin', 'fisio'];
+const CLINICAL_ROLES: Role[] = ['owner', 'admin', 'professional'];
 
 interface PatientState {
   patients: Patient[]; loading: boolean; error: string | null;
@@ -21,7 +20,7 @@ interface PatientState {
 }
 const PatientContext = createContext<PatientState | null>(null);
 
-async function loadClinicalSnapshot(role: AppRole): Promise<PatientClinicalSnapshot[]> {
+async function loadClinicalSnapshot(role: Role): Promise<PatientClinicalSnapshot[]> {
   if (!CLINICAL_ROLES.includes(role)) return [];
   const { data, error } = await (supabase as unknown as { rpc: (name: 'list_patient_clinical_snapshot', args?: Record<string, never>) => Promise<{ data: PatientClinicalSnapshot[] | null; error: unknown }> }).rpc('list_patient_clinical_snapshot');
   if (error) throw error;
@@ -31,7 +30,7 @@ async function loadClinicalSnapshot(role: AppRole): Promise<PatientClinicalSnaps
 export function PatientProvider({ children }: { children: ReactNode }) {
   const { profile, tenantAccessState } = useAuth();
   const clinicId = profile?.clinic_id ?? null;
-  const role = profile?.role ?? null;
+  const role = (profile?.role ?? null) as Role | null;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

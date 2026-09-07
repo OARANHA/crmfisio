@@ -192,7 +192,7 @@ export function Shell() {
   );
   const pendencias = transactions.filter((t) => t.status === 'atrasado').length + consents.filter((c) => !c.assinado).length;
   const rm = ROLE_META[effectiveUser.role];
-  const professionalLabel = effectiveUser.role === 'fisio' && identity
+  const professionalLabel = identity
     ? professionalIdentityLabel(identity)
     : (rm?.label || 'Carregando...');
 

@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 const modal = readFileSync(fileURLToPath(new URL('../components/AppointmentActionModal.tsx', import.meta.url)), 'utf8');
 
 describe('agenda clinical action boundary', () => {
-  it('binds clinical actions to the assigned physiotherapist', () => {
-    expect(modal).toContain("role === 'fisio' && user?.id === appointment.fisioId");
+  it('binds clinical actions to clinical.attend and the assigned professional', () => {
+    expect(modal).toContain("useClinicalCapability('clinical.attend'");
+    expect(modal).toContain('user?.id === appointment.fisioId');
     expect(modal).toContain("if (action.status === 'em_atendimento') return canClinicalTransition");
   });
 

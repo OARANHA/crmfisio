@@ -1,11 +1,15 @@
 import type { Access, ModuleKey, Role } from './types';
 
-export const ROLES: readonly Role[] = ['owner', 'admin', 'fisio', 'recep', 'financeiro'];
+export const ROLES: readonly Role[] = ['owner', 'admin', 'professional', 'recep', 'financeiro'];
+
+const PROFESSIONAL_ACCESS: Record<ModuleKey, Access> = {
+  dashboard: 'read', agenda: 'full', pacientes: 'full', clinico: 'full', financeiro: 'read', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none',
+};
 
 export const ACCESS_MATRIX: Record<Role, Record<ModuleKey, Access>> = {
   owner: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
   admin: { dashboard: 'full', agenda: 'full', pacientes: 'full', clinico: 'read', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'full', config: 'full' },
-  fisio: { dashboard: 'read', agenda: 'full', pacientes: 'full', clinico: 'full', financeiro: 'read', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
+  professional: PROFESSIONAL_ACCESS,
   recep: { dashboard: 'none', agenda: 'full', pacientes: 'full', clinico: 'none', financeiro: 'full', crm: 'full', mensagens: 'full', relatorios: 'none', config: 'none' },
   financeiro: { dashboard: 'read', agenda: 'read', pacientes: 'read', clinico: 'none', financeiro: 'full', crm: 'read', mensagens: 'read', relatorios: 'read', config: 'none' },
 };
@@ -22,14 +26,14 @@ export const isClinicManager = (role: Role | null | undefined): boolean =>
 export const isOperationalRole = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'recep';
 
-export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'fisio';
+export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'professional';
 
 export const canTransitionClinicalAppointment = (
   role: Role | null | undefined,
   userId: string | null | undefined,
   professionalId: string | null | undefined,
 ): boolean =>
-  role === 'fisio'
+  isClinicalRole(role)
   && Boolean(userId)
   && userId === professionalId;
 
@@ -41,7 +45,7 @@ export const canManagePatientFunnel = (role: Role | null | undefined): boolean =
  * have narrower server contracts and must use these operation-level predicates.
  */
 export const canViewFinancialPayables = (role: Role | null | undefined): boolean =>
-  role === 'owner' || role === 'admin' || role === 'fisio' || role === 'financeiro';
+  role === 'owner' || role === 'admin' || isClinicalRole(role) || role === 'financeiro';
 
 export const canWriteFinancialTransaction = (
   role: Role | null | undefined,
@@ -59,7 +63,7 @@ export const canManagePackageCatalog = (role: Role | null | undefined): boolean 
   role === 'owner' || role === 'admin';
 
 export const canViewCommissions = (role: Role | null | undefined): boolean =>
-  role === 'owner' || role === 'admin' || role === 'fisio' || role === 'financeiro';
+  role === 'owner' || role === 'admin' || isClinicalRole(role) || role === 'financeiro';
 
 export const canManageCommissions = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'financeiro';

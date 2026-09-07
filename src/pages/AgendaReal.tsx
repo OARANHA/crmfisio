@@ -11,6 +11,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { patientName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
@@ -51,7 +52,7 @@ export function AgendaReal() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<View>('semana');
   const [unitFilter, setUnitFilter] = useState('all');
-  const [fisioFilter, setFisioFilter] = useState(user?.role === 'fisio' ? user.id : 'all');
+  const [professionalFilter, setProfessionalFilter] = useState(user?.role === 'professional' ? user.id : 'all');
   const [roomFilter, setRoomFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [finderOpen, setFinderOpen] = useState(false);
@@ -78,6 +79,10 @@ export function AgendaReal() {
   }, []);
 
   useEffect(() => {
+    if (user?.role === 'professional' && user.id) setProfessionalFilter(user.id);
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
     let active = true;
     loadAppointmentWhatsappStates(appointments.map((item) => item.id))
       .then((states) => active && setWhatsappByAppointment(states))
@@ -91,7 +96,7 @@ export function AgendaReal() {
     setPrefillConsumed(true);
   }, [prefillConsumed, loadingInfra, prefillPatientId, rooms.length]);
 
-  const fisios = users.filter((u) => u.role === 'fisio');
+  const professionals = users.filter((item) => item.ativo && hasClinicalDirectoryIdentity(item.professionalType));
   const week = useMemo(() => {
     const start = startOfWeek(anchor, { weekStartsOn: 1 });
     return Array.from({ length: 6 }, (_, i) => addDays(start, i));
@@ -101,7 +106,7 @@ export function AgendaReal() {
   const todayIso = format(new Date(), 'yyyy-MM-dd');
   const roomsForFilter = useMemo(() => rooms.filter((room) => unitFilter === 'all' || room.unidadeId === unitFilter), [rooms, unitFilter]);
   const activeFilterCount = [unitFilter, roomFilter].filter((value) => value !== 'all').length
-    + (user?.role !== 'fisio' && fisioFilter !== 'all' ? 1 : 0)
+    + (user?.role !== 'professional' && professionalFilter !== 'all' ? 1 : 0)
     + (search.trim() ? 1 : 0);
   const periodLabel = view === 'mes'
     ? format(anchor, "MMMM 'de' yyyy", { locale: ptBR })
@@ -115,7 +120,7 @@ export function AgendaReal() {
   }, [roomFilter, roomsForFilter]);
 
   const visibleAppointments = useMemo(() => appointments.filter((appointment) => {
-    if (fisioFilter !== 'all' && appointment.fisioId !== fisioFilter) return false;
+    if (professionalFilter !== 'all' && appointment.fisioId !== professionalFilter) return false;
     if (roomFilter !== 'all' && appointment.roomId !== roomFilter) return false;
     if (unitFilter !== 'all') {
       const room = rooms.find((item) => item.id === appointment.roomId);
@@ -130,7 +135,7 @@ export function AgendaReal() {
       if (!haystack.includes(q)) return false;
     }
     return true;
-  }), [appointments, patients, users, rooms, fisioFilter, roomFilter, unitFilter, search]);
+  }), [appointments, patients, users, rooms, professionalFilter, roomFilter, unitFilter, search]);
 
   const periodAppointments = useMemo(() => {
     if (view === 'dia') {
@@ -152,9 +157,9 @@ export function AgendaReal() {
     finished: periodAppointments.filter((a) => a.status === 'finalizado').length,
     pending: periodAppointments.filter((a) => a.status === 'agendado').length,
     missed: periodAppointments.filter((a) => a.status === 'faltou').length,
-    revenue: periodAppointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').reduce((sum, a) => sum + a.valor, 0),
+    nominalValue: periodAppointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').reduce((sum, a) => sum + a.valor, 0),
   }), [periodAppointments]);
-  const periodSummaryLabel = view === 'dia' ? 'Sessões no dia' : view === 'semana' ? 'Sessões na semana' : 'Sessões no mês';
+  const periodSummaryLabel = view === 'dia' ? 'Atendimentos no dia' : view === 'semana' ? 'Atendimentos na semana' : 'Atendimentos no mês';
 
   const monthCells = useMemo(() => {
     const y = anchor.getFullYear();
@@ -208,12 +213,12 @@ export function AgendaReal() {
     setOperationBusy(true);
     try {
       await cancelAppointmentWithReason(cancelling.id, reason);
-      toast('Sessão cancelada e motivo registrado.');
+      toast('Atendimento cancelado e motivo registrado.');
       setCancelling(null);
       await refreshAgenda();
     } catch (error) {
       console.error('[MedicsPro] cancelamento operacional:', error);
-      toast('Não foi possível cancelar a sessão.', 'warn');
+      toast('Não foi possível cancelar o atendimento.', 'warn');
     } finally { setOperationBusy(false); }
   };
 
@@ -222,13 +227,13 @@ export function AgendaReal() {
     setOperationBusy(true);
     try {
       await rescheduleAppointment({ appointmentId: rescheduling.id, ...payload });
-      toast('Sessão remarcada com histórico preservado.');
+      toast('Atendimento remarcado com histórico preservado.');
       setRescheduling(null);
       setReschedulePreset(null);
       await refreshAgenda();
     } catch (error) {
       console.error('[MedicsPro] remarcação operacional:', error);
-      toast('Não foi possível remarcar a sessão.', 'warn');
+      toast('Não foi possível remarcar o atendimento.', 'warn');
     } finally { setOperationBusy(false); }
   };
 
@@ -310,26 +315,26 @@ export function AgendaReal() {
             <div className="flex rounded-xl border border-line overflow-hidden">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 text-[11px] font-semibold ${view === item ? 'bg-mint text-on-accent' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
             <div className="flex overflow-hidden rounded-xl border border-line"><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(-1)} aria-label="Período anterior">←</button><button className="border-x border-line px-3 py-2 text-[11px] font-semibold text-fog hover:bg-raise hover:text-paper" onClick={() => setAnchor(new Date())}>Hoje</button><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(1)} aria-label="Próximo período">→</button></div>
             <Btn variant="ghost" onClick={() => setFinderOpen((value) => !value)}>Encontrar horário</Btn>
-            <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Nova sessão</Btn>
+            <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Novo atendimento</Btn>
           </div>
         </div>
       </Reveal>
 
       {isOperationalRole(user?.role) && view !== 'mes' && <p className="font-mono text-[10px] text-fog">Dica: arraste atendimentos agendados ou confirmados para outro horário. Nada é salvo antes da confirmação da remarcação.</p>}
 
-      <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={fisios} defaultFisioId={fisioFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
+      <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={professionals} defaultFisioId={professionalFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
       <Reveal delay={40}><div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">{[
-        [periodSummaryLabel, periodSummary.total], ['Confirmadas', periodSummary.confirmed], ['Pendentes', periodSummary.pending], ['Em atendimento', periodSummary.inService], ['Finalizadas', periodSummary.finished], ['Faltas', periodSummary.missed], ['Previsto', fmtBRL(periodSummary.revenue)],
+        [periodSummaryLabel, periodSummary.total], ['Confirmados', periodSummary.confirmed], ['Pendentes', periodSummary.pending], ['Em atendimento', periodSummary.inService], ['Finalizados', periodSummary.finished], ['Faltas', periodSummary.missed], ['Valor dos atendimentos', fmtBRL(periodSummary.nominalValue)],
       ].map(([label, value]) => <Card key={String(label)} className="!rounded-xl !p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-fog">{label}</p><p className="mt-1 font-display text-xl font-bold">{value}</p></Card>)}</div></Reveal>
 
       <Reveal delay={60}><Card className="!rounded-2xl !p-3"><div className="flex flex-wrap items-center gap-2">
         <div className="min-w-[240px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" /></div>
         <Btn variant="ghost" onClick={() => setFiltersOpen((value) => !value)}>Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''} <span aria-hidden>{filtersOpen ? '↑' : '↓'}</span></Btn>
-        {activeFilterCount > 0 && <button className="px-2 text-xs font-semibold text-fog hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setFisioFilter(user?.role === 'fisio' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar</button>}
+        {activeFilterCount > 0 && <button className="px-2 text-xs font-semibold text-fog hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setProfessionalFilter(user?.role === 'professional' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar</button>}
       </div>{filtersOpen && <div className="mt-3 grid gap-2 border-t border-line pt-3 sm:grid-cols-3">
         <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
-        <Select value={fisioFilter} onChange={(event) => setFisioFilter(event.target.value)}>{user?.role !== 'fisio' && <option value="all">Todos os profissionais</option>}{fisios.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
+        <Select value={professionalFilter} onChange={(event) => setProfessionalFilter(event.target.value)}>{user?.role !== 'professional' && <option value="all">Todos os profissionais</option>}{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
         <Select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)}><option value="all">Todas as salas/recursos</option>{roomsForFilter.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select>
       </div>}</Card></Reveal>
 
@@ -341,7 +346,7 @@ export function AgendaReal() {
         <Card className="overflow-hidden"><div className="grid grid-cols-7 border-b border-line">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="px-2 py-2 text-center font-mono text-[10px] uppercase text-fog border-l border-line/60 first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
           if (!date) return <div key={`empty-${index}`} className="min-h-[96px] border-l border-t border-line/40 bg-deep/30" />;
           const iso = format(date, 'yyyy-MM-dd'); const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso); const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado'); const isToday = iso === todayIso;
-          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[96px] border-l border-t border-line/40 p-2 text-left hover:bg-raise/50 ${isToday ? 'bg-mint/[0.06]' : ''}`}><span className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{active.length > 0 && <div className="mt-2 space-y-1"><span className="inline-block font-mono text-[9px] text-mint border border-mint/30 px-1.5 py-0.5">{active.length} sessão{active.length > 1 ? 'ões' : ''}</span><p className="font-mono text-[9px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmadas</p></div>}</button>;
+          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[96px] border-l border-t border-line/40 p-2 text-left hover:bg-raise/50 ${isToday ? 'bg-mint/[0.06]' : ''}`}><span className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{active.length > 0 && <div className="mt-2 space-y-1"><span className="inline-block font-mono text-[9px] text-mint border border-mint/30 px-1.5 py-0.5">{active.length} atendimento{active.length > 1 ? 's' : ''}</span><p className="font-mono text-[9px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmados</p></div>}</button>;
         })}</div></Card>
       ) : (
         <Card className="overflow-x-auto"><div className={`flex ${view === 'semana' ? 'min-w-[950px]' : 'min-w-[420px]'}`}><div className="w-14 shrink-0"><div className="h-[52px] border-b border-line" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>

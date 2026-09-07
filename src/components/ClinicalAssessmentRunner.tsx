@@ -5,6 +5,7 @@ import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { BodyMapV2 } from './BodyMapV2';
 import {
   createClinicalAssessmentDraft,
@@ -25,6 +26,8 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { appointments } = useAgenda();
+  const { allowed: canReadTimeline } = useClinicalCapability('clinical.timeline.read', user?.id);
+  const { allowed: canApplyAssessment } = useClinicalCapability('clinical.assessment.apply', user?.id);
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [, setAssessments] = useState<ClinicalAssessment[]>([]);
   const [draft, setDraft] = useState<ClinicalAssessment | null>(null);
@@ -35,8 +38,8 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const [busy, setBusy] = useState(false);
 
   const userId = user?.id ?? null;
-  const clinicalRead = user?.role === 'fisio' || isClinicManager(user?.role);
-  const clinicalWrite = user?.role === 'fisio';
+  const clinicalRead = isClinicManager(user?.role) || canReadTimeline;
+  const clinicalWrite = canApplyAssessment;
   const activeAppointment = useMemo(
     () => appointments.find((item) => item.pacienteId === patient.id && item.status === 'em_atendimento') ?? null,
     [appointments, patient.id],

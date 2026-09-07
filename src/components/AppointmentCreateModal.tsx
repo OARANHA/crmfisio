@@ -6,6 +6,7 @@ import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { usePackages } from '../lib/packageContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
 
@@ -42,12 +43,12 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const { patientPackages, packages } = usePackages();
-  const fisios = users.filter((u) => u.role === 'fisio');
+  const professionals = users.filter((item) => hasClinicalDirectoryIdentity(item.professionalType));
   const [pacienteId, setPacienteId] = useState('');
-  const [fisioId, setFisioId] = useState(user?.role === 'fisio' ? user.id : '');
+  const [fisioId, setFisioId] = useState(user?.role === 'professional' ? user.id : '');
   const [unitId, setUnitId] = useState('');
   const [roomId, setRoomId] = useState('');
-  const [tipo, setTipo] = useState('Cinesioterapia');
+  const [tipo, setTipo] = useState('Atendimento clínico');
   const [dia, setDia] = useState('');
   const [hora, setHora] = useState('08:00');
   const [duracao, setDuracao] = useState(50);
@@ -71,7 +72,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
     const firstUnit = initialRoom?.unidadeId ?? unidades[0]?.id ?? '';
     setUnitId(firstUnit);
     setRoomId(initialRoomId || rooms.find((r) => r.unidadeId === firstUnit)?.id || '');
-    setFisioId(user?.role === 'fisio' ? user.id : (creating.fisioId ?? ''));
+    setFisioId(user?.role === 'professional' ? user.id : (creating.fisioId ?? ''));
     setDuracao(creating.duracaoMin ?? 50);
     setIsFitIn(Boolean(creating.isFitIn));
   }
@@ -103,15 +104,15 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   };
 
   return (
-    <Modal open={!!creating} onClose={onClose} title={isFitIn ? 'Novo encaixe' : 'Nova sessão'} wide>
+    <Modal open={!!creating} onClose={onClose} title={isFitIn ? 'Novo encaixe' : 'Novo atendimento'} wide>
       {isFitIn && <div className="mb-4 border border-mint/35 bg-mint/[0.06] p-3 text-[12px] text-mint">Vaga recuperada da lista de espera. Confirme os dados antes de agendar.</div>}
       <div className="grid sm:grid-cols-2 gap-4">
         <Field label="Paciente"><Select value={pacienteId} onChange={(e) => { setPacienteId(e.target.value); setPacoteId(''); }}><option value="">Selecionar…</option>{patients.filter((p) => p.status !== 'alta' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
         <Field label="Cobrança / pacote"><Select value={pacoteId} onChange={(e) => setPacoteId(e.target.value)}><option value="">Atendimento avulso — cobrar ao finalizar</option>{availablePackages.map((item) => { const catalog = packages.find((entry) => entry.id === item.pacoteId); const remaining = item.sessoesTotais - item.sessoesUsadas; return <option key={item.id} value={item.id}>{catalog?.nome ?? 'Pacote'} · {remaining} sessão(ões)</option>; })}</Select></Field>
-        <Field label="Profissional"><Select value={fisioId} disabled={user?.role === 'fisio'} onChange={(e) => setFisioId(e.target.value)}><option value="">Selecionar…</option>{fisios.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}</Select></Field>
+        <Field label="Profissional"><Select value={fisioId} disabled={user?.role === 'professional'} onChange={(e) => setFisioId(e.target.value)}><option value="">Selecionar…</option>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
         <Field label="Unidade"><Select value={unitId} onChange={(e) => { const id = e.target.value; setUnitId(id); setRoomId(rooms.find((r) => r.unidadeId === id)?.id ?? ''); }}><option value="">Selecionar…</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Select></Field>
         <Field label="Sala / equipamento"><Select value={roomId} onChange={(e) => setRoomId(e.target.value)}><option value="">Selecionar…</option>{availableRooms.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}</Select></Field>
-        <Field label="Tipo"><Select value={tipo} onChange={(e) => setTipo(e.target.value)}>{['Avaliação','Cinesioterapia','Eletroterapia','RPG','Neurofuncional','Pilates','Tração'].map((t) => <option key={t}>{t}</option>)}</Select></Field>
+        <Field label="Tipo"><Input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Ex.: Consulta, avaliação, sessão" /></Field>
         <Field label="Data"><Input type="date" value={dia} onChange={(e) => setDia(e.target.value)} /></Field>
         <Field label="Início"><Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></Field>
         <Field label="Duração"><Select value={duracao} onChange={(e) => setDuracao(Number(e.target.value))}>{[30,40,50,60,90].map((d) => <option key={d} value={d}>{d} min</option>)}</Select></Field>
@@ -119,7 +120,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
         <div className="border border-line bg-deep px-3 py-2 text-[12px]"><span className="font-mono text-[9px] uppercase text-fog block">Término previsto</span>{fim}</div>
       </div>
       {uniqueConflicts.length > 0 && <div className="mt-4 border border-pulse/40 bg-pulse/[0.05] p-4 space-y-2"><p className="font-display font-semibold text-pulse">Horário indisponível</p>{uniqueConflicts.map(({ kind, appointment }) => <div key={`${kind}-${appointment.id}`} className="text-[12px] text-paper/90"><span className="text-pulse">• {conflictLabel(kind)}</span>{' '}<span className="font-mono text-fog">{appointment.inicio}–{appointment.fim} · {patientName(patients, appointment.pacienteId)} · {userName(users, appointment.fisioId)}</span></div>)}<p className="font-mono text-[10.5px] text-fog">Altere profissional, sala, data ou horário para continuar.</p></div>}
-      <div className="mt-5 flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={save} disabled={!pacienteId || !fisioId || !roomId || conflicts.length > 0}>{isFitIn ? 'Confirmar encaixe' : 'Agendar sessão'}</Btn></div>
+      <div className="mt-5 flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={save} disabled={!pacienteId || !fisioId || !roomId || conflicts.length > 0}>{isFitIn ? 'Confirmar encaixe' : 'Agendar atendimento'}</Btn></div>
     </Modal>
   );
 }

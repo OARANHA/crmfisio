@@ -17,7 +17,7 @@ type TeamPayload = {
   email?: string;
   password?: string;
   nome?: string;
-  role?: 'admin' | 'fisio' | 'recep' | 'financeiro';
+  role?: 'admin' | 'professional' | 'recep' | 'financeiro';
   telefone?: string;
   professional_type?: string;
   council_type?: string;
@@ -30,7 +30,7 @@ type TeamPayload = {
   capability_keys?: string[];
 };
 
-const allowedManagedRoles = new Set(['admin', 'fisio', 'recep', 'financeiro']);
+const allowedManagedRoles = new Set(['admin', 'professional', 'recep', 'financeiro']);
 const managedClinicalCapabilities = [
   'clinical.attend',
   'clinical.timeline.read',

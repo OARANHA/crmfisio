@@ -11,6 +11,7 @@ import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import { useToast } from '../lib/toastContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Select, Input } from '../lib/ui';
@@ -40,7 +41,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
   const [busy, setBusy] = useState(false);
   const [smartBusyId, setSmartBusyId] = useState<string | null>(null);
   const canManage = isOperationalRole(user?.role);
-  const professionals = users.filter((item) => item.role === 'fisio' && item.ativo);
+  const professionals = users.filter((item) => item.ativo && hasClinicalDirectoryIdentity(item.professionalType));
 
   const refresh = useCallback(async (id: string) => {
     if (id) setEntries(await loadWaitlist(id));

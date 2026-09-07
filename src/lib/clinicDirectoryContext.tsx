@@ -2,19 +2,28 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import type { Database } from './database.types';
+import { normalizeClinicRole } from './roleCompatibility';
 import type { User } from './types';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
-const mapProfile = (row: ProfileRow): User => ({
-  id: row.id,
-  nome: row.nome,
-  email: row.email,
-  role: row.role,
-  registro: row.registro ?? '',
-  cor: row.cor ?? '#cbd5e1',
-  ativo: row.ativo,
-});
+const mapProfile = (row: ProfileRow): User | null => {
+  const role = normalizeClinicRole((row as ProfileRow & { role: unknown }).role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    role,
+    registro: row.registro ?? '',
+    cor: row.cor ?? '#cbd5e1',
+    ativo: row.ativo,
+    professionalType: (row as ProfileRow & { professional_type?: string | null }).professional_type ?? null,
+    councilType: (row as ProfileRow & { council_type?: string | null }).council_type ?? null,
+    councilState: (row as ProfileRow & { council_state?: string | null }).council_state ?? null,
+    especialidade: (row as ProfileRow & { especialidade?: string | null }).especialidade ?? null,
+  };
+};
 
 interface ClinicDirectoryState {
   users: User[];
@@ -47,7 +56,7 @@ export function ClinicDirectoryProvider({ children }: { children: ReactNode }) {
       const result = await supabase.from('profiles').select('*').eq('clinic_id', clinicId).eq('ativo', true).order('nome');
       if (request !== generation.current) return;
       if (result.error) throw result.error;
-      setUsers((result.data ?? []).map(mapProfile));
+      setUsers((result.data ?? []).map(mapProfile).filter((item): item is User => item !== null));
       setError(null);
     } catch (cause) {
       if (request !== generation.current) return;

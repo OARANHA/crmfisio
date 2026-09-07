@@ -14,7 +14,7 @@ import {
 import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input, Select } from '../lib/ui';
 
-type ManagedRole = 'admin' | 'fisio' | 'recep' | 'financeiro';
+type ManagedRole = 'admin' | 'professional' | 'recep' | 'financeiro';
 type TeamRole = 'owner' | ManagedRole;
 
 type TeamMember = {
@@ -41,7 +41,7 @@ type CapabilityRow = {
 };
 
 const ROLE_OPTIONS: Array<{ value: ManagedRole; label: string; description: string }> = [
-  { value: 'fisio', label: 'Profissional clínico', description: 'Atende pacientes; a profissão é definida separadamente abaixo.' },
+  { value: 'professional', label: 'Profissional clínico', description: 'Atende pacientes; a profissão é definida separadamente abaixo.' },
   { value: 'admin', label: 'Administrador', description: 'Opera a clínica e pode também ter identidade clínica própria.' },
   { value: 'recep', label: 'Recepção', description: 'Agenda, cadastro e operação de recepção, sem autoria clínica.' },
   { value: 'financeiro', label: 'Financeiro', description: 'Cobranças, recebimentos e relatórios financeiros.' },
@@ -61,7 +61,7 @@ export function TeamAdmin() {
   const [editingRole, setEditingRole] = useState<TeamRole | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [role, setRole] = useState<ManagedRole>('fisio');
+  const [role, setRole] = useState<ManagedRole>('professional');
   const [profession, setProfession] = useState<ProfessionalType>('fisioterapeuta');
   const [hasClinicalIdentity, setHasClinicalIdentity] = useState(true);
   const [clinicalCapabilities, setClinicalCapabilities] = useState<ClinicalCapabilityKey[]>(DEFAULT_CLINICAL_CAPABILITIES.fisioterapeuta);
@@ -77,7 +77,7 @@ export function TeamAdmin() {
   const resetForm = () => {
     setEditingId(null);
     setEditingRole(null);
-    setRole('fisio');
+    setRole('professional');
     setProfession('fisioterapeuta');
     setHasClinicalIdentity(true);
     setClinicalCapabilities(DEFAULT_CLINICAL_CAPABILITIES.fisioterapeuta);
@@ -129,7 +129,7 @@ export function TeamAdmin() {
 
   const currentProfessionalMeta = PROFESSIONAL_META[profession];
   const ownerEditing = editingRole === 'owner';
-  const roleAllowsClinicalIdentity = ownerEditing || role === 'admin' || role === 'fisio';
+  const roleAllowsClinicalIdentity = ownerEditing || role === 'admin' || role === 'professional';
   const clinical = roleAllowsClinicalIdentity && hasClinicalIdentity;
 
   const invoke = async (body: Record<string, unknown>) => {
@@ -191,7 +191,7 @@ export function TeamAdmin() {
 
   const edit = (member: TeamMember) => {
     const inferredProfessional = isProfessionalType(member.professional_type) ? member.professional_type : 'fisioterapeuta';
-    const identityPresent = Boolean(member.professional_type) || member.role === 'fisio';
+    const identityPresent = Boolean(member.professional_type) || member.role === 'professional';
     setEditingId(member.id);
     setEditingRole(member.role);
     if (member.role !== 'owner') setRole(member.role);
@@ -263,7 +263,7 @@ export function TeamAdmin() {
                   <Select value={role} onChange={(e) => {
                     const next = e.target.value as ManagedRole;
                     setRole(next);
-                    if (next === 'fisio') setHasClinicalIdentity(true);
+                    if (next === 'professional') setHasClinicalIdentity(true);
                     if (next === 'recep' || next === 'financeiro') setHasClinicalIdentity(false);
                   }}>
                     {ROLE_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -283,7 +283,7 @@ export function TeamAdmin() {
             {roleAllowsClinicalIdentity && (
               <div className="rounded-xl border border-aqua/20 bg-aqua/[0.035] p-3 space-y-3">
                 <div className="flex items-start gap-2">
-                  <input id="clinical-identity" type="checkbox" checked={hasClinicalIdentity} disabled={role === 'fisio' && !ownerEditing} onChange={(e) => setHasClinicalIdentity(e.target.checked)} className="mt-0.5" />
+                  <input id="clinical-identity" type="checkbox" checked={hasClinicalIdentity} disabled={role === 'professional' && !ownerEditing} onChange={(e) => setHasClinicalIdentity(e.target.checked)} className="mt-0.5" />
                   <label htmlFor="clinical-identity" className="cursor-pointer">
                     <p className="font-display text-[12.5px] font-semibold">Também atua clinicamente</p>
                     <p className="mt-0.5 text-[10.5px] text-fog">Habilita identidade profissional. As permissões abaixo continuam validadas pelo backend.</p>

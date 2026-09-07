@@ -3,11 +3,23 @@
 // Valores monetários em CENTAVOS (inteiros), nunca float.
 // ---------------------------------------------------------------------------
 
-export type Role = 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro';
+export type Role = 'owner' | 'admin' | 'professional' | 'recep' | 'financeiro';
 export type ModuleKey = | 'dashboard' | 'agenda' | 'pacientes' | 'clinico' | 'financeiro' | 'crm' | 'mensagens' | 'relatorios' | 'config';
 export type Access = 'full' | 'read' | 'none';
 
-export interface User { id: string; nome: string; email: string; role: Role; registro: string; cor: string; ativo: boolean }
+export interface User {
+  id: string;
+  nome: string;
+  email: string;
+  role: Role;
+  registro: string;
+  cor: string;
+  ativo: boolean;
+  professionalType?: string | null;
+  councilType?: string | null;
+  councilState?: string | null;
+  especialidade?: string | null;
+}
 export interface Unidade { id: string; nome: string; endereco: string }
 export type AppointmentStatus = 'agendado' | 'confirmado' | 'em_atendimento' | 'finalizado' | 'faltou' | 'cancelado';
 export type FunilStage = 'lead' | 'avaliacao' | 'tratamento' | 'alta';
@@ -68,9 +80,9 @@ export const STAGE_META: Record<FunilStage, { label: string; chip: string; bar: 
   alta: { label: 'Alta', chip: 'bg-aqua/10 border-aqua/30 text-aqua', bar: '#6ec1e4', next: null },
 };
 export const ROLE_META: Record<Role, { label: string; text: string; chip: string; desc: string }> = {
-  owner: { label: 'Proprietário', text: 'text-pulse', chip: 'bg-pulse/10 border-pulse/35 text-pulse', desc: 'Gestão da clínica, usuários, financeiro e leitura clínica. Não executa atos clínicos por ser proprietário.' },
-  admin: { label: 'Administrador', text: 'text-mint', chip: 'bg-mint/10 border-mint/35 text-mint', desc: 'Acesso total: agenda, prontuário (leitura), financeiro, CRM, relatórios e configurações.' },
-  fisio: { label: 'Fisioterapeuta', text: 'text-amber', chip: 'bg-amber/10 border-amber/35 text-amber', desc: 'Agenda própria, prontuário e evolução clínica completos. Financeiro e relatórios somente leitura.' },
+  owner: { label: 'Proprietário', text: 'text-pulse', chip: 'bg-pulse/10 border-pulse/35 text-pulse', desc: 'Gestão da clínica. A atuação clínica, quando existente, é definida pela identidade profissional e pelas permissões clínicas.' },
+  admin: { label: 'Administrador', text: 'text-mint', chip: 'bg-mint/10 border-mint/35 text-mint', desc: 'Gestão operacional da clínica. Pode também atuar clinicamente quando houver identidade e permissões válidas.' },
+  professional: { label: 'Profissional clínico', text: 'text-amber', chip: 'bg-amber/10 border-amber/35 text-amber', desc: 'Atuação clínica definida pela profissão, identidade profissional e permissões concedidas.' },
   recep: { label: 'Recepcionista', text: 'text-aqua', chip: 'bg-aqua/10 border-aqua/30 text-aqua', desc: 'Agenda, cadastro, financeiro operacional, CRM e mensagens. Sem acesso clínico nem relatórios.' },
   financeiro: { label: 'Financeiro', text: 'text-steel', chip: 'bg-steel/10 border-steel/30 text-steel', desc: 'Cobranças, recebimentos, repasses e relatórios financeiros. Sem conteúdo clínico.' },
 };
