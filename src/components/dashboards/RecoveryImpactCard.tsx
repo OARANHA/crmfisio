@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useClinicModuleEntitlementVisibility } from '../../hooks/useClinicModuleEntitlementVisibility';
 import { fmtBRL } from '../../lib/types';
 import { loadRecoveryRoi, type RecoveryRoi } from '../../lib/recoveryMetrics';
 import { Card, CardHead, Chip } from '../../lib/ui';
@@ -6,17 +7,26 @@ import { Card, CardHead, Chip } from '../../lib/ui';
 export function RecoveryImpactCard() {
   const [roi, setRoi] = useState<RecoveryRoi | null>(null);
   const [loading, setLoading] = useState(true);
+  const { visibility, resolved } = useClinicModuleEntitlementVisibility();
+  const allowed = resolved && visibility.financeiro === true && visibility.relatorios === true;
 
   useEffect(() => {
+    if (!allowed) {
+      setRoi(null);
+      setLoading(false);
+      return;
+    }
+
     let active = true;
+    setLoading(true);
     loadRecoveryRoi()
       .then((data) => { if (active) setRoi(data); })
       .catch((error) => console.error('[MedicsPro] recovery ROI:', error))
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [allowed]);
 
-  if (!loading && !roi) return null;
+  if (!allowed || (!loading && !roi)) return null;
 
   return <Card className="border-mint/25">
     <CardHead
