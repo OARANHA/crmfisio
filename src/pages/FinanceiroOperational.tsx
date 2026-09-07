@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
@@ -35,7 +36,8 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 };
 
 export function FinanceiroOperational() {
-  const { user, access, toast } = useApp();
+  const { toast } = useApp();
+  const { user, access } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const {

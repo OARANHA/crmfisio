@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAgenda } from '../lib/agendaContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty } from '../lib/ui';
@@ -18,7 +19,8 @@ import {
 import { persistEemResult } from '../lib/nexus/eemPersistence';
 
 export function NexusEemPanel({ patient }: { patient: Patient }) {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { appointments } = useAgenda();
   const [state, setState] = useState<NexusEemState>(() => createInitialEemState());
   const [history, setHistory] = useState<NexusClinicalResult[]>([]);

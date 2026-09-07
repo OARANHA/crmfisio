@@ -3,13 +3,13 @@ import { ClinicianDashboard } from '../components/dashboards/ClinicianDashboard'
 import { PsychiatryNexusDashboard } from '../components/dashboards/PsychiatryNexusDashboard';
 import { ReceptionDashboard } from '../components/dashboards/ReceptionDashboard';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
 import { isPsychiatristIdentity } from '../lib/professionalIdentity';
-import { useApp } from '../lib/store';
 import { Dashboard } from './Dashboard';
 
 export function DashboardRoleAware() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { identity, loading } = useProfessionalIdentity(user?.id);
   const [nexusAllowed, setNexusAllowed] = useState<boolean | null>(null);
 

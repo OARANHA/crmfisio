@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
@@ -27,7 +28,8 @@ type Props = {
 };
 
 export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Props) {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const [scaleKey, setScaleKey] = useState<NexusSelfAssessmentScaleKey>('phq9');
   const [busy, setBusy] = useState(false);
   const [lastInvite, setLastInvite] = useState<InviteResponse | null>(null);

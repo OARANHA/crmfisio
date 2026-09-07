@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useApp } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import type { ModuleKey } from '../lib/types';
 
 type ModuleAccessGateProps = {
@@ -9,7 +9,7 @@ type ModuleAccessGateProps = {
 };
 
 export function ModuleAccessGate({ module, children }: ModuleAccessGateProps) {
-  const { user, canView } = useApp();
+  const { user, canView } = useCurrentUserAccess();
 
   if (!user) return <Navigate to="/" replace />;
 

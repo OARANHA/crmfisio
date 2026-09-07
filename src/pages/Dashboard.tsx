@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
-import { useApp } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useFinance } from '../lib/financeContext';
@@ -21,7 +21,7 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { transactions } = useFinance();
   const { patients } = usePatients();
   const { appointments } = useAgenda();

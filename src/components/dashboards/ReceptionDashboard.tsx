@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../../lib/agendaContext';
-import { useApp } from '../../lib/store';
+import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { useFinance } from '../../lib/financeContext';
 import { usePatients } from '../../lib/patientContext';
 import { useClinicDirectory } from '../../lib/clinicDirectoryContext';
@@ -24,7 +24,7 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { transactions } = useFinance();
   const { patients } = usePatients();
   const { appointments } = useAgenda();

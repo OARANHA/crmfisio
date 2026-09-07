@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useApp } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { Card, CardHead, Chip } from '../lib/ui';
 import { IconDb, IconLock, IconShield } from './icons';
 
@@ -20,7 +20,7 @@ const formatBytes = (value: number | null) => {
 };
 
 export function StorageAdmin() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const [status, setStatus] = useState<StorageStatus | null>(null);
   const [error, setError] = useState('');
 

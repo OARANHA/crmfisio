@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp } from '../lib/store';
 import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
@@ -61,7 +62,8 @@ const hasDuplicateComponentKeys = (schema: AssessmentTemplateSchema) => {
 };
 
 export function AssessmentTemplatesAdmin() {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
