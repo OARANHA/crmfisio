@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { cancelAppointmentSeries, listAppointmentSeries, type AppointmentSeriesSummary } from '../lib/appointmentRecurrence';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
-import { useApp, patientName, userName } from '../lib/store';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
+import { patientName, userName, useApp } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
 import { Btn, Card, Input } from '../lib/ui';
 
@@ -19,7 +20,8 @@ const DAY_LABEL: Record<number, string> = {
 const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 
 export function AppointmentSeriesManager() {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { appointments, refreshAgenda } = useAgenda();
