@@ -5,8 +5,8 @@ export type MessageStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido
 
 export interface MessageOutboxRow {
   id:string; patientId:string; appointmentId:string|null; waitlistId:string|null; template:MessageTemplate; message:string; status:MessageStatus;
-  createdAt:string; scheduledFor:string; provider:string|null; providerMessageId:string|null; providerEvent:string|null; providerStatus:string|null;
-  attemptCount:number; lastAttemptAt:string|null; sentAt:string|null; deliveredAt:string|null; readAt:string|null; failedAt:string|null; errorMessage:string|null;
+  createdAt:string; scheduledFor:string; provider:string|null; providerMessageId?:string|null; providerEvent?:string|null; providerStatus?:string|null;
+  attemptCount?:number; lastAttemptAt?:string|null; sentAt?:string|null; deliveredAt?:string|null; readAt?:string|null; failedAt?:string|null; errorMessage:string|null;
   replyText:string|null; repliedAt:string|null; responseAction:string|null; needsHuman:boolean; reviewResolution:string|null; reviewNote:string|null; reviewResolvedAt:string|null;
 }
 export interface MessageTemplateRow { id:string; template:MessageTemplate; body:string; active:boolean; }
