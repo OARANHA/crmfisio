@@ -7,6 +7,7 @@ import { STAGE_META, maskCpf, ageFrom, type FunilStage } from '../lib/types';
 import { Card, Btn, Input, Select, Chip, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { ClinicalWorkspace } from '../components/ClinicalWorkspace';
+import { PatientCareCockpit } from '../components/PatientCareCockpit';
 import { PatientOperationalActions } from '../components/PatientOperationalActions';
 import { PatientProfileHeader } from '../components/PatientProfileHeader';
 import { NexusPatientContextHub } from '../components/NexusPatientContextHub';
@@ -115,7 +116,7 @@ function Pep({ id }: { id: string }) {
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <Reveal>
         <Link to="/pacientes" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fog transition-colors hover:text-mint">
           <IconChevronL className="h-4 w-4" /> Pacientes
@@ -123,15 +124,19 @@ function Pep({ id }: { id: string }) {
         <div className="mt-2"><PatientProfileHeader patient={patient} /></div>
       </Reveal>
 
-      <Reveal delay={40}>
+      <Reveal delay={30}>
+        <PatientCareCockpit patient={patient} />
+      </Reveal>
+
+      <Reveal delay={45}>
         <PatientOperationalActions patient={patient} />
       </Reveal>
 
-      <Reveal delay={50}>
+      <Reveal delay={55}>
         <NexusPatientContextHub patient={patient} />
       </Reveal>
 
-      <Reveal delay={60}>
+      <Reveal delay={65}>
         <div id="clinical-workspace" className="scroll-mt-4">
           <ClinicalWorkspace patient={patient} initialSessionId={focusedSessionId} />
         </div>
