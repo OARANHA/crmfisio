@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../../lib/agendaContext';
-import { useApp } from '../../lib/store';
+import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { usePatients } from '../../lib/patientContext';
 import { useClinical } from '../../lib/clinicalContext';
 import { STATUS_META } from '../../lib/types';
@@ -21,7 +21,7 @@ const NEXUS_DOMAINS = [
 ] as const;
 
 export function PsychiatryNexusDashboard() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { evolutions } = useClinical();
