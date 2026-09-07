@@ -24,8 +24,10 @@ export const MODULE_ENTITLEMENT: Partial<Record<ModuleKey, PlatformClinicEntitle
 const db = supabase as any;
 
 export function isCurrentClinicEntitlementAllowed(state: CurrentClinicEntitlementState): boolean {
-  // Existing clinics may still be unseeded. Only an explicitly configured entitlement
-  // becomes an application-level rollout boundary; this keeps rollout backward-compatible.
+  // Common modules preserve backward-compatible rollout semantics when no explicit
+  // entitlement row exists. Nexus is intentionally fail-closed and only opens
+  // after an explicit, currently effective Platform Admin grant.
+  if (state.key === 'nexus.access') return state.configured && state.effective;
   return !state.configured || state.effective;
 }
 
