@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   isCurrentClinicEntitlementAllowed,
@@ -16,6 +16,8 @@ const LABELS: Record<PlatformClinicEntitlementKey, string> = {
   'whatsapp.access': 'Mensagens / WhatsApp',
 };
 
+const REVALIDATION_INTERVAL_MS = 60_000;
+
 export function ClinicEntitlementGate({
   entitlement,
   children,
@@ -26,21 +28,56 @@ export function ClinicEntitlementGate({
   const [state, setState] = useState<CurrentClinicEntitlementState | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    setState(null);
+  const validate = useCallback(async (failClosedWhileChecking = false) => {
+    if (failClosedWhileChecking) setState(null);
     setError(false);
 
-    void loadCurrentClinicEntitlementState(entitlement)
-      .then((next) => {
-        if (active) setState(next);
-      })
-      .catch((cause) => {
-        console.error('[Entitlement] route gate:', entitlement, cause);
-        if (active) setError(true);
-      });
+    try {
+      const next = await loadCurrentClinicEntitlementState(entitlement);
+      setState(next);
+    } catch (cause) {
+      console.error('[Entitlement] route gate:', entitlement, cause);
+      setState(null);
+      setError(true);
+    }
+  }, [entitlement]);
 
-    return () => { active = false; };
+  useEffect(() => {
+    let active = true;
+
+    const runValidation = async (failClosedWhileChecking = false) => {
+      if (failClosedWhileChecking) setState(null);
+      setError(false);
+
+      try {
+        const next = await loadCurrentClinicEntitlementState(entitlement);
+        if (active) setState(next);
+      } catch (cause) {
+        console.error('[Entitlement] route gate:', entitlement, cause);
+        if (active) {
+          setState(null);
+          setError(true);
+        }
+      }
+    };
+
+    void runValidation(true);
+
+    const handleFocus = () => { void runValidation(true); };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void runValidation(true);
+    };
+    const intervalId = window.setInterval(() => { void runValidation(false); }, REVALIDATION_INTERVAL_MS);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [entitlement]);
 
   if (!state && !error) {
