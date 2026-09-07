@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
 import { usePackages } from '../lib/packageContext';
 import { buildChurnRiskList } from '../lib/churnRisk';
@@ -13,7 +14,8 @@ const LEVEL_META = {
 } as const;
 
 export function TreatmentContinuityWatch() {
-  const { patients, appointments, transactions } = useApp();
+  const { patients, transactions } = useApp();
+  const { appointments } = useAgenda();
   const { patientPackages } = usePackages();
 
   const risks = useMemo(
