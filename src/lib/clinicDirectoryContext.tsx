@@ -14,6 +14,10 @@ const mapProfile = (row: ProfileRow): User => ({
   registro: row.registro ?? '',
   cor: row.cor ?? '#cbd5e1',
   ativo: row.ativo,
+  professionalType: (row as ProfileRow & { professional_type?: string | null }).professional_type ?? null,
+  councilType: (row as ProfileRow & { council_type?: string | null }).council_type ?? null,
+  councilState: (row as ProfileRow & { council_state?: string | null }).council_state ?? null,
+  especialidade: (row as ProfileRow & { especialidade?: string | null }).especialidade ?? null,
 });
 
 interface ClinicDirectoryState {
