@@ -9,8 +9,9 @@ import {
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp, patientName, userName } from '../lib/store';
+import { patientName, userName } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
+import { useToast } from '../lib/toastContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Card, Field, Select, Input } from '../lib/ui';
 import { WaitlistEntryCard, entryMatchesSlot } from './waitlist/WaitlistEntryCard';
@@ -21,7 +22,7 @@ const dayLabels = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { val
 
 export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();

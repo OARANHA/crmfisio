@@ -8,7 +8,8 @@ import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp, patientName } from '../lib/store';
+import { patientName } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
@@ -40,7 +41,7 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 };
 
 export function AgendaReal() {
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { user } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();

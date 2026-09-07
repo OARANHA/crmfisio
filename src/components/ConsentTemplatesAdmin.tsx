@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { resolveClinicId } from '../lib/repository';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input, Textarea } from '../lib/ui';
 
 type ConsentTemplate = {
@@ -29,7 +29,7 @@ const nextVersion = (current: string) => {
 
 export function ConsentTemplatesAdmin() {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const [clinicId, setClinicId] = useState('');
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
   const [usage, setUsage] = useState<Record<string, number>>({});

@@ -4,7 +4,7 @@ import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
 import { useClinical } from '../lib/clinicalContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
 import { Btn, Chip, Select } from '../lib/ui';
 
@@ -29,7 +29,7 @@ type ConsentRow = {
 
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { refreshClinical } = useClinical();
   const nav = useNavigate();
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);

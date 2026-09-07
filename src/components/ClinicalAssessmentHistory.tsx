@@ -4,7 +4,8 @@ import { ptBR } from 'date-fns/locale';
 import type { Patient } from '../lib/types';
 import { Card, CardHead, Chip, Empty } from '../lib/ui';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp, userName } from '../lib/store';
+import { userName } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { isClinicManager } from '../lib/permissions';
 import {
@@ -16,7 +17,7 @@ import {
 
 export function ClinicalAssessmentHistory({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { users } = useClinicDirectory();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);

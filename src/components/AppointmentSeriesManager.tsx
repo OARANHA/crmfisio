@@ -3,8 +3,9 @@ import { cancelAppointmentSeries, listAppointmentSeries, type AppointmentSeriesS
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { patientName, userName, useApp } from '../lib/store';
+import { patientName, userName } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
+import { useToast } from '../lib/toastContext';
 import { Btn, Card, Input } from '../lib/ui';
 
 const DAY_LABEL: Record<number, string> = {
@@ -21,7 +22,7 @@ const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDate
 
 export function AppointmentSeriesManager() {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { appointments, refreshAgenda } = useAgenda();

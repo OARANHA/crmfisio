@@ -1,10 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { Patient, User } from './types';
 import { useLgpdActions } from './lgpdActions';
-import { useToast, type Toast } from './toastContext';
 
 interface AppState {
-  toast: (msg: string, kind?: Toast['kind']) => void;
   exportarTitular: (pacienteId: string) => Promise<Record<string, unknown>>;
   anonimizarPaciente: (pacienteId: string) => Promise<void>;
 }
@@ -19,16 +17,11 @@ const Ctx = createContext<AppState | null>(null);
  */
 export function AppProvider({ children }: { children: ReactNode }) {
   const lgpd = useLgpdActions();
-  const { toast: pushToast } = useToast();
 
   const value = useMemo<AppState>(() => ({
-    toast: pushToast,
     exportarTitular: lgpd.exportSubjectData,
     anonimizarPaciente: lgpd.anonymizePatient,
-  }), [
-    pushToast,
-    lgpd.exportSubjectData, lgpd.anonymizePatient,
-  ]);
+  }), [lgpd.exportSubjectData, lgpd.anonymizePatient]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
