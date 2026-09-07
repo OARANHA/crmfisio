@@ -9,7 +9,7 @@ import { buildReactivationSelection } from '../components/messages/reactivationE
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { Btn, Chip } from '../lib/ui';
@@ -25,7 +25,7 @@ function appointmentDateTime(data: string, inicio: string) {
 
 export function Mensagens() {
   const { user, access } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const canSend = access('mensagens') === 'full';
