@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ClinicianDashboard } from '../components/dashboards/ClinicianDashboard';
 import { PsychiatryNexusDashboard } from '../components/dashboards/PsychiatryNexusDashboard';
 import { ReceptionDashboard } from '../components/dashboards/ReceptionDashboard';
+import { usePhysiotherapyAuthorship } from '../hooks/usePhysiotherapyAuthorship';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
@@ -11,6 +12,7 @@ import { Dashboard } from './Dashboard';
 export function DashboardRoleAware() {
   const { user } = useCurrentUserAccess();
   const { identity, loading } = useProfessionalIdentity(user?.id);
+  const { canAuthorPhysiotherapy, loading: authorshipLoading } = usePhysiotherapyAuthorship(user?.id);
   const [nexusAllowed, setNexusAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -39,6 +41,8 @@ export function DashboardRoleAware() {
     if (!loading && nexusAllowed === true && isPsychiatristIdentity(identity)) return <PsychiatryNexusDashboard />;
     return <ClinicianDashboard />;
   }
+
+  if (!authorshipLoading && canAuthorPhysiotherapy) return <ClinicianDashboard />;
 
   return <Dashboard />;
 }
