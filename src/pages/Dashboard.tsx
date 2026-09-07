@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
+import { useFinance } from '../lib/financeContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
@@ -20,7 +21,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 import { DashboardMetricGrid, DashboardQuickActions } from '../components/dashboards/DashboardMetricGrid';
 
 export function Dashboard() {
-  const { user, transactions } = useApp();
+  const { user } = useApp();
+  const { transactions } = useFinance();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
