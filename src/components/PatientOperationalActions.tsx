@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
 import { useClinical } from '../lib/clinicalContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
 import { Btn, Chip, Select } from '../lib/ui';
@@ -27,7 +28,8 @@ type ConsentRow = {
 };
 
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { refreshClinical } = useClinical();
   const nav = useNavigate();
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
