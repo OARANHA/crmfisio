@@ -41,7 +41,7 @@ export interface Database {
           clinic_id: string
           email: string
           nome: string
-          role: 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro'
+          role: 'owner' | 'admin' | 'professional' | 'recep' | 'financeiro'
           registro: string | null
           cor: string | null
           ativo: boolean
@@ -53,7 +53,7 @@ export interface Database {
           clinic_id: string
           email: string
           nome: string
-          role?: 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro'
+          role?: 'owner' | 'admin' | 'professional' | 'recep' | 'financeiro'
           registro?: string | null
           cor?: string | null
           ativo?: boolean
@@ -65,7 +65,7 @@ export interface Database {
           clinic_id?: string
           email?: string
           nome?: string
-          role?: 'owner' | 'admin' | 'fisio' | 'recep' | 'financeiro'
+          role?: 'owner' | 'admin' | 'professional' | 'recep' | 'financeiro'
           registro?: string | null
           cor?: string | null
           ativo?: boolean
