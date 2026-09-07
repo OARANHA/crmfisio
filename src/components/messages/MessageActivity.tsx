@@ -72,6 +72,7 @@ export function MessageActivity({ logs, patients }: { logs: MessageOutboxRow[]; 
           const meta = STATUS_META[log.status];
           const response = responseMeta(log);
           const providerMeta = providerOperationalMeta(log);
+          const attemptCount = log.attemptCount ?? 0;
           return (
             <li key={log.id} className="px-5 py-3.5 flex items-start gap-3.5 hover:bg-raise/40 transition-colors">
               <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${log.status === 'enviando' ? 'dot-live' : ''}`} style={{ background: providerMeta?.label === 'resultado incerto' ? '#f2b441' : meta.dot }} />
@@ -86,7 +87,7 @@ export function MessageActivity({ logs, patients }: { logs: MessageOutboxRow[]; 
                   <div className={`mt-2 border px-3 py-2 ${providerMeta.label === 'resultado incerto' ? 'border-amber/30 bg-amber/[0.04]' : 'border-line bg-raise/25'}`}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Chip className={providerMeta.chip}>{providerMeta.label}</Chip>
-                      {log.attemptCount > 0 && <span className="font-mono text-[9.5px] text-fog">tentativa {log.attemptCount}</span>}
+                      {attemptCount > 0 && <span className="font-mono text-[9.5px] text-fog">tentativa {attemptCount}</span>}
                       {log.providerEvent && <span className="font-mono text-[9.5px] text-fog">evento: {log.providerEvent}</span>}
                     </div>
                     <p className="mt-1.5 text-[11px] leading-relaxed text-fog">{providerMeta.note}</p>
