@@ -11,6 +11,7 @@ import { supabase, type User, type Session } from './supabaseClient';
 import type { Database } from './database.types';
 import type { ModuleKey, Role } from './types';
 import { accessFor, isRole } from './permissions';
+import { normalizeClinicRole } from './roleCompatibility';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 export type TenantAccessState = 'active' | 'suspended' | 'inactive_profile' | 'clinic_unavailable' | 'no_profile' | 'unauthenticated' | 'unknown';
@@ -60,14 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (): Promise<Profile | null> => {
     try {
       const { data, error } = await (supabase as any).rpc('current_active_profile');
       if (error || !data) {
         console.warn('[useAuth] Perfil ativo não encontrado:', error);
         return null;
       }
-      return data as Profile;
+      const raw = data as Profile & { role: unknown };
+      const normalizedRole = normalizeClinicRole(raw.role);
+      if (!normalizedRole) {
+        console.warn('[useAuth] Perfil retornou papel operacional inválido');
+        return null;
+      }
+      return { ...raw, role: normalizedRole } as Profile;
     } catch (e) {
       console.error('[useAuth] Erro ao buscar perfil ativo:', e);
       return null;
