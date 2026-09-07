@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp, userName } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
 import { useAudit } from '../lib/auditContext';
@@ -39,7 +40,8 @@ const LGPD_PILLARS = [
 ];
 
 export function Config() {
-  const { access, exportarTitular, anonimizarPaciente, toast } = useApp();
+  const { access } = useCurrentUserAccess();
+  const { exportarTitular, anonimizarPaciente, toast } = useApp();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { audit } = useAudit();
