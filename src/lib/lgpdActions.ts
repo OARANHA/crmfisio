@@ -16,17 +16,17 @@ import { usePatients } from './patientContext';
 export function useLgpdActions() {
   const { user, profile } = useAuth();
   const agenda = useAgenda();
-  const audit = useAudit();
+  const { refreshAudit } = useAudit();
   const clinical = useClinical();
   const finance = useFinance();
   const packages = usePackages();
-  const patients = usePatients();
+  const { patients, anonymizePatient: anonymizePatientRecord } = usePatients();
 
   const exportSubjectData = useCallback(async (patientId: string): Promise<Record<string, unknown>> => {
     await logPatientDataExport(patientId);
-    await audit.refreshAudit().catch(() => undefined);
+    await refreshAudit().catch(() => undefined);
 
-    const patient = patients.patients.find((item) => item.id === patientId);
+    const patient = patients.find((item) => item.id === patientId);
     return {
       formato: 'LGPD-portabilidade-v1',
       exportadoEm: new Date().toISOString(),
@@ -44,8 +44,8 @@ export function useLgpdActions() {
   }, [
     user?.email,
     profile?.nome,
-    audit.refreshAudit,
-    patients.patients,
+    refreshAudit,
+    patients,
     agenda.appointments,
     clinical.evolutions,
     clinical.consents,
@@ -55,9 +55,9 @@ export function useLgpdActions() {
   ]);
 
   const anonymizePatient = useCallback(async (patientId: string) => {
-    await patients.anonymizePatient(patientId);
-    await audit.refreshAudit().catch(() => undefined);
-  }, [patients.anonymizePatient, audit.refreshAudit]);
+    await anonymizePatientRecord(patientId);
+    await refreshAudit().catch(() => undefined);
+  }, [anonymizePatientRecord, refreshAudit]);
 
   return { exportSubjectData, anonymizePatient };
 }
