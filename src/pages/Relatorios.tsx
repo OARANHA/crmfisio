@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
@@ -12,7 +13,8 @@ import { Reveal, CountUp } from '../components/Reveal';
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function Relatorios() {
-  const { access, appointments, transactions, toast } = useApp();
+  const { access, transactions, toast } = useApp();
+  const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const { surveys } = useClinical();
   const { unidadeSel, unidades } = useInfrastructure();
