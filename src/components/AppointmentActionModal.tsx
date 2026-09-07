@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { appointmentActions, appointmentStatusGuidance } from '../lib/appointmentWorkflow';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient, type Role } from '../lib/types';
 import type { AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { Btn, Chip } from '../lib/ui';
 import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
@@ -41,18 +42,19 @@ export function AppointmentActionModal({
   onCancel,
 }: Props) {
   const { user } = useCurrentUserAccess();
-  const canClinicalTransition = Boolean(appointment && role === 'fisio' && user?.id === appointment.fisioId);
+  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
+  const canClinicalTransition = Boolean(appointment && canAttend && user?.id === appointment.fisioId);
   const actions = appointment ? appointmentActions(role, appointment)
     .filter((action) => action.status !== 'cancelado')
     .filter((action) => {
-      if (role !== 'fisio') return true;
+      if (!canAttend) return true;
       if (action.status === 'finalizado') return false;
       if (action.status === 'em_atendimento') return canClinicalTransition;
       return true;
     }) : [];
   const operationalEditable = !!appointment && ['agendado', 'confirmado'].includes(appointment.status);
   const canReschedule = operationalEditable && isOperationalRole(role);
-  const canCancel = operationalEditable && (isOperationalRole(role) || role === 'fisio');
+  const canCancel = operationalEditable && (isOperationalRole(role) || role === 'professional');
   const canContinueClinicalSession = Boolean(appointment && canClinicalTransition && appointment.status === 'em_atendimento');
 
   useEffect(() => {
