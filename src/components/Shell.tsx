@@ -137,14 +137,17 @@ export function Shell() {
   const [entitlementVisibility, setEntitlementVisibility] = useState<ModuleEntitlementVisibility>({});
   const [nexusVisible, setNexusVisible] = useState(false);
   const { theme, toggleTheme } = useColorTheme();
+  const effectiveUserId = effectiveUser?.id;
+  const effectiveUserRole = effectiveUser?.role;
+  const canViewClinical = canView('clinico');
 
-  const { identity } = useProfessionalIdentity(effectiveUser?.id);
-  useEffect(() => { if (effectiveUser) setMobileOpen(false); }, [effectiveUser]);
+  const { identity } = useProfessionalIdentity(effectiveUserId);
+  useEffect(() => { if (effectiveUserId) setMobileOpen(false); }, [effectiveUserId]);
 
   useEffect(() => {
     let active = true;
     setEntitlementVisibility({});
-    if (!effectiveUser) return () => { active = false; };
+    if (!effectiveUserId) return () => { active = false; };
 
     void loadCurrentClinicModuleVisibility()
       .then((visibility) => {
@@ -156,12 +159,12 @@ export function Shell() {
       });
 
     return () => { active = false; };
-  }, [effectiveUser?.id]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     let active = true;
     setNexusVisible(false);
-    if (!effectiveUser || !canView('clinico')) return () => { active = false; };
+    if (!effectiveUserId || !canViewClinical) return () => { active = false; };
 
     void hasProfessionalCapability('nexus.access')
       .then((allowed) => {
@@ -173,7 +176,7 @@ export function Shell() {
       });
 
     return () => { active = false; };
-  }, [effectiveUser?.id, effectiveUser?.role, canView]);
+  }, [effectiveUserId, effectiveUserRole, canViewClinical]);
 
   const handleLogout = async () => {
     await signOut();
