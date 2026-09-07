@@ -3,6 +3,7 @@ import { conflictLabel, findAppointmentConflicts } from '../lib/appointmentConfl
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useApp, patientName, userName } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
 
@@ -30,7 +31,7 @@ interface Props {
 }
 
 export function AppointmentRescheduleModal({ appointment, rooms, unidades, preset, onClose, onConfirm, busy = false }: Props) {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const [key, setKey] = useState('');
