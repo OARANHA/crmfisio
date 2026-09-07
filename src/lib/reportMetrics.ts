@@ -13,6 +13,13 @@ export function calculateAttendanceRate(completed: number, missed: number): numb
   return Math.round((Math.max(0, completed) / denominator) * 100);
 }
 
+export function calculateLowRiskShare(totalInTreatment: number, highRisk: number, mediumRisk: number): number | null {
+  const total = Math.max(0, totalInTreatment);
+  if (total === 0) return null;
+  const exposed = Math.min(total, Math.max(0, highRisk) + Math.max(0, mediumRisk));
+  return Math.round(((total - exposed) / total) * 100);
+}
+
 export function calculateNpsSummary(scores: number[]): NpsSummary {
   const valid = scores.filter((score) => Number.isFinite(score) && score >= 0 && score <= 10);
   if (!valid.length) {
