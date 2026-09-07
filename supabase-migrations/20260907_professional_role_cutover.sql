@@ -8,7 +8,39 @@
 
 begin;
 
--- Convert every remaining legacy operational role without touching identity,
+-- Fail before touching role data if a legacy clinician would lose the valid
+-- identity required by the canonical capability boundary after conversion.
+do $$
+begin
+  if exists (
+    select 1
+    from public.profiles p
+    where p.role::text = 'fisio'
+      and not (
+        case
+          when lower(trim(coalesce(p.professional_type, ''))) in ('fisioterapeuta','fisioterapia','physiotherapist','physical therapist')
+            then lower(trim(coalesce(p.council_type, ''))) = 'crefito'
+             and trim(coalesce(p.council_state, '')) <> ''
+             and trim(coalesce(p.registro, '')) <> ''
+          when lower(trim(coalesce(p.professional_type, ''))) in ('psicologo','psicólogo','psicologa','psicóloga','psychologist')
+            then lower(trim(coalesce(p.council_type, ''))) = 'crp'
+             and trim(coalesce(p.council_state, '')) <> ''
+             and trim(coalesce(p.registro, '')) <> ''
+          when lower(trim(coalesce(p.professional_type, ''))) in ('medico','médico','medica','médica','physician','doctor')
+            then lower(trim(coalesce(p.council_type, ''))) = 'crm'
+             and trim(coalesce(p.council_state, '')) <> ''
+             and trim(coalesce(p.registro, '')) <> ''
+          when lower(trim(coalesce(p.professional_type, ''))) in ('quiropraxista','quiropraxia','chiropractor','chiropractic')
+            then true
+          else false
+        end
+      )
+  ) then
+    raise exception 'legacy_professional_identity_incomplete';
+  end if;
+end $$;
+
+-- Convert every remaining legacy operational role without changing identity,
 -- capabilities, clinic ownership or care relationships.
 do $$
 declare
@@ -62,15 +94,71 @@ alter table public.profiles
   add constraint profiles_role_check
   check (role::text in ('owner', 'admin', 'professional', 'recep', 'financeiro'));
 
--- The capability fallback is now canonical. Explicit grants/revocations still
--- take precedence and owner/admin clinicians continue to work through explicit
--- capability rows while retaining owner/admin as their operational role.
+-- Remove the legacy role bypass from identity validation. Operational role never
+-- proves clinical identity after final cutover.
+create or replace function public.current_user_has_valid_clinical_identity()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_clinic uuid := public.current_clinic_id();
+  v_profession text;
+  v_council text;
+  v_state text;
+  v_registration text;
+begin
+  if v_uid is null or v_clinic is null then
+    return false;
+  end if;
+
+  select
+    lower(trim(coalesce(p.professional_type, ''))),
+    lower(trim(coalesce(p.council_type, ''))),
+    trim(coalesce(p.council_state, '')),
+    trim(coalesce(p.registro, ''))
+  into v_profession, v_council, v_state, v_registration
+  from public.profiles p
+  join public.clinics c on c.id = p.clinic_id
+  where p.id = v_uid
+    and p.clinic_id = v_clinic
+    and p.ativo is true
+    and c.deleted_at is null
+    and coalesce(c.lifecycle_status, 'active') = 'active'
+  limit 1;
+
+  if not found or v_profession = '' then
+    return false;
+  end if;
+
+  if v_profession in ('fisioterapeuta','fisioterapia','physiotherapist','physical therapist') then
+    return v_council = 'crefito' and v_state <> '' and v_registration <> '';
+  end if;
+  if v_profession in ('psicologo','psicólogo','psicologa','psicóloga','psychologist') then
+    return v_council = 'crp' and v_state <> '' and v_registration <> '';
+  end if;
+  if v_profession in ('medico','médico','medica','médica','physician','doctor') then
+    return v_council = 'crm' and v_state <> '' and v_registration <> '';
+  end if;
+
+  return v_profession in ('quiropraxista','quiropraxia','chiropractor','chiropractic');
+end;
+$$;
+
+revoke all on function public.current_user_has_valid_clinical_identity() from public, anon;
+grant execute on function public.current_user_has_valid_clinical_identity() to authenticated, service_role;
+
+-- Capability authorization remains identity + capability. Explicit grants or
+-- revocations decide the fine-grained permission once identity is valid.
 create or replace function public.current_user_has_clinical_capability(p_capability_key text)
 returns boolean
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_profile public.profiles%rowtype;
@@ -82,24 +170,30 @@ begin
     and p.ativo = true
   limit 1;
 
-  if v_profile.id is null then
+  if v_profile.id is null or coalesce(p_capability_key, '') = '' then
+    return false;
+  end if;
+
+  if not public.current_user_has_valid_clinical_identity() then
     return false;
   end if;
 
   select pc.granted
     into v_explicit
   from public.professional_capabilities pc
+  join public.capability_catalog cc on cc.capability_key = pc.capability_key
   where pc.clinic_id = v_profile.clinic_id
     and pc.professional_id = v_profile.id
     and pc.capability_key = p_capability_key
+    and cc.active is true
+    and cc.clinical is true
   limit 1;
 
   if found then
     return coalesce(v_explicit, false);
   end if;
 
-  if v_profile.role::text = 'professional'
-     and coalesce(v_profile.professional_type, '') <> '' then
+  if v_profile.role::text = 'professional' then
     return p_capability_key = any(array[
       'clinical.attend',
       'clinical.timeline.read',
@@ -124,13 +218,113 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
   select public.current_user_has_clinical_capability('clinical.attend');
 $$;
 
 revoke all on function public.current_user_can_author_physiotherapy() from public;
 grant execute on function public.current_user_can_author_physiotherapy() to authenticated, service_role;
+
+-- Final appointment boundary knows only the canonical professional role.
+create or replace function public.guard_appointment_clinical_self_transition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_role text := public.current_app_role();
+  v_is_clinical_transition boolean;
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+  if v_role is null then
+    return new;
+  end if;
+
+  v_is_clinical_transition :=
+    new.status = 'em_atendimento'
+    or (old.status = 'em_atendimento' and new.status = 'finalizado');
+
+  if v_is_clinical_transition then
+    if not public.current_user_has_clinical_capability('clinical.attend') then
+      raise exception 'clinical_professional_capability_required' using errcode = '42501';
+    end if;
+    if auth.uid() is null
+       or old.fisio_id is distinct from auth.uid()
+       or new.fisio_id is distinct from auth.uid() then
+      raise exception 'appointment_clinical_self_transition_required' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+
+  if v_role = 'professional'
+     and (
+       auth.uid() is null
+       or old.fisio_id is distinct from auth.uid()
+       or new.fisio_id is distinct from auth.uid()
+     ) then
+    raise exception 'appointment_professional_self_transition_required' using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_appointment_clinical_self_transition() from public, anon, authenticated;
+
+create or replace function public.guard_appointment_status_transition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  app_role text;
+  allowed boolean := false;
+  v_clinical boolean;
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  app_role := public.current_app_role();
+  if app_role is null then
+    return new;
+  end if;
+
+  v_clinical := new.status = 'em_atendimento'
+    or (old.status = 'em_atendimento' and new.status = 'finalizado');
+
+  if v_clinical then
+    allowed := public.current_user_has_clinical_capability('clinical.attend')
+      and auth.uid() is not null
+      and old.fisio_id = auth.uid()
+      and new.fisio_id = auth.uid();
+  elsif app_role in ('owner', 'admin') then
+    allowed := true;
+  elsif app_role = 'recep' then
+    allowed :=
+      (old.status = 'agendado' and new.status in ('confirmado', 'faltou', 'cancelado'))
+      or (old.status = 'confirmado' and new.status in ('faltou', 'cancelado'));
+  elsif app_role = 'professional' then
+    allowed :=
+      (old.status = 'agendado' and new.status in ('confirmado', 'faltou', 'cancelado'))
+      or (old.status = 'confirmado' and new.status in ('faltou', 'cancelado'));
+  end if;
+
+  if not allowed then
+    raise exception 'Transição de status não permitida para o perfil atual: % -> %', old.status, new.status
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_appointment_status_transition() from public, anon, authenticated;
 
 -- After final cutover the service-role team APIs no longer accept the legacy
 -- role. Owner remains deliberately outside this managed-role flow.
