@@ -55,15 +55,15 @@ FROM src;
 
 \echo '8) legacy clinical write policies use generic capabilities'
 SELECT
-  coalesce((SELECT pg_get_expr(pol.polqual, pol.polrelid) || ' ' || pg_get_expr(pol.polwithcheck, pol.polrelid)
+  coalesce((SELECT coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' || coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), '')
             FROM pg_policy pol JOIN pg_class c ON c.oid = pol.polrelid
             WHERE c.relname = 'physiotherapy_evaluations' AND pol.polname = 'evaluations_insert_author'), '')
     ILIKE '%current_user_has_clinical_capability%' AS evaluations_generic,
-  coalesce((SELECT pg_get_expr(pol.polqual, pol.polrelid) || ' ' || pg_get_expr(pol.polwithcheck, pol.polrelid)
+  coalesce((SELECT coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' || coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), '')
             FROM pg_policy pol JOIN pg_class c ON c.oid = pol.polrelid
             WHERE c.relname = 'physiotherapy_evolutions' AND pol.polname = 'evolutions_insert_author'), '')
     ILIKE '%current_user_has_clinical_capability%' AS evolutions_generic,
-  coalesce((SELECT pg_get_expr(pol.polqual, pol.polrelid) || ' ' || pg_get_expr(pol.polwithcheck, pol.polrelid)
+  coalesce((SELECT coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' || coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), '')
             FROM pg_policy pol JOIN pg_class c ON c.oid = pol.polrelid
             WHERE c.relname = 'clinical_assessments' AND pol.polname = 'clinical_assessments_insert_author'), '')
     ILIKE '%current_user_has_clinical_capability%' AS assessments_generic;
@@ -71,7 +71,7 @@ SELECT
 \echo '9) body-map writes require generic body-map capability'
 SELECT
   bool_and(
-    (pg_get_expr(pol.polqual, pol.polrelid) || ' ' || pg_get_expr(pol.polwithcheck, pol.polrelid))
+    (coalesce(pg_get_expr(pol.polqual, pol.polrelid), '') || ' ' || coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), ''))
       ILIKE '%clinical.body_map%'
   ) AS body_map_capability_required
 FROM pg_policy pol
