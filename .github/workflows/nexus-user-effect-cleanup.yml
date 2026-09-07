@@ -1,0 +1,61 @@
+name: Temporary Nexus user effect cleanup
+
+on:
+  push:
+    branches:
+      - chore/p1-stabilize-nexus-user-effects
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chore/p1-stabilize-nexus-user-effects
+      - name: Stabilize Nexus user effect dependencies
+        shell: python
+        run: |
+          from pathlib import Path
+
+          edits = {
+            'src/components/NexusSelfAssessmentInviteAction.tsx': [
+              ("  const { user } = useCurrentUserAccess();\n  const { toast } = useToast();", "  const { user } = useCurrentUserAccess();\n  const userId = user?.id;\n  const { toast } = useToast();"),
+              ("    if (!user) {", "    if (!userId) {"),
+              ("  }, [user?.id]);", "  }, [userId]);"),
+            ],
+            'src/pages/NexusGlobalPage.tsx': [
+              ("  const { user } = useCurrentUserAccess();\n  const { identity } = useProfessionalIdentity(user?.id);", "  const { user } = useCurrentUserAccess();\n  const userId = user?.id;\n  const { identity } = useProfessionalIdentity(userId);"),
+              ("    if (!user) {", "    if (!userId) {"),
+              ("  }, [user?.id]);", "  }, [userId]);"),
+            ],
+            'src/pages/NexusPatientEemPage.tsx': [
+              ("  const { user } = useCurrentUserAccess();\n  const { patients } = usePatients();", "  const { user } = useCurrentUserAccess();\n  const userId = user?.id;\n  const { patients } = usePatients();"),
+              ("    if (!user) {", "    if (!userId) {"),
+              ("  }, [user?.id]);", "  }, [userId]);"),
+            ],
+            'src/pages/NexusPatientEvolutionPage.tsx': [
+              ("  const { user } = useCurrentUserAccess();\n  const { patients } = usePatients();", "  const { user } = useCurrentUserAccess();\n  const userId = user?.id;\n  const { patients } = usePatients();"),
+              ("    if (!user) {", "    if (!userId) {"),
+              ("  }, [user?.id]);", "  }, [userId]);"),
+            ],
+          }
+
+          for filename, replacements in edits.items():
+            path = Path(filename)
+            text = path.read_text()
+            for old, new in replacements:
+              if old not in text:
+                raise SystemExit(f'Expected text not found in {filename}: {old}')
+              text = text.replace(old, new, 1)
+            path.write_text(text)
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/NexusSelfAssessmentInviteAction.tsx src/pages/NexusGlobalPage.tsx src/pages/NexusPatientEemPage.tsx src/pages/NexusPatientEvolutionPage.tsx
+          git commit -m "chore: stabilize Nexus user effect dependencies"
+          git push origin HEAD:chore/p1-stabilize-nexus-user-effects
