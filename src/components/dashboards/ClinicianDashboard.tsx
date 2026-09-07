@@ -3,7 +3,7 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../../lib/agendaContext';
-import { useApp } from '../../lib/store';
+import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { usePatients } from '../../lib/patientContext';
 import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
@@ -13,7 +13,7 @@ import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 export function ClinicianDashboard() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { evolutions } = useClinical();
