@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { resolveClinicId } from '../lib/repository';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input, Select } from '../lib/ui';
 
 type TeamMember = {
@@ -42,7 +42,7 @@ const memberTypeFrom = (member: TeamMember): MemberType => {
 
 export function TeamAdmin() {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const db = supabase as any;
   const [clinicId, setClinicId] = useState('');
   const [members, setMembers] = useState<TeamMember[]>([]);
