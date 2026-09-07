@@ -12,6 +12,8 @@ import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
+const clinicalSessionPath = (patientId: string, sessionId: string) => `/pacientes/${patientId}?session=${sessionId}#clinical-workspace`;
+
 export function ClinicianDashboard() {
   const { user } = useCurrentUserAccess();
   const { patients } = usePatients();
@@ -35,9 +37,9 @@ export function ClinicianDashboard() {
   const missingEvolution = useMemo(
     () => todayAppointments.filter((appointment) => {
       if (appointment.status !== 'finalizado') return false;
-      return !evolutions.some((evolution) => evolution.fisioId === user?.id && evolution.pacienteId === appointment.pacienteId && evolution.data === today);
+      return !evolutions.some((evolution) => evolution.sessionId === appointment.id);
     }),
-    [todayAppointments, evolutions, user?.id, today],
+    [todayAppointments, evolutions],
   );
 
   const continuityRisks = useMemo(() => {
@@ -97,7 +99,8 @@ export function ClinicianDashboard() {
             {todayAppointments.map((appointment) => {
               const patient = patients.find((item) => item.id === appointment.pacienteId);
               const meta = STATUS_META[appointment.status];
-              return <Link key={appointment.id} to="/agenda" className="grid grid-cols-[62px_1fr_auto] gap-3 items-center px-5 py-3 hover:bg-raise/50 transition-colors">
+              const destination = patient ? clinicalSessionPath(patient.id, appointment.id) : '/agenda';
+              return <Link key={appointment.id} to={destination} className="grid grid-cols-[62px_1fr_auto] gap-3 items-center px-5 py-3 hover:bg-raise/50 transition-colors">
                 <span className="font-mono text-[12px] text-mint">{appointment.inicio.slice(0, 5)}</span>
                 <span className="min-w-0"><span className="block font-display font-semibold text-[13px] truncate">{patient?.nome ?? 'Paciente'}</span><span className="block font-mono text-[10px] text-fog truncate">{appointment.tipo}</span></span>
                 <Chip className={meta.chip}>{meta.label}</Chip>
@@ -114,7 +117,7 @@ export function ClinicianDashboard() {
             {missingEvolution.length === 0 && continuityRisks.length === 0 && <p className="font-mono text-[11px] text-fog text-center py-10">Sem pendências clínicas relevantes. ✓</p>}
             {missingEvolution.slice(0, 3).map((appointment) => {
               const patient = patients.find((item) => item.id === appointment.pacienteId);
-              return <Link key={`evo-${appointment.id}`} to={`/pacientes/${appointment.pacienteId}`} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group"><span>📝</span><span className="text-[12.5px] flex-1">Registrar evolução — {patient?.nome ?? 'Paciente'}</span><IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint" /></Link>;
+              return <Link key={`evo-${appointment.id}`} to={clinicalSessionPath(appointment.pacienteId, appointment.id)} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group"><span>📝</span><span className="text-[12.5px] flex-1">Registrar evolução — {patient?.nome ?? 'Paciente'}</span><IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint" /></Link>;
             })}
             {continuityRisks.slice(0, 3).map((risk) => <Link key={`risk-${risk.patient.id}`} to={`/pacientes/${risk.patient.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-raise/50 transition-colors group"><span>⚠️</span><span className="text-[12.5px] flex-1"><strong className="font-semibold">{risk.patient.nome}</strong><span className="block font-mono text-[10px] text-fog">{risk.days} dias sem sessão{risk.remaining !== null ? ` · ${risk.remaining} restante(s)${risk.packageName ? ` em ${risk.packageName}` : ''}` : ''}</span></span><IconChevronR className="w-3.5 h-3.5 text-fog group-hover:text-mint" /></Link>)}
           </div>

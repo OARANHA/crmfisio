@@ -45,7 +45,7 @@ export type TxTipo = 'receber' | 'pagar';
 export type TxStatus = 'pendente' | 'pago' | 'atrasado';
 export interface FinancialTransaction { id: string; tipo: TxTipo; descricao: string; categoria: string; valor: number; vencimento: string; status: TxStatus; pacienteId: string | null; metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null; paidAt: string | null }
 export interface Commission { id: string; fisioId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
-export interface Evolution { id: string; pacienteId: string; fisioId: string; data: string; texto: string; anexos: string[] }
+export interface Evolution { id: string; pacienteId: string; fisioId: string; sessionId?: string | null; data: string; texto: string; anexos: string[] }
 export interface ConsentTerm { id: string; pacienteId: string; nome: string; versao: string; assinado: boolean; dataAssinatura: string | null; hash: string | null; assinaturaUrl?: string | null; ip?: string | null }
 export interface NpsSurvey { id: string; pacienteId: string; nota: number | null; comentario: string; data: string }
 export type WaStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';

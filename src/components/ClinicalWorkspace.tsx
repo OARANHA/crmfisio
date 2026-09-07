@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
@@ -76,11 +76,11 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
   };
 };
 
-export function ClinicalWorkspace({ patient }: { patient: Patient }) {
+export function ClinicalWorkspace({ patient, initialSessionId = null }: { patient: Patient; initialSessionId?: string | null }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { users } = useClinicDirectory();
-  const { consents, signConsent } = useClinical();
+  const { consents, signConsent, refreshClinical } = useClinical();
   const { appointments, refreshAgenda } = useAgenda();
   const { refreshFinance } = useFinance();
   const { refreshPackages } = usePackages();
@@ -94,6 +94,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
   const [evaluationDraft, setEvaluationDraft] = useState(emptyEvaluation());
   const [evolutionText, setEvolutionText] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const focusedSessionRef = useRef<string | null>(null);
 
   const clinicalWrite = user?.role === 'fisio';
   const clinicalRead = user?.role === 'fisio' || isClinicManager(user?.role);
@@ -111,6 +112,19 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
     () => consents.filter((c) => c.pacienteId === patient.id),
     [consents, patient.id],
   );
+
+  useEffect(() => {
+    if (!initialSessionId || focusedSessionRef.current === initialSessionId) return;
+    const session = sessions.find((item) => item.id === initialSessionId);
+    if (!session) return;
+    focusedSessionRef.current = initialSessionId;
+    if (canTransitionClinicalAppointment(user?.role, user?.id, session.fisioId) && session.status === 'em_atendimento') {
+      setSessionId(session.id);
+      setTab('evolucoes');
+      return;
+    }
+    setTab('sessoes');
+  }, [initialSessionId, sessions, user?.id, user?.role]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +195,7 @@ export function ClinicalWorkspace({ patient }: { patient: Patient }) {
     if (error || !data) { console.error('[MedicsPro] registrar evolução:', error); toast('Não foi possível registrar a evolução.', 'warn'); return; }
     setEvolutions((prev) => [{ id: data.id, patientId: data.patient_id, professionalId: data.professional_id, sessionId: data.session_id, texto: data.texto, crefito: data.crefito ?? '', createdAt: data.created_at }, ...prev]);
     setEvolutionText('');
+    void refreshClinical().catch((refreshError) => console.error('[MedicsPro] atualizar contexto clínico após evolução:', refreshError));
     toast('Evolução vinculada à sessão.');
   };
 
