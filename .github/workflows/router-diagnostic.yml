@@ -1,0 +1,19 @@
+name: Temporary router diagnostic
+
+on:
+  push:
+    branches:
+      - chore/p1-react-router7-diagnostic
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: List react-router-dom imports
+        shell: bash
+        run: |
+          echo '--- imports ---'
+          grep -RIn --exclude-dir=node_modules --exclude-dir=.git -E "from ['\"]react-router-dom['\"]|require\(['\"]react-router-dom['\"]\)" src || true
+          echo '--- router APIs ---'
+          grep -Roh --exclude-dir=node_modules --exclude-dir=.git -E "(HashRouter|BrowserRouter|Routes|Route|Navigate|Link|NavLink|Outlet|useNavigate|useLocation|useParams|useSearchParams|useRoutes|createBrowserRouter|RouterProvider|redirect|matchPath|generatePath)" src | sort | uniq -c | sort -nr || true
