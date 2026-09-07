@@ -27,9 +27,27 @@ type TeamPayload = {
   cor?: string;
   ativo?: boolean;
   unit_ids?: string[];
+  capability_keys?: string[];
 };
 
 const allowedManagedRoles = new Set(['admin', 'fisio', 'recep', 'financeiro']);
+const managedClinicalCapabilities = [
+  'clinical.attend',
+  'clinical.timeline.read',
+  'clinical.evolution.write',
+  'clinical.assessment.apply',
+  'clinical.body_map',
+  'clinical.documents',
+] as const;
+const managedClinicalCapabilitySet = new Set<string>(managedClinicalCapabilities);
+
+const normalizeCapabilityKeys = (value: unknown): string[] => {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || !managedClinicalCapabilitySet.has(item))) {
+    throw new Error('Permissões clínicas inválidas');
+  }
+  return [...new Set(value)];
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -56,24 +74,15 @@ Deno.serve(async (req) => {
     .eq('id', authData.user.id)
     .single();
 
-  if (callerError || !caller?.ativo) {
-    return json({ error: 'Usuário sem perfil ativo' }, 403);
-  }
+  if (callerError || !caller?.ativo) return json({ error: 'Usuário sem perfil ativo' }, 403);
 
-  // Service-role clients bypass tenant RLS, so this Edge Function must enforce
-  // clinic lifecycle explicitly before any user-management or password mutation.
   const { data: callerClinic, error: callerClinicError } = await admin
     .from('clinics')
     .select('id,lifecycle_status,deleted_at')
     .eq('id', caller.clinic_id)
     .single();
 
-  if (
-    callerClinicError
-    || !callerClinic
-    || callerClinic.deleted_at
-    || callerClinic.lifecycle_status !== 'active'
-  ) {
+  if (callerClinicError || !callerClinic || callerClinic.deleted_at || callerClinic.lifecycle_status !== 'active') {
     return json({ error: 'Clínica suspensa ou indisponível', code: 'clinic_not_active' }, 403);
   }
 
@@ -84,21 +93,28 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON inválido' }, 400);
   }
 
-  // While a temporary password is pending, this service-role Edge Function must
-  // expose only the minimal self-service password-change operation. All normal
-  // team/domain actions stay fail-closed even though the caller is authenticated.
   if (caller.must_change_password && payload.action !== 'change_own_password') {
     return json({ error: 'Troca de senha obrigatória antes de continuar', code: 'password_change_required' }, 403);
   }
 
+  const syncClinicalCapabilities = async (profileId: string, requested: unknown) => {
+    if (requested === undefined) return;
+    const selected = normalizeCapabilityKeys(requested);
+    const rows = managedClinicalCapabilities.map((capabilityKey) => ({
+      clinic_id: caller.clinic_id,
+      professional_id: profileId,
+      capability_key: capabilityKey,
+      granted: selected.includes(capabilityKey),
+    }));
+    const { error } = await admin
+      .from('professional_capabilities')
+      .upsert(rows, { onConflict: 'clinic_id,professional_id,capability_key' });
+    if (error) throw error;
+  };
+
   try {
-    // Self-service path used by the mandatory first-login password flow.
-    // It deliberately runs before the owner/admin management gate, but can only
-    // mutate the authenticated caller's own Auth account and profile flag.
     if (payload.action === 'change_own_password') {
-      if (!payload.password || payload.password.length < 8) {
-        return json({ error: 'A nova senha deve ter ao menos 8 caracteres' }, 400);
-      }
+      if (!payload.password || payload.password.length < 8) return json({ error: 'A nova senha deve ter ao menos 8 caracteres' }, 400);
 
       const currentMetadata = authData.user.user_metadata ?? {};
       const { error: passwordError } = await admin.auth.admin.updateUserById(caller.id, {
@@ -113,13 +129,12 @@ Deno.serve(async (req) => {
         .eq('id', caller.id)
         .eq('clinic_id', caller.clinic_id);
       if (profileError) throw profileError;
-
       return json({ id: caller.id, password_changed: true, must_change_password: false });
     }
 
-    if (!['owner', 'admin'].includes(caller.role)) {
-      return json({ error: 'Apenas administradores podem gerenciar a equipe' }, 403);
-    }
+    if (!['owner', 'admin'].includes(caller.role)) return json({ error: 'Apenas administradores podem gerenciar a equipe' }, 403);
+
+    if (payload.capability_keys !== undefined) normalizeCapabilityKeys(payload.capability_keys);
 
     if (payload.action === 'create') {
       if (!payload.email || !payload.password || !payload.nome || !payload.role) {
@@ -160,14 +175,18 @@ Deno.serve(async (req) => {
       if (profileError) {
         const { error: compensationError } = await admin.auth.admin.deleteUser(created.user.id);
         if (compensationError) {
-          console.error('[admin-team] create compensation failed', {
-            userId: created.user.id,
-            profileError,
-            compensationError,
-          });
+          console.error('[admin-team] create compensation failed', { userId: created.user.id, profileError, compensationError });
           throw new Error('Falha ao criar perfil e ao compensar usuário de autenticação; intervenção administrativa necessária.');
         }
         throw profileError;
+      }
+
+      try {
+        await syncClinicalCapabilities(created.user.id, payload.capability_keys);
+      } catch (capabilityError) {
+        await admin.from('profiles').delete().eq('id', created.user.id).eq('clinic_id', caller.clinic_id);
+        await admin.auth.admin.deleteUser(created.user.id);
+        throw capabilityError;
       }
 
       return json({ id: created.user.id, email, created: true });
@@ -182,12 +201,8 @@ Deno.serve(async (req) => {
       .eq('clinic_id', caller.clinic_id)
       .single();
     if (targetError || !target) return json({ error: 'Usuário não pertence à clínica' }, 404);
-    if (target.role === 'owner' && target.id !== caller.id) {
-      return json({ error: 'O proprietário não pode ser alterado por outro usuário' }, 403);
-    }
-    if (target.id === caller.id && payload.action === 'set_active' && payload.ativo === false) {
-      return json({ error: 'Você não pode desativar o próprio usuário' }, 400);
-    }
+    if (target.role === 'owner' && target.id !== caller.id) return json({ error: 'O proprietário não pode ser alterado por outro usuário' }, 403);
+    if (target.id === caller.id && payload.action === 'set_active' && payload.ativo === false) return json({ error: 'Você não pode desativar o próprio usuário' }, 400);
 
     if (payload.action === 'update') {
       if (payload.unit_ids && !Array.isArray(payload.unit_ids)) return json({ error: 'Unidades inválidas' }, 400);
@@ -210,6 +225,7 @@ Deno.serve(async (req) => {
           const { error } = await admin.from('profiles').update(updates).eq('id', target.id).eq('clinic_id', caller.clinic_id);
           if (error) throw error;
         }
+        await syncClinicalCapabilities(target.id, payload.capability_keys);
         return json({ id: target.id, updated: true });
       }
 
@@ -233,6 +249,7 @@ Deno.serve(async (req) => {
         p_unit_ids: payload.unit_ids ?? null,
       });
       if (error) throw error;
+      await syncClinicalCapabilities(target.id, payload.capability_keys);
       return json({ id: target.id, updated: true });
     }
 
@@ -244,10 +261,7 @@ Deno.serve(async (req) => {
 
     if (payload.action === 'reset_password') {
       if (!payload.password || payload.password.length < 8) return json({ error: 'A nova senha deve ter ao menos 8 caracteres' }, 400);
-      const { error } = await admin.auth.admin.updateUserById(target.id, {
-        password: payload.password,
-        user_metadata: { must_change_password: true },
-      });
+      const { error } = await admin.auth.admin.updateUserById(target.id, { password: payload.password, user_metadata: { must_change_password: true } });
       if (error) throw error;
       const { error: profileError } = await admin.from('profiles').update({ must_change_password: true }).eq('id', target.id).eq('clinic_id', caller.clinic_id);
       if (profileError) throw profileError;
