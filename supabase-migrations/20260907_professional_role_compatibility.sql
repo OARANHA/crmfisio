@@ -4,7 +4,7 @@
 -- Safety contract:
 --   * existing `fisio` rows remain untouched in this phase;
 --   * both legacy and canonical values are accepted temporarily;
---   * clinical authorization remains capability + identity based;
+--   * clinical authorization remains capability + valid identity based;
 --   * owner/admin clinicians keep their operational role;
 --   * platform_admin is never accepted in profiles.role.
 
@@ -80,14 +80,14 @@ begin
   end if;
 end $$;
 
--- Generic capability resolver. Explicit grants/revocations always win. The
--- legacy/default clinician bridge accepts both role names during Phase 1.
+-- Generic capability resolver. Identity remains mandatory. Explicit grants or
+-- revocations decide the capability once a valid clinical identity is proven.
 create or replace function public.current_user_has_clinical_capability(p_capability_key text)
 returns boolean
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_profile public.profiles%rowtype;
@@ -99,27 +99,33 @@ begin
     and p.ativo = true
   limit 1;
 
-  if v_profile.id is null then
+  if v_profile.id is null or coalesce(p_capability_key, '') = '' then
+    return false;
+  end if;
+
+  if not public.current_user_has_valid_clinical_identity() then
     return false;
   end if;
 
   select pc.granted
     into v_explicit
   from public.professional_capabilities pc
+  join public.capability_catalog cc on cc.capability_key = pc.capability_key
   where pc.clinic_id = v_profile.clinic_id
     and pc.professional_id = v_profile.id
     and pc.capability_key = p_capability_key
+    and cc.active is true
+    and cc.clinical is true
   limit 1;
 
   if found then
     return coalesce(v_explicit, false);
   end if;
 
-  -- Temporary compatibility default: the old clinical role keeps its existing
-  -- behavior until rows are converted. New canonical professionals receive the
-  -- same default only when they have a recognized clinical identity.
-  if v_profile.role::text in ('fisio', 'professional')
-     and coalesce(v_profile.professional_type, '') <> '' then
+  -- Temporary compatibility default. Legacy fisio identity validation is
+  -- handled by current_user_has_valid_clinical_identity(); canonical
+  -- professionals must already satisfy the real professional credential rules.
+  if v_profile.role::text in ('fisio', 'professional') then
     return p_capability_key = any(array[
       'clinical.attend',
       'clinical.timeline.read',
@@ -144,13 +150,116 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
   select public.current_user_has_clinical_capability('clinical.attend');
 $$;
 
 revoke all on function public.current_user_can_author_physiotherapy() from public;
 grant execute on function public.current_user_can_author_physiotherapy() to authenticated, service_role;
+
+-- Appointment status boundaries must understand both role names during the
+-- compatibility window. Clinical transitions remain capability + self-assignment
+-- based; the generic professional role does not gain broader scheduling powers.
+create or replace function public.guard_appointment_clinical_self_transition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_role text := public.current_app_role();
+  v_is_clinical_transition boolean;
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  if v_role is null then
+    return new;
+  end if;
+
+  v_is_clinical_transition :=
+    new.status = 'em_atendimento'
+    or (old.status = 'em_atendimento' and new.status = 'finalizado');
+
+  if v_is_clinical_transition then
+    if not public.current_user_has_clinical_capability('clinical.attend') then
+      raise exception 'clinical_professional_capability_required' using errcode = '42501';
+    end if;
+    if auth.uid() is null
+       or old.fisio_id is distinct from auth.uid()
+       or new.fisio_id is distinct from auth.uid() then
+      raise exception 'appointment_clinical_self_transition_required' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+
+  if v_role in ('fisio', 'professional')
+     and (
+       auth.uid() is null
+       or old.fisio_id is distinct from auth.uid()
+       or new.fisio_id is distinct from auth.uid()
+     ) then
+    raise exception 'appointment_professional_self_transition_required' using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_appointment_clinical_self_transition() from public, anon, authenticated;
+
+create or replace function public.guard_appointment_status_transition()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  app_role text;
+  allowed boolean := false;
+  v_clinical boolean;
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  app_role := public.current_app_role();
+  if app_role is null then
+    return new;
+  end if;
+
+  v_clinical := new.status = 'em_atendimento'
+    or (old.status = 'em_atendimento' and new.status = 'finalizado');
+
+  if v_clinical then
+    allowed := public.current_user_has_clinical_capability('clinical.attend')
+      and auth.uid() is not null
+      and old.fisio_id = auth.uid()
+      and new.fisio_id = auth.uid();
+  elsif app_role in ('owner', 'admin') then
+    allowed := true;
+  elsif app_role = 'recep' then
+    allowed :=
+      (old.status = 'agendado' and new.status in ('confirmado', 'faltou', 'cancelado'))
+      or (old.status = 'confirmado' and new.status in ('faltou', 'cancelado'));
+  elsif app_role in ('fisio', 'professional') then
+    allowed :=
+      (old.status = 'agendado' and new.status in ('confirmado', 'faltou', 'cancelado'))
+      or (old.status = 'confirmado' and new.status in ('faltou', 'cancelado'));
+  end if;
+
+  if not allowed then
+    raise exception 'Transição de status não permitida para o perfil atual: % -> %', old.status, new.status
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_appointment_status_transition() from public, anon, authenticated;
 
 -- Atomic team RPCs are redefined so the updated admin-team Edge Function can
 -- create/update the canonical role before legacy rows are converted.
