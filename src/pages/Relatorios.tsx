@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp, userName } from '../lib/store';
+import { userName } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useFinance } from '../lib/financeContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
@@ -16,7 +17,7 @@ const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function Relatorios() {
   const { access } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { transactions } = useFinance();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
