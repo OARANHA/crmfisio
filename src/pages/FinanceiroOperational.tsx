@@ -35,13 +35,18 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 };
 
 export function FinanceiroOperational() {
-  const {
-    user, access, transactions, setTxStatus,
-    commissions, setCommissionStatus, fecharRepasse, addTransaction, toast,
-  } = useApp();
+  const { user, access, toast } = useApp();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
-  const { refreshFinance } = useFinance();
+  const {
+    transactions,
+    commissions,
+    refreshFinance,
+    addTransaction,
+    setTransactionStatus,
+    closeCommissions,
+    setCommissionStatus,
+  } = useFinance();
   const { patientPackages, packages, refreshPackages: refreshPackageDomain } = usePackages();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
   const [repasse, setRepasse] = useState(false);
@@ -97,6 +102,28 @@ export function FinanceiroOperational() {
     } catch (error) {
       console.error('[MedicsPro] pagar repasse:', error);
       toast('Não foi possível baixar o repasse.', 'warn');
+    }
+  };
+
+  const saveTransaction = async (transaction: Omit<FinancialTransaction, 'id'>) => {
+    try {
+      await addTransaction(transaction);
+      toast('Lançamento financeiro salvo.');
+      setTransactionModal(null);
+    } catch (error) {
+      console.error('[MedicsPro] Falha ao salvar lançamento financeiro:', error);
+      toast('Falha ao salvar lançamento financeiro. Tente novamente.', 'warn');
+    }
+  };
+
+  const settleTransaction = async (method: PaymentMethod) => {
+    if (!settling) return;
+    try {
+      await setTransactionStatus(settling.id, 'pago', method);
+      setSettling(null);
+    } catch (error) {
+      console.error('[MedicsPro] Falha ao atualizar financeiro:', error);
+      toast('Falha ao atualizar financeiro. Tente novamente.', 'warn');
     }
   };
 
@@ -224,8 +251,8 @@ export function FinanceiroOperational() {
       </Reveal>
 
       {packageModal && <PackageCatalogModal initial={packageModal === 'new' ? null : packageModal} onClose={() => setPackageModal(null)} onSaved={async () => { setPackageModal(null); await refreshPackages(); toast('Catálogo de pacotes atualizado.'); }} />}
-      {transactionModal && <TransactionModal tipo={transactionModal} patients={patients} onClose={() => setTransactionModal(null)} onSave={(transaction) => { addTransaction(transaction); setTransactionModal(null); }} />}
-      {settling && <SettleTransactionModal transaction={settling} onClose={() => setSettling(null)} onConfirm={(method) => { setTxStatus(settling.id, 'pago', method); setSettling(null); }} />}
+      {transactionModal && <TransactionModal tipo={transactionModal} patients={patients} onClose={() => setTransactionModal(null)} onSave={(transaction) => { void saveTransaction(transaction); }} />}
+      {settling && <SettleTransactionModal transaction={settling} onClose={() => setSettling(null)} onConfirm={(method) => { void settleTransaction(method); }} />}
       {sellModal && <SellPackageModal initial={sellModal} catalog={catalog.filter((p) => p.ativo)} patients={patients} onClose={() => setSellModal(null)} onSaved={async () => { const renewed = Boolean(sellModal.renewedFromId); setSellModal(null); await Promise.all([refreshFinance(), refreshPackageDomain(), refreshPackages()]); toast(renewed ? 'Renovação registrada com cobrança vinculada.' : 'Pacote vendido com cobrança vinculada.'); }} />}
       {repasse && <RepasseModal onClose={() => setRepasse(false)} />}
     </div>
@@ -281,7 +308,8 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
 }
 
 function RepasseModal({ onClose }: { onClose: () => void }) {
-  const { commissions, fecharRepasse, toast } = useApp();
+  const { toast } = useApp();
+  const { commissions, closeCommissions } = useFinance();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const fisios = users.filter((u) => u.role === 'fisio');
@@ -289,6 +317,6 @@ function RepasseModal({ onClose }: { onClose: () => void }) {
   const linhas = fisios.map((f) => { const sess = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes)); const base = sess.reduce((s, a) => s + a.valor, 0); const jaFechado = commissions.some((c) => c.fisioId === f.id && c.periodo === mes); return { f, n: sess.length, base, comissao: Math.round(base * 0.4), jaFechado }; });
   const fechaveis = linhas.filter((l) => !l.jaFechado && l.base > 0);
   const total = fechaveis.reduce((s, l) => s + l.comissao, 0);
-  const fechar = async () => { try { const n = await fecharRepasse(mes); toast(n ? `Repasse fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info'); onClose(); } catch (error) { console.error('[MedicsPro] fechar repasse:', error); toast('Não foi possível fechar os repasses.', 'warn'); } };
+  const fechar = async () => { try { const n = await closeCommissions(mes); toast(n ? `Repasse fechado: ${n} comissão(ões) · ${fmtBRL(total)}` : 'Nada novo a fechar neste período', n ? 'ok' : 'info'); onClose(); } catch (error) { console.error('[MedicsPro] fechar repasse:', error); toast('Não foi possível fechar os repasses.', 'warn'); } };
   return <Modal open onClose={onClose} title="Fechar repasse do mês" wide><div className="space-y-4"><Field label="Período"><Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="!w-44" /></Field><div className="border border-line overflow-x-auto"><table className="w-full min-w-[560px] text-[12.5px]"><thead><tr className="bg-deep border-b border-line font-mono text-[10px] uppercase text-fog"><th className="text-left px-3.5 py-2.5">Profissional</th><th className="text-right px-3.5 py-2.5">Sessões</th><th className="text-right px-3.5 py-2.5">Base</th><th className="text-right px-3.5 py-2.5">Comissão</th></tr></thead><tbody>{linhas.map((l) => <tr key={l.f.id} className="border-b border-line/60 last:border-0"><td className="px-3.5 py-2.5 font-semibold">{l.f.nome}</td><td className="px-3.5 py-2.5 text-right font-mono">{l.n}</td><td className="px-3.5 py-2.5 text-right font-mono">{fmtBRL(l.base)}</td><td className="px-3.5 py-2.5 text-right font-mono text-mint">{fmtBRL(l.comissao)}</td></tr>)}</tbody></table></div><div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={fechar} disabled={!fechaveis.length}>Gerar {fechaveis.length} comissão(ões)</Btn></div></div></Modal>;
 }
