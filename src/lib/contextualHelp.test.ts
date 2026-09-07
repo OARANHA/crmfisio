@@ -17,15 +17,14 @@ describe('contextual help', () => {
     const help = resolveHelpContext('/financeiro', 'fisio');
     expect(help?.key).toBe('financeiro');
     expect(help?.steps.some((step) => step.title.includes('Baixe somente'))).toBe(false);
-    expect(help?.steps.some((step) => step.title.includes('consulta sem operar caixa') || step.title.includes('consulta sem operar'))).toBe(false);
     expect(help?.steps.some((step) => step.title === 'Profissional clínico consulta sem operar caixa')).toBe(true);
   });
 
   it('does not expose clinical evolution instructions to reception', () => {
     const help = resolveHelpContext('/pacientes/patient-1', 'recep');
-    const bodies = help?.steps.map((step) => step.body).join(' ') ?? '';
-    expect(bodies).not.toContain('Registre a evolução da sessão');
-    expect(bodies).not.toContain('session_id');
+    const text = help?.steps.map((step) => `${step.title} ${step.body}`).join(' ') ?? '';
+    expect(text).not.toContain('Registre a evolução da sessão');
+    expect(text).not.toContain('session_id');
   });
 
   it('returns no help outside the implemented P0 contexts', () => {
