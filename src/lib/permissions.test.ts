@@ -4,6 +4,8 @@ import {
   canManageCommissions,
   canManagePackageCatalog,
   canSellSessionPackage,
+  canViewCommissions,
+  canViewFinancialPayables,
   canWriteFinancialTransaction,
   isClinicalRole,
   isOperationalRole,
@@ -39,6 +41,14 @@ describe('canonical permissions', () => {
     expect(appointmentActions('admin', appointment).map((action) => action.status)).not.toContain('em_atendimento');
   });
 
+  it('mirrors the server contract for payable visibility', () => {
+    for (const role of ['owner', 'admin', 'fisio', 'financeiro'] as const) {
+      expect(canViewFinancialPayables(role)).toBe(true);
+    }
+    expect(canViewFinancialPayables('recep')).toBe(false);
+    expect(canViewFinancialPayables(undefined)).toBe(false);
+  });
+
   it('mirrors the server contract for financial transaction writes', () => {
     for (const role of ['owner', 'admin', 'financeiro'] as const) {
       expect(canWriteFinancialTransaction(role, 'receber')).toBe(true);
@@ -61,7 +71,11 @@ describe('canonical permissions', () => {
     expect(canManagePackageCatalog('financeiro')).toBe(false);
   });
 
-  it('keeps commission management outside reception and clinical roles', () => {
+  it('separates commission visibility from commission management', () => {
+    for (const role of ['owner', 'admin', 'fisio', 'financeiro'] as const) {
+      expect(canViewCommissions(role)).toBe(true);
+    }
+    expect(canViewCommissions('recep')).toBe(false);
     expect(canManageCommissions('owner')).toBe(true);
     expect(canManageCommissions('admin')).toBe(true);
     expect(canManageCommissions('financeiro')).toBe(true);
@@ -72,8 +86,10 @@ describe('canonical permissions', () => {
   it('fails closed without a clinic role', () => {
     expect(accessFor(null, 'dashboard')).toBe('none');
     expect(isOperationalRole(undefined)).toBe(false);
+    expect(canViewFinancialPayables(undefined)).toBe(false);
     expect(canSellSessionPackage(undefined)).toBe(false);
     expect(canManagePackageCatalog(undefined)).toBe(false);
+    expect(canViewCommissions(undefined)).toBe(false);
     expect(canManageCommissions(undefined)).toBe(false);
   });
 });

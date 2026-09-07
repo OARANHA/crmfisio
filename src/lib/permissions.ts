@@ -25,9 +25,12 @@ export const isOperationalRole = (role: Role | null | undefined): boolean =>
 export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'fisio';
 
 /**
- * Module access is intentionally coarse-grained. Financial mutations have a
- * narrower server contract and must use these operation-level predicates.
+ * Module access is intentionally coarse-grained. Financial reads and mutations
+ * have narrower server contracts and must use these operation-level predicates.
  */
+export const canViewFinancialPayables = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'fisio' || role === 'financeiro';
+
 export const canWriteFinancialTransaction = (
   role: Role | null | undefined,
   tipo: 'receber' | 'pagar',
@@ -42,6 +45,9 @@ export const canSellSessionPackage = (role: Role | null | undefined): boolean =>
 
 export const canManagePackageCatalog = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin';
+
+export const canViewCommissions = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'fisio' || role === 'financeiro';
 
 export const canManageCommissions = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'financeiro';
