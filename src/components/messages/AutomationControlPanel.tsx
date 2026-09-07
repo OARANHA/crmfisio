@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { loadAutomationRuns, loadAutomationSettings, saveAutomationSettings, type AutomationRun, type AutomationSettings } from '../../lib/automation';
@@ -10,7 +10,7 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [nextSettings, nextRuns] = await Promise.all([loadAutomationSettings(), loadAutomationRuns()]);
@@ -22,9 +22,9 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
     } finally {
       setLoading(false);
     }
-  };
+  }, [onToast]);
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const save = async () => {
     if (!settings) return;
