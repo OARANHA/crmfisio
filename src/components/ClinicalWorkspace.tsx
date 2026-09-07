@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { userName } from '../lib/store';
+import { userName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
