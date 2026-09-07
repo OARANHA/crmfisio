@@ -12,7 +12,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
-import { Chip } from '../lib/ui';
+import { Card, Chip } from '../lib/ui';
 
 const OPEN_MESSAGE_STATUS = new Set(['fila', 'enviando', 'enviado', 'entregue', 'lido']);
 const REACTIVATION_INACTIVITY_DAYS = 30;
@@ -107,6 +107,10 @@ export function Mensagens() {
 
   const queued = logs.filter((log) => log.status === 'fila').length;
   const sending = logs.filter((log) => log.status === 'enviando').length;
+  const failed = logs.filter((log) => log.status === 'falhou').length;
+  const uncertain = logs.filter((log) => log.providerStatus === 'DELIVERY_UNCERTAIN').length;
+  const reconciled = logs.filter((log) => log.providerStatus === 'RECONCILED' || log.providerStatus === 'ACCEPTED_RECOVERED').length;
+  const definitiveFailures = logs.filter((log) => log.status === 'falhou' && log.providerStatus !== 'DELIVERY_UNCERTAIN').length;
   const sentBase = logs.filter((log) => ['enviado', 'entregue', 'lido'].includes(log.status));
   const delivered = sentBase.filter((log) => log.status === 'entregue' || log.status === 'lido').length;
   const read = sentBase.filter((log) => log.status === 'lido').length;
@@ -114,6 +118,7 @@ export function Mensagens() {
   const replied = logs.filter((log) => Boolean(log.replyText)).length;
   const deliveryRate = sentBase.length ? Math.round((delivered / sentBase.length) * 100) : 0;
   const readRate = delivered ? Math.round((read / delivered) * 100) : 0;
+  const operationalAttention = uncertain + definitiveFailures + humanReview;
 
   const blockedText = (stats: { noOptin: number; noPhone: number; alreadySent: number }) => {
     const parts = [
@@ -181,14 +186,24 @@ export function Mensagens() {
   };
 
   return <div className="space-y-4">
-    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1><p className="text-fog text-[13px] mt-0.5">fila persistente · destinatários selecionáveis · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{humanReview > 0 && <Chip className="border-amber/45 text-amber">{humanReview} para revisar</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
+    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1><p className="text-fog text-[13px] mt-0.5">fila persistente · entrega reconciliável · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{operationalAttention > 0 && <Chip className="border-amber/45 text-amber">{operationalAttention} requerem atenção</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
+
+    <Reveal delay={45}>
+      <Card className="!p-0 overflow-hidden">
+        <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-line">
+          <div className="px-4 py-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Resultado incerto</p><p className={`mt-1 font-display text-xl font-bold ${uncertain ? 'text-amber' : 'text-paper'}`}>{uncertain}</p><p className="mt-1 text-[11px] text-fog">Pode ter sido aceito pelo provedor. Não reenviar automaticamente.</p></div>
+          <div className="px-4 py-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Falha definitiva</p><p className={`mt-1 font-display text-xl font-bold ${definitiveFailures ? 'text-pulse' : 'text-paper'}`}>{definitiveFailures}</p><p className="mt-1 text-[11px] text-fog">Revise o motivo antes de decidir um novo contato.</p></div>
+          <div className="px-4 py-3"><p className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-fog">Recuperados</p><p className={`mt-1 font-display text-xl font-bold ${reconciled ? 'text-mint' : 'text-paper'}`}>{reconciled}</p><p className="mt-1 text-[11px] text-fog">Envios reconciliados sem duplicar a mensagem.</p></div>
+        </div>
+      </Card>
+    </Reveal>
 
     <Reveal delay={60}><div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">{[
       { value: queued + sending, suffix: '', label: 'na fila agora', className: 'text-amber' },
       { value: deliveryRate, suffix: '%', label: 'taxa de entrega', className: 'text-aqua' },
       { value: readRate, suffix: '%', label: 'taxa de leitura', className: 'text-mint' },
       { value: replied, suffix: '', label: 'respostas recebidas', className: 'text-aqua' },
-      { value: humanReview, suffix: '', label: 'revisões humanas', className: humanReview ? 'text-amber' : 'text-paper' },
+      { value: failed, suffix: '', label: 'falhas registradas', className: failed ? 'text-pulse' : 'text-paper' },
     ].map((item) => <div key={item.label} className="bg-panel px-5 py-4"><CountUp to={item.value} suffix={item.suffix} className={`font-display text-3xl font-bold ${item.className}`} /><p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog mt-1">{item.label}</p></div>)}</div></Reveal>
 
     <Reveal delay={90}><MessageReviewQueue logs={logs} patients={patients} busy={loading || !canSend} onResolve={handleReview} /></Reveal>

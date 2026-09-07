@@ -21,6 +21,30 @@ const TEMPLATE_LABEL: Record<MessageTemplate, string> = {
   vaga_espera: 'Oferta de vaga',
 };
 
+const providerOperationalMeta = (log: MessageOutboxRow) => {
+  if (log.providerStatus === 'DELIVERY_UNCERTAIN') return {
+    label: 'resultado incerto',
+    chip: 'border-amber/50 text-amber',
+    note: 'O provedor pode ter aceitado este envio. Não reenviar automaticamente; aguarde reconciliação ou revise antes de novo contato.',
+  };
+  if (log.providerStatus === 'RECONCILED') return {
+    label: 'reconciliado',
+    chip: 'border-mint/45 text-mint',
+    note: 'Um evento posterior do provedor confirmou e vinculou o envio que estava incerto.',
+  };
+  if (log.providerStatus === 'ACCEPTED_RECOVERED') return {
+    label: 'aceite recuperado',
+    chip: 'border-aqua/45 text-aqua',
+    note: 'O provedor aceitou o envio e a persistência local foi recuperada sem reenviar a mensagem.',
+  };
+  if (log.providerStatus === 'ERROR' || (log.status === 'falhou' && log.providerStatus && log.providerStatus !== 'DELIVERY_UNCERTAIN')) return {
+    label: 'falha definitiva',
+    chip: 'border-pulse/45 text-pulse',
+    note: 'Falha registrada pelo worker/provedor. Revise o motivo antes de decidir um novo contato.',
+  };
+  return null;
+};
+
 function responseMeta(log: MessageOutboxRow) {
   if (!log.replyText) return null;
   if (log.template === 'nps') {
@@ -40,16 +64,18 @@ function responseMeta(log: MessageOutboxRow) {
 export function MessageActivity({ logs, patients }: { logs: MessageOutboxRow[]; patients: Patient[] }) {
   return (
     <Card>
-      <CardHead title="Atividade recente" sub="envios, estados de entrega e respostas recebidas pelo WhatsApp" />
+      <CardHead title="Atividade recente" sub="envios, estados de entrega, reconciliação e respostas recebidas pelo WhatsApp" />
       <ul className="divide-y divide-line/70 max-h-[720px] overflow-y-auto">
         {logs.length === 0 && <li className="px-5 py-10 text-center font-mono text-[11.5px] text-fog">Nenhuma mensagem enfileirada ainda.</li>}
         {logs.map((log) => {
           const patient = patients.find((item) => item.id === log.patientId);
           const meta = STATUS_META[log.status];
           const response = responseMeta(log);
+          const providerMeta = providerOperationalMeta(log);
+          const attemptCount = log.attemptCount ?? 0;
           return (
             <li key={log.id} className="px-5 py-3.5 flex items-start gap-3.5 hover:bg-raise/40 transition-colors">
-              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${log.status === 'enviando' ? 'dot-live' : ''}`} style={{ background: meta.dot }} />
+              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${log.status === 'enviando' ? 'dot-live' : ''}`} style={{ background: providerMeta?.label === 'resultado incerto' ? '#f2b441' : meta.dot }} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                   <span className="font-display font-semibold text-[13px]">{patient?.nome ?? 'Paciente'}</span>
@@ -57,6 +83,16 @@ export function MessageActivity({ logs, patients }: { logs: MessageOutboxRow[]; 
                   <span className="font-mono text-[10px] text-fog/70 ml-auto tabular-nums">{format(new Date(log.createdAt), 'dd/MM HH:mm', { locale: ptBR })}</span>
                 </div>
                 <p className="text-[12px] text-paper/80 leading-relaxed mt-1 line-clamp-2">{log.message}</p>
+                {providerMeta && (
+                  <div className={`mt-2 border px-3 py-2 ${providerMeta.label === 'resultado incerto' ? 'border-amber/30 bg-amber/[0.04]' : 'border-line bg-raise/25'}`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Chip className={providerMeta.chip}>{providerMeta.label}</Chip>
+                      {attemptCount > 0 && <span className="font-mono text-[9.5px] text-fog">tentativa {attemptCount}</span>}
+                      {log.providerEvent && <span className="font-mono text-[9.5px] text-fog">evento: {log.providerEvent}</span>}
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-fog">{providerMeta.note}</p>
+                  </div>
+                )}
                 {response && (
                   <div className="mt-2 px-3 py-2 border border-line/80 bg-raise/35 flex flex-wrap items-center gap-2">
                     <span className="font-mono text-[11px] text-paper">{response.text}</span>
@@ -67,8 +103,11 @@ export function MessageActivity({ logs, patients }: { logs: MessageOutboxRow[]; 
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <Chip className={meta.chip}>{meta.label}</Chip>
                   {log.provider && <span className="font-mono text-[10px] text-fog">provider: {log.provider}</span>}
+                  {log.sentAt && <span className="font-mono text-[10px] text-fog">enviado {format(new Date(log.sentAt), 'dd/MM HH:mm')}</span>}
+                  {log.deliveredAt && <span className="font-mono text-[10px] text-fog">entregue {format(new Date(log.deliveredAt), 'dd/MM HH:mm')}</span>}
+                  {log.readAt && <span className="font-mono text-[10px] text-fog">lido {format(new Date(log.readAt), 'dd/MM HH:mm')}</span>}
                   {patient && !patient.optInWhats && <Chip className="border-pulse/40 text-pulse">sem opt-in</Chip>}
-                  {log.errorMessage && <span className="font-mono text-[10px] text-pulse">{log.errorMessage}</span>}
+                  {log.errorMessage && <span className={`font-mono text-[10px] ${log.providerStatus === 'DELIVERY_UNCERTAIN' ? 'text-amber' : 'text-pulse'}`}>{log.errorMessage}</span>}
                 </div>
               </div>
             </li>
