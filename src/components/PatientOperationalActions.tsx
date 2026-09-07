@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { openConsentDocument } from '../lib/consentDocument';
 import { supabase } from '../lib/supabaseClient';
@@ -27,6 +27,8 @@ type ConsentRow = {
   cancel_reason: string | null;
 };
 
+const db = supabase as any;
+
 export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
@@ -38,9 +40,7 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
   const [busy, setBusy] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
 
-  const db = supabase as any;
-
-  const load = async () => {
+  const load = useCallback(async () => {
     const [templateResult, consentResult] = await Promise.all([
       db.from('consent_templates').select('id,nome,versao,conteudo,obrigatorio').eq('ativo', true).order('nome'),
       db.from('consent_terms').select('id,nome,versao,assinado,data_assinatura,conteudo_snapshot,canceled_at,cancel_reason').eq('patient_id', patient.id).order('created_at', { ascending: false }),
@@ -49,12 +49,13 @@ export function PatientOperationalActions({ patient }: { patient: Patient }) {
     if (consentResult.error) throw consentResult.error;
     setTemplates(templateResult.data ?? []);
     setConsents(consentResult.data ?? []);
-    if (!templateId && templateResult.data?.[0]) setTemplateId(templateResult.data[0].id);
-  };
+    const firstTemplateId = templateResult.data?.[0]?.id ?? '';
+    setTemplateId((current) => current || firstTemplateId);
+  }, [patient.id]);
 
   useEffect(() => {
     void load().catch((error) => console.error('[MedicsPro] consentimentos do paciente:', error));
-  }, [patient.id]);
+  }, [load]);
 
   const pending = useMemo(() => consents.find((c) => !c.assinado && !c.canceled_at), [consents]);
   const signed = useMemo(() => consents.find((c) => c.assinado && !c.canceled_at), [consents]);
