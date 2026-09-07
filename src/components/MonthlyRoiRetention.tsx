@@ -5,6 +5,7 @@ import { useFinance } from '../lib/financeContext';
 import { usePatients } from '../lib/patientContext';
 import { usePackages } from '../lib/packageContext';
 import { buildChurnRiskList } from '../lib/churnRisk';
+import { calculateLowRiskShare } from '../lib/reportMetrics';
 import { supabase } from '../lib/supabaseClient';
 import { fmtBRL } from '../lib/types';
 import { Card, CardHead, Chip, IconChart } from '../lib/ui';
@@ -55,7 +56,7 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
         const { data, error: rpcError } = await supabase.rpc('get_recovery_roi', { p_from: from, p_to: to });
         if (cancelled) return;
         if (rpcError) {
-          setError('ROI atribuído indisponível para esta competência.');
+          setError('Recuperação atribuída indisponível para esta competência.');
           setRoi({ ...emptyRoi, from, to });
           return;
         }
@@ -72,9 +73,9 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
           package_renewals: Number(raw.package_renewals ?? 0),
         });
       } catch (requestError) {
-        console.error('[MedicsPro] relatório de ROI:', requestError);
+        console.error('[MedicsPro] relatório de recuperação atribuída:', requestError);
         if (!cancelled) {
-          setError('Não foi possível carregar o ROI desta competência.');
+          setError('Não foi possível carregar a recuperação atribuída desta competência.');
           setRoi({ ...emptyRoi, from, to });
         }
       } finally {
@@ -87,64 +88,78 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
     return () => { cancelled = true; };
   }, [month]);
 
-  const retention = useMemo(() => {
+  const continuity = useMemo(() => {
     const risks = buildChurnRiskList(patients, appointments, patientPackages, transactions);
     const treatment = patients.filter((p) => p.funilStage === 'tratamento' && !p.anonimizado && p.status !== 'alta');
-    const high = risks.filter((r) => r.level === 'alto');
-    const medium = risks.filter((r) => r.level === 'medio');
-    const withoutFuture = risks.filter((r) => !r.hasFutureAppointment);
+    const treatmentIds = new Set(treatment.map((patient) => patient.id));
+    const treatmentRisks = risks.filter((risk) => treatmentIds.has(risk.patient.id));
+    const high = treatmentRisks.filter((r) => r.level === 'alto');
+    const medium = treatmentRisks.filter((r) => r.level === 'medio');
+    const withoutFuture = treatmentRisks.filter((r) => !r.hasFutureAppointment);
     const packagePressure = patientPackages.filter((p) => {
+      if (!treatmentIds.has(p.pacienteId)) return false;
       const remaining = Math.max(0, p.sessoesTotais - p.sessoesUsadas);
       return p.status === 'esgotado' || p.status === 'vencido' || (p.status === 'ativo' && remaining <= 2);
     });
-    const protectedCount = Math.max(0, treatment.length - high.length - medium.length);
-    const protectedRate = treatment.length ? Math.round((protectedCount / treatment.length) * 100) : 100;
-    return { treatment, high, medium, withoutFuture, packagePressure, protectedRate };
+    const lowRiskShare = calculateLowRiskShare(treatment.length, high.length, medium.length);
+    return { treatment, high, medium, withoutFuture, packagePressure, lowRiskShare };
   }, [patients, appointments, patientPackages, transactions]);
-
-  const totalAttributed = roi.realized_amount + roi.pipeline_amount;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHead
-          title="ROI e retenção MedicsPro"
-          sub="receita atribuída às automações + risco operacional atual de continuidade"
+          title="Recuperação de receita e continuidade"
+          sub="resultado financeiro atribuído às ações de recuperação + risco operacional atual da carteira"
           right={<IconChart className="w-4.5 h-4.5 text-mint" />}
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line">
-          <Metric label="Receita recuperada" value={loading ? '…' : fmtBRL(roi.realized_amount)} detail="valor realizado e atribuído" tone="text-mint" />
-          <Metric label="Pipeline recuperável" value={loading ? '…' : fmtBRL(roi.pipeline_amount)} detail={`${roi.events} evento(s) atribuídos`} tone="text-aqua" />
-          <Metric label="Retenção protegida" value={`${retention.protectedRate}%`} detail={`${retention.treatment.length} paciente(s) em tratamento`} tone="text-mint" />
-          <Metric label="Alto risco de churn" value={String(retention.high.length)} detail={`${retention.withoutFuture.length} sem próxima sessão`} tone={retention.high.length ? 'text-pulse' : 'text-mint'} />
+          <Metric label="Realizado atribuído" value={loading ? '…' : fmtBRL(roi.realized_amount)} detail="valor efetivamente realizado nos eventos atribuídos" tone="text-mint" />
+          <Metric label="Pipeline atribuído" value={loading ? '…' : fmtBRL(roi.pipeline_amount)} detail="potencial ainda não realizado" tone="text-aqua" />
+          <Metric
+            label="Baixo risco atual"
+            value={continuity.lowRiskShare === null ? '—' : `${continuity.lowRiskShare}%`}
+            detail={continuity.treatment.length ? `${continuity.treatment.length} paciente(s) em tratamento` : 'sem pacientes em tratamento na base atual'}
+            tone={continuity.lowRiskShare === null ? 'text-fog' : 'text-mint'}
+          />
+          <Metric label="Alto risco atual" value={String(continuity.high.length)} detail={`${continuity.withoutFuture.length} sem próxima sessão`} tone={continuity.high.length ? 'text-pulse' : 'text-mint'} />
         </div>
         {error && <p className="px-5 py-3 border-t border-line font-mono text-[10.5px] text-amber">{error}</p>}
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <CardHead title="Origem da receita recuperada" sub={`competência ${month}`} />
+          <CardHead title="Origem da recuperação atribuída" sub={`eventos ocorridos na competência ${month}`} />
           <div className="p-5 space-y-3">
             <Row label="Inadimplência recuperada" value={`${roi.overdue_payments} ocorrência(s)`} />
             <Row label="Vagas recuperadas da espera" value={`${roi.waitlist_slots} ocorrência(s)`} />
             <Row label="Reativações com agendamento" value={`${roi.reactivations} ocorrência(s)`} />
             <Row label="Renovações de pacote" value={`${roi.package_renewals} ocorrência(s)`} />
-            <div className="pt-3 border-t border-line flex items-center justify-between gap-3">
-              <span className="font-mono text-[11px] text-fog">Impacto atribuído total</span>
-              <span className="font-display font-bold text-[20px] text-mint">{fmtBRL(totalAttributed)}</span>
+            <div className="pt-3 border-t border-line grid gap-2 sm:grid-cols-2">
+              <div>
+                <span className="block font-mono text-[10px] text-fog">Realizado</span>
+                <span className="font-display font-bold text-[18px] text-mint">{fmtBRL(roi.realized_amount)}</span>
+              </div>
+              <div className="sm:text-right">
+                <span className="block font-mono text-[10px] text-fog">Pipeline</span>
+                <span className="font-display font-bold text-[18px] text-aqua">{fmtBRL(roi.pipeline_amount)}</span>
+              </div>
             </div>
+            <p className="pt-2 font-mono text-[9.5px] leading-relaxed text-fog/80">
+              Realizado e pipeline não são somados como receita. Pipeline representa potencial atribuído ainda sujeito a conversão e recebimento.
+            </p>
           </div>
         </Card>
 
         <Card>
-          <CardHead title="Saúde da retenção" sub="sinais atuais que exigem ação operacional" />
+          <CardHead title="Risco atual de continuidade" sub="snapshot operacional da carteira em tratamento — não é uma taxa histórica de retenção" />
           <div className="p-5 space-y-3">
-            <Row label="Risco alto" value={`${retention.high.length} paciente(s)`} chip="border-pulse/40 text-pulse" />
-            <Row label="Risco médio" value={`${retention.medium.length} paciente(s)`} chip="border-amber/45 text-amber" />
-            <Row label="Sem próxima sessão" value={`${retention.withoutFuture.length} paciente(s)`} />
-            <Row label="Pressão de renovação" value={`${retention.packagePressure.length} pacote(s)`} />
+            <Row label="Risco alto" value={`${continuity.high.length} paciente(s)`} chip="border-pulse/40 text-pulse" />
+            <Row label="Risco médio" value={`${continuity.medium.length} paciente(s)`} chip="border-amber/45 text-amber" />
+            <Row label="Sem próxima sessão" value={`${continuity.withoutFuture.length} paciente(s)`} />
+            <Row label="Pressão de renovação" value={`${continuity.packagePressure.length} pacote(s)`} />
             <p className="pt-3 border-t border-line font-mono text-[10px] leading-relaxed text-fog/80">
-              O score de churn é uma regra operacional explicável. Não é diagnóstico clínico nem previsão probabilística de IA.
+              O score de churn é uma regra operacional explicável e representa o estado atual. Não é diagnóstico clínico, previsão probabilística de IA nem retenção histórica comprovada.
             </p>
           </div>
         </Card>
