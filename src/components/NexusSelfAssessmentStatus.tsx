@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
 import { acknowledgeNexusRedFlag, hasProfessionalCapability } from '../lib/nexusClinical';
 import { Btn, Chip } from '../lib/ui';
@@ -68,7 +68,7 @@ function fmtDate(value: string | null | undefined) {
 
 export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const [items, setItems] = useState<AssessmentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState<boolean | null>(null);
