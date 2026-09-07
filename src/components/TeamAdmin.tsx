@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { resolveClinicId } from '../lib/repository';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -40,10 +40,11 @@ const memberTypeFrom = (member: TeamMember): MemberType => {
   return 'administrador';
 };
 
+const db = supabase as any;
+
 export function TeamAdmin() {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
-  const db = supabase as any;
   const [clinicId, setClinicId] = useState('');
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -74,7 +75,7 @@ export function TeamAdmin() {
     setSelectedUnits([]);
   };
 
-  const load = async (cid: string) => {
+  const load = useCallback(async (cid: string) => {
     const [profiles, unitsResult, links] = await Promise.all([
       db.from('profiles').select('id,nome,email,role,registro,cor,ativo,telefone,professional_type,council_type,council_state,especialidade').eq('clinic_id', cid).order('ativo', { ascending: false }).order('nome'),
       db.from('units').select('id,nome,ativo').eq('clinic_id', cid).eq('ativo', true).order('nome'),
@@ -88,7 +89,7 @@ export function TeamAdmin() {
     const map: Record<string, string[]> = {};
     for (const link of links.data ?? []) map[link.profile_id] = [...(map[link.profile_id] ?? []), link.unit_id];
     setMemberUnits(map);
-  };
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -98,7 +99,7 @@ export function TeamAdmin() {
         console.error('[MedicsPro] equipe:', error);
         toast('Não foi possível carregar a equipe.', 'warn');
       });
-  }, [user?.id]);
+  }, [user?.id, load, toast]);
 
   const currentMeta = TYPE_META[type];
   const clinical = type === 'fisioterapeuta' || type === 'medico';
