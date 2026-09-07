@@ -1,13 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { Access, ModuleKey, Patient, User } from './types';
+import type { Patient, User } from './types';
 import { useLgpdActions } from './lgpdActions';
-import { useCurrentUserAccess } from './currentUserAccess';
 import { useToast, type Toast } from './toastContext';
 
 interface AppState {
-  user: User | null;
-  access: (m: ModuleKey) => Access;
-  canView: (m: ModuleKey) => boolean;
   toast: (msg: string, kind?: Toast['kind']) => void;
   exportarTitular: (pacienteId: string) => Promise<Record<string, unknown>>;
   anonimizarPaciente: (pacienteId: string) => Promise<void>;
@@ -22,19 +18,14 @@ const Ctx = createContext<AppState | null>(null);
  * consume those providers directly instead of adding state or loaders here.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user, access, canView } = useCurrentUserAccess();
   const lgpd = useLgpdActions();
   const { toast: pushToast } = useToast();
 
   const value = useMemo<AppState>(() => ({
-    user,
-    access,
-    canView,
     toast: pushToast,
     exportarTitular: lgpd.exportSubjectData,
     anonimizarPaciente: lgpd.anonymizePatient,
   }), [
-    user, access, canView,
     pushToast,
     lgpd.exportSubjectData, lgpd.anonymizePatient,
   ]);
