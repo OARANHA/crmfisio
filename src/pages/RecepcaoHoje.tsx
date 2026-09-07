@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
 import { loadReceptionToday, setAppointmentArrival, type ReceptionQueueItem } from '../lib/reception';
 import { STATUS_META, type AppointmentStatus } from '../lib/types';
@@ -12,7 +12,7 @@ const activeStatuses = new Set(['agendado', 'confirmado', 'em_atendimento']);
 
 export function RecepcaoHoje() {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { setAppointmentStatus } = useAgenda();
   const nav = useNavigate();
   const [items, setItems] = useState<ReceptionQueueItem[]>([]);
