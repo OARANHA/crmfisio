@@ -3,6 +3,7 @@ import { addDays, format } from 'date-fns';
 import { createAppointmentSeries, previewAppointmentSeries, type RecurrencePreviewSlot } from '../lib/appointmentRecurrence';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
@@ -13,7 +14,8 @@ const DAYS = [
 ] as const;
 
 export function AppointmentRecurrencePanel() {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { refreshAgenda } = useAgenda();
