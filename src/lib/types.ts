@@ -3,7 +3,7 @@
 // Valores monetários em CENTAVOS (inteiros), nunca float.
 // ---------------------------------------------------------------------------
 
-export type Role = 'owner' | 'admin' | 'professional' | 'fisio' | 'recep' | 'financeiro';
+export type Role = 'owner' | 'admin' | 'professional' | 'recep' | 'financeiro';
 export type ModuleKey = | 'dashboard' | 'agenda' | 'pacientes' | 'clinico' | 'financeiro' | 'crm' | 'mensagens' | 'relatorios' | 'config';
 export type Access = 'full' | 'read' | 'none';
 
@@ -83,7 +83,6 @@ export const ROLE_META: Record<Role, { label: string; text: string; chip: string
   owner: { label: 'Proprietário', text: 'text-pulse', chip: 'bg-pulse/10 border-pulse/35 text-pulse', desc: 'Gestão da clínica. A atuação clínica, quando existente, é definida pela identidade profissional e pelas permissões clínicas.' },
   admin: { label: 'Administrador', text: 'text-mint', chip: 'bg-mint/10 border-mint/35 text-mint', desc: 'Gestão operacional da clínica. Pode também atuar clinicamente quando houver identidade e permissões válidas.' },
   professional: { label: 'Profissional clínico', text: 'text-amber', chip: 'bg-amber/10 border-amber/35 text-amber', desc: 'Atuação clínica definida pela profissão, identidade profissional e permissões concedidas.' },
-  fisio: { label: 'Profissional clínico (legado)', text: 'text-amber', chip: 'bg-amber/10 border-amber/35 text-amber', desc: 'Papel legado em migração para o modelo multiprofissional.' },
   recep: { label: 'Recepcionista', text: 'text-aqua', chip: 'bg-aqua/10 border-aqua/30 text-aqua', desc: 'Agenda, cadastro, financeiro operacional, CRM e mensagens. Sem acesso clínico nem relatórios.' },
   financeiro: { label: 'Financeiro', text: 'text-steel', chip: 'bg-steel/10 border-steel/30 text-steel', desc: 'Cobranças, recebimentos, repasses e relatórios financeiros. Sem conteúdo clínico.' },
 };
