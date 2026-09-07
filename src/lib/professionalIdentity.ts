@@ -56,6 +56,9 @@ export const PROFESSIONAL_META: Record<ProfessionalType, {
 export const isProfessionalType = (value: unknown): value is ProfessionalType =>
   typeof value === 'string' && value in PROFESSIONAL_META;
 
+export const hasClinicalDirectoryIdentity = (value: string | null | undefined): boolean =>
+  isProfessionalType(value);
+
 export function isPhysicianProfessionalType(value: string | null | undefined): boolean {
   const normalized = normalize(value);
   return ['medico', 'medica', 'physician', 'doctor'].includes(normalized);
