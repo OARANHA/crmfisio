@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { useClinicModuleEntitlementVisibility } from '../hooks/useClinicModuleEntitlementVisibility';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
@@ -30,6 +31,10 @@ export function Dashboard() {
   const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
+  const { visibility, resolved } = useClinicModuleEntitlementVisibility();
+  const financeAllowed = resolved && visibility.financeiro === true;
+  const crmAllowed = resolved && visibility.crm === true;
+  const reportsAllowed = resolved && visibility.relatorios === true;
 
   const mes = format(new Date(), 'yyyy-MM');
   const hoje = format(new Date(), 'yyyy-MM-dd');
@@ -38,17 +43,18 @@ export function Dashboard() {
   const k = useMemo(() => {
     const prodMes = appointments.filter((a) => a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
     const producao = prodMes.reduce((s, a) => s + a.valor, 0);
-    const aReceber = transactions.filter((t) => t.tipo === 'receber' && t.status !== 'pago').reduce((s, t) => s + t.valor, 0);
+    const aReceber = financeAllowed ? transactions.filter((t) => t.tipo === 'receber' && t.status !== 'pago').reduce((s, t) => s + t.valor, 0) : 0;
     const faltas = appointments.filter((a) => a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
     const realizadas = prodMes.length;
-    const comparecimento = realizadas + faltas > 0 ? Math.round((realizadas / (realizadas + faltas)) * 100) : 100;
+    const comparecimento = realizadas + faltas.length > 0 ? Math.round((realizadas / (realizadas + faltas.length)) * 100) : 100;
     const novos = patients.filter((p) => p.createdAt.startsWith(mes) && !p.anonimizado).length;
-    const notas = surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number);
+    const notas = reportsAllowed ? surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number) : [];
     const nps = notas.length ? Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10 : 0;
-    return { producao, aReceber, comparecimento, novos, nps, realizadas, faltas };
-  }, [appointments, transactions, patients, surveys, mes, inUnit]);
+    return { producao, aReceber, comparecimento, novos, nps, realizadas, faltas: faltas.length };
+  }, [appointments, transactions, patients, surveys, mes, inUnit, financeAllowed, reportsAllowed]);
 
   const semana = useMemo(() => {
+    if (!financeAllowed) return [];
     const days = Array.from({ length: 7 }, (_, i) => format(addDays(new Date(), i - 6), 'yyyy-MM-dd'));
     return days.map((dIso) => ({
       dIso,
@@ -57,32 +63,31 @@ export function Dashboard() {
         .filter((t) => t.tipo === 'receber' && t.status === 'pago' && t.paidAt?.startsWith(dIso))
         .reduce((s, t) => s + t.valor, 0),
     }));
-  }, [transactions]);
+  }, [transactions, financeAllowed]);
   const maxSemana = Math.max(...semana.map((s) => s.valor), 1);
 
-  const prod = useMemo(
-    () =>
-      users
-        .filter((u) => u.role === 'fisio')
-        .map((f) => {
-          const fin = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
-          const falt = appointments.filter((a) => a.fisioId === f.id && a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
-          const valor = fin.reduce((s, a) => s + a.valor, 0);
-          const comp = fin.length + falt > 0 ? Math.round((fin.length / (fin.length + falt)) * 100) : 100;
-          return { f, sessoes: fin.length, valor, comp };
-        }),
-    [appointments, users, mes, inUnit]
-  );
+  const prod = useMemo(() => {
+    if (!reportsAllowed) return [];
+    return users
+      .filter((u) => u.role === 'fisio')
+      .map((f) => {
+        const fin = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
+        const falt = appointments.filter((a) => a.fisioId === f.id && a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
+        const valor = fin.reduce((s, a) => s + a.valor, 0);
+        const comp = fin.length + falt > 0 ? Math.round((fin.length / (fin.length + falt)) * 100) : 100;
+        return { f, sessoes: fin.length, valor, comp };
+      });
+  }, [appointments, users, mes, inUnit, reportsAllowed]);
   const maxProd = Math.max(...prod.map((p) => p.valor), 1);
   const churnRisks = useMemo(
-    () => buildChurnRiskList(patients, appointments, patientPackages, transactions).filter((risk) => risk.level !== 'baixo'),
-    [patients, appointments, patientPackages, transactions],
+    () => crmAllowed ? buildChurnRiskList(patients, appointments, patientPackages, transactions).filter((risk) => risk.level !== 'baixo') : [],
+    [patients, appointments, patientPackages, transactions, crmAllowed],
   );
 
   const pendencias = [
-    ...transactions.filter((t) => t.status === 'atrasado').map((t) => ({ icon: '💸', txt: `Cobrança atrasada: ${t.descricao} (${fmtBRL(t.valor)})`, to: '/financeiro' })),
+    ...(financeAllowed ? transactions.filter((t) => t.status === 'atrasado').map((t) => ({ icon: '💸', txt: `Cobrança atrasada: ${t.descricao} (${fmtBRL(t.valor)})`, to: '/financeiro' })) : []),
     ...consents.filter((c) => !c.assinado).map((c) => ({ icon: '✍️', txt: `Termo pendente — ${patients.find((p) => p.id === c.pacienteId)?.nome ?? ''}`, to: `/pacientes/${c.pacienteId}` })),
-    ...churnRisks.map((risk) => ({ icon: '⚠️', txt: `Risco ${risk.level}: ${risk.patientName} — ${risk.reasons[0] ?? 'continuidade comprometida'}`, to: '/crm' })),
+    ...(crmAllowed ? churnRisks.map((risk) => ({ icon: '⚠️', txt: `Risco ${risk.level}: ${risk.patientName} — ${risk.reasons[0] ?? 'continuidade comprometida'}`, to: '/crm' })) : []),
   ].slice(0, 5);
 
   return (
@@ -106,7 +111,7 @@ export function Dashboard() {
           { label: 'A receber', value: <>R$ <CountUp to={Math.round(k.aReceber / 100)} /></>, tone: 'text-amber', sub: 'consolidado da clínica', to: '/financeiro' },
           { label: 'Comparecimento', value: <CountUp to={k.comparecimento} suffix="%" />, tone: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}`, to: '/agenda' },
           { label: 'Novos pacientes', value: <CountUp to={k.novos} />, tone: 'text-aqua', sub: 'consolidado da clínica · mês corrente', to: '/pacientes' },
-          { label: 'NPS médio', value: k.nps.toLocaleString('pt-BR'), sub: `nota média de 0 a 10 · mês corrente`, to: '/relatorios' },
+          { label: 'NPS médio', value: k.nps.toLocaleString('pt-BR'), sub: 'nota média de 0 a 10 · mês corrente', to: '/relatorios' },
         ]} />
       </Reveal>
 
@@ -115,7 +120,7 @@ export function Dashboard() {
       <Reveal delay={110}><OperationalHealthCard /></Reveal>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
-        <Reveal delay={120}>
+        {financeAllowed && <Reveal delay={120}>
           <Card className="lg:col-span-2">
             <CardHead title="Recebimentos — últimos 7 dias" sub="data efetiva da baixa · consolidado da clínica" />
             <div className="p-5">
@@ -130,7 +135,7 @@ export function Dashboard() {
               </div>
             </div>
           </Card>
-        </Reveal>
+        </Reveal>}
 
         <Reveal delay={160}>
           <Card>
@@ -145,7 +150,7 @@ export function Dashboard() {
         </Reveal>
       </div>
 
-      <Reveal delay={200}>
+      {reportsAllowed && <Reveal delay={200}>
         <Card>
           <CardHead title="Produtividade por fisioterapeuta" sub={`competência ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })} · ${unidade ? unidade.nome : 'todas as unidades'}`} />
           <div className="p-5 space-y-4">
@@ -162,7 +167,7 @@ export function Dashboard() {
             ))}
           </div>
         </Card>
-      </Reveal>
+      </Reveal>}
 
       <Reveal delay={240}>
         <div className="flex flex-wrap gap-2">
