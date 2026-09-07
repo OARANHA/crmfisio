@@ -58,6 +58,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
   revoked: { label: 'Revogado', cls: 'border-fog/25 bg-fog/10 text-fog' },
   expired: { label: 'Expirado', cls: 'border-fog/25 bg-fog/10 text-fog' },
 };
+const db = supabase as any;
 
 function fmtDate(value: string | null | undefined) {
   if (!value) return '—';
@@ -74,7 +75,6 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
-  const db = supabase as any;
 
   const load = useCallback(async () => {
     setLoading(true);
