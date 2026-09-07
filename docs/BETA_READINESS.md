@@ -29,7 +29,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | Atendimento clínico | 🟢 | Sessão, autoria, evolução e finalização possuem boundaries server-side; dashboard, `/hoje` e agenda completa convergem para o workspace clínico. Ver `CLINICAL_PILOT_ACCEPTANCE.md`. |
 | Assessment Engine | 🟢 | Avaliações padrão + minhas avaliações + body map estruturado possuem boundary server-side e histórico versionado. |
 | LGPD / portabilidade | 🟢 | Exportação `LGPD-portabilidade-v2` é server-authoritative, auditada na mesma transação e não depende do estado carregado no browser. |
-| WhatsApp / Evolution operacional | 🟡 | Entitlement e risco de retry duplicado estão fechados; ainda falta acabamento de observabilidade/UX operacional. |
+| WhatsApp / Evolution operacional | 🟢 | Retry cego de entrega incerta é bloqueado, webhook reconcilia de forma fail-closed e a central expõe resultado incerto, falha definitiva, reconciliação, tentativas e timestamps operacionais. |
 | UX / design system | 🟡 | Modernização em andamento; dark/light e padrões premium devem ser consolidados sem quebrar fluxos core. |
 | Ajuda/manual dentro do painel | 🟡 | Planejamento iniciado em `docs/IN_APP_HELP_PLAN.md`; ainda não implementado na UI. |
 
@@ -71,6 +71,20 @@ O fluxo clínico canônico converge para `ClinicalWorkspace`:
 
 O roteiro vivo está em `docs/CLINICAL_PILOT_ACCEPTANCE.md` e deve ser repetido no primeiro piloto real e após alterações relevantes do fluxo.
 
+## WhatsApp / Evolution — estado do piloto
+
+O fluxo operacional está apto para piloto controlado porque separa segurança de entrega de experiência de operação:
+
+- o worker interno exige segredo próprio e não pode ser disparado por sessão humana;
+- linhas `enviando` que ficam antigas são quarentenadas como `DELIVERY_UNCERTAIN`, sem retry cego;
+- falhas HTTP definitivas são registradas separadamente de resultados de transporte incertos;
+- aceite conhecido pelo provedor é persistido sem repetir o envio (`ACCEPTED_RECOVERED`);
+- o webhook tenta reconciliar eventos outbound sem `provider_message_id` local apenas quando há um único candidato; ambiguidade falha fechada;
+- a central de Mensagens expõe resultado incerto, falha definitiva, reconciliação, tentativa, evento e timestamps quando disponíveis;
+- não existe botão de retry automático para mensagens incertas.
+
+Pendências daqui em diante são refinamentos de produto e operação assistida, não bloqueadores estruturais do piloto.
+
 ## Financeiro — estado do piloto
 
 O cancelamento de atendimento com pagamento liquidado exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
@@ -83,12 +97,11 @@ Pendências financeiras restantes são evoluções de produto/UX, não bloqueado
 
 ## Próximo foco recomendado
 
-1. Polir WhatsApp/Evolution operacional e observabilidade, agora que segurança, entitlement e deduplicação estão fechados.
-2. Implantar ajuda contextual/manual dentro do painel usando `docs/IN_APP_HELP_PLAN.md`.
-3. Validar relatórios e indicadores com dados reais de piloto.
-4. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
-5. Consolidar UX/design system nas telas de maior frequência de uso.
-6. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
+1. Implantar ajuda contextual/manual dentro do painel usando `docs/IN_APP_HELP_PLAN.md`.
+2. Validar relatórios e indicadores com dados reais de piloto.
+3. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
+4. Consolidar UX/design system nas telas de maior frequência de uso.
+5. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
 
 ## Regra de implantação
 
