@@ -56,7 +56,7 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
         const { data, error: rpcError } = await supabase.rpc('get_recovery_roi', { p_from: from, p_to: to });
         if (cancelled) return;
         if (rpcError) {
-          setError('Recuperação atribuída indisponível para esta competência.');
+          setError('Eventos de recuperação indisponíveis para esta competência.');
           setRoi({ ...emptyRoi, from, to });
           return;
         }
@@ -73,9 +73,9 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
           package_renewals: Number(raw.package_renewals ?? 0),
         });
       } catch (requestError) {
-        console.error('[MedicsPro] relatório de recuperação atribuída:', requestError);
+        console.error('[MedicsPro] relatório de eventos de recuperação:', requestError);
         if (!cancelled) {
-          setError('Não foi possível carregar a recuperação atribuída desta competência.');
+          setError('Não foi possível carregar os eventos de recuperação desta competência.');
           setRoi({ ...emptyRoi, from, to });
         }
       } finally {
@@ -92,7 +92,7 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
     const risks = buildChurnRiskList(patients, appointments, patientPackages, transactions);
     const treatment = patients.filter((p) => p.funilStage === 'tratamento' && !p.anonimizado && p.status !== 'alta');
     const treatmentIds = new Set(treatment.map((patient) => patient.id));
-    const treatmentRisks = risks.filter((risk) => treatmentIds.has(risk.patient.id));
+    const treatmentRisks = risks.filter((risk) => treatmentIds.has(risk.patientId));
     const high = treatmentRisks.filter((r) => r.level === 'alto');
     const medium = treatmentRisks.filter((r) => r.level === 'medio');
     const withoutFuture = treatmentRisks.filter((r) => !r.hasFutureAppointment);
@@ -110,12 +110,12 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
       <Card>
         <CardHead
           title="Recuperação de receita e continuidade"
-          sub="resultado financeiro atribuído às ações de recuperação + risco operacional atual da carteira"
+          sub="eventos financeiros e operacionais de recuperação + risco atual da carteira em tratamento"
           right={<IconChart className="w-4.5 h-4.5 text-mint" />}
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line">
-          <Metric label="Realizado atribuído" value={loading ? '…' : fmtBRL(roi.realized_amount)} detail="valor efetivamente realizado nos eventos atribuídos" tone="text-mint" />
-          <Metric label="Pipeline atribuído" value={loading ? '…' : fmtBRL(roi.pipeline_amount)} detail="potencial ainda não realizado" tone="text-aqua" />
+          <Metric label="Realizado registrado" value={loading ? '…' : fmtBRL(roi.realized_amount)} detail="valor realizado nos eventos registrados" tone="text-mint" />
+          <Metric label="Pipeline registrado" value={loading ? '…' : fmtBRL(roi.pipeline_amount)} detail="potencial ainda não realizado" tone="text-aqua" />
           <Metric
             label="Baixo risco atual"
             value={continuity.lowRiskShare === null ? '—' : `${continuity.lowRiskShare}%`}
@@ -129,7 +129,7 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <CardHead title="Origem da recuperação atribuída" sub={`eventos ocorridos na competência ${month}`} />
+          <CardHead title="Origem dos eventos de recuperação" sub={`eventos ocorridos na competência ${month}`} />
           <div className="p-5 space-y-3">
             <Row label="Inadimplência recuperada" value={`${roi.overdue_payments} ocorrência(s)`} />
             <Row label="Vagas recuperadas da espera" value={`${roi.waitlist_slots} ocorrência(s)`} />
@@ -146,7 +146,7 @@ export function MonthlyRoiRetention({ month }: { month: string }) {
               </div>
             </div>
             <p className="pt-2 font-mono text-[9.5px] leading-relaxed text-fog/80">
-              Realizado e pipeline não são somados como receita. Pipeline representa potencial atribuído ainda sujeito a conversão e recebimento.
+              Realizado e pipeline não são somados como receita. Os eventos registram recuperação observada pelo sistema; quando não existe vínculo causal explícito com uma automação, o painel não atribui o resultado exclusivamente à automação.
             </p>
           </div>
         </Card>
