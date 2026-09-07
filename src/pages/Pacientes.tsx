@@ -24,28 +24,34 @@ function Lista() {
   const [q, setQ] = useState('');
   const [stage, setStage] = useState<'all' | FunilStage>('all');
 
-  const filtered = useMemo(
-    () => patients.filter((patient) =>
-      !patient.anonimizado &&
-      (stage === 'all' || patient.funilStage === stage) &&
-      (patient.nome.toLowerCase().includes(q.toLowerCase()) || patient.queixaPrincipal.toLowerCase().includes(q.toLowerCase()))
-    ),
-    [patients, q, stage],
-  );
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    const digits = q.replace(/\D/g, '');
+    return patients.filter((patient) => {
+      if (patient.anonimizado || (stage !== 'all' && patient.funilStage !== stage)) return false;
+      if (!query) return true;
+      const searchableText = [patient.nome, patient.preferredName, patient.telefone, patient.email, patient.convenio]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const cpfDigits = patient.cpf.replace(/\D/g, '');
+      return searchableText.includes(query) || Boolean(digits && cpfDigits.includes(digits));
+    });
+  }, [patients, q, stage]);
 
   return (
     <div className="space-y-5">
       <Reveal>
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-mint">Cadastro e prontuário</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-mint">Cadastro operacional</p>
             <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Pacientes</h1>
-            <p className="mt-1 text-[14px] text-fog">{patients.filter((patient) => !patient.anonimizado).length} cadastrados · acesso protegido por perfil e LGPD</p>
+            <p className="mt-1 text-[14px] text-fog">{patients.filter((patient) => !patient.anonimizado).length} cadastrados · dados clínicos ficam no prontuário conforme relação assistencial</p>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fog" />
-              <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Buscar por nome ou queixa…" className="!w-72 !pl-9" />
+              <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Nome, telefone, e-mail ou CPF…" className="!w-full sm:!w-72 !pl-9" />
             </div>
             <Select value={stage} onChange={(event) => setStage(event.target.value as 'all' | FunilStage)} className="!w-auto">
               <option value="all">Toda a jornada</option>
@@ -61,11 +67,12 @@ function Lista() {
           <Empty title="Nenhum paciente encontrado" sub="Cadastre o primeiro paciente ou ajuste os filtros." />
         ) : (
           <Card className="overflow-x-auto !p-0">
-            <table className="w-full min-w-[860px] text-[13.5px]">
+            <table className="w-full min-w-[940px] text-[13.5px]">
               <thead>
                 <tr className="border-b border-line bg-deep/70 text-[12px] font-semibold uppercase tracking-[0.06em] text-fog">
                   <th className="px-5 py-3.5 text-left">Paciente</th>
-                  <th className="px-5 py-3.5 text-left">Queixa principal</th>
+                  <th className="px-5 py-3.5 text-left">Contato</th>
+                  <th className="px-5 py-3.5 text-left">Convênio</th>
                   <th className="px-5 py-3.5 text-left">Jornada</th>
                   <th className="px-5 py-3.5 text-left">Última visita</th>
                   <th className="px-5 py-3.5 text-left">Status</th>
@@ -80,10 +87,11 @@ function Lista() {
                         <p className="font-display text-[14.5px] font-semibold">{patient.preferredName || patient.nome}</p>
                         <p className="mt-1 text-[12.5px] text-fog">{ageFrom(patient.nascimento)} anos · {maskCpf(patient.cpf)}</p>
                       </td>
-                      <td className="max-w-[340px] px-5 py-4">
-                        <p className="truncate text-paper/90">{patient.queixaPrincipal || 'Sem queixa registrada'}</p>
-                        {patient.cid10.length > 0 && <p className="mt-1 text-[12px] font-medium text-amber">{patient.cid10.join(' · ')}</p>}
+                      <td className="px-5 py-4">
+                        <p className="text-paper/90">{patient.telefone || 'Sem telefone'}</p>
+                        <p className="mt-1 max-w-[230px] truncate text-[12px] text-fog">{patient.email || 'Sem e-mail'}</p>
                       </td>
+                      <td className="px-5 py-4 text-[13px] text-fog">{patient.convenio || 'Particular / não informado'}</td>
                       <td className="px-5 py-4"><Chip className={stageMeta.chip}>{stageMeta.label}</Chip></td>
                       <td className="px-5 py-4 text-[13px] text-fog">{patient.ultimaVisita ? format(new Date(`${patient.ultimaVisita}T12:00`), 'dd/MM/yy', { locale: ptBR }) : '—'}</td>
                       <td className="px-5 py-4"><span className={`text-[12.5px] font-semibold capitalize ${patient.status === 'ativo' ? 'text-mint' : patient.status === 'alta' ? 'text-aqua' : 'text-pulse'}`}>{patient.status}</span></td>
