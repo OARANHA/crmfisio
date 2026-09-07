@@ -27,7 +27,7 @@ export function MessageRecipientSelector({ title, sub, candidates, blockedSummar
 
   useEffect(() => {
     setSelected((current) => current.filter((id) => ids.includes(id)));
-  }, [ids.join('|')]);
+  }, [ids]);
 
   const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const toggleAll = () => setSelected(allSelected ? [] : ids);

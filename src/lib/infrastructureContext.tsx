@@ -64,16 +64,18 @@ export function InfrastructureProvider({ children }: { children: ReactNode }) {
   }, [scope, refreshInfrastructure]);
 
   const setUnidadeSel = useCallback((id: string) => setSelection({ scope, id }), [scope]);
-  const visible = state.scope === scope && scope ? state : { data: emptyData, loading: false, error: null };
 
-  const value = useMemo<InfrastructureState>(() => ({
-    ...visible.data,
-    loading: visible.loading,
-    error: visible.error,
-    unidadeSel: selection.scope === scope ? selection.id : 'all',
-    setUnidadeSel,
-    refreshInfrastructure,
-  }), [visible, selection.scope, selection.id, scope, setUnidadeSel, refreshInfrastructure]);
+  const value = useMemo<InfrastructureState>(() => {
+    const visible = state.scope === scope && scope ? state : { data: emptyData, loading: false, error: null };
+    return {
+      ...visible.data,
+      loading: visible.loading,
+      error: visible.error,
+      unidadeSel: selection.scope === scope ? selection.id : 'all',
+      setUnidadeSel,
+      refreshInfrastructure,
+    };
+  }, [state, selection.scope, selection.id, scope, setUnidadeSel, refreshInfrastructure]);
 
   return <InfrastructureContext.Provider value={value}>{children}</InfrastructureContext.Provider>;
 }
