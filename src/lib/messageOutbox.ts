@@ -3,11 +3,23 @@ import { supabase } from './supabaseClient';
 export type MessageTemplate = 'confirmacao' | 'nps' | 'reativacao' | 'vaga_espera';
 export type MessageStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';
 
-export interface MessageOutboxRow { id:string; patientId:string; appointmentId:string|null; waitlistId:string|null; template:MessageTemplate; message:string; status:MessageStatus; createdAt:string; scheduledFor:string; provider:string|null; errorMessage:string|null; replyText:string|null; repliedAt:string|null; responseAction:string|null; needsHuman:boolean; reviewResolution:string|null; reviewNote:string|null; reviewResolvedAt:string|null; }
+export interface MessageOutboxRow {
+  id:string; patientId:string; appointmentId:string|null; waitlistId:string|null; template:MessageTemplate; message:string; status:MessageStatus;
+  createdAt:string; scheduledFor:string; provider:string|null; providerMessageId:string|null; providerEvent:string|null; providerStatus:string|null;
+  attemptCount:number; lastAttemptAt:string|null; sentAt:string|null; deliveredAt:string|null; readAt:string|null; failedAt:string|null; errorMessage:string|null;
+  replyText:string|null; repliedAt:string|null; responseAction:string|null; needsHuman:boolean; reviewResolution:string|null; reviewNote:string|null; reviewResolvedAt:string|null;
+}
 export interface MessageTemplateRow { id:string; template:MessageTemplate; body:string; active:boolean; }
 export interface MessageDispatchResult { processed:number; sent:number; failed:number; }
 
-const mapLog=(row:Record<string,unknown>):MessageOutboxRow=>({id:String(row.id),patientId:String(row.patient_id),appointmentId:row.appointment_id?String(row.appointment_id):null,waitlistId:row.waitlist_id?String(row.waitlist_id):null,template:row.template as MessageTemplate,message:String(row.mensagem??''),status:row.status as MessageStatus,createdAt:String(row.created_at??row.enviado_em),scheduledFor:String(row.scheduled_for??row.enviado_em),provider:row.provider?String(row.provider):null,errorMessage:row.error_message?String(row.error_message):null,replyText:row.reply_text?String(row.reply_text):null,repliedAt:row.replied_at?String(row.replied_at):null,responseAction:row.response_action?String(row.response_action):null,needsHuman:Boolean(row.needs_human),reviewResolution:row.review_resolution?String(row.review_resolution):null,reviewNote:row.review_note?String(row.review_note):null,reviewResolvedAt:row.review_resolved_at?String(row.review_resolved_at):null});
+const asNullableString = (value: unknown) => value === null || value === undefined || value === '' ? null : String(value);
+const mapLog=(row:Record<string,unknown>):MessageOutboxRow=>({
+ id:String(row.id),patientId:String(row.patient_id),appointmentId:row.appointment_id?String(row.appointment_id):null,waitlistId:row.waitlist_id?String(row.waitlist_id):null,
+ template:row.template as MessageTemplate,message:String(row.mensagem??''),status:row.status as MessageStatus,createdAt:String(row.created_at??row.enviado_em),scheduledFor:String(row.scheduled_for??row.enviado_em),
+ provider:asNullableString(row.provider),providerMessageId:asNullableString(row.provider_message_id),providerEvent:asNullableString(row.provider_event),providerStatus:asNullableString(row.provider_status),
+ attemptCount:Number(row.attempt_count??0),lastAttemptAt:asNullableString(row.last_attempt_at),sentAt:asNullableString(row.sent_at),deliveredAt:asNullableString(row.delivered_at),readAt:asNullableString(row.read_at),failedAt:asNullableString(row.failed_at),errorMessage:asNullableString(row.error_message),
+ replyText:asNullableString(row.reply_text),repliedAt:asNullableString(row.replied_at),responseAction:asNullableString(row.response_action),needsHuman:Boolean(row.needs_human),reviewResolution:asNullableString(row.review_resolution),reviewNote:asNullableString(row.review_note),reviewResolvedAt:asNullableString(row.review_resolved_at)
+});
 export async function ensureMessageTemplates(){const{error}=await(supabase.rpc as Function)('ensure_default_message_templates');if(error)throw error;}
 export async function loadMessageTemplates(clinicId:string){await ensureMessageTemplates();const{data,error}=await supabase.from('message_templates' as never).select('*').eq('clinic_id',clinicId).order('template');if(error)throw error;return((data??[])as unknown as Record<string,unknown>[]).map(row=>({id:String(row.id),template:row.template as MessageTemplate,body:String(row.body??''),active:Boolean(row.ativo)}));}
 export async function saveMessageTemplate(id:string,body:string){const{error}=await supabase.from('message_templates' as never).update({body:body.trim()}as never).eq('id',id);if(error)throw error;}
