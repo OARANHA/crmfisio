@@ -16,6 +16,8 @@ const LABELS: Record<PlatformClinicEntitlementKey, string> = {
   'whatsapp.access': 'Mensagens / WhatsApp',
 };
 
+const REVALIDATION_INTERVAL_MS = 60_000;
+
 export function ClinicEntitlementGate({
   entitlement,
   children,
@@ -28,19 +30,40 @@ export function ClinicEntitlementGate({
 
   useEffect(() => {
     let active = true;
-    setState(null);
-    setError(false);
 
-    void loadCurrentClinicEntitlementState(entitlement)
-      .then((next) => {
+    const runValidation = async (failClosedWhileChecking = false) => {
+      if (failClosedWhileChecking) setState(null);
+      setError(false);
+
+      try {
+        const next = await loadCurrentClinicEntitlementState(entitlement);
         if (active) setState(next);
-      })
-      .catch((cause) => {
+      } catch (cause) {
         console.error('[Entitlement] route gate:', entitlement, cause);
-        if (active) setError(true);
-      });
+        if (active) {
+          setState(null);
+          setError(true);
+        }
+      }
+    };
 
-    return () => { active = false; };
+    void runValidation(true);
+
+    const handleFocus = () => { void runValidation(true); };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void runValidation(true);
+    };
+    const intervalId = window.setInterval(() => { void runValidation(false); }, REVALIDATION_INTERVAL_MS);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [entitlement]);
 
   if (!state && !error) {
