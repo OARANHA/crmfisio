@@ -1,29 +1,18 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { Patient, User } from './types';
-import { useLgpdActions } from './lgpdActions';
 
-interface AppState {
-  exportarTitular: (pacienteId: string) => Promise<Record<string, unknown>>;
-  anonimizarPaciente: (pacienteId: string) => Promise<void>;
-}
+type AppState = Record<string, never>;
 
 const Ctx = createContext<AppState | null>(null);
 
 /**
- * Compatibility facade for screens still using useApp().
+ * Compatibility shell kept temporarily until the final store teardown.
  *
- * Canonical auth and domain state live in dedicated providers. New code should
- * consume those providers directly instead of adding state or loaders here.
+ * All operational state, auth, notifications and LGPD actions already live in
+ * dedicated providers/hooks. Do not add new state here.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const lgpd = useLgpdActions();
-
-  const value = useMemo<AppState>(() => ({
-    exportarTitular: lgpd.exportSubjectData,
-    anonimizarPaciente: lgpd.anonymizePatient,
-  }), [lgpd.exportSubjectData, lgpd.anonymizePatient]);
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{}}>{children}</Ctx.Provider>;
 }
 
 export function useApp() {
