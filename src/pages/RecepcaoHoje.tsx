@@ -9,6 +9,7 @@ import { Btn, Card } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 
 const activeStatuses = new Set(['agendado', 'confirmado', 'em_atendimento']);
+const clinicalSessionPath = (item: ReceptionQueueItem) => `/pacientes/${item.patient_id}?session=${item.appointment_id}#clinical-workspace`;
 
 export function RecepcaoHoje() {
   const { user } = useCurrentUserAccess();
@@ -60,10 +61,17 @@ export function RecepcaoHoje() {
     try {
       await setAppointmentStatus(item.appointment_id, next);
       setItems((prev) => prev.map((row) => row.appointment_id === item.appointment_id ? { ...row, status: next } : row));
+      return true;
     } catch (error) {
       console.error('[MedicsPro] atualizar atendimento:', error);
       toast('Falha ao atualizar o atendimento. Tente novamente.', 'warn');
+      return false;
     }
+  };
+
+  const startClinicalSession = async (item: ReceptionQueueItem) => {
+    const accepted = await status(item, 'em_atendimento');
+    if (accepted) nav(clinicalSessionPath(item));
   };
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -99,6 +107,7 @@ export function RecepcaoHoje() {
                 const arrived = Boolean(item.arrived_at);
                 const minutes = minuteOf(item.inicio);
                 const isNear = activeStatuses.has(item.status) && Math.abs(minutes - currentMinutes) <= 45;
+                const isAssignedClinician = user?.role === 'fisio' && item.professional_id === user.id;
                 return (
                   <div key={item.appointment_id} className={`p-4 flex flex-col xl:flex-row xl:items-center gap-4 ${isNear ? 'bg-mint/[0.035]' : ''}`}>
                     <div className="w-20 shrink-0"><p className="font-display text-xl font-bold">{item.inicio.slice(0, 5)}</p><p className="font-mono text-[9px] text-fog">até {item.fim.slice(0, 5)}</p></div>
@@ -118,8 +127,8 @@ export function RecepcaoHoje() {
                     <div className="flex flex-wrap gap-2 xl:justify-end">
                       {!arrived && !['finalizado','faltou','cancelado'].includes(item.status) && <Btn disabled={busyId === item.appointment_id} onClick={() => void arrival(item, true)}>Paciente chegou</Btn>}
                       {arrived && item.status !== 'em_atendimento' && item.status !== 'finalizado' && <Btn variant="ghost" disabled={busyId === item.appointment_id} onClick={() => void arrival(item, false)}>Desfazer chegada</Btn>}
-                      {user?.role === 'fisio' && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => void status(item, 'em_atendimento')}>Iniciar atendimento</Btn>}
-                      {user?.role === 'fisio' && item.status === 'em_atendimento' && <Btn onClick={() => void status(item, 'finalizado')}>Finalizar</Btn>}
+                      {isAssignedClinician && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => void startClinicalSession(item)}>Iniciar atendimento</Btn>}
+                      {isAssignedClinician && item.status === 'em_atendimento' && <Btn onClick={() => nav(clinicalSessionPath(item))}>Continuar atendimento</Btn>}
                       {(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => void status(item, 'faltou')}>Marcar falta</Btn>}
                     </div>
                   </div>
