@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useApp, userName } from '../lib/store';
 import { useAgenda } from '../lib/agendaContext';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
 import { useClinical } from '../lib/clinicalContext';
@@ -74,7 +75,8 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 };
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
-  const { user, users, appointments, toast } = useApp();
+  const { user, appointments, toast } = useApp();
+  const { users } = useClinicDirectory();
   const { consents, signConsent } = useClinical();
   const { refreshAgenda } = useAgenda();
   const { refreshFinance } = useFinance();

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
 import { dayOf, fmtBRL, type FinancialTransaction } from '../lib/types';
@@ -34,8 +35,9 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 export function FinanceiroOperational() {
   const {
     user, access, transactions, setTxStatus, patients,
-    commissions, users, setCommissionStatus, fecharRepasse, addTransaction, toast,
+    commissions, setCommissionStatus, fecharRepasse, addTransaction, toast,
   } = useApp();
+  const { users } = useClinicDirectory();
   const { refreshFinance } = useFinance();
   const { patientPackages, packages, refreshPackages: refreshPackageDomain } = usePackages();
   const [tab, setTab] = useState<'receber' | 'pagar' | 'pacotes' | 'repasse'>('receber');
@@ -276,7 +278,8 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
 }
 
 function RepasseModal({ onClose }: { onClose: () => void }) {
-  const { users, appointments, commissions, fecharRepasse, toast } = useApp();
+  const { appointments, commissions, fecharRepasse, toast } = useApp();
+  const { users } = useClinicDirectory();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
   const linhas = fisios.map((f) => { const sess = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes)); const base = sess.reduce((s, a) => s + a.valor, 0); const jaFechado = commissions.some((c) => c.fisioId === f.id && c.periodo === mes); return { f, n: sess.length, base, comissao: Math.round(base * 0.4), jaFechado }; });
