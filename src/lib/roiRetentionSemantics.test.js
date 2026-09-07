@@ -21,6 +21,13 @@ describe('recovery and continuity report semantics', () => {
   it('scopes churn counters to the active treatment base', () => {
     expect(source).toContain('const treatmentIds = new Set');
     expect(source).toContain('const treatmentRisks = risks.filter');
+    expect(source).toContain('risk.patientId');
     expect(source).toContain('calculateLowRiskShare(treatment.length, high.length, medium.length)');
+  });
+
+  it('does not claim automation causality when the event only proves observed recovery', () => {
+    expect(source).toContain('eventos registram recuperação observada pelo sistema');
+    expect(source).toContain('não atribui o resultado exclusivamente à automação');
+    expect(source).not.toContain('resultado financeiro atribuído às ações de recuperação');
   });
 });
