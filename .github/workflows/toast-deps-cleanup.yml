@@ -1,0 +1,47 @@
+name: Temporary toast dependency cleanup
+
+on:
+  push:
+    branches:
+      - chore/p1-add-stable-toast-deps
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chore/p1-add-stable-toast-deps
+      - name: Add stable toast dependencies
+        shell: python
+        run: |
+          from pathlib import Path
+
+          edits = {
+            'src/components/ClinicalAssessmentHistory.tsx': (
+              "  }, [patient.id, clinicalRead]);",
+              "  }, [patient.id, clinicalRead, toast]);",
+            ),
+            'src/components/NexusEemPanel.tsx': (
+              "  }, [patient.id, user?.id]);",
+              "  }, [patient.id, user?.id, toast]);",
+            ),
+          }
+
+          for filename, (old, new) in edits.items():
+            path = Path(filename)
+            text = path.read_text()
+            if old not in text:
+              raise SystemExit(f'Expected text not found in {filename}: {old}')
+            path.write_text(text.replace(old, new, 1))
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/ClinicalAssessmentHistory.tsx src/components/NexusEemPanel.tsx
+          git commit -m "chore: add stable toast effect dependencies"
+          git push origin HEAD:chore/p1-add-stable-toast-deps
