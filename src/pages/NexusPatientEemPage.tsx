@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { NexusEemPanel } from '../components/NexusEemPanel';
 import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
 import { Card, Empty } from '../lib/ui';
 
 export function NexusPatientEemPage() {
   const { id } = useParams();
-  const { user, patients } = useApp();
+  const { user } = useApp();
+  const { patients } = usePatients();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
