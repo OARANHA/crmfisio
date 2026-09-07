@@ -275,13 +275,13 @@ export function PlatformClinicProvisioningPage() {
             </div>
           )}
 
-          <form onSubmit={provision} className="mt-5 grid gap-4 md:grid-cols-2">
-            <Field label="Nome da clínica" value={clinicName} onChange={setClinicName} readOnly={Boolean(accessRequestId)} required />
-            <Field label="CNPJ (opcional)" value={cnpj} onChange={setCnpj} readOnly={Boolean(accessRequestId)} />
-            <Field label="Nome do proprietário" value={ownerName} onChange={setOwnerName} readOnly={Boolean(accessRequestId)} required />
-            <Field label="E-mail do proprietário" value={ownerEmail} onChange={setOwnerEmail} readOnly={Boolean(accessRequestId)} required type="email" />
-            <Field label="Senha temporária" value={temporaryPassword} onChange={setTemporaryPassword} required type="password" hint="mínimo de 10 caracteres" minLength={10} />
-            <Field label="Chave idempotente" value={idempotencyKey} onChange={setIdempotencyKey} readOnly={Boolean(accessRequestId)} required hint="protege contra criação duplicada" mono />
+          <form onSubmit={provision} autoComplete="off" className="mt-5 grid gap-4 md:grid-cols-2">
+            <Field label="Nome da clínica" value={clinicName} onChange={setClinicName} readOnly={Boolean(accessRequestId)} required autoComplete="off" />
+            <Field label="CNPJ (opcional)" value={cnpj} onChange={setCnpj} readOnly={Boolean(accessRequestId)} autoComplete="off" />
+            <Field label="Nome do proprietário" value={ownerName} onChange={setOwnerName} readOnly={Boolean(accessRequestId)} required autoComplete="off" />
+            <Field label="E-mail do proprietário" value={ownerEmail} onChange={setOwnerEmail} readOnly={Boolean(accessRequestId)} required type="email" autoComplete="off" />
+            <Field label="Senha temporária" value={temporaryPassword} onChange={setTemporaryPassword} required type="password" hint="mínimo de 10 caracteres" minLength={10} autoComplete="new-password" />
+            <Field label="Chave idempotente" value={idempotencyKey} onChange={setIdempotencyKey} readOnly={Boolean(accessRequestId)} required hint="protege contra criação duplicada" mono autoComplete="off" />
 
             <div className="md:col-span-2 grid gap-3 sm:grid-cols-3">
               <SafetyItem icon="✓" title="Aprovação humana" detail="nenhum tenant nasce da solicitação pública" />
@@ -311,8 +311,8 @@ function OnboardingMetric({ label, value, detail, tone }: { label: string; value
   return <div className="rounded-[20px] border border-line bg-panel p-4.5"><p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-fog">{label}</p><p className={`mt-2 font-display text-[22px] font-bold tracking-tight ${toneClass}`}>{value}</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">{detail}</p></div>;
 }
 
-function Field({ label, value, onChange, type = 'text', readOnly = false, required = false, hint, mono = false, minLength }: { label: string; value: string; onChange: (value: string) => void; type?: string; readOnly?: boolean; required?: boolean; hint?: string; mono?: boolean; minLength?: number }) {
-  return <label className="text-[11.5px] font-semibold text-paper/80">{label}<input className={`mt-2 w-full rounded-xl border border-line bg-deep/70 px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-70 ${mono ? 'font-mono text-[10.5px]' : ''}`} type={type} minLength={minLength} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} required={required} />{hint && <span className="mt-1.5 block text-[9.5px] font-normal text-fog">{hint}</span>}</label>;
+function Field({ label, value, onChange, type = 'text', readOnly = false, required = false, hint, mono = false, minLength, autoComplete }: { label: string; value: string; onChange: (value: string) => void; type?: string; readOnly?: boolean; required?: boolean; hint?: string; mono?: boolean; minLength?: number; autoComplete?: string }) {
+  return <label className="text-[11.5px] font-semibold text-paper/80">{label}<input className={`mt-2 w-full rounded-xl border border-line bg-deep/70 px-4 py-3 font-normal outline-none transition focus:border-mint read-only:cursor-not-allowed read-only:opacity-70 ${mono ? 'font-mono text-[10.5px]' : ''}`} type={type} minLength={minLength} autoComplete={autoComplete} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} required={required} />{hint && <span className="mt-1.5 block text-[9.5px] font-normal text-fog">{hint}</span>}</label>;
 }
 
 function SafetyItem({ icon, title, detail }: { icon: string; title: string; detail: string }) {
