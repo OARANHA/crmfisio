@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { buildProfessionalCapacity, CAPACITY_DAY_END, CAPACITY_DAY_START, formatMinutes } from '../lib/agendaCapacity';
 import { useAgenda } from '../lib/agendaContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { patientName } from '../lib/store';
+import { patientName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { STATUS_META, type Appointment } from '../lib/types';
