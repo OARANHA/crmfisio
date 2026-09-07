@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
@@ -12,7 +12,7 @@ import {
   type PlatformAutomationRun,
   type PlatformAutomationSetting,
 } from '../lib/platformAdmin';
-import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { validatePlatformAdminAccess } from '../lib/platformAdminAccess';
 
 const SETTING_META: Record<PlatformAutomationKey, { title: string; description: string; group: string; critical?: boolean }> = {
   'automation.enabled': { title: 'Automação global', description: 'Chave-mestra do orquestrador da plataforma.', group: 'Orquestração', critical: true },
@@ -51,10 +51,9 @@ function auditTitle(action: string) {
 }
 
 export function PlatformAdminPage() {
-  const cachedAccess = getCachedPlatformAdminAccess();
   const [session, setSession] = useState<Session | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(cachedAccess === null);
-  const [authorized, setAuthorized] = useState<boolean | null>(cachedAccess);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [settings, setSettings] = useState<PlatformAutomationSetting[]>([]);
   const [runs, setRuns] = useState<PlatformAutomationRun[]>([]);
   const [audit, setAudit] = useState<PlatformAuditEntry[]>([]);
@@ -65,6 +64,14 @@ export function PlatformAdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const activeSessionUserIdRef = useRef<string | null>(null);
+
+  const clearGovernanceSession = useCallback(() => {
+    setAuthorized(null);
+    setSettings([]);
+    setRuns([]);
+    setAudit([]);
+  }, []);
 
   const refresh = useCallback(async (nextAuditLimit = AUDIT_STEP) => {
     setLoadingData(true);
@@ -112,26 +119,34 @@ export function PlatformAdminPage() {
     let active = true;
     void platformSupabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setSession(data.session);
+      const nextSession = data.session;
+      activeSessionUserIdRef.current = nextSession?.user.id ?? null;
+      setSession(nextSession);
+      if (!nextSession) clearGovernanceSession();
       setLoadingAuth(false);
     });
     const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
+      const nextUserId = nextSession?.user.id ?? null;
+      if (activeSessionUserIdRef.current !== nextUserId) {
+        activeSessionUserIdRef.current = nextUserId;
+        clearGovernanceSession();
+      }
       setSession(nextSession);
-      if (!nextSession) setAuthorized(null);
+      setLoadingAuth(false);
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
-  }, []);
+  }, [clearGovernanceSession]);
+
+  const sessionUserId = session?.user.id ?? null;
 
   useEffect(() => {
-    if (!session) {
-      if (authorized !== true) {
-        setAuthorized(null); setSettings([]); setRuns([]); setAudit([]);
-      }
+    if (!sessionUserId) {
+      clearGovernanceSession();
       return;
     }
     void refresh(AUDIT_STEP);
-  }, [session?.user.id, refresh]);
+  }, [sessionUserId, refresh, clearGovernanceSession]);
 
   const settingMap = useMemo(() => new Map(settings.map((item) => [item.key, item])), [settings]);
   const latestRun = runs[0] ?? null;
@@ -170,9 +185,9 @@ export function PlatformAdminPage() {
     }
   };
 
-  if (loadingAuth && authorized !== true) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
+  if (loadingAuth) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão…</div>;
 
-  if (!session && authorized !== true) {
+  if (!session) {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
         <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[28px] border border-line bg-panel shadow-[0_28px_90px_rgba(3,16,48,0.13)]">
