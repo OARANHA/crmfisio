@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
@@ -76,7 +76,7 @@ export function AssessmentTemplatesAdmin() {
 
   const canManage = isClinicManager(user?.role);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       setTemplates(await listAssessmentTemplatesForAdmin());
@@ -86,7 +86,7 @@ export function AssessmentTemplatesAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (!user?.id || !canManage) {
@@ -94,7 +94,7 @@ export function AssessmentTemplatesAdmin() {
       return;
     }
     void load();
-  }, [user?.id, canManage]);
+  }, [user?.id, canManage, load]);
 
   const standards = useMemo(
     () => templates.filter((template) => template.ownerType === 'platform' && template.status !== 'archived'),
