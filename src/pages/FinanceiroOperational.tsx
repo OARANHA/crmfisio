@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useApp, userName } from '../lib/store';
+import { userName } from '../lib/store';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
+import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
@@ -36,7 +37,7 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 };
 
 export function FinanceiroOperational() {
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { user, access } = useCurrentUserAccess();
   const { patients } = usePatients();
   const { users } = useClinicDirectory();
@@ -310,7 +311,7 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
 }
 
 function RepasseModal({ onClose }: { onClose: () => void }) {
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { commissions, closeCommissions } = useFinance();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
