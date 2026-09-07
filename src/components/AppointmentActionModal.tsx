@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { appointmentActions, appointmentStatusGuidance } from '../lib/appointmentWorkflow';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient, type Role } from '../lib/types';
 import type { AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { Btn, Chip } from '../lib/ui';
 import { AppointmentPatientSnapshot } from './AppointmentPatientSnapshot';
 import { AppointmentHistoryTimeline } from './AppointmentHistoryTimeline';
@@ -39,10 +40,20 @@ export function AppointmentActionModal({
   onReschedule,
   onCancel,
 }: Props) {
-  const actions = appointment ? appointmentActions(role, appointment).filter((action) => action.status !== 'cancelado') : [];
+  const { user } = useCurrentUserAccess();
+  const canClinicalTransition = Boolean(appointment && role === 'fisio' && user?.id === appointment.fisioId);
+  const actions = appointment ? appointmentActions(role, appointment)
+    .filter((action) => action.status !== 'cancelado')
+    .filter((action) => {
+      if (role !== 'fisio') return true;
+      if (action.status === 'finalizado') return false;
+      if (action.status === 'em_atendimento') return canClinicalTransition;
+      return true;
+    }) : [];
   const operationalEditable = !!appointment && ['agendado', 'confirmado'].includes(appointment.status);
   const canReschedule = operationalEditable && isOperationalRole(role);
   const canCancel = operationalEditable && (isOperationalRole(role) || role === 'fisio');
+  const canContinueClinicalSession = Boolean(appointment && canClinicalTransition && appointment.status === 'em_atendimento');
 
   useEffect(() => {
     if (!appointment) return;
@@ -59,33 +70,15 @@ export function AppointmentActionModal({
 
   return (
     <>
-      <button
-        type="button"
-        className="fixed inset-0 top-16 z-40 bg-black/20 backdrop-blur-[1px] md:hidden"
-        onClick={onClose}
-        aria-label="Fechar detalhes do atendimento"
-      />
-      <aside
-        className="agenda-detail-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(94vw,430px)] flex-col border-l border-line bg-panel shadow-[-18px_0_45px_rgba(0,0,0,0.10)]"
-        aria-label="Detalhes do atendimento"
-      >
+      <button type="button" className="fixed inset-0 top-16 z-40 bg-black/20 backdrop-blur-[1px] md:hidden" onClick={onClose} aria-label="Fechar detalhes do atendimento" />
+      <aside className="agenda-detail-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(94vw,430px)] flex-col border-l border-line bg-panel shadow-[-18px_0_45px_rgba(0,0,0,0.10)]" aria-label="Detalhes do atendimento">
         <div className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-fog">Atendimento</p>
             <h2 className="mt-1 truncate font-display text-xl font-bold">{patientLabel}</h2>
-            <p className="mt-1 text-[12.5px] text-fog">
-              {appointment.data} · {appointment.inicio}–{appointment.fim} · {appointment.tipo}
-            </p>
+            <p className="mt-1 text-[12.5px] text-fog">{appointment.data} · {appointment.inicio}–{appointment.fim} · {appointment.tipo}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-lg text-fog transition-colors hover:bg-raise hover:text-paper"
-            aria-label="Fechar detalhes"
-            title="Fechar"
-          >
-            ×
-          </button>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-lg text-fog transition-colors hover:bg-raise hover:text-paper" aria-label="Fechar detalhes" title="Fechar">×</button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -94,62 +87,32 @@ export function AppointmentActionModal({
             <TreatmentJourneyContext patient={patient} appointment={appointment} />
 
             <div className="grid grid-cols-2 gap-2 text-[12.5px]">
-              <div className="rounded-xl bg-deep px-3 py-2.5">
-                <span className="block text-[11px] font-semibold text-fog">Unidade</span>
-                <span className="mt-0.5 block">{unitLabel || '—'}</span>
-              </div>
-              <div className="rounded-xl bg-deep px-3 py-2.5">
-                <span className="block text-[11px] font-semibold text-fog">Sala/Recurso</span>
-                <span className="mt-0.5 block">{roomLabel}</span>
-              </div>
-              <div className="rounded-xl bg-deep px-3 py-2.5">
-                <span className="block text-[11px] font-semibold text-fog">Valor</span>
-                <span className="mt-0.5 block font-semibold">{fmtBRL(appointment.valor)}</span>
-              </div>
-              <div className="rounded-xl bg-deep px-3 py-2.5">
-                <span className="block text-[11px] font-semibold text-fog">Status</span>
-                <div className="mt-1"><Chip className={STATUS_META[appointment.status].chip}>{STATUS_META[appointment.status].label}</Chip></div>
-              </div>
+              <div className="rounded-xl bg-deep px-3 py-2.5"><span className="block text-[11px] font-semibold text-fog">Unidade</span><span className="mt-0.5 block">{unitLabel || '—'}</span></div>
+              <div className="rounded-xl bg-deep px-3 py-2.5"><span className="block text-[11px] font-semibold text-fog">Sala/Recurso</span><span className="mt-0.5 block">{roomLabel}</span></div>
+              <div className="rounded-xl bg-deep px-3 py-2.5"><span className="block text-[11px] font-semibold text-fog">Valor</span><span className="mt-0.5 block font-semibold">{fmtBRL(appointment.valor)}</span></div>
+              <div className="rounded-xl bg-deep px-3 py-2.5"><span className="block text-[11px] font-semibold text-fog">Status</span><div className="mt-1"><Chip className={STATUS_META[appointment.status].chip}>{STATUS_META[appointment.status].label}</Chip></div></div>
             </div>
 
-            <div className="rounded-xl bg-raise/55 px-3.5 py-3 text-[12.5px] leading-relaxed text-fog">
-              {appointmentStatusGuidance(appointment.status)}
-            </div>
+            <div className="rounded-xl bg-raise/55 px-3.5 py-3 text-[12.5px] leading-relaxed text-fog">{appointmentStatusGuidance(appointment.status)}</div>
 
-            {(canReschedule || canCancel) && (
-              <div className="grid grid-cols-2 gap-2">
-                {canReschedule && <Btn variant="ghost" onClick={onReschedule}>Remarcar</Btn>}
-                {canCancel && <Btn variant="ghost" onClick={onCancel}>Cancelar</Btn>}
-              </div>
-            )}
+            {(canReschedule || canCancel) && <div className="grid grid-cols-2 gap-2">{canReschedule && <Btn variant="ghost" onClick={onReschedule}>Remarcar</Btn>}{canCancel && <Btn variant="ghost" onClick={onCancel}>Cancelar</Btn>}</div>}
+
+            {canContinueClinicalSession && <Btn className="w-full" onClick={onOpenPatient}>Continuar atendimento no prontuário</Btn>}
 
             {actions.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-[12px] font-semibold text-fog">Próxima ação</p>
-                {actions.map((action) => (
-                  <div key={action.status}>
-                    <Btn className="w-full" variant={action.tone === 'primary' ? undefined : 'ghost'} disabled={action.disabled} onClick={() => onStatus(action.status)}>
-                      {action.label}
-                    </Btn>
-                    {action.hint && <p className="mt-1 text-[11.5px] text-amber">{action.hint}</p>}
-                  </div>
-                ))}
+                {actions.map((action) => <div key={action.status}><Btn className="w-full" variant={action.tone === 'primary' ? undefined : 'ghost'} disabled={action.disabled} onClick={() => onStatus(action.status)}>{action.label}</Btn>{action.hint && <p className="mt-1 text-[11.5px] text-amber">{action.hint}</p>}</div>)}
               </div>
             ) : (
-              !operationalEditable && <p className="text-[12px] text-fog">Nenhuma ação operacional disponível para este status.</p>
+              !operationalEditable && !canContinueClinicalSession && <p className="text-[12px] text-fog">Nenhuma ação operacional disponível para este status.</p>
             )}
 
-            <Btn className="w-full" variant="subtle" onClick={onOpenPatient}>
-              {role === 'recep' ? 'Abrir paciente' : 'Abrir prontuário do paciente'}
-            </Btn>
+            <Btn className="w-full" variant="subtle" onClick={onOpenPatient}>{role === 'recep' ? 'Abrir paciente' : 'Abrir prontuário do paciente'}</Btn>
 
             <details className="group rounded-xl bg-deep/60">
-              <summary className="cursor-pointer list-none px-3.5 py-3 text-[12.5px] font-semibold text-fog hover:text-paper">
-                Histórico do atendimento <span className="float-right transition-transform group-open:rotate-180">⌄</span>
-              </summary>
-              <div className="border-t border-line px-3 py-3">
-                <AppointmentHistoryTimeline appointmentId={appointment.id} />
-              </div>
+              <summary className="cursor-pointer list-none px-3.5 py-3 text-[12.5px] font-semibold text-fog hover:text-paper">Histórico do atendimento <span className="float-right transition-transform group-open:rotate-180">⌄</span></summary>
+              <div className="border-t border-line px-3 py-3"><AppointmentHistoryTimeline appointmentId={appointment.id} /></div>
             </details>
           </div>
         </div>
