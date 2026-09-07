@@ -8,9 +8,9 @@ const messages = source('../pages/Mensagens.tsx');
 const activity = source('../components/messages/MessageActivity.tsx');
 
 describe('WhatsApp operational observability', () => {
-  it('preserves provider diagnostics from wa_logs', () => {
-    expect(outbox).toContain('providerStatus:string|null');
-    expect(outbox).toContain('attemptCount:number');
+  it('preserves provider diagnostics from wa_logs without breaking legacy fixtures', () => {
+    expect(outbox).toContain('providerStatus?:string|null');
+    expect(outbox).toContain('attemptCount?:number');
     expect(outbox).toContain('provider_status');
     expect(outbox).toContain('last_attempt_at');
     expect(outbox).toContain('delivered_at');
