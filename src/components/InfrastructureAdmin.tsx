@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
@@ -34,12 +34,13 @@ export function InfrastructureAdmin() {
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState<Room['tipo']>('sala');
 
-  const refresh = async (cid: string) => {
+  const refresh = useCallback(async (cid: string) => {
     const data = await loadInfrastructureAdmin(cid);
     setUnits(data.units);
     setRooms(data.rooms);
-    if (!roomUnitId && data.units.find((u) => u.ativo)) setRoomUnitId(data.units.find((u) => u.ativo)!.id);
-  };
+    const firstActiveUnitId = data.units.find((unit) => unit.ativo)?.id ?? '';
+    setRoomUnitId((current) => current || firstActiveUnitId);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +58,7 @@ export function InfrastructureAdmin() {
       })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [user?.id]);
+  }, [user?.id, refresh, toast]);
 
   const roomsByUnit = useMemo(() => {
     const grouped = new Map<string, RoomAdminRow[]>();
