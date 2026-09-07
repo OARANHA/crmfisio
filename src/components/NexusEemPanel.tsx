@@ -58,7 +58,7 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
     }
     void load();
     return () => { cancelled = true; };
-  }, [patient.id, user?.id]);
+  }, [patient.id, user?.id, toast]);
 
   const submit = async () => {
     if (!user || !canApply) return;

@@ -55,7 +55,7 @@ export function ClinicalAssessmentHistory({ patient }: { patient: Patient }) {
     }
     void load();
     return () => { cancelled = true; };
-  }, [patient.id, clinicalRead]);
+  }, [patient.id, clinicalRead, toast]);
 
   if (!clinicalRead) return null;
 
