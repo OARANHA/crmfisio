@@ -12,7 +12,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
-import { Btn, Chip } from '../lib/ui';
+import { Chip } from '../lib/ui';
 
 const OPEN_MESSAGE_STATUS = new Set(['fila', 'enviando', 'enviado', 'entregue', 'lido']);
 const REACTIVATION_INACTIVITY_DAYS = 30;
@@ -31,7 +31,7 @@ export function Mensagens() {
   const canSend = access('mensagens') === 'full';
   const {
     logs, templates, loading, queueSelectedConfirmations, queueSelectedNps,
-    queueSelectedReactivation, resolveReview, flush, saveTemplate,
+    queueSelectedReactivation, resolveReview, saveTemplate,
   } = useMessageCenter(user?.id);
 
   const confirmationSelection = useMemo(() => {
@@ -139,49 +139,34 @@ export function Mensagens() {
 
   const sendConfirmations = async (ids: string[]) => {
     try {
-      const { queued: count, dispatch } = await queueSelectedConfirmations(ids);
+      const { queued: count } = await queueSelectedConfirmations(ids);
       if (!count) return toast('Nenhuma das sessões selecionadas continua elegível para confirmação.', 'info');
-      if (dispatch.failed) toast(`${dispatch.sent} enviada(s) e ${dispatch.failed} falhou(aram).`, 'warn');
-      else toast(`${dispatch.sent} confirmação${dispatch.sent === 1 ? '' : 'ões'} enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
+      toast(`${count} confirmação${count === 1 ? '' : 'ões'} adicionada${count === 1 ? '' : 's'} à fila de envio.`);
     } catch (error) {
       console.error('[MedicsPro] confirmações selecionadas:', error);
-      toast('Não foi possível enviar as confirmações selecionadas.', 'warn');
+      toast('Não foi possível enfileirar as confirmações selecionadas.', 'warn');
     }
   };
 
   const sendNps = async (ids: string[]) => {
     try {
-      const { queued: count, dispatch } = await queueSelectedNps(ids);
+      const { queued: count } = await queueSelectedNps(ids);
       if (!count) return toast('Nenhum dos atendimentos selecionados continua elegível para NPS.', 'info');
-      if (dispatch.failed) toast(`${dispatch.sent} NPS enviado(s) e ${dispatch.failed} falhou(aram).`, 'warn');
-      else toast(`${dispatch.sent} pesquisa${dispatch.sent === 1 ? '' : 's'} NPS enviada${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
+      toast(`${count} pesquisa${count === 1 ? '' : 's'} NPS adicionada${count === 1 ? '' : 's'} à fila de envio.`);
     } catch (error) {
       console.error('[MedicsPro] NPS selecionado:', error);
-      toast('Não foi possível enviar o NPS dos atendimentos selecionados.', 'warn');
+      toast('Não foi possível enfileirar o NPS dos atendimentos selecionados.', 'warn');
     }
   };
 
   const sendReactivation = async (ids: string[]) => {
     try {
-      const { queued: count, dispatch } = await queueSelectedReactivation(ids);
+      const { queued: count } = await queueSelectedReactivation(ids);
       if (!count) return toast('Nenhum dos pacientes selecionados continua elegível para reativação.', 'info');
-      if (dispatch.failed) toast(`${dispatch.sent} reativação(ões) enviada(s) e ${dispatch.failed} falhou(aram).`, 'warn');
-      else toast(`${dispatch.sent} convite${dispatch.sent === 1 ? '' : 's'} de reativação enviado${dispatch.sent === 1 ? '' : 's'} pelo WhatsApp.`);
+      toast(`${count} convite${count === 1 ? '' : 's'} de reativação adicionado${count === 1 ? '' : 's'} à fila de envio.`);
     } catch (error) {
       console.error('[MedicsPro] reativação selecionada:', error);
-      toast('Não foi possível enviar a campanha de reativação.', 'warn');
-    }
-  };
-
-  const runPendingQueue = async () => {
-    try {
-      const dispatch = await flush(50);
-      if (!dispatch.processed) toast('Não há mensagens pendentes para enviar.', 'info');
-      else if (dispatch.failed) toast(`${dispatch.sent} enviada(s) e ${dispatch.failed} falhou(aram).`, 'warn');
-      else toast(`${dispatch.sent} mensagem${dispatch.sent === 1 ? '' : 'ens'} enviada${dispatch.sent === 1 ? '' : 's'} pela Evolution.`);
-    } catch (error) {
-      console.error('[MedicsPro] processar fila:', error);
-      toast('Não foi possível processar a fila de mensagens.', 'warn');
+      toast('Não foi possível enfileirar a campanha de reativação.', 'warn');
     }
   };
 
@@ -196,7 +181,7 @@ export function Mensagens() {
   };
 
   return <div className="space-y-4">
-    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1><p className="text-fog text-[13px] mt-0.5">fila persistente · destinatários selecionáveis · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{humanReview > 0 && <Chip className="border-amber/45 text-amber">{humanReview} para revisar</Chip>}{canSend && queued > 0 && <Btn variant="subtle" disabled={loading} onClick={runPendingQueue}>Processar fila ({queued})</Btn>}</div></Reveal>
+    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1><p className="text-fog text-[13px] mt-0.5">fila persistente · destinatários selecionáveis · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{humanReview > 0 && <Chip className="border-amber/45 text-amber">{humanReview} para revisar</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
 
     <Reveal delay={60}><div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line">{[
       { value: queued + sending, suffix: '', label: 'na fila agora', className: 'text-amber' },
@@ -209,7 +194,7 @@ export function Mensagens() {
     <Reveal delay={90}><MessageReviewQueue logs={logs} patients={patients} busy={loading || !canSend} onResolve={handleReview} /></Reveal>
 
     <div className="grid xl:grid-cols-2 gap-4 items-start">
-      <Reveal delay={110}><MessageRecipientSelector title="Confirmação de sessões — próximas 48h" sub="Escolha uma, várias ou todas as sessões elegíveis. O backend revalida as regras antes do envio." candidates={confirmationSelection.candidates} blockedSummary={blockedText(confirmationSelection.stats)} busy={loading} canSend={canSend} accent="mint" onSend={sendConfirmations} /></Reveal>
+      <Reveal delay={110}><MessageRecipientSelector title="Confirmação de sessões — próximas 48h" sub="Escolha uma, várias ou todas as sessões elegíveis. O backend revalida as regras antes de colocar na fila segura de envio." candidates={confirmationSelection.candidates} blockedSummary={blockedText(confirmationSelection.stats)} busy={loading} canSend={canSend} accent="mint" onSend={sendConfirmations} /></Reveal>
       <Reveal delay={130}><MessageRecipientSelector title="Pesquisa NPS — atendimentos dos últimos 7 dias" sub="Cada atendimento finalizado pode gerar sua própria pesquisa. Um NPS anterior do mesmo paciente não bloqueia uma nova sessão." candidates={npsSelection.candidates} blockedSummary={blockedText(npsSelection.stats)} busy={loading} canSend={canSend} accent="aqua" onSend={sendNps} /></Reveal>
     </div>
 
