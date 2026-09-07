@@ -9,6 +9,7 @@ import { buildReactivationSelection } from '../components/messages/reactivationE
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
 import { useApp } from '../lib/store';
+import { useAgenda } from '../lib/agendaContext';
 import { Btn, Chip } from '../lib/ui';
 
 const OPEN_MESSAGE_STATUS = new Set(['fila', 'enviando', 'enviado', 'entregue', 'lido']);
@@ -21,7 +22,8 @@ function appointmentDateTime(data: string, inicio: string) {
 }
 
 export function Mensagens() {
-  const { user, patients, appointments, access, toast } = useApp();
+  const { user, patients, access, toast } = useApp();
+  const { appointments } = useAgenda();
   const canSend = access('mensagens') === 'full';
   const {
     logs, templates, loading, queueSelectedConfirmations, queueSelectedNps,
