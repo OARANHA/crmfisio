@@ -8,6 +8,7 @@ import {
 } from '../lib/waitlist';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp, patientName, userName } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
@@ -19,7 +20,8 @@ interface Props { unidades: Unidade[]; rooms: Room[]; onRecovered: () => void }
 const dayLabels = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }];
 
 export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
-  const { user, toast } = useApp();
+  const { user } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
