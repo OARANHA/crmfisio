@@ -6,10 +6,10 @@ create or replace function public.admin_create_team_profile_atomic(
   p_email text,
   p_nome text,
   p_role text,
-  p_registro text default '',
-  p_cor text default '#666666',
+  p_registro text default null,
+  p_cor text default '#9ab8c9',
   p_ativo boolean default true,
-  p_telefone text default '',
+  p_telefone text default null,
   p_professional_type text default null,
   p_council_type text default null,
   p_council_state text default null,
@@ -35,7 +35,7 @@ begin
     raise exception using errcode = '22023', message = 'Email e nome sao obrigatorios.';
   end if;
 
-  if p_role not in ('admin', 'fisio', 'recep') then
+  if p_role not in ('admin', 'fisio', 'recep', 'financeiro') then
     raise exception using errcode = '22023', message = 'Papel invalido para administracao de equipe.';
   end if;
 
@@ -58,30 +58,18 @@ begin
   end if;
 
   insert into public.profiles (
-    id,
-    clinic_id,
-    email,
-    nome,
-    role,
-    registro,
-    cor,
-    ativo,
-    telefone,
-    professional_type,
-    council_type,
-    council_state,
-    especialidade,
-    must_change_password
+    id, clinic_id, email, nome, role, registro, cor, ativo, telefone,
+    professional_type, council_type, council_state, especialidade, must_change_password
   ) values (
     p_profile_id,
     p_clinic_id,
     lower(btrim(p_email)),
     btrim(p_nome),
     p_role,
-    coalesce(p_registro, ''),
-    coalesce(nullif(btrim(p_cor), ''), '#666666'),
+    nullif(btrim(coalesce(p_registro, '')), ''),
+    coalesce(nullif(btrim(coalesce(p_cor, '')), ''), '#9ab8c9'),
     coalesce(p_ativo, true),
-    coalesce(p_telefone, ''),
+    nullif(btrim(coalesce(p_telefone, '')), ''),
     nullif(btrim(coalesce(p_professional_type, '')), ''),
     nullif(btrim(coalesce(p_council_type, '')), ''),
     nullif(upper(btrim(coalesce(p_council_state, ''))), ''),
@@ -91,8 +79,8 @@ begin
   returning * into v_profile;
 
   if cardinality(v_unit_ids) > 0 then
-    insert into public.profile_units (profile_id, unit_id)
-    select p_profile_id, unit_id
+    insert into public.profile_units (profile_id, unit_id, clinic_id)
+    select p_profile_id, unit_id, p_clinic_id
     from unnest(v_unit_ids) as requested(unit_id);
   end if;
 
@@ -105,9 +93,9 @@ create or replace function public.admin_update_team_profile_atomic(
   p_clinic_id uuid,
   p_nome text,
   p_role text,
-  p_registro text default '',
-  p_cor text default '#666666',
-  p_telefone text default '',
+  p_registro text default null,
+  p_cor text default '#9ab8c9',
+  p_telefone text default null,
   p_professional_type text default null,
   p_council_type text default null,
   p_council_state text default null,
@@ -133,7 +121,7 @@ begin
     raise exception using errcode = '22023', message = 'Nome e obrigatorio.';
   end if;
 
-  if p_role not in ('admin', 'fisio', 'recep') then
+  if p_role not in ('admin', 'fisio', 'recep', 'financeiro') then
     raise exception using errcode = '22023', message = 'Papel invalido para administracao de equipe.';
   end if;
 
@@ -174,9 +162,9 @@ begin
   set
     nome = btrim(p_nome),
     role = p_role,
-    registro = coalesce(p_registro, ''),
-    cor = coalesce(nullif(btrim(p_cor), ''), '#666666'),
-    telefone = coalesce(p_telefone, ''),
+    registro = nullif(btrim(coalesce(p_registro, '')), ''),
+    cor = coalesce(nullif(btrim(coalesce(p_cor, '')), ''), '#9ab8c9'),
+    telefone = nullif(btrim(coalesce(p_telefone, '')), ''),
     professional_type = nullif(btrim(coalesce(p_professional_type, '')), ''),
     council_type = nullif(btrim(coalesce(p_council_type, '')), ''),
     council_state = nullif(upper(btrim(coalesce(p_council_state, ''))), ''),
@@ -186,11 +174,12 @@ begin
   returning * into v_profile;
 
   delete from public.profile_units
-  where profile_id = p_profile_id;
+  where profile_id = p_profile_id
+    and clinic_id = p_clinic_id;
 
   if cardinality(v_unit_ids) > 0 then
-    insert into public.profile_units (profile_id, unit_id)
-    select p_profile_id, unit_id
+    insert into public.profile_units (profile_id, unit_id, clinic_id)
+    select p_profile_id, unit_id, p_clinic_id
     from unnest(v_unit_ids) as requested(unit_id);
   end if;
 
