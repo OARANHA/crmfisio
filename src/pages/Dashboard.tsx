@@ -46,11 +46,11 @@ export function Dashboard() {
     const aReceber = financeAllowed ? transactions.filter((t) => t.tipo === 'receber' && t.status !== 'pago').reduce((s, t) => s + t.valor, 0) : 0;
     const faltas = appointments.filter((a) => a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
     const realizadas = prodMes.length;
-    const comparecimento = realizadas + faltas.length > 0 ? Math.round((realizadas / (realizadas + faltas.length)) * 100) : 100;
+    const comparecimento = realizadas + faltas > 0 ? Math.round((realizadas / (realizadas + faltas)) * 100) : 100;
     const novos = patients.filter((p) => p.createdAt.startsWith(mes) && !p.anonimizado).length;
     const notas = reportsAllowed ? surveys.filter((s) => s.nota !== null && s.data.startsWith(mes)).map((s) => s.nota as number) : [];
     const nps = notas.length ? Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10 : 0;
-    return { producao, aReceber, comparecimento, novos, nps, realizadas, faltas: faltas.length };
+    return { producao, aReceber, comparecimento, novos, nps, realizadas, faltas };
   }, [appointments, transactions, patients, surveys, mes, inUnit, financeAllowed, reportsAllowed]);
 
   const semana = useMemo(() => {
