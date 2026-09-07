@@ -8,7 +8,7 @@ import type { ConsentTerm, Evolution, NpsSurvey } from './types';
 type EvolutionRow = Database['public']['Tables']['physiotherapy_evolutions']['Row'];
 type ConsentRow = Database['public']['Tables']['consent_terms']['Row'];
 type NpsRow = Database['public']['Tables']['nps_surveys']['Row'];
-const mapEvolution = (row: EvolutionRow): Evolution => ({ id: row.id, pacienteId: row.patient_id, fisioId: row.professional_id, data: row.created_at.slice(0, 10), texto: row.texto, anexos: row.anexos ?? [] });
+const mapEvolution = (row: EvolutionRow): Evolution => ({ id: row.id, pacienteId: row.patient_id, fisioId: row.professional_id, sessionId: row.session_id, data: row.created_at.slice(0, 10), texto: row.texto, anexos: row.anexos ?? [] });
 const mapConsent = (row: ConsentRow): ConsentTerm => ({ id: row.id, pacienteId: row.patient_id, nome: row.nome, versao: row.versao, assinado: row.assinado, dataAssinatura: row.data_assinatura, hash: row.hash, assinaturaUrl: row.assinatura_url, ip: row.ip });
 const mapNps = (row: NpsRow): NpsSurvey => ({ id: row.id, pacienteId: row.patient_id, nota: row.nota, comentario: row.comentario ?? '', data: row.data });
 
