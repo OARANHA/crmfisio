@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
@@ -278,7 +279,8 @@ function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { in
 }
 
 function RepasseModal({ onClose }: { onClose: () => void }) {
-  const { appointments, commissions, fecharRepasse, toast } = useApp();
+  const { commissions, fecharRepasse, toast } = useApp();
+  const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const fisios = users.filter((u) => u.role === 'fisio');
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));

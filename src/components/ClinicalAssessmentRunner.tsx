@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
@@ -20,7 +21,8 @@ import {
 } from '../lib/assessmentEngine';
 
 export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
-  const { user, appointments, toast } = useApp();
+  const { user, toast } = useApp();
+  const { appointments } = useAgenda();
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);
   const [draft, setDraft] = useState<ClinicalAssessment | null>(null);

@@ -75,10 +75,10 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 };
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
-  const { user, appointments, toast } = useApp();
+  const { user, toast } = useApp();
   const { users } = useClinicDirectory();
   const { consents, signConsent } = useClinical();
-  const { refreshAgenda } = useAgenda();
+  const { appointments, refreshAgenda } = useAgenda();
   const { refreshFinance } = useFinance();
   const { refreshPackages } = usePackages();
   const [tab, setTab] = useState<Tab>('resumo');

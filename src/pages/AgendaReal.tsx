@@ -38,9 +38,9 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 };
 
 export function AgendaReal() {
-  const { user, patients, appointments, addAppointment, setAppointmentStatus, toast } = useApp();
+  const { user, patients, toast } = useApp();
   const { users } = useClinicDirectory();
-  const { refreshAgenda } = useAgenda();
+  const { appointments, addAppointment, setAppointmentStatus, refreshAgenda } = useAgenda();
   const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
   const nav = useNavigate();
   const [anchor, setAnchor] = useState(() => new Date());
@@ -156,10 +156,26 @@ export function AgendaReal() {
     return unidades.find((unit) => unit.id === room?.unidadeId)?.nome ?? '';
   };
 
-  const manageStatus = (status: AppointmentStatus) => {
+  const manageStatus = async (status: AppointmentStatus) => {
     if (!selected) return;
-    setAppointmentStatus(selected.id, status);
-    setSelected({ ...selected, status });
+    try {
+      await setAppointmentStatus(selected.id, status);
+      setSelected({ ...selected, status });
+    } catch (error) {
+      console.error('[MedicsPro] Falha ao atualizar o atendimento:', error);
+      toast('Falha ao atualizar o atendimento. Tente novamente.', 'warn');
+    }
+  };
+
+  const saveAppointment = (appointment: Omit<Appointment, 'id'>) => {
+    void addAppointment(appointment)
+      .then(() => toast('Agendamento salvo.'))
+      .catch((error) => {
+        console.error('[MedicsPro] Falha ao salvar agendamento:', error);
+        toast('Falha ao salvar agendamento. Tente novamente.', 'warn');
+      });
+    setCreating(null);
+    nav('/agenda', { replace: true });
   };
 
   const reloadAgenda = () => { void refreshAgenda().catch((error) => console.error('[MedicsPro] atualizar agenda:', error)); };
@@ -313,8 +329,8 @@ export function AgendaReal() {
         <Card className="overflow-x-auto"><div className={`flex ${view === 'semana' ? 'min-w-[950px]' : 'min-w-[420px]'}`}><div className="w-14 shrink-0"><div className="h-[52px] border-b border-line" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
       )}</Reveal>
 
-      <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={(appointment) => { addAppointment(appointment); setCreating(null); nav('/agenda', { replace: true }); }} />
-      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={manageStatus} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
+      <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={saveAppointment} />
+      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={(status) => void manageStatus(status)} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
       <AppointmentCancelModal appointment={cancelling} onClose={() => setCancelling(null)} onConfirm={confirmCancellation} busy={operationBusy} />
       <AppointmentRescheduleModal appointment={rescheduling} preset={reschedulePreset} rooms={rooms} unidades={unidades} onClose={() => { setRescheduling(null); setReschedulePreset(null); }} onConfirm={confirmReschedule} busy={operationBusy} />
     </div>

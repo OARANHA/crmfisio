@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { useAgenda } from '../../lib/agendaContext';
 import { useApp } from '../../lib/store';
 import { useClinicDirectory } from '../../lib/clinicDirectoryContext';
 import { useClinical } from '../../lib/clinicalContext';
@@ -21,7 +22,8 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, appointments, patients, transactions } = useApp();
+  const { user, patients, transactions } = useApp();
+  const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const { consents } = useClinical();
   const { patientPackages } = usePackages();

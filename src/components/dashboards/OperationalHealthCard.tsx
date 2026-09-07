@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { useApp } from '../../lib/store';
+import { useAgenda } from '../../lib/agendaContext';
 import { useCommunication } from '../../lib/communicationContext';
 import { useUnitFilter } from '../../lib/infrastructureContext';
 import { loadAutomationRuns, type AutomationRun } from '../../lib/automation';
 import { Card, CardHead, Chip, IconChevronR } from '../../lib/ui';
 
 export function OperationalHealthCard() {
-  const { appointments } = useApp();
+  const { appointments } = useAgenda();
   const { waLogs } = useCommunication();
   const inUnit = useUnitFilter();
   const [lastRun, setLastRun] = useState<AutomationRun | null>(null);

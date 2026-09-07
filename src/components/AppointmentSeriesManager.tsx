@@ -18,9 +18,9 @@ const DAY_LABEL: Record<number, string> = {
 const formatDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 
 export function AppointmentSeriesManager() {
-  const { user, patients, appointments, toast } = useApp();
+  const { user, patients, toast } = useApp();
   const { users } = useClinicDirectory();
-  const { refreshAgenda } = useAgenda();
+  const { appointments, refreshAgenda } = useAgenda();
   const [series, setSeries] = useState<AppointmentSeriesSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);

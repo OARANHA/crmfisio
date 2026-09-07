@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
@@ -12,7 +13,8 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
-  const { patients, appointments, transactions, setFunilStage, toast } = useApp();
+  const { patients, transactions, setFunilStage, toast } = useApp();
+  const { appointments } = useAgenda();
   const { surveys } = useClinical();
   const { patientPackages } = usePackages();
   const navigate = useNavigate();
