@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useApp } from '../lib/store';
 import { Card, Chip, IconChevronR } from '../lib/ui';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { isPsychiatristIdentity, professionalIdentityLabel } from '../lib/professionalIdentity';
 import { Reveal } from '../components/Reveal';
 import { NexusPatientLauncher } from '../components/NexusPatientLauncher';
@@ -20,7 +20,7 @@ const DOMAINS = [
 ] as const;
 
 export function NexusGlobalPage() {
-  const { user } = useApp();
+  const { user } = useCurrentUserAccess();
   const { identity } = useProfessionalIdentity(user?.id);
   const psychiatrist = isPsychiatristIdentity(identity);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
