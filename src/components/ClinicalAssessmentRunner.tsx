@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAgenda } from '../lib/agendaContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
@@ -34,6 +34,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  const userId = user?.id ?? null;
   const clinicalRead = user?.role === 'fisio' || isClinicManager(user?.role);
   const clinicalWrite = user?.role === 'fisio';
   const activeAppointment = useMemo(
@@ -42,7 +43,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   );
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
 
-  const openDraft = async (assessment: ClinicalAssessment) => {
+  const openDraft = useCallback(async (assessment: ClinicalAssessment) => {
     const versions = await listPublishedTemplateVersions(assessment.templateId);
     const exact = versions.find((item) => item.id === assessment.templateVersionId);
     if (!exact) throw new Error('A versão usada por este rascunho não está disponível.');
@@ -51,9 +52,9 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     setSchema(exact.schema);
     setAnswers(assessment.answers);
     setBodyPoints(points);
-  };
+  }, []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!clinicalRead) {
       setLoading(false);
       return;
@@ -66,8 +67,8 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
       ]);
       setTemplates(available.filter((template) => template.status === 'active'));
       setAssessments(history);
-      if (clinicalWrite && user) {
-        const ownDraft = history.find((item) => item.status === 'draft' && item.professionalId === user.id) ?? null;
+      if (clinicalWrite && userId) {
+        const ownDraft = history.find((item) => item.status === 'draft' && item.professionalId === userId) ?? null;
         if (ownDraft) await openDraft(ownDraft);
       }
     } catch (error) {
@@ -76,11 +77,11 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicalRead, clinicalWrite, openDraft, patient.id, toast, userId]);
 
   useEffect(() => {
     void load();
-  }, [patient.id, user?.id, clinicalRead]);
+  }, [load]);
 
   const startAssessment = async (template: AssessmentTemplate) => {
     if (!user || !clinicalWrite) return;
