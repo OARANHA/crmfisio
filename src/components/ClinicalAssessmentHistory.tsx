@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import type { Patient } from '../lib/types';
 import { Card, CardHead, Chip, Empty } from '../lib/ui';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { userName } from '../lib/store';
+import { userName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { isClinicManager } from '../lib/permissions';
@@ -72,17 +72,10 @@ export function ClinicalAssessmentHistory({ patient }: { patient: Patient }) {
             <li key={assessment.id} className="px-5 py-4 flex flex-wrap gap-3 items-center">
               <div className="flex-1 min-w-[220px]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-display font-semibold text-[13px]">
-                    {templateById.get(assessment.templateId)?.name || 'Avaliação estruturada'}
-                  </p>
+                  <p className="font-display font-semibold text-[13px]">{templateById.get(assessment.templateId)?.name || 'Avaliação estruturada'}</p>
                   <Chip className="border-mint/40 text-mint">finalizada ✓</Chip>
                 </div>
-                <p className="font-mono text-[10.5px] text-fog mt-1">
-                  {assessment.finalizedAt
-                    ? format(new Date(assessment.finalizedAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR })
-                    : 'finalizada'}
-                  {' · '}por {userName(users, assessment.professionalId)}
-                </p>
+                <p className="font-mono text-[10.5px] text-fog mt-1">{assessment.finalizedAt ? format(new Date(assessment.finalizedAt), "dd MMM yyyy '·' HH:mm", { locale: ptBR }) : 'finalizada'}{' · '}por {userName(users, assessment.professionalId)}</p>
               </div>
             </li>
           ))}
