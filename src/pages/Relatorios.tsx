@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
 import { useAgenda } from '../lib/agendaContext';
+import { useFinance } from '../lib/financeContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
@@ -13,7 +14,8 @@ import { Reveal, CountUp } from '../components/Reveal';
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function Relatorios() {
-  const { access, transactions, toast } = useApp();
+  const { access, toast } = useApp();
+  const { transactions } = useFinance();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const { surveys } = useClinical();

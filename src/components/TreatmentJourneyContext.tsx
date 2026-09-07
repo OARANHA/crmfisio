@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { buildTreatmentContext } from '../lib/treatmentContext';
 import { useAgenda } from '../lib/agendaContext';
-import { useApp } from '../lib/store';
+import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
 import { Bar, Chip } from '../lib/ui';
 import { fmtBRL, type Appointment, type Patient } from '../lib/types';
 
 export function TreatmentJourneyContext({ patient, appointment }: { patient?: Patient; appointment: Appointment }) {
-  const { transactions } = useApp();
+  const { transactions } = useFinance();
   const { appointments } = useAgenda();
   const { patientPackages, packages } = usePackages();
   const context = useMemo(() => buildTreatmentContext({
