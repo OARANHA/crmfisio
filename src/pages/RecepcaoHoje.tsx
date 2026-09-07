@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../lib/store';
+import { useAgenda } from '../lib/agendaContext';
 import { loadReceptionToday, setAppointmentArrival, type ReceptionQueueItem } from '../lib/reception';
 import { STATUS_META, type AppointmentStatus } from '../lib/types';
 import { Btn, Card } from '../lib/ui';
@@ -9,7 +10,8 @@ import { Reveal } from '../components/Reveal';
 const activeStatuses = new Set(['agendado', 'confirmado', 'em_atendimento']);
 
 export function RecepcaoHoje() {
-  const { user, setAppointmentStatus, toast } = useApp();
+  const { user, toast } = useApp();
+  const { setAppointmentStatus } = useAgenda();
   const nav = useNavigate();
   const [items, setItems] = useState<ReceptionQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +54,14 @@ export function RecepcaoHoje() {
     } finally { setBusyId(null); }
   };
 
-  const status = (item: ReceptionQueueItem, next: AppointmentStatus) => {
-    setAppointmentStatus(item.appointment_id, next);
-    setItems((prev) => prev.map((row) => row.appointment_id === item.appointment_id ? { ...row, status: next } : row));
+  const status = async (item: ReceptionQueueItem, next: AppointmentStatus) => {
+    try {
+      await setAppointmentStatus(item.appointment_id, next);
+      setItems((prev) => prev.map((row) => row.appointment_id === item.appointment_id ? { ...row, status: next } : row));
+    } catch (error) {
+      console.error('[MedicsPro] atualizar atendimento:', error);
+      toast('Falha ao atualizar o atendimento. Tente novamente.', 'warn');
+    }
   };
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -109,9 +116,9 @@ export function RecepcaoHoje() {
                     <div className="flex flex-wrap gap-2 xl:justify-end">
                       {!arrived && !['finalizado','faltou','cancelado'].includes(item.status) && <Btn disabled={busyId === item.appointment_id} onClick={() => void arrival(item, true)}>Paciente chegou</Btn>}
                       {arrived && item.status !== 'em_atendimento' && item.status !== 'finalizado' && <Btn variant="ghost" disabled={busyId === item.appointment_id} onClick={() => void arrival(item, false)}>Desfazer chegada</Btn>}
-                      {user?.role === 'fisio' && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => status(item, 'em_atendimento')}>Iniciar atendimento</Btn>}
-                      {user?.role === 'fisio' && item.status === 'em_atendimento' && <Btn onClick={() => status(item, 'finalizado')}>Finalizar</Btn>}
-                      {(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => status(item, 'faltou')}>Marcar falta</Btn>}
+                      {user?.role === 'fisio' && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => void status(item, 'em_atendimento')}>Iniciar atendimento</Btn>}
+                      {user?.role === 'fisio' && item.status === 'em_atendimento' && <Btn onClick={() => void status(item, 'finalizado')}>Finalizar</Btn>}
+                      {(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => void status(item, 'faltou')}>Marcar falta</Btn>}
                     </div>
                   </div>
                 );
