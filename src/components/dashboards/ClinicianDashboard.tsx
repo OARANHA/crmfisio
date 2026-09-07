@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { useAgenda } from '../../lib/agendaContext';
 import { useApp } from '../../lib/store';
 import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
@@ -11,7 +12,8 @@ import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 export function ClinicianDashboard() {
-  const { user, appointments, patients } = useApp();
+  const { user, patients } = useApp();
+  const { appointments } = useAgenda();
   const { evolutions } = useClinical();
   const { patientPackages, packages } = usePackages();
   const today = format(new Date(), 'yyyy-MM-dd');
