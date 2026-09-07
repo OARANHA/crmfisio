@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { resolveClinicId } from '../lib/repository';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -27,6 +27,8 @@ const nextVersion = (current: string) => {
   return `${current}.1`;
 };
 
+const db = supabase as any;
+
 export function ConsentTemplatesAdmin() {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
@@ -39,9 +41,7 @@ export function ConsentTemplatesAdmin() {
   const [conteudo, setConteudo] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const db = supabase as any;
-
-  const load = async (cid: string) => {
+  const load = useCallback(async (cid: string) => {
     const [templateResult, usageResult] = await Promise.all([
       db.from('consent_templates').select('id,nome,versao,conteudo,obrigatorio,ativo').eq('clinic_id', cid).order('nome').order('created_at'),
       db.from('consent_terms').select('template_id').eq('clinic_id', cid).not('template_id', 'is', null),
@@ -54,7 +54,7 @@ export function ConsentTemplatesAdmin() {
       if (row.template_id) counts[row.template_id] = (counts[row.template_id] ?? 0) + 1;
     }
     setUsage(counts);
-  };
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -67,7 +67,7 @@ export function ConsentTemplatesAdmin() {
         console.error('[MedicsPro] modelos de consentimento:', error);
         toast('Não foi possível carregar os modelos de consentimento.', 'warn');
       });
-  }, [user?.id]);
+  }, [user?.id, load, toast]);
 
   const resetForm = () => {
     setEditingId(null);
