@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAgenda } from '../lib/agendaContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty } from '../lib/ui';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
@@ -20,7 +20,7 @@ import { persistEemResult } from '../lib/nexus/eemPersistence';
 
 export function NexusEemPanel({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { appointments } = useAgenda();
   const [state, setState] = useState<NexusEemState>(() => createInitialEemState());
   const [history, setHistory] = useState<NexusClinicalResult[]>([]);
