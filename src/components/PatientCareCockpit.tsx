@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -13,13 +14,14 @@ import { Btn, Chip } from '../lib/ui';
 const dateTimeKey = (appointment: Appointment) => `${appointment.data}T${appointment.inicio}`;
 
 const sessionLabel = (appointment: Appointment | undefined) => {
-  if (!appointment) return 'Sem sessão';
+  if (!appointment) return 'Sem atendimento';
   return `${format(new Date(`${appointment.data}T12:00:00`), "dd MMM", { locale: ptBR })} · ${appointment.inicio}`;
 };
 
 export function PatientCareCockpit({ patient }: { patient: Patient }) {
   const nav = useNavigate();
   const { user, access } = useCurrentUserAccess();
+  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
   const { users } = useClinicDirectory();
   const { appointments } = useAgenda();
   const { transactions } = useFinance();
@@ -49,11 +51,11 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
   const packageRemaining = activePackage ? Math.max(0, activePackage.sessoesTotais - activePackage.sessoesUsadas) : null;
 
   const assignedProfessional = users.find((item) => item.id === (activeSession?.fisioId ?? nextSession?.fisioId));
-  const isOwnActiveSession = Boolean(activeSession && user?.role === 'fisio' && activeSession.fisioId === user.id);
+  const isOwnActiveSession = Boolean(activeSession && canAttend && activeSession.fisioId === user?.id);
   const canSeeFinance = access('financeiro') !== 'none';
   const canUseMessages = access('mensagens') !== 'none';
 
-  const practiceHint = user?.role === 'fisio'
+  const practiceHint = canAttend
     ? 'Seu consultório em um único contexto: atender, registrar, agendar e acompanhar.'
     : 'Contexto do paciente para decidir a próxima ação sem navegar às cegas.';
 
@@ -67,20 +69,20 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
               <h2 className="mt-1 font-display text-xl font-bold text-paper">O que precisa de atenção agora</h2>
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-fog">{practiceHint}</p>
             </div>
-            {activeSession ? <Chip className={STATUS_META.em_atendimento.chip}>Atendimento em andamento</Chip> : nextSession ? <Chip className={STATUS_META[nextSession.status].chip}>{STATUS_META[nextSession.status].label}</Chip> : <Chip className="border-line text-fog">Sem próxima sessão</Chip>}
+            {activeSession ? <Chip className={STATUS_META.em_atendimento.chip}>Atendimento em andamento</Chip> : nextSession ? <Chip className={STATUS_META[nextSession.status].chip}>{STATUS_META[nextSession.status].label}</Chip> : <Chip className="border-line text-fog">Sem próximo atendimento</Chip>}
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <CockpitMetric
-              eyebrow={activeSession ? 'Sessão atual' : 'Próxima sessão'}
+              eyebrow={activeSession ? 'Atendimento atual' : 'Próximo atendimento'}
               value={sessionLabel(activeSession ?? nextSession)}
               detail={(activeSession ?? nextSession)?.tipo ?? 'Agende o próximo encontro'}
               emphasis={Boolean(activeSession)}
             />
             <CockpitMetric
-              eyebrow="Última sessão"
+              eyebrow="Último atendimento"
               value={sessionLabel(lastSession)}
-              detail={lastSession ? lastSession.tipo : 'Nenhuma finalizada'}
+              detail={lastSession ? lastSession.tipo : 'Nenhum finalizado'}
             />
             <CockpitMetric
               eyebrow="Financeiro do paciente"
@@ -112,7 +114,7 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
               </Btn>
             )}
             <Btn variant={isOwnActiveSession ? 'subtle' : 'primary'} onClick={() => nav(`/agenda?patient=${encodeURIComponent(patient.id)}&action=new`)}>
-              Agendar próxima sessão
+              Agendar próximo atendimento
             </Btn>
             {canUseMessages && patient.telefone && (
               <Btn variant="ghost" onClick={() => nav('/mensagens')}>Abrir Mensagens</Btn>
@@ -123,7 +125,7 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
           </div>
           <p className="mt-4 text-[11.5px] leading-relaxed text-fog/80">
             {isOwnActiveSession
-              ? 'Registre a evolução desta sessão antes de finalizar. O restante do contexto permanece disponível aqui.'
+              ? 'Registre a evolução deste atendimento antes de finalizar. O restante do contexto permanece disponível aqui.'
               : activeSession
                 ? 'Existe um atendimento em andamento. A autoria clínica continua restrita ao profissional responsável.'
                 : 'Use esta central como ponto de partida para a próxima decisão sobre o paciente.'}
