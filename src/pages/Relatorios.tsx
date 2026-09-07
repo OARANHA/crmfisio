@@ -36,13 +36,13 @@ export function Relatorios() {
     const producao = fin.reduce((s, a) => s + a.valor, 0);
     const comparecimento = calculateAttendanceRate(fin.length, faltas.length);
 
-    const porFisio = users
-      .filter((u) => u.role === 'fisio')
-      .map((f) => {
-        const sf = fin.filter((a) => a.fisioId === f.id);
-        const ff = faltas.filter((a) => a.fisioId === f.id).length;
-        const valor = sf.reduce((s, a) => s + a.valor, 0);
-        return { f, sessoes: sf.length, faltas: ff, valor, ticket: sf.length ? Math.round(valor / sf.length) : 0 };
+    const porProfissional = users
+      .filter((u) => u.role === 'professional')
+      .map((professional) => {
+        const atendimentos = fin.filter((a) => a.fisioId === professional.id);
+        const faltasProfissional = faltas.filter((a) => a.fisioId === professional.id).length;
+        const valor = atendimentos.reduce((s, a) => s + a.valor, 0);
+        return { professional, atendimentos: atendimentos.length, faltas: faltasProfissional, valor, ticket: atendimentos.length ? Math.round(valor / atendimentos.length) : 0 };
       });
 
     const sessoesPorDia = DIAS.map((_, i) => ({
@@ -63,7 +63,7 @@ export function Relatorios() {
       faltas,
       producao,
       comparecimento,
-      porFisio,
+      porProfissional,
       sessoesPorDia,
       porCategoria: [...porCategoria.entries()],
       nps,
@@ -71,15 +71,15 @@ export function Relatorios() {
     };
   }, [appointments, transactions, surveys, users, mes, inUnit]);
 
-  const maxFisio = Math.max(...dados.porFisio.map((p) => p.valor), 1);
+  const maxProfissional = Math.max(...dados.porProfissional.map((p) => p.valor), 1);
   const maxDia = Math.max(...dados.sessoesPorDia.map((o) => o.n), 1);
   const maxCat = Math.max(...dados.porCategoria.map(([, v]) => v), 1);
 
   const exportCsv = () => {
     const brl = (v: number) => (v / 100).toFixed(2).replace('.', ',');
     const linhas = [
-      'Profissional;Registro;Sessões finalizadas;Faltas;Produção (R$);Ticket médio (R$)',
-      ...dados.porFisio.map((p) => `${p.f.nome};${p.f.registro};${p.sessoes};${p.faltas};${brl(p.valor)};${brl(p.ticket)}`),
+      'Profissional;Registro;Atendimentos finalizados;Faltas;Produção (R$);Ticket médio (R$)',
+      ...dados.porProfissional.map((p) => `${p.professional.nome};${p.professional.registro};${p.atendimentos};${p.faltas};${brl(p.valor)};${brl(p.ticket)}`),
     ];
     const blob = new Blob(['\ufeff' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -105,21 +105,21 @@ export function Relatorios() {
       label: 'Produção do mês',
       value: <><span>R$ </span><CountUp to={Math.round(dados.producao / 100)} /></>,
       tone: 'text-mint',
-      sub: `${dados.fin.length} sessões finalizadas`,
+      sub: `${dados.fin.length} atendimentos finalizados`,
     },
     {
       label: 'Ticket médio',
       value: <><span>R$ </span><CountUp to={Math.round(dados.ticketGeral / 100)} /></>,
       tone: 'text-aqua',
-      sub: 'valor nominal por sessão finalizada',
+      sub: 'valor nominal por atendimento finalizado',
     },
     {
       label: 'Comparecimento',
       value: dados.comparecimento === null ? '—' : <CountUp to={dados.comparecimento} suffix="%" />,
       tone: attendanceTone,
       sub: dados.comparecimento === null
-        ? 'sem sessões finalizadas ou faltas na competência'
-        : `${dados.fin.length + dados.faltas.length} sessão(ões) na amostra · ${dados.faltas.length} falta(s)`,
+        ? 'sem atendimentos finalizados ou faltas na competência'
+        : `${dados.fin.length + dados.faltas.length} atendimento(s) na amostra · ${dados.faltas.length} falta(s)`,
     },
     {
       label: 'NPS',
@@ -165,22 +165,22 @@ export function Relatorios() {
       <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-4 items-start">
         <Reveal delay={120}>
           <Card className="overflow-x-auto">
-            <CardHead title="Produção por profissional" sub="sessões finalizadas na competência" right={<IconChart className="w-4.5 h-4.5 text-mint" />} />
+            <CardHead title="Produção por profissional" sub="atendimentos finalizados na competência" right={<IconChart className="w-4.5 h-4.5 text-mint" />} />
             <div className="p-5 space-y-4">
-              {dados.porFisio.map((p) => (
-                <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_120px] items-center gap-x-4 gap-y-1.5">
+              {dados.porProfissional.map((p) => (
+                <div key={p.professional.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_120px] items-center gap-x-4 gap-y-1.5">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.f.cor }}>
-                      {p.f.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                    <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.professional.cor }}>
+                      {p.professional.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-display font-semibold text-[13.5px] truncate">{userName(users, p.f.id)}</p>
-                      <p className="font-mono text-[10px] text-fog">{p.sessoes} sessões · {p.faltas} falta(s)</p>
+                      <p className="font-display font-semibold text-[13.5px] truncate">{userName(users, p.professional.id)}</p>
+                      <p className="font-mono text-[10px] text-fog">{p.atendimentos} atendimentos · {p.faltas} falta(s)</p>
                     </div>
                   </div>
                   <div className="col-span-2 sm:col-span-1 order-3 sm:order-none">
                     <div className="h-5 bg-deep border border-line overflow-hidden">
-                      <div className="h-full bar-anim" style={{ width: `${(p.valor / maxFisio) * 100}%`, background: `${p.f.cor}cc` }} />
+                      <div className="h-full bar-anim" style={{ width: `${(p.valor / maxProfissional) * 100}%`, background: `${p.professional.cor}cc` }} />
                     </div>
                   </div>
                   <div className="text-right">
@@ -196,7 +196,7 @@ export function Relatorios() {
         <div className="space-y-4">
           <Reveal delay={160}>
             <Card>
-              <CardHead title="Sessões por dia da semana" sub="volume de sessões não canceladas na competência — não representa taxa de ocupação" />
+              <CardHead title="Atendimentos por dia da semana" sub="volume de atendimentos não cancelados na competência — não representa taxa de ocupação" />
               <div className="p-5">
                 <div className="flex items-end gap-2.5 h-32">
                   {dados.sessoesPorDia.map((o) => (
@@ -234,7 +234,7 @@ export function Relatorios() {
 
       <Reveal delay={240}>
         <Chip className="border-line2 text-fog">
-          {canExport ? 'CSV usa ";" como separador (padrão Excel pt-BR) · produção usa valor nominal da sessão · recebimentos usam data efetiva da baixa' : 'perfil sem permissão de exportação: visualização liberada, download restrito ao admin'}
+          {canExport ? 'CSV usa ";" como separador (padrão Excel pt-BR) · produção usa valor nominal do atendimento · recebimentos usam data efetiva da baixa' : 'perfil sem permissão de exportação: visualização liberada, download restrito ao admin'}
         </Chip>
       </Reveal>
     </div>
