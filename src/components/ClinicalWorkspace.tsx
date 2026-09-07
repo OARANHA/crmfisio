@@ -3,7 +3,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { useApp, userName } from '../lib/store';
+import { userName } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
@@ -77,7 +78,7 @@ const normalizeAnamnese = (value: unknown): ClinicalEvaluation['anamnese'] => {
 
 export function ClinicalWorkspace({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { users } = useClinicDirectory();
   const { consents, signConsent } = useClinical();
   const { appointments, refreshAgenda } = useAgenda();
