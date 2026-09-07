@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { userName } from '../lib/store';
+import { userName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useFinance } from '../lib/financeContext';

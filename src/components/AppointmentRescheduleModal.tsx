@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { conflictLabel, findAppointmentConflicts } from '../lib/appointmentConflicts';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
-import { useApp, patientName, userName } from '../lib/store';
+import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
@@ -63,26 +63,14 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
   const fisios = users.filter((user) => user.role === 'fisio');
   const conflicts = useMemo(() => {
     if (!appointment || !data || !inicio || !fisioId || !roomId) return [];
-    return findAppointmentConflicts(appointments, {
-      pacienteId: appointment.pacienteId,
-      fisioId,
-      roomId,
-      data,
-      inicio,
-      fim,
-    }, appointment.id);
+    return findAppointmentConflicts(appointments, { pacienteId: appointment.pacienteId, fisioId, roomId, data, inicio, fim }, appointment.id);
   }, [appointment, appointments, data, inicio, fim, fisioId, roomId]);
 
   return (
     <Modal open={!!appointment} onClose={onClose} title="Remarcar sessão" wide>
       {appointment && (
         <div className="space-y-4">
-          <div className="border border-line bg-deep p-3 text-[12px]">
-            <span className="font-mono text-[9px] uppercase text-fog block">Paciente</span>
-            {patientName(patients, appointment.pacienteId)}
-            {preset && <p className="font-mono text-[10px] text-mint mt-1">Movido pela agenda para {preset.data} às {preset.inicio}. Revise antes de confirmar.</p>}
-          </div>
-
+          <div className="border border-line bg-deep p-3 text-[12px]"><span className="font-mono text-[9px] uppercase text-fog block">Paciente</span>{patientName(patients, appointment.pacienteId)}{preset && <p className="font-mono text-[10px] text-mint mt-1">Movido pela agenda para {preset.data} às {preset.inicio}. Revise antes de confirmar.</p>}</div>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Data"><Input type="date" value={data} onChange={(e) => setData(e.target.value)} /></Field>
             <Field label="Início"><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></Field>
@@ -91,30 +79,10 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
             <Field label="Unidade"><Select value={unitId} onChange={(e) => { const id = e.target.value; setUnitId(id); setRoomId(rooms.find((room) => room.unidadeId === id)?.id ?? ''); }}>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select></Field>
             <Field label="Sala / recurso"><Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select></Field>
             <Field label="Motivo da remarcação"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: solicitação do paciente" /></Field>
-            <label className="border border-line bg-deep px-3 py-2 text-[12px] flex items-center gap-2">
-              <input type="checkbox" checked={isFitIn} onChange={(e) => setIsFitIn(e.target.checked)} />
-              Marcar como encaixe
-            </label>
+            <label className="border border-line bg-deep px-3 py-2 text-[12px] flex items-center gap-2"><input type="checkbox" checked={isFitIn} onChange={(e) => setIsFitIn(e.target.checked)} />Marcar como encaixe</label>
           </div>
-
-          {conflicts.length > 0 && (
-            <div className="border border-pulse/40 bg-pulse/[0.05] p-4 space-y-1">
-              <p className="font-display font-semibold text-pulse">Novo horário indisponível</p>
-              {conflicts.map(({ kind, appointment: conflict }, index) => (
-                <p key={`${kind}-${conflict.id}-${index}`} className="text-[11.5px]">
-                  <span className="text-pulse">{conflictLabel(kind)}</span>{' '}
-                  <span className="font-mono text-fog">{conflict.inicio}–{conflict.fim} · {patientName(patients, conflict.pacienteId)} · {userName(users, conflict.fisioId)}</span>
-                </p>
-              ))}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <Btn variant="ghost" onClick={onClose}>Voltar</Btn>
-            <Btn disabled={busy || !data || !fisioId || !roomId || !reason.trim() || conflicts.length > 0} onClick={() => onConfirm({ data, inicio, fim, fisioId, roomId, reason: reason.trim(), isFitIn })}>
-              {busy ? 'Remarcando…' : 'Confirmar remarcação'}
-            </Btn>
-          </div>
+          {conflicts.length > 0 && <div className="border border-pulse/40 bg-pulse/[0.05] p-4 space-y-1"><p className="font-display font-semibold text-pulse">Novo horário indisponível</p>{conflicts.map(({ kind, appointment: conflict }, index) => <p key={`${kind}-${conflict.id}-${index}`} className="text-[11.5px]"><span className="text-pulse">{conflictLabel(kind)}</span>{' '}<span className="font-mono text-fog">{conflict.inicio}–{conflict.fim} · {patientName(patients, conflict.pacienteId)} · {userName(users, conflict.fisioId)}</span></p>)}</div>}
+          <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Voltar</Btn><Btn disabled={busy || !data || !fisioId || !roomId || !reason.trim() || conflicts.length > 0} onClick={() => onConfirm({ data, inicio, fim, fisioId, roomId, reason: reason.trim(), isFitIn })}>{busy ? 'Remarcando…' : 'Confirmar remarcação'}</Btn></div>
         </div>
       )}
     </Modal>
