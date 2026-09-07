@@ -90,6 +90,8 @@ Deno.serve(async (req) => {
     limit = Math.max(1, Math.min(Number(body?.limit) || 20, 100));
   } catch { /* usa o padrão */ }
 
+  // Legacy RPC name retained, but stale `enviando` rows are now quarantined as
+  // DELIVERY_UNCERTAIN. They are never blindly returned to the delivery queue.
   await admin.rpc('requeue_stale_messages', { p_minutes: 10 });
   const { data, error } = await admin.rpc('claim_message_outbox', { p_limit: limit });
   if (error) {
@@ -165,6 +167,10 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    let deliveryAccepted = false;
+    let acceptedProviderMessageId: string | null = null;
+    let definitiveProviderFailure = false;
+
     try {
       const response = await fetch(`${evolutionUrl}/message/sendText/${encodeURIComponent(instance)}`, {
         method: 'POST',
@@ -180,19 +186,21 @@ Deno.serve(async (req) => {
       try { payload = rawText ? JSON.parse(rawText) : {}; } catch { payload = { raw: rawText }; }
 
       if (!response.ok) {
+        definitiveProviderFailure = true;
         const reason = String(payload.message ?? payload.error ?? rawText ?? `HTTP ${response.status}`).slice(0, 800);
         throw new Error(reason);
       }
 
       const key = payload.key as Record<string, unknown> | undefined;
-      const providerMessageId = key?.id ? String(key.id) : null;
+      acceptedProviderMessageId = key?.id ? String(key.id) : null;
       const providerStatus = payload.status ? String(payload.status) : 'ACCEPTED';
       const now = new Date().toISOString();
+      deliveryAccepted = true;
 
       const { error: updateError } = await admin.from('wa_logs').update({
         status: 'enviado',
         provider: 'evolution',
-        provider_message_id: providerMessageId,
+        provider_message_id: acceptedProviderMessageId,
         provider_event: 'SEND_MESSAGE',
         provider_status: providerStatus,
         sent_at: now,
@@ -201,15 +209,44 @@ Deno.serve(async (req) => {
       }).eq('id', row.id);
       if (updateError) throw updateError;
 
-      results.push({ id: row.id, status: 'enviado', ...(providerMessageId ? { providerMessageId } : {}) });
+      results.push({ id: row.id, status: 'enviado', ...(acceptedProviderMessageId ? { providerMessageId: acceptedProviderMessageId } : {}) });
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Falha desconhecida no provedor';
       console.error('[evolution-worker] envio:', row.id, reason);
+
+      if (deliveryAccepted) {
+        // Provider acceptance is known. Retry only the local persistence; never
+        // send the WhatsApp request again. If this also fails, the row remains
+        // `enviando` and the stale quarantine/webhook reconciliation takes over.
+        const { error: recoveryError } = await admin.from('wa_logs').update({
+          status: 'enviado',
+          provider: 'evolution',
+          provider_message_id: acceptedProviderMessageId,
+          provider_event: 'SEND_MESSAGE',
+          provider_status: 'ACCEPTED_RECOVERED',
+          sent_at: new Date().toISOString(),
+          failed_at: null,
+          error_message: null,
+        }).eq('id', row.id);
+
+        if (!recoveryError) {
+          results.push({ id: row.id, status: 'enviado', ...(acceptedProviderMessageId ? { providerMessageId: acceptedProviderMessageId } : {}) });
+          continue;
+        }
+
+        console.error('[evolution-worker] persistência pós-aceite:', row.id, recoveryError);
+        results.push({ id: row.id, status: 'falhou' });
+        continue;
+      }
+
+      const uncertain = !definitiveProviderFailure;
       await admin.from('wa_logs').update({
         status: 'falhou',
         failed_at: new Date().toISOString(),
-        error_message: reason.slice(0, 800),
-        provider_status: 'ERROR',
+        error_message: uncertain
+          ? `Resultado do envio incerto: ${reason}`.slice(0, 800)
+          : reason.slice(0, 800),
+        provider_status: uncertain ? 'DELIVERY_UNCERTAIN' : 'ERROR',
       }).eq('id', row.id);
       results.push({ id: row.id, status: 'falhou' });
     }

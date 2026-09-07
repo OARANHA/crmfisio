@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
   const items = Array.isArray(rawData) ? rawData : [rawData];
   let recorded = 0;
   let updated = 0;
+  let reconciled = 0;
   let inboundProcessed = 0;
   const inboundActions: string[] = [];
 
@@ -88,6 +89,35 @@ Deno.serve(async (req) => {
       if (data) {
         log = data as typeof log;
         break;
+      }
+    }
+
+    // If the worker lost the provider response (or the local persistence after
+    // acceptance), the provider_message_id may be absent from wa_logs. Recover
+    // only an outbound event with one unique candidate; ambiguity fails closed.
+    const outboundProviderId = whatsappMessageId ?? eventMessageId;
+    if (!log && fromMe === true && outboundProviderId && remoteJid && messageText) {
+      const { data: reconcileData, error: reconcileError } = await admin.rpc('reconcile_whatsapp_outbound_event', {
+        p_provider_message_id: outboundProviderId,
+        p_remote_jid: remoteJid,
+        p_message_text: messageText,
+      });
+
+      if (reconcileError) {
+        console.error('[evolution-webhook] reconcile outbound:', reconcileError);
+      } else {
+        const candidate = Array.isArray(reconcileData) ? reconcileData[0] : reconcileData;
+        if (candidate && typeof candidate === 'object') {
+          const row = candidate as Record<string, unknown>;
+          if (row.wa_log_id && row.clinic_id) {
+            log = {
+              id: String(row.wa_log_id),
+              clinic_id: String(row.clinic_id),
+              status: 'enviado',
+            };
+            reconciled += 1;
+          }
+        }
       }
     }
 
@@ -166,5 +196,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, event: eventType, recorded, updated, inboundProcessed, inboundActions });
+  return json({ ok: true, event: eventType, recorded, updated, reconciled, inboundProcessed, inboundActions });
 });
