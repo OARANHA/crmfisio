@@ -7,12 +7,14 @@ import { usePackages } from '../lib/packageContext';
 import { fmtBRL } from '../lib/types';
 import { Card, Chip, IconChevronR } from '../lib/ui';
 import { buildChurnRiskList } from '../lib/churnRisk';
+import { useClinicModuleEntitlementVisibility } from '../hooks/useClinicModuleEntitlementVisibility';
 
 export function RevenueRecovery() {
   const { transactions } = useFinance();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { patientPackages } = usePackages();
+  const { visibility, resolved } = useClinicModuleEntitlementVisibility();
 
   const recovery = useMemo(() => {
     const overdue = transactions.filter((t) => t.tipo === 'receber' && t.status === 'atrasado');
@@ -29,6 +31,8 @@ export function RevenueRecovery() {
       withoutNextSessionCount: withoutNextSession.length,
     };
   }, [transactions, patients, appointments, patientPackages]);
+
+  if (!resolved || visibility.financeiro !== true || visibility.crm !== true) return null;
 
   const hasOpportunity = recovery.overdueCount + recovery.riskCount + recovery.withoutNextSessionCount > 0;
 
