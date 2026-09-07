@@ -2,13 +2,15 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { usePackages } from '../lib/packageContext';
 import { fmtBRL } from '../lib/types';
 import { Card, Chip, IconChevronR } from '../lib/ui';
 import { buildChurnRiskList } from '../lib/churnRisk';
 
 export function RevenueRecovery() {
-  const { transactions, patients } = useApp();
+  const { transactions } = useApp();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { patientPackages } = usePackages();
 
