@@ -100,7 +100,7 @@ create or replace function public.admin_update_team_profile_atomic(
   p_council_type text default null,
   p_council_state text default null,
   p_especialidade text default null,
-  p_unit_ids uuid[] default array[]::uuid[]
+  p_unit_ids uuid[] default null
 )
 returns public.profiles
 language plpgsql
@@ -140,21 +140,23 @@ begin
     raise exception using errcode = '42501', message = 'Owner nao pode ser alterado por esta operacao.';
   end if;
 
-  select coalesce(array_agg(distinct unit_id order by unit_id), array[]::uuid[])
-    into v_unit_ids
-  from unnest(coalesce(p_unit_ids, array[]::uuid[])) as requested(unit_id)
-  where unit_id is not null;
+  if p_unit_ids is not null then
+    select coalesce(array_agg(distinct unit_id order by unit_id), array[]::uuid[])
+      into v_unit_ids
+    from unnest(p_unit_ids) as requested(unit_id)
+    where unit_id is not null;
 
-  if cardinality(v_unit_ids) > 0 then
-    select count(*)
-      into v_valid_unit_count
-    from public.units
-    where clinic_id = p_clinic_id
-      and ativo = true
-      and id = any(v_unit_ids);
+    if cardinality(v_unit_ids) > 0 then
+      select count(*)
+        into v_valid_unit_count
+      from public.units
+      where clinic_id = p_clinic_id
+        and ativo = true
+        and id = any(v_unit_ids);
 
-    if v_valid_unit_count <> cardinality(v_unit_ids) then
-      raise exception using errcode = '22023', message = 'Unidade invalida ou inativa para esta clinica.';
+      if v_valid_unit_count <> cardinality(v_unit_ids) then
+        raise exception using errcode = '22023', message = 'Unidade invalida ou inativa para esta clinica.';
+      end if;
     end if;
   end if;
 
@@ -173,14 +175,16 @@ begin
     and clinic_id = p_clinic_id
   returning * into v_profile;
 
-  delete from public.profile_units
-  where profile_id = p_profile_id
-    and clinic_id = p_clinic_id;
+  if p_unit_ids is not null then
+    delete from public.profile_units
+    where profile_id = p_profile_id
+      and clinic_id = p_clinic_id;
 
-  if cardinality(v_unit_ids) > 0 then
-    insert into public.profile_units (profile_id, unit_id, clinic_id)
-    select p_profile_id, unit_id, p_clinic_id
-    from unnest(v_unit_ids) as requested(unit_id);
+    if cardinality(v_unit_ids) > 0 then
+      insert into public.profile_units (profile_id, unit_id, clinic_id)
+      select p_profile_id, unit_id, p_clinic_id
+      from unnest(v_unit_ids) as requested(unit_id);
+    end if;
   end if;
 
   return v_profile;
