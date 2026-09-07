@@ -23,3 +23,25 @@ export const isOperationalRole = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'recep';
 
 export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'fisio';
+
+/**
+ * Module access is intentionally coarse-grained. Financial mutations have a
+ * narrower server contract and must use these operation-level predicates.
+ */
+export const canWriteFinancialTransaction = (
+  role: Role | null | undefined,
+  tipo: 'receber' | 'pagar',
+): boolean =>
+  role === 'owner'
+  || role === 'admin'
+  || role === 'financeiro'
+  || (role === 'recep' && tipo === 'receber');
+
+export const canSellSessionPackage = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'recep' || role === 'financeiro';
+
+export const canManagePackageCatalog = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin';
+
+export const canManageCommissions = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'financeiro';
