@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { resolveHelpContext } from '../lib/helpContent';
-import type { Role } from '../lib/types';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { IconX } from './icons';
 
-export function ContextualHelp({ role }: { role: Role }) {
+export function ContextualHelp() {
   const location = useLocation();
+  const { user } = useCurrentUserAccess();
   const [open, setOpen] = useState(false);
-  const help = resolveHelpContext(location.pathname, role);
+  const help = user ? resolveHelpContext(location.pathname, user.role) : null;
 
   useEffect(() => {
     setOpen(false);
-  }, [location.pathname, role]);
+  }, [location.pathname, user?.role]);
 
   useEffect(() => {
     if (!open) return;
@@ -29,7 +30,7 @@ export function ContextualHelp({ role }: { role: Role }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel font-display text-[15px] font-bold text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40"
+        className="fixed bottom-4 right-4 z-[45] grid h-11 w-11 place-items-center rounded-xl border border-line/75 bg-panel font-display text-[15px] font-bold text-fog shadow-lg transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40 sm:bottom-auto sm:right-[116px] sm:top-[14px] sm:h-10 sm:w-10 sm:shadow-none"
         aria-label="Ajuda desta tela"
         title="Ajuda desta tela"
       >
