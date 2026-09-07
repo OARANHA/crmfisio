@@ -13,6 +13,7 @@ import { ToastProvider } from './lib/toastContext';
 import { ClinicDataBoundary } from './lib/ClinicDataBoundary';
 import { useCurrentUserAccess } from './lib/currentUserAccess';
 import { Shell } from './components/Shell';
+import { ContextualHelp } from './components/ContextualHelp';
 import { ClinicEntitlementGate } from './components/ClinicEntitlementGate';
 import { ModuleAccessGate } from './components/ModuleAccessGate';
 import { MandatoryPasswordChange } from './components/MandatoryPasswordChange';
@@ -161,6 +162,7 @@ export default function App() {
                                   <Route path="*" element={<Home />} />
                                 </Route>
                               </Routes>
+                              <ContextualHelp />
                             </HashRouter>
                           </ToastProvider>
                         </InfrastructureProvider>
