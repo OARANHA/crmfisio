@@ -6,6 +6,8 @@ import { useFinance } from '../lib/financeContext';
 import { usePatients } from '../lib/patientContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
+import { canManagePatientFunnel } from '../lib/permissions';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
 import { Card, CardHead, Btn, IconStar, IconPhone, IconAlert } from '../lib/ui';
 import { IconWhats, IconSend, IconArrow } from '../components/icons';
@@ -15,6 +17,7 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
+  const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { transactions } = useFinance();
   const { patients, setFunilStage } = usePatients();
@@ -23,8 +26,10 @@ export function Crm() {
   const { patientPackages } = usePackages();
   const navigate = useNavigate();
   const [dragId, setDragId] = useState<string | null>(null);
+  const canManageFunnel = canManagePatientFunnel(user?.role);
 
   const updateStage = (id: string, stage: FunilStage, successMessage: string) => {
+    if (!canManageFunnel) return;
     void setFunilStage(id, stage)
       .then(() => toast(successMessage))
       .catch((error) => {
@@ -88,13 +93,13 @@ export function Crm() {
             return (
               <div
                 key={s}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
+                onDragOver={canManageFunnel ? (e) => e.preventDefault() : undefined}
+                onDrop={canManageFunnel ? () => {
                   if (dragId) {
                     updateStage(dragId, s, `Paciente movido para "${meta.label}"`);
                     setDragId(null);
                   }
-                }}
+                } : undefined}
                 className="border border-line bg-deep/60"
               >
                 <div className="px-4 py-3 border-b border-line flex items-center gap-2.5">
@@ -110,9 +115,9 @@ export function Crm() {
                     return (
                       <div
                         key={p.id}
-                        draggable
-                        onDragStart={() => setDragId(p.id)}
-                        className="node-card border border-line bg-panel px-3 py-2.5 cursor-grab active:cursor-grabbing hover:border-line2"
+                        draggable={canManageFunnel}
+                        onDragStart={canManageFunnel ? () => setDragId(p.id) : undefined}
+                        className={`node-card border border-line bg-panel px-3 py-2.5 hover:border-line2 ${canManageFunnel ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
                         <Link to={`/pacientes/${p.id}`} className="block font-display font-semibold text-[13px] hover:text-mint transition-colors truncate">{p.nome}</Link>
                         <p className="text-[11px] text-fog truncate mt-0.5">{p.queixaPrincipal}</p>
@@ -125,7 +130,7 @@ export function Crm() {
                             </span>
                           )}
                         </div>
-                        {STAGE_META[p.funilStage].next && (
+                        {canManageFunnel && STAGE_META[p.funilStage].next && (
                           <button
                             onClick={() => {
                               const next = STAGE_META[p.funilStage].next!;
@@ -144,7 +149,9 @@ export function Crm() {
             );
           })}
         </div>
-        <p className="font-mono text-[10.5px] text-fog/70 mt-2">arraste os cards entre colunas ou use "avançar" · mudanças refletem no prontuário</p>
+        <p className="font-mono text-[10.5px] text-fog/70 mt-2">
+          {canManageFunnel ? 'arraste os cards entre colunas ou use "avançar" · mudanças refletem no prontuário' : 'visualização do funil em modo somente leitura'}
+        </p>
       </Reveal>
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">

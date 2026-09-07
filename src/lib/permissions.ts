@@ -24,6 +24,9 @@ export const isOperationalRole = (role: Role | null | undefined): boolean =>
 
 export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'fisio';
 
+export const canManagePatientFunnel = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'recep';
+
 /**
  * Module access is intentionally coarse-grained. Financial reads and mutations
  * have narrower server contracts and must use these operation-level predicates.

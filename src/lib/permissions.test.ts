@@ -3,6 +3,7 @@ import {
   accessFor,
   canManageCommissions,
   canManagePackageCatalog,
+  canManagePatientFunnel,
   canSellSessionPackage,
   canViewCommissions,
   canViewFinancialPayables,
@@ -39,6 +40,15 @@ describe('canonical permissions', () => {
     expect(appointmentActions('fisio', appointment).map((action) => action.status)).toContain('em_atendimento');
     expect(appointmentActions('owner', appointment).map((action) => action.status)).not.toContain('em_atendimento');
     expect(appointmentActions('admin', appointment).map((action) => action.status)).not.toContain('em_atendimento');
+  });
+
+  it('keeps CRM funnel mutation with operational full-access roles only', () => {
+    expect(canManagePatientFunnel('owner')).toBe(true);
+    expect(canManagePatientFunnel('admin')).toBe(true);
+    expect(canManagePatientFunnel('recep')).toBe(true);
+    expect(canManagePatientFunnel('fisio')).toBe(false);
+    expect(canManagePatientFunnel('financeiro')).toBe(false);
+    expect(canManagePatientFunnel(undefined)).toBe(false);
   });
 
   it('mirrors the server contract for payable visibility', () => {
@@ -86,6 +96,7 @@ describe('canonical permissions', () => {
   it('fails closed without a clinic role', () => {
     expect(accessFor(null, 'dashboard')).toBe('none');
     expect(isOperationalRole(undefined)).toBe(false);
+    expect(canManagePatientFunnel(undefined)).toBe(false);
     expect(canViewFinancialPayables(undefined)).toBe(false);
     expect(canSellSessionPackage(undefined)).toBe(false);
     expect(canManagePackageCatalog(undefined)).toBe(false);
