@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
@@ -13,6 +14,7 @@ const clinicalSessionPath = (item: ReceptionQueueItem) => `/pacientes/${item.pat
 
 export function RecepcaoHoje() {
   const { user } = useCurrentUserAccess();
+  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
   const { toast } = useToast();
   const { setAppointmentStatus } = useAgenda();
   const nav = useNavigate();
@@ -92,7 +94,7 @@ export function RecepcaoHoje() {
 
       <Reveal delay={40}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          {[['Sessões', summary.total], ['Aguardando', summary.waiting], ['Em atendimento', summary.inService], ['Finalizadas', summary.finished], ['Sem confirmação', summary.pending]].map(([label, value]) => (
+          {[['Atendimentos', summary.total], ['Aguardando', summary.waiting], ['Em atendimento', summary.inService], ['Finalizados', summary.finished], ['Sem confirmação', summary.pending]].map(([label, value]) => (
             <Card key={String(label)} className="!p-3"><p className="font-mono text-[9px] uppercase text-fog">{label}</p><p className="font-display text-2xl font-bold mt-1">{value}</p></Card>
           ))}
         </div>
@@ -107,7 +109,7 @@ export function RecepcaoHoje() {
                 const arrived = Boolean(item.arrived_at);
                 const minutes = minuteOf(item.inicio);
                 const isNear = activeStatuses.has(item.status) && Math.abs(minutes - currentMinutes) <= 45;
-                const isAssignedClinician = user?.role === 'fisio' && item.professional_id === user.id;
+                const isAssignedClinician = Boolean(canAttend && user?.id && item.professional_id === user.id);
                 return (
                   <div key={item.appointment_id} className={`p-4 flex flex-col xl:flex-row xl:items-center gap-4 ${isNear ? 'bg-mint/[0.035]' : ''}`}>
                     <div className="w-20 shrink-0"><p className="font-display text-xl font-bold">{item.inicio.slice(0, 5)}</p><p className="font-mono text-[9px] text-fog">até {item.fim.slice(0, 5)}</p></div>
