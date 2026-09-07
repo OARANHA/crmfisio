@@ -60,23 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .eq('ativo', true)
-        .single();
-
+      const { data, error } = await (supabase as any).rpc('current_active_profile');
       if (error || !data) {
-        console.warn('[useAuth] Perfil não encontrado:', error);
+        console.warn('[useAuth] Perfil ativo não encontrado:', error);
         return null;
       }
-
       return data as Profile;
     } catch (e) {
-      console.error('[useAuth] Erro ao buscar perfil:', e);
+      console.error('[useAuth] Erro ao buscar perfil ativo:', e);
       return null;
     }
   }, []);
@@ -85,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const request = ++resolutionVersion.current;
     const nextUserId = nextSession?.user.id ?? null;
     if (sessionUserId.current !== nextUserId) {
-      // Never expose the previous user's profile while the next one resolves.
       setUser(null);
       setProfile(null);
       setTenantAccessState(nextUserId ? 'unknown' : 'unauthenticated');
@@ -108,12 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { request, accessState, profile: null };
     }
 
-    const prof = await fetchProfile(nextSession.user.id);
+    const prof = await fetchProfile();
     if (request !== resolutionVersion.current) return null;
+    const validProfile = prof && prof.id === nextSession.user.id && isRole(prof.role) ? prof : null;
     setTenantAccessState(accessState);
-    setUser(prof && isRole(prof.role) ? { ...nextSession.user, profile: prof, role: prof.role } : null);
-    setProfile(prof);
-    return { request, accessState, profile: prof };
+    setUser(validProfile ? { ...nextSession.user, profile: validProfile, role: validProfile.role } : null);
+    setProfile(validProfile);
+    return { request, accessState, profile: validProfile };
   }, [fetchProfile, fetchTenantAccessState]);
 
   useEffect(() => {
@@ -163,7 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         const resolved = await resolveSessionUser(data.session);
-        // A newer auth event owns state and any decision to end the session.
         if (!resolved || resolved.request !== resolutionVersion.current || action !== actionVersion.current) return { error: null };
         if (resolved.accessState === 'suspended') return { error: null };
         if (resolved.accessState !== 'active' || !resolved.profile || !isRole(resolved.profile.role)) {
@@ -180,7 +172,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     actionVersion.current += 1;
-    // Invalidate pending profile/access reads immediately, before network logout.
     await resolveSessionUser(null);
     await supabase.auth.signOut();
   }, [resolveSessionUser]);
