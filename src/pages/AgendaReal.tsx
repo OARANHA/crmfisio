@@ -8,7 +8,7 @@ import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { patientName } from '../lib/store';
+import { patientName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
