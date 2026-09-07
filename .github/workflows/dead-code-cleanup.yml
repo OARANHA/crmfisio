@@ -1,0 +1,56 @@
+name: Temporary dead code cleanup
+
+on:
+  push:
+    branches:
+      - chore/p1-clean-lint-dead-code
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chore/p1-clean-lint-dead-code
+      - name: Apply targeted dead-code cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              'src/components/ClinicalAssessmentRunner.tsx': [
+                  ("const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);", "const [, setAssessments] = useState<ClinicalAssessment[]>([]);")
+              ],
+              'src/components/ClinicalWorkspace.tsx': [
+                  ("STATUS_META, dayOf, fmtBRL", "STATUS_META, fmtBRL")
+              ],
+              'src/components/PlatformAdminShell.tsx': [
+                  ("export function PlatformAdminShell({ eyebrow, title, description, actions, children }: Props)", "export function PlatformAdminShell({ eyebrow, title, actions, children }: Props)")
+              ],
+              'src/pages/Crm.tsx': [
+                  ("Card, CardHead, Btn, Chip, IconStar", "Card, CardHead, Btn, IconStar")
+              ],
+              'src/pages/FinanceiroOperational.tsx': [
+                  ("refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus", "refreshFinance, addTransaction, setTransactionStatus, setCommissionStatus")
+              ],
+          }
+
+          for filename, changes in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in changes:
+                  if old not in text:
+                      raise SystemExit(f'Expected text not found in {filename}: {old}')
+                  text = text.replace(old, new, 1)
+              path.write_text(text)
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/ClinicalAssessmentRunner.tsx src/components/ClinicalWorkspace.tsx src/components/PlatformAdminShell.tsx src/pages/Crm.tsx src/pages/FinanceiroOperational.tsx
+          git commit -m "chore: remove lint dead code"
+          git push origin HEAD:chore/p1-clean-lint-dead-code
