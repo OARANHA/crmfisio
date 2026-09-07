@@ -29,6 +29,8 @@ type TeamPayload = {
   unit_ids?: string[];
 };
 
+const allowedManagedRoles = new Set(['admin', 'fisio', 'recep', 'financeiro']);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Método não permitido' }, 405);
@@ -119,76 +121,63 @@ Deno.serve(async (req) => {
       return json({ error: 'Apenas administradores podem gerenciar a equipe' }, 403);
     }
 
-    const syncUnits = async (profileId: string, unitIds: string[] | undefined) => {
-      if (!unitIds) return;
-      const uniqueIds = [...new Set(unitIds.filter(Boolean))];
-      const { error: deleteError } = await admin.from('profile_units').delete().eq('profile_id', profileId).eq('clinic_id', caller.clinic_id);
-      if (deleteError) throw deleteError;
-      if (uniqueIds.length === 0) return;
-
-      const { data: validUnits, error: unitsError } = await admin
-        .from('units')
-        .select('id')
-        .eq('clinic_id', caller.clinic_id)
-        .eq('ativo', true)
-        .in('id', uniqueIds);
-      if (unitsError) throw unitsError;
-      if ((validUnits ?? []).length !== uniqueIds.length) throw new Error('Uma ou mais unidades são inválidas para esta clínica');
-
-      const { error: insertError } = await admin.from('profile_units').insert(uniqueIds.map((unitId) => ({
-        profile_id: profileId,
-        unit_id: unitId,
-        clinic_id: caller.clinic_id,
-      })));
-      if (insertError) throw insertError;
-    };
-
     if (payload.action === 'create') {
       if (!payload.email || !payload.password || !payload.nome || !payload.role) {
         return json({ error: 'Nome, e-mail, perfil e senha inicial são obrigatórios' }, 400);
       }
       if (payload.password.length < 8) return json({ error: 'A senha inicial deve ter ao menos 8 caracteres' }, 400);
-      if (!['admin', 'fisio', 'recep', 'financeiro'].includes(payload.role)) return json({ error: 'Perfil de acesso inválido' }, 400);
+      if (!allowedManagedRoles.has(payload.role)) return json({ error: 'Perfil de acesso inválido' }, 400);
+      if (payload.unit_ids && !Array.isArray(payload.unit_ids)) return json({ error: 'Unidades inválidas' }, 400);
 
+      const email = payload.email.trim().toLowerCase();
+      const nome = payload.nome.trim();
       const { data: created, error: createError } = await admin.auth.admin.createUser({
-        email: payload.email.trim().toLowerCase(),
+        email,
         password: payload.password,
         email_confirm: true,
-        user_metadata: { nome: payload.nome.trim(), must_change_password: true },
+        user_metadata: { nome, must_change_password: true },
       });
       if (createError || !created.user) throw createError ?? new Error('Não foi possível criar o usuário');
 
-      const profile = {
-        id: created.user.id,
-        clinic_id: caller.clinic_id,
-        email: payload.email.trim().toLowerCase(),
-        nome: payload.nome.trim(),
-        role: payload.role,
-        registro: payload.registro?.trim() || null,
-        cor: payload.cor || '#9ab8c9',
-        ativo: true,
-        telefone: payload.telefone?.trim() || null,
-        professional_type: payload.professional_type?.trim() || null,
-        council_type: payload.council_type?.trim() || null,
-        council_state: payload.council_state?.trim().toUpperCase() || null,
-        especialidade: payload.especialidade?.trim() || null,
-        must_change_password: true,
-      };
+      const { error: profileError } = await admin.rpc('admin_create_team_profile_atomic', {
+        p_profile_id: created.user.id,
+        p_clinic_id: caller.clinic_id,
+        p_email: email,
+        p_nome: nome,
+        p_role: payload.role,
+        p_registro: payload.registro?.trim() || null,
+        p_cor: payload.cor || '#9ab8c9',
+        p_ativo: true,
+        p_telefone: payload.telefone?.trim() || null,
+        p_professional_type: payload.professional_type?.trim() || null,
+        p_council_type: payload.council_type?.trim() || null,
+        p_council_state: payload.council_state?.trim().toUpperCase() || null,
+        p_especialidade: payload.especialidade?.trim() || null,
+        p_must_change_password: true,
+        p_unit_ids: payload.unit_ids ?? [],
+      });
 
-      const { error: profileError } = await admin.from('profiles').insert(profile);
       if (profileError) {
-        await admin.auth.admin.deleteUser(created.user.id);
+        const { error: compensationError } = await admin.auth.admin.deleteUser(created.user.id);
+        if (compensationError) {
+          console.error('[admin-team] create compensation failed', {
+            userId: created.user.id,
+            profileError,
+            compensationError,
+          });
+          throw new Error('Falha ao criar perfil e ao compensar usuário de autenticação; intervenção administrativa necessária.');
+        }
         throw profileError;
       }
-      await syncUnits(created.user.id, payload.unit_ids ?? []);
-      return json({ id: created.user.id, email: profile.email, created: true });
+
+      return json({ id: created.user.id, email, created: true });
     }
 
     if (!payload.id) return json({ error: 'Usuário não informado' }, 400);
 
     const { data: target, error: targetError } = await admin
       .from('profiles')
-      .select('id,clinic_id,role')
+      .select('id,clinic_id,role,nome,telefone,professional_type,council_type,council_state,registro,especialidade,cor')
       .eq('id', payload.id)
       .eq('clinic_id', caller.clinic_id)
       .single();
@@ -201,26 +190,49 @@ Deno.serve(async (req) => {
     }
 
     if (payload.action === 'update') {
-      const updates: Record<string, unknown> = {};
-      if (payload.nome !== undefined) updates.nome = payload.nome.trim();
-      if (payload.role !== undefined) {
-        if (target.role === 'owner') return json({ error: 'O papel proprietário não pode ser alterado por este fluxo' }, 403);
-        if (!['admin', 'fisio', 'recep', 'financeiro'].includes(payload.role)) return json({ error: 'Perfil de acesso inválido' }, 400);
-        updates.role = payload.role;
-      }
-      if (payload.telefone !== undefined) updates.telefone = payload.telefone.trim() || null;
-      if (payload.professional_type !== undefined) updates.professional_type = payload.professional_type.trim() || null;
-      if (payload.council_type !== undefined) updates.council_type = payload.council_type.trim() || null;
-      if (payload.council_state !== undefined) updates.council_state = payload.council_state.trim().toUpperCase() || null;
-      if (payload.registro !== undefined) updates.registro = payload.registro.trim() || null;
-      if (payload.especialidade !== undefined) updates.especialidade = payload.especialidade.trim() || null;
-      if (payload.cor !== undefined) updates.cor = payload.cor;
+      if (payload.unit_ids && !Array.isArray(payload.unit_ids)) return json({ error: 'Unidades inválidas' }, 400);
 
-      if (Object.keys(updates).length > 0) {
-        const { error } = await admin.from('profiles').update(updates).eq('id', target.id).eq('clinic_id', caller.clinic_id);
-        if (error) throw error;
+      if (target.role === 'owner') {
+        if (payload.role !== undefined || payload.unit_ids !== undefined) {
+          return json({ error: 'O papel proprietário e suas unidades não podem ser alterados por este fluxo' }, 403);
+        }
+        const updates: Record<string, unknown> = {};
+        if (payload.nome !== undefined) updates.nome = payload.nome.trim();
+        if (payload.telefone !== undefined) updates.telefone = payload.telefone.trim() || null;
+        if (payload.professional_type !== undefined) updates.professional_type = payload.professional_type.trim() || null;
+        if (payload.council_type !== undefined) updates.council_type = payload.council_type.trim() || null;
+        if (payload.council_state !== undefined) updates.council_state = payload.council_state.trim().toUpperCase() || null;
+        if (payload.registro !== undefined) updates.registro = payload.registro.trim() || null;
+        if (payload.especialidade !== undefined) updates.especialidade = payload.especialidade.trim() || null;
+        if (payload.cor !== undefined) updates.cor = payload.cor;
+
+        if (Object.keys(updates).length > 0) {
+          const { error } = await admin.from('profiles').update(updates).eq('id', target.id).eq('clinic_id', caller.clinic_id);
+          if (error) throw error;
+        }
+        return json({ id: target.id, updated: true });
       }
-      await syncUnits(target.id, payload.unit_ids);
+
+      const nextRole = payload.role ?? target.role;
+      if (!allowedManagedRoles.has(nextRole)) return json({ error: 'Perfil de acesso inválido' }, 400);
+      const nextName = payload.nome !== undefined ? payload.nome.trim() : target.nome;
+      if (!nextName) return json({ error: 'Nome é obrigatório' }, 400);
+
+      const { error } = await admin.rpc('admin_update_team_profile_atomic', {
+        p_profile_id: target.id,
+        p_clinic_id: caller.clinic_id,
+        p_nome: nextName,
+        p_role: nextRole,
+        p_registro: payload.registro !== undefined ? payload.registro.trim() || null : target.registro,
+        p_cor: payload.cor !== undefined ? payload.cor : target.cor,
+        p_telefone: payload.telefone !== undefined ? payload.telefone.trim() || null : target.telefone,
+        p_professional_type: payload.professional_type !== undefined ? payload.professional_type.trim() || null : target.professional_type,
+        p_council_type: payload.council_type !== undefined ? payload.council_type.trim() || null : target.council_type,
+        p_council_state: payload.council_state !== undefined ? payload.council_state.trim().toUpperCase() || null : target.council_state,
+        p_especialidade: payload.especialidade !== undefined ? payload.especialidade.trim() || null : target.especialidade,
+        p_unit_ids: payload.unit_ids ?? null,
+      });
+      if (error) throw error;
       return json({ id: target.id, updated: true });
     }
 
@@ -237,7 +249,8 @@ Deno.serve(async (req) => {
         user_metadata: { must_change_password: true },
       });
       if (error) throw error;
-      await admin.from('profiles').update({ must_change_password: true }).eq('id', target.id).eq('clinic_id', caller.clinic_id);
+      const { error: profileError } = await admin.from('profiles').update({ must_change_password: true }).eq('id', target.id).eq('clinic_id', caller.clinic_id);
+      if (profileError) throw profileError;
       return json({ id: target.id, password_reset: true });
     }
 
