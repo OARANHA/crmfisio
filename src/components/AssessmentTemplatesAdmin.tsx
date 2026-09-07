@@ -3,6 +3,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
+import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
 import type {
   AssessmentComponentType,
   AssessmentTemplate,
@@ -73,8 +74,11 @@ export function AssessmentTemplatesAdmin() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [specialty, setSpecialty] = useState('fisioterapia');
+  const [customAuthoringAllowed, setCustomAuthoringAllowed] = useState<boolean | null>(null);
+  const [customAuthoringError, setCustomAuthoringError] = useState(false);
 
   const canManage = isClinicManager(user?.role);
+  const canAuthorCustomAssessments = canManage && customAuthoringAllowed === true;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,6 +99,27 @@ export function AssessmentTemplatesAdmin() {
     }
     void load();
   }, [user?.id, canManage, load]);
+
+  useEffect(() => {
+    let active = true;
+    setCustomAuthoringAllowed(null);
+    setCustomAuthoringError(false);
+    if (!user?.id || !canManage) return () => { active = false; };
+
+    void loadCurrentClinicEntitlementState('assessments.custom')
+      .then((state) => {
+        if (active) setCustomAuthoringAllowed(isCurrentClinicEntitlementAllowed(state));
+      })
+      .catch((error) => {
+        console.error('[MedicsPro] entitlement de avaliações customizadas:', error);
+        if (active) {
+          setCustomAuthoringAllowed(false);
+          setCustomAuthoringError(true);
+        }
+      });
+
+    return () => { active = false; };
+  }, [user?.id, canManage]);
 
   const standards = useMemo(
     () => templates.filter((template) => template.ownerType === 'platform' && template.status !== 'archived'),
@@ -302,14 +327,17 @@ export function AssessmentTemplatesAdmin() {
             <p className="font-display font-semibold text-[14px]">Biblioteca clínica</p>
             <p className="text-[11px] text-fog mt-1">Use um modelo padrão ou crie uma versão própria sem perder o histórico das avaliações já realizadas.</p>
           </div>
-          <Btn className="ml-auto" onClick={createNew} disabled={busy}>+ Nova avaliação</Btn>
+          <Btn className="ml-auto" onClick={createNew} disabled={busy || !canAuthorCustomAssessments}>+ Nova avaliação</Btn>
         </div>
+
+        {customAuthoringAllowed === null && !customAuthoringError && <div className="rounded-xl border border-line bg-deep px-4 py-3 text-[11px] text-fog">Validando liberação para avaliações customizadas…</div>}
+        {customAuthoringAllowed === false && <div className="rounded-xl border border-amber/35 bg-amber/5 px-4 py-3 text-[11px] leading-relaxed text-fog"><strong className="text-amber">Autoria personalizada indisponível.</strong> {customAuthoringError ? 'Não foi possível confirmar o entitlement; por segurança, as ações de autoria ficaram bloqueadas.' : 'O Platform Admin bloqueou avaliações customizadas para esta clínica.'} Avaliações padrão e modelos existentes continuam visíveis.</div>}
 
         {loading ? <div className="font-mono text-[11px] text-fog">Carregando modelos…</div> : (
           <div className="grid xl:grid-cols-2 gap-5">
             <TemplateGroup title="Avaliações padrão" subtitle="Curadas pelo MedicsPro; não podem ser alteradas pela clínica.">
               {standards.length === 0 ? <EmptyLine text="Nenhum modelo padrão disponível." /> : standards.map((template) => (
-                <TemplateCard key={template.id} template={template} action="Usar como base" onAction={() => duplicateStandard(template)} busy={busy} />
+                <TemplateCard key={template.id} template={template} action="Usar como base" onAction={() => duplicateStandard(template)} busy={busy || !canAuthorCustomAssessments} />
               ))}
             </TemplateGroup>
             <TemplateGroup title="Minhas avaliações" subtitle="Modelos próprios, versionados e reutilizáveis.">
@@ -320,7 +348,7 @@ export function AssessmentTemplatesAdmin() {
                   action={template.status === 'archived' ? 'Restaurar' : 'Editar nova versão'}
                   onAction={() => template.status === 'archived' ? archive(template) : openClinicTemplate(template)}
                   secondary={template.status === 'archived' ? undefined : { label: 'Arquivar', onClick: () => archive(template) }}
-                  busy={busy}
+                  busy={busy || !canAuthorCustomAssessments}
                 />
               ))}
             </TemplateGroup>
