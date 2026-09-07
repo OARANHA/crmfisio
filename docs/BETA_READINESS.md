@@ -8,29 +8,43 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 - 🟡 YELLOW — fundação existe, mas ainda há riscos/pendências antes de ampliação.
 - 🔴 RED — bloqueia piloto.
 
-## Estado em 2026-09-05
+## Estado em 2026-09-07
 
 | Gate | Status | Evidência / próxima ação |
 |---|---|---|
-| Multi-tenant / RLS | 🟢 | Isolamento por `clinic_id`, hardening e verificações aplicadas. |
-| Papéis e identidade | 🟢 | `platform_admin` separado de papéis internos; usuários de clínica usam Auth + `profiles`. |
+| Multi-tenant / RLS | 🟢 | Preflight P1 em produção confirmou RLS crítico, ausência de órfãos e referências tenant-safe. |
+| Papéis e identidade | 🟢 | `platform_admin` separado de papéis internos; Auth/Profile/Clinic íntegros e login canônico via RPC. |
 | Provisionamento de clínicas | 🟢 | Fluxo idempotente e auditável validado com clínica piloto real. |
 | Platform Admin | 🟢 | Sessão isolada do login das clínicas, seleção de clínica persistida e governança funcional validada. |
-| Entitlements — UI/rotas | 🟢 | Rotas protegidas e módulos explicitamente bloqueados podem ser ocultados da navegação. |
+| Entitlements — UI/rotas | 🟢 | Rotas, menus, dashboards e superfícies indiretas respeitam decisões de módulo. |
 | Entitlements — Financeiro | 🟢 | `finance.access` com enforcement server-side em pagamentos, histórico e operações de pacotes. |
-| Entitlements — CRM | 🟢 | `crm.access` bloqueia server-side mutação de `patients.funil_stage`; teste autenticado negativo retornou 403. |
-| Entitlements — WhatsApp | 🟢 | `whatsapp.access` protege outbox, templates, revisão humana e Evolution worker; teste autenticado negativo retornou 403. |
-| Entitlements — Avaliações customizadas | 🟢 | `assessments.custom` protege criação/duplicação/edição/versionamento/publicação/arquivamento de templates próprios sem bloquear avaliações padrão. Testes bloqueado/liberado aprovados. |
-| Relatórios | 🟢 | `reports.access` é gate do módulo oficial; tabelas base compartilhadas não são bloqueadas para não quebrar Agenda/Pacientes/Financeiro/CRM. |
-| Nexus Clinical Engine | 🟢 | Fail-closed, exige entitlement explícito + identidade médica válida + CRM. Testes: médico sem entitlement bloqueado, médico autorizado permitido, owner não médico bloqueado. |
-| Financeiro core | 🟢 | Gate SQL limpo, cenários canônicos e smoke real concluídos; cancelamento pré-pago com resolução financeira explícita também validado em produção. |
-| Agenda core | 🟢 | Transições protegidas; cancelamento/remarcação e vínculo profissional validados no núcleo. |
+| Entitlements — CRM | 🟢 | `crm.access` protege mutações e superfícies oficiais; papéis não autorizados ficam read-only. |
+| Entitlements — WhatsApp | 🟢 | `whatsapp.access` protege outbox, templates, revisão humana e Evolution worker. |
+| Entitlements — Avaliações customizadas | 🟢 | `assessments.custom` protege autoria/edição/publicação de templates próprios sem bloquear modelos padrão. |
+| Relatórios | 🟢 | `reports.access` é gate do módulo oficial sem quebrar tabelas base compartilhadas. |
+| Nexus Clinical Engine | 🟢 | Fail-closed, exige entitlement explícito + identidade médica válida + CRM. |
+| Financeiro core | 🟢 | Ciclo canônico e cancelamento pré-pago com resolução financeira explícita validados em produção. |
+| Agenda core | 🟢 | Transições, cancelamento/remarcação, concorrência de sessão e vínculo profissional protegidos. |
 | Pacotes | 🟢 | Venda, saldo, consumo unitário, validade/esgotamento e bloqueio validados. |
-| Atendimento clínico | 🟡 | Fundação existe; falta consolidar experiência dedicada de atendimento em andamento e autoria final. |
-| Assessment Engine | 🟢 | Arquitetura de avaliações padrão + minhas avaliações definida e customização agora possui boundary server-side. |
-| WhatsApp / Evolution operacional | 🟡 | Boundary de entitlement fechado; ainda falta acabamento operacional, observabilidade e UX de operação. |
+| Atendimento clínico | 🟢 | Sessão, autoria, evolução e finalização possuem boundaries server-side; dashboard, `/hoje` e agenda completa convergem para o workspace clínico. Ver `CLINICAL_PILOT_ACCEPTANCE.md`. |
+| Assessment Engine | 🟢 | Avaliações padrão + minhas avaliações + body map estruturado possuem boundary server-side e histórico versionado. |
+| LGPD / portabilidade | 🟢 | Exportação `LGPD-portabilidade-v2` é server-authoritative, auditada na mesma transação e não depende do estado carregado no browser. |
+| WhatsApp / Evolution operacional | 🟡 | Entitlement e risco de retry duplicado estão fechados; ainda falta acabamento de observabilidade/UX operacional. |
 | UX / design system | 🟡 | Modernização em andamento; dark/light e padrões premium devem ser consolidados sem quebrar fluxos core. |
 | Ajuda/manual dentro do painel | 🟡 | Planejamento iniciado em `docs/IN_APP_HELP_PLAN.md`; ainda não implementado na UI. |
+
+## P1 de estabilização — estado
+
+O preflight read-only `VERIFY_20260907_P1_OPERATIONAL_PREFLIGHT.sql` foi executado no ambiente real e checks 1–13 ficaram GREEN. O ambiente possui três clínicas ativas e integridade tenant confirmada. Não havia, no momento da execução, clínica suspensa ou usuário inativo disponível como fixture; o cenário de usuário inativo já havia sido exercitado anteriormente. Não se deve suspender clínica produtiva apenas para cumprir checklist.
+
+Frentes fechadas no P1:
+
+1. mutações de equipe atômicas e unidades validadas antes de sincronização destrutiva;
+2. exportação LGPD server-authoritative;
+3. bootstrap de perfil autenticado por RPC canônico;
+4. leitura clínica por relação assistencial;
+5. proteção contra retry cego de entrega WhatsApp incerta + reconciliação fail-closed;
+6. preflight operacional repetível e read-only.
 
 ## Entitlements — semântica atual
 
@@ -45,23 +59,21 @@ Chaves atuais:
 - `assessments.custom`
 - `nexus.access`
 
-## Nexus — boundary validado
+## Atendimento clínico — estado do piloto
 
-A autorização do Nexus não depende apenas de papel interno. Para `nexus.access`/`nexus.evidence` o usuário precisa:
+O fluxo clínico canônico converge para `ClinicalWorkspace`:
 
-1. estar ativo e vinculado à clínica;
-2. ter identidade profissional médica válida;
-3. possuir `professional_type` médico;
-4. possuir contexto de conselho `CRM`, UF e número de registro;
-5. pertencer a clínica com `nexus.access` explicitamente efetivo.
+- dashboard clínico abre a sessão correta por `session_id`;
+- `/hoje` só oferece ações clínicas ao fisioterapeuta responsável e faz handoff ao prontuário;
+- agenda completa não oferece transição clínica de sessão de colega e não finaliza atendimento diretamente no drawer;
+- evolução compartilhada preserva `session_id`;
+- o banco exige sessão ativa, vínculo exato e evolução antes da finalização.
 
-Ser `owner`, `admin` ou possuir temporariamente `role='fisio'` não é suficiente.
+O roteiro vivo está em `docs/CLINICAL_PILOT_ACCEPTANCE.md` e deve ser repetido no primeiro piloto real e após alterações relevantes do fluxo.
 
 ## Financeiro — estado do piloto
 
-O PR #151 já foi mergeado e validado em produção. O cancelamento de atendimento com pagamento liquidado agora exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
-
-O verifier `VERIFY_20260905_PREPAID_CANCELLATION_FINANCIAL_RESOLUTION.sql` passou integralmente em produção.
+O cancelamento de atendimento com pagamento liquidado exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
 
 Pendências financeiras restantes são evoluções de produto/UX, não bloqueadores do núcleo para piloto controlado:
 
@@ -71,13 +83,12 @@ Pendências financeiras restantes são evoluções de produto/UX, não bloqueado
 
 ## Próximo foco recomendado
 
-1. Fechar Configurações / Entitlements / governança por clínica de ponta a ponta.
-2. Consolidar Atendimento clínico em andamento.
-3. Evoluir a UI do Assessment Engine: Avaliações padrão, Minhas avaliações e body map.
-4. Implantar ajuda contextual/manual dentro do painel usando a estrutura de `docs/IN_APP_HELP_PLAN.md`.
-5. Validar relatórios e indicadores com dados reais de piloto.
-6. Polir WhatsApp operacional e observabilidade.
-7. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
+1. Polir WhatsApp/Evolution operacional e observabilidade, agora que segurança, entitlement e deduplicação estão fechados.
+2. Implantar ajuda contextual/manual dentro do painel usando `docs/IN_APP_HELP_PLAN.md`.
+3. Validar relatórios e indicadores com dados reais de piloto.
+4. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
+5. Consolidar UX/design system nas telas de maior frequência de uso.
+6. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
 
 ## Regra de implantação
 
