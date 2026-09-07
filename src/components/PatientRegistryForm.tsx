@@ -11,7 +11,7 @@ import {
 } from '../lib/patientRegistry';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { usePatients } from '../lib/patientContext';
-import { useApp } from '../lib/store';
+import { useToast } from '../lib/toastContext';
 import { Btn, Card, Field, Input, Select, Textarea, IconChevronL, IconPlus } from '../lib/ui';
 import { Reveal } from './Reveal';
 
@@ -25,7 +25,7 @@ type Props = { patient?: Patient };
 export function PatientRegistryForm({ patient }: Props) {
   const editing = Boolean(patient);
   const { user } = useCurrentUserAccess();
-  const { toast } = useApp();
+  const { toast } = useToast();
   const { refreshPatients } = usePatients();
   const nav = useNavigate();
   const [name, setName] = useState(patient?.nome ?? '');
