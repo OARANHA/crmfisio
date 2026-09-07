@@ -30,6 +30,13 @@ describe('canonical permissions', () => {
     expect(accessFor('recep', 'agenda')).toBe('full');
   });
 
+  it('keeps module access coarse while financial operations stay narrow', () => {
+    expect(accessFor('recep', 'financeiro')).toBe('full');
+    expect(canWriteFinancialTransaction('recep', 'receber')).toBe(true);
+    expect(canWriteFinancialTransaction('recep', 'pagar')).toBe(false);
+    expect(canManageCommissions('recep')).toBe(false);
+  });
+
   it('keeps clinical acts exclusive to care professionals', () => {
     expect(isClinicalRole('fisio')).toBe(true);
     expect(isClinicalRole('owner')).toBe(false);
