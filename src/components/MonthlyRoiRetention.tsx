@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
+import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
 import { usePackages } from '../lib/packageContext';
 import { buildChurnRiskList } from '../lib/churnRisk';
@@ -32,7 +33,8 @@ const emptyRoi: RecoveryRoi = {
 };
 
 export function MonthlyRoiRetention({ month }: { month: string }) {
-  const { patients, appointments, transactions } = useApp();
+  const { patients, transactions } = useApp();
+  const { appointments } = useAgenda();
   const { patientPackages } = usePackages();
   const [roi, setRoi] = useState<RecoveryRoi>(emptyRoi);
   const [loading, setLoading] = useState(true);
