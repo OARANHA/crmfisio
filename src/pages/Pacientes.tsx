@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { usePatients } from '../lib/patientContext';
@@ -101,7 +101,9 @@ function Lista() {
 
 function Pep({ id }: { id: string }) {
   const { patients } = usePatients();
+  const [searchParams] = useSearchParams();
   const patient = patients.find((item) => item.id === id);
+  const focusedSessionId = searchParams.get('session');
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
   return (
@@ -122,7 +124,9 @@ function Pep({ id }: { id: string }) {
       </Reveal>
 
       <Reveal delay={60}>
-        <ClinicalWorkspace patient={patient} />
+        <div id="clinical-workspace" className="scroll-mt-4">
+          <ClinicalWorkspace patient={patient} initialSessionId={focusedSessionId} />
+        </div>
       </Reveal>
     </div>
   );
