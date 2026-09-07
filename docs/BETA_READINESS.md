@@ -31,7 +31,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | LGPD / portabilidade | 🟢 | Exportação `LGPD-portabilidade-v2` é server-authoritative, auditada na mesma transação e não depende do estado carregado no browser. |
 | WhatsApp / Evolution operacional | 🟢 | Retry cego de entrega incerta é bloqueado, webhook reconcilia de forma fail-closed e a central expõe resultado incerto, falha definitiva, reconciliação, tentativas e timestamps operacionais. |
 | UX / design system | 🟡 | Modernização em andamento; dark/light e padrões premium devem ser consolidados sem quebrar fluxos core. |
-| Ajuda/manual dentro do painel | 🟡 | Planejamento iniciado em `docs/IN_APP_HELP_PLAN.md`; ainda não implementado na UI. |
+| Ajuda/manual dentro do painel | 🟢 | P0 implementado: conteúdo centralizado, ajuda por rota/papel, botão `?` e painel lateral para Agenda, Pacientes, Atendimento e Financeiro. P1/P2 permanecem como evolução. |
 
 ## P1 de estabilização — estado
 
@@ -85,6 +85,21 @@ O fluxo operacional está apto para piloto controlado porque separa segurança d
 
 Pendências daqui em diante são refinamentos de produto e operação assistida, não bloqueadores estruturais do piloto.
 
+## Ajuda contextual — estado do piloto
+
+O P0 está implementado e acompanha o usuário sem criar uma segunda fonte de permissões:
+
+- conteúdo versionado em `src/lib/helpContent.ts`;
+- resolução por rota atual e papel do usuário;
+- botão `?` e drawer lateral reutilizável;
+- Agenda e `/hoje` explicam o fluxo operacional e o handoff clínico;
+- Pacientes separa cadastro operacional de prontuário;
+- Atendimento orienta sessão, autoria, evolução e finalização;
+- Financeiro diferencia consulta, baixa e exceções conforme o papel;
+- testes impedem que recepção receba instrução de evolução clínica e que fisioterapeuta receba instrução de baixa financeira.
+
+P1/P2 do plano continuam como evolução de treinamento e descoberta, não como bloqueadores do piloto.
+
 ## Financeiro — estado do piloto
 
 O cancelamento de atendimento com pagamento liquidado exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
@@ -97,10 +112,10 @@ Pendências financeiras restantes são evoluções de produto/UX, não bloqueado
 
 ## Próximo foco recomendado
 
-1. Implantar ajuda contextual/manual dentro do painel usando `docs/IN_APP_HELP_PLAN.md`.
-2. Validar relatórios e indicadores com dados reais de piloto.
-3. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
-4. Consolidar UX/design system nas telas de maior frequência de uso.
+1. Validar relatórios e indicadores com dados reais de piloto.
+2. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
+3. Consolidar UX/design system nas telas de maior frequência de uso.
+4. Evoluir ajuda contextual P1: Pacotes, Avaliações, CRM, WhatsApp e checklist inicial.
 5. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
 
 ## Regra de implantação

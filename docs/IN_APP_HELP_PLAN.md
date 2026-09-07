@@ -2,6 +2,18 @@
 
 Objetivo: transformar a documentação técnica e operacional em ajuda útil dentro do produto, sem poluir a interface e sem depender de um PDF separado para tarefas rotineiras.
 
+## Estado atual
+
+P0 concluído em 2026-09-07:
+
+- conteúdo centralizado/versionado em `src/lib/helpContent.ts`;
+- botão `?` reutilizável e drawer lateral;
+- ajuda por rota e papel;
+- cobertura inicial de Agenda, `/hoje`, Pacientes, Atendimento e Financeiro;
+- testes de boundary para impedir instruções incompatíveis com o papel.
+
+P1 e P2 permanecem como evolução de treinamento, descoberta e escala de suporte — não como bloqueadores do piloto controlado.
+
 ## Princípios
 
 1. Ajuda deve aparecer no contexto da tarefa.
@@ -126,18 +138,7 @@ Priorizar provisionamento, entitlements, auditoria, observabilidade e diferença
 
 ## Modelo de conteúdo versionável
 
-Quando a implementação começar, preferir conteúdo estruturado por chave em vez de textos espalhados nos componentes.
-
-Exemplo conceitual:
-
-```ts
-help.financial.settle.title
-help.financial.settle.short
-help.financial.settle.steps
-help.assessments.standard.short
-help.assessments.custom.short
-help.nexus.access.short
-```
+A implementação atual usa conteúdo estruturado por contexto em `src/lib/helpContent.ts`, evitando textos operacionais espalhados pelos componentes.
 
 Isso facilita:
 
@@ -146,37 +147,38 @@ Isso facilita:
 - uso do mesmo conteúdo em tooltip, painel lateral e manual;
 - telemetria de quais ajudas são mais abertas.
 
-## Regras de entitlement
+## Regras de entitlement e papel
 
 O sistema de ajuda deve respeitar exatamente o que o usuário pode usar.
 
-- módulo bloqueado: explicar que a função não está liberada e orientar contato com administrador/plataforma conforme o papel;
+- módulo bloqueado: não apresentar tutorial operacional como se a função estivesse disponível;
 - módulo não configurado: usar linguagem neutra durante rollout;
 - módulo liberado: mostrar tutorial operacional;
 - Nexus: não sugerir liberação automática; explicar exigência de médico + CRM + autorização da clínica;
-- `assessments.custom=false`: continuar documentando e permitindo Avaliações padrão, mas esconder instruções de autoria customizada.
+- `assessments.custom=false`: continuar documentando e permitindo Avaliações padrão, mas esconder instruções de autoria customizada;
+- conteúdo por papel deve ser filtrado antes de renderizar o painel.
 
 ## Prioridade de implementação
 
-### P0
+### P0 — concluído
 
-- estrutura central de conteúdo de ajuda;
-- botão/ícone "?" reutilizável;
-- painel lateral simples;
-- ajuda para Agenda, Pacientes, Atendimento e Financeiro.
+- [x] estrutura central de conteúdo de ajuda;
+- [x] botão/ícone `?` reutilizável;
+- [x] painel lateral simples;
+- [x] ajuda para Agenda, Pacientes, Atendimento e Financeiro.
 
 ### P1
 
-- ajuda para Pacotes, Avaliações, CRM e WhatsApp;
-- checklist inicial por papel;
-- busca no manual.
+- [ ] ajuda para Pacotes, Avaliações, CRM e WhatsApp;
+- [ ] checklist inicial por papel;
+- [ ] busca no manual.
 
 ### P2
 
-- ajuda Nexus especializada;
-- vídeos curtos/GIFs internos;
-- analytics de ajuda;
-- sugestões contextuais baseadas na tela atual.
+- [ ] ajuda Nexus especializada;
+- [ ] vídeos curtos/GIFs internos;
+- [ ] analytics de ajuda;
+- [ ] sugestões contextuais baseadas na tela atual.
 
 ## Critério de qualidade
 
