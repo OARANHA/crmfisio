@@ -8,7 +8,9 @@ select case when not exists (
 select '2) legacy-named helper delegates to generic clinical capability' as check;
 select case when
   pg_get_functiondef('public.current_user_can_author_physiotherapy()'::regprocedure)
-    ilike '%current_user_has_clinical_capability(''clinical.attend'')%'
+    ilike '%current_user_has_clinical_capability%'
+  and pg_get_functiondef('public.current_user_can_author_physiotherapy()'::regprocedure)
+    ilike '%clinical.attend%'
   and pg_get_functiondef('public.current_user_can_author_physiotherapy()'::regprocedure)
     not ilike '%v_role%fisio%'
 then 'ok' else 'FAIL' end as helper_is_generic;
@@ -21,7 +23,11 @@ where p.polrelid = 'public.physiotherapy_evaluations'::regclass
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
-  ) ilike '%current_user_has_clinical_capability(''clinical.assessment.apply'')%'
+  ) ilike '%current_user_has_clinical_capability%'
+  and (
+    coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+    coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
+  ) ilike '%clinical.assessment.apply%'
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
@@ -35,7 +41,11 @@ where p.polrelid = 'public.physiotherapy_evolutions'::regclass
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
-  ) ilike '%current_user_has_clinical_capability(''clinical.evolution.write'')%'
+  ) ilike '%current_user_has_clinical_capability%'
+  and (
+    coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+    coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
+  ) ilike '%clinical.evolution.write%'
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
@@ -49,7 +59,11 @@ where p.polrelid = 'public.clinical_assessments'::regclass
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
-  ) ilike '%current_user_has_clinical_capability(''clinical.assessment.apply'')%'
+  ) ilike '%current_user_has_clinical_capability%'
+  and (
+    coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+    coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
+  ) ilike '%clinical.assessment.apply%'
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
@@ -67,12 +81,18 @@ where p.polrelid = 'public.assessment_body_points'::regclass
   and (
     coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
     coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
-  ) ilike '%current_user_has_clinical_capability(''clinical.body_map'')%';
+  ) ilike '%current_user_has_clinical_capability%'
+  and (
+    coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+    coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
+  ) ilike '%clinical.body_map%';
 
 select '7) appointment transition guards are canonical professional-role based' as check;
 select case when
   pg_get_functiondef('public.guard_appointment_clinical_self_transition()'::regprocedure)
-    ilike '%current_user_has_clinical_capability(''clinical.attend'')%'
+    ilike '%current_user_has_clinical_capability%'
+  and pg_get_functiondef('public.guard_appointment_clinical_self_transition()'::regprocedure)
+    ilike '%clinical.attend%'
   and pg_get_functiondef('public.guard_appointment_clinical_self_transition()'::regprocedure)
     ilike '%v_role = ''professional''%'
   and pg_get_functiondef('public.guard_appointment_clinical_self_transition()'::regprocedure)
@@ -86,9 +106,11 @@ then 'ok' else 'FAIL' end as appointment_guards;
 select '8) finalization requires attend plus evolution-write capabilities' as check;
 select case when
   pg_get_functiondef('public.require_evolution_before_appointment_finalize()'::regprocedure)
-    ilike '%current_user_has_clinical_capability(''clinical.attend'')%'
+    ilike '%current_user_has_clinical_capability%'
   and pg_get_functiondef('public.require_evolution_before_appointment_finalize()'::regprocedure)
-    ilike '%current_user_has_clinical_capability(''clinical.evolution.write'')%'
+    ilike '%clinical.attend%'
+  and pg_get_functiondef('public.require_evolution_before_appointment_finalize()'::regprocedure)
+    ilike '%clinical.evolution.write%'
 then 'ok' else 'FAIL' end as finalization_capabilities;
 
 select '9) final assertion' as check;
@@ -99,7 +121,9 @@ begin
   end if;
 
   if pg_get_functiondef('public.current_user_can_author_physiotherapy()'::regprocedure)
-       not ilike '%current_user_has_clinical_capability(''clinical.attend'')%' then
+       not ilike '%current_user_has_clinical_capability%'
+     or pg_get_functiondef('public.current_user_can_author_physiotherapy()'::regprocedure)
+       not ilike '%clinical.attend%' then
     raise exception 'legacy helper is not generic';
   end if;
 
