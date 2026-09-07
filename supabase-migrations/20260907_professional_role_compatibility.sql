@@ -82,7 +82,7 @@ end $$;
 
 -- Generic capability resolver. Identity remains mandatory. Explicit grants or
 -- revocations decide the capability once a valid clinical identity is proven.
-create or replace function public.current_user_has_clinical_capability(p_capability_key text)
+create or replace function public.current_user_has_clinical_capability(p_capability text)
 returns boolean
 language plpgsql
 stable
@@ -99,7 +99,7 @@ begin
     and p.ativo = true
   limit 1;
 
-  if v_profile.id is null or coalesce(p_capability_key, '') = '' then
+  if v_profile.id is null or coalesce(p_capability, '') = '' then
     return false;
   end if;
 
@@ -113,7 +113,7 @@ begin
   join public.capability_catalog cc on cc.capability_key = pc.capability_key
   where pc.clinic_id = v_profile.clinic_id
     and pc.professional_id = v_profile.id
-    and pc.capability_key = p_capability_key
+    and pc.capability_key = p_capability
     and cc.active is true
     and cc.clinical is true
   limit 1;
@@ -126,7 +126,7 @@ begin
   -- handled by current_user_has_valid_clinical_identity(); canonical
   -- professionals must already satisfy the real professional credential rules.
   if v_profile.role::text in ('fisio', 'professional') then
-    return p_capability_key = any(array[
+    return p_capability = any(array[
       'clinical.attend',
       'clinical.timeline.read',
       'clinical.evolution.write',
