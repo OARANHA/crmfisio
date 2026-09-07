@@ -132,16 +132,29 @@ export function AgendaReal() {
     return true;
   }), [appointments, patients, users, rooms, fisioFilter, roomFilter, unitFilter, search]);
 
-  const todayAppointments = useMemo(() => visibleAppointments.filter((appointment) => appointment.data === todayIso), [visibleAppointments, todayIso]);
-  const todaySummary = useMemo(() => ({
-    total: todayAppointments.filter((a) => a.status !== 'cancelado').length,
-    confirmed: todayAppointments.filter((a) => a.status === 'confirmado').length,
-    inService: todayAppointments.filter((a) => a.status === 'em_atendimento').length,
-    finished: todayAppointments.filter((a) => a.status === 'finalizado').length,
-    pending: todayAppointments.filter((a) => a.status === 'agendado').length,
-    missed: todayAppointments.filter((a) => a.status === 'faltou').length,
-    revenue: todayAppointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').reduce((sum, a) => sum + a.valor, 0),
-  }), [todayAppointments]);
+  const periodAppointments = useMemo(() => {
+    if (view === 'dia') {
+      const dayIso = format(anchor, 'yyyy-MM-dd');
+      return visibleAppointments.filter((appointment) => appointment.data === dayIso);
+    }
+    if (view === 'semana') {
+      const startIso = format(week[0], 'yyyy-MM-dd');
+      const endIso = format(week[5], 'yyyy-MM-dd');
+      return visibleAppointments.filter((appointment) => appointment.data >= startIso && appointment.data <= endIso);
+    }
+    const monthPrefix = format(anchor, 'yyyy-MM');
+    return visibleAppointments.filter((appointment) => appointment.data.startsWith(monthPrefix));
+  }, [visibleAppointments, view, anchor, week]);
+  const periodSummary = useMemo(() => ({
+    total: periodAppointments.filter((a) => a.status !== 'cancelado').length,
+    confirmed: periodAppointments.filter((a) => a.status === 'confirmado').length,
+    inService: periodAppointments.filter((a) => a.status === 'em_atendimento').length,
+    finished: periodAppointments.filter((a) => a.status === 'finalizado').length,
+    pending: periodAppointments.filter((a) => a.status === 'agendado').length,
+    missed: periodAppointments.filter((a) => a.status === 'faltou').length,
+    revenue: periodAppointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').reduce((sum, a) => sum + a.valor, 0),
+  }), [periodAppointments]);
+  const periodSummaryLabel = view === 'dia' ? 'Sessões no dia' : view === 'semana' ? 'Sessões na semana' : 'Sessões no mês';
 
   const monthCells = useMemo(() => {
     const y = anchor.getFullYear();
@@ -307,7 +320,7 @@ export function AgendaReal() {
       <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={fisios} defaultFisioId={fisioFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
       <Reveal delay={40}><div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">{[
-        ['Sessões hoje', todaySummary.total], ['Confirmadas', todaySummary.confirmed], ['Pendentes', todaySummary.pending], ['Em atendimento', todaySummary.inService], ['Finalizadas', todaySummary.finished], ['Faltas', todaySummary.missed], ['Previsto', fmtBRL(todaySummary.revenue)],
+        [periodSummaryLabel, periodSummary.total], ['Confirmadas', periodSummary.confirmed], ['Pendentes', periodSummary.pending], ['Em atendimento', periodSummary.inService], ['Finalizadas', periodSummary.finished], ['Faltas', periodSummary.missed], ['Previsto', fmtBRL(periodSummary.revenue)],
       ].map(([label, value]) => <Card key={String(label)} className="!rounded-xl !p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-fog">{label}</p><p className="mt-1 font-display text-xl font-bold">{value}</p></Card>)}</div></Reveal>
 
       <Reveal delay={60}><Card className="!rounded-2xl !p-3"><div className="flex flex-wrap items-center gap-2">
