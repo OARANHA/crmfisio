@@ -11,6 +11,7 @@ import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import { fmtBRL, STATUS_META, dayOf } from '../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../lib/ui';
 import { Reveal, CountUp } from '../components/Reveal';
@@ -69,7 +70,7 @@ export function Dashboard() {
   const prod = useMemo(() => {
     if (!reportsAllowed) return [];
     return users
-      .filter((u) => u.role === 'professional')
+      .filter((u) => u.ativo && hasClinicalDirectoryIdentity(u.professionalType))
       .map((professional) => {
         const fin = appointments.filter((a) => a.fisioId === professional.id && a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
         const falt = appointments.filter((a) => a.fisioId === professional.id && a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
