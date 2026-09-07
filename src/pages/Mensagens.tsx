@@ -8,6 +8,7 @@ import { MessageTemplatesEditor } from '../components/messages/MessageTemplatesE
 import { buildReactivationSelection } from '../components/messages/reactivationEligibility';
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useApp } from '../lib/store';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
@@ -23,7 +24,8 @@ function appointmentDateTime(data: string, inicio: string) {
 }
 
 export function Mensagens() {
-  const { user, access, toast } = useApp();
+  const { user, access } = useCurrentUserAccess();
+  const { toast } = useApp();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const canSend = access('mensagens') === 'full';
