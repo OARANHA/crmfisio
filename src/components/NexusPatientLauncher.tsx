@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { Btn, Chip, Input } from '../lib/ui';
 
 const normalized = (value: string) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 export function NexusPatientLauncher() {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
 

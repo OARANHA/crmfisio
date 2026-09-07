@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp, userName } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
-import { dayOf, fmtBRL, type FinancialTransaction } from '../lib/types';
+import { dayOf, fmtBRL, type FinancialTransaction, type Patient } from '../lib/types';
 import { Bar, Btn, Card, CardHead, Chip, Field, IconDollar, Input, Modal, Select } from '../lib/ui';
 import { IconCardPay, IconPlug } from '../components/icons';
 import { CountUp, Reveal } from '../components/Reveal';
@@ -35,9 +36,10 @@ const RISK_LABEL: Record<PackageRenewalCandidate['riskReason'], string> = {
 
 export function FinanceiroOperational() {
   const {
-    user, access, transactions, setTxStatus, patients,
+    user, access, transactions, setTxStatus,
     commissions, setCommissionStatus, fecharRepasse, addTransaction, toast,
   } = useApp();
+  const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { refreshFinance } = useFinance();
   const { patientPackages, packages, refreshPackages: refreshPackageDomain } = usePackages();
@@ -232,7 +234,7 @@ export function FinanceiroOperational() {
 
 type PaymentMethod = Exclude<FinancialTransaction['metodo'], null>;
 
-function TransactionModal({ tipo, patients, onClose, onSave }: { tipo: 'receber' | 'pagar'; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSave: (transaction: Omit<FinancialTransaction, 'id'>) => void }) {
+function TransactionModal({ tipo, patients, onClose, onSave }: { tipo: 'receber' | 'pagar'; patients: Patient[]; onClose: () => void; onSave: (transaction: Omit<FinancialTransaction, 'id'>) => void }) {
   const [descricao, setDescricao] = useState('');
   const [categoria, setCategoria] = useState('');
   const [valor, setValor] = useState('');
@@ -266,7 +268,7 @@ function PackageCatalogModal({ initial, onClose, onSaved }: { initial: PackageCa
   return <Modal open onClose={onClose} title={initial ? 'Editar pacote' : 'Novo pacote de sessões'}><div className="space-y-4"><Field label="Nome"><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fisioterapia 10 sessões" /></Field><div className="grid grid-cols-3 gap-3"><Field label="Sessões"><Input type="number" min="1" value={sessoes} onChange={(e) => setSessoes(e.target.value)} /></Field><Field label="Preço (R$)"><Input inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} /></Field><Field label="Validade (dias)"><Input type="number" min="1" value={validade} onChange={(e) => setValidade(e.target.value)} /></Field></div><Field label="Descrição"><Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Opcional" /></Field><label className="flex items-center gap-2 text-[12px] text-fog"><input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Disponível para novas vendas</label><div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={() => void save()} disabled={saving}>{saving ? 'Salvando…' : 'Salvar pacote'}</Btn></div></div></Modal>;
 }
 
-function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { initial: { patientId?: string; renewedFromId?: string; packageId?: string }; catalog: PackageCatalogItem[]; patients: ReturnType<typeof useApp>['patients']; onClose: () => void; onSaved: () => Promise<void> }) {
+function SellPackageModal({ initial, catalog, patients, onClose, onSaved }: { initial: { patientId?: string; renewedFromId?: string; packageId?: string }; catalog: PackageCatalogItem[]; patients: Patient[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const [patientId, setPatientId] = useState(initial.patientId ?? '');
   const [packageId, setPackageId] = useState(initial.packageId ?? '');
   const [dueDate, setDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));

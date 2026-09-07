@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { buildProfessionalCapacity, CAPACITY_DAY_END, CAPACITY_DAY_START, formatMinutes } from '../lib/agendaCapacity';
 import { useAgenda } from '../lib/agendaContext';
 import { useApp, patientName } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { STATUS_META, type Appointment } from '../lib/types';
 import { Btn, Card } from '../lib/ui';
@@ -16,7 +17,8 @@ const toMin = (value: string) => {
 };
 
 export function AgendaCapacityInsights() {
-  const { user, patients } = useApp();
+  const { user } = useApp();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const [day, setDay] = useState(() => new Date());

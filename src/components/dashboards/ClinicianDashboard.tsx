@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../../lib/agendaContext';
 import { useApp } from '../../lib/store';
+import { usePatients } from '../../lib/patientContext';
 import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
 import { STATUS_META } from '../../lib/types';
@@ -12,7 +13,8 @@ import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
 export function ClinicianDashboard() {
-  const { user, patients } = useApp();
+  const { user } = useApp();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { evolutions } = useClinical();
   const { patientPackages, packages } = usePackages();

@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { useAgenda } from '../../lib/agendaContext';
 import { useApp } from '../../lib/store';
+import { usePatients } from '../../lib/patientContext';
 import { useClinicDirectory } from '../../lib/clinicDirectoryContext';
 import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
@@ -22,7 +23,8 @@ type ActionItem = {
 };
 
 export function ReceptionDashboard() {
-  const { user, patients, transactions } = useApp();
+  const { user, transactions } = useApp();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { users } = useClinicDirectory();
   const { consents } = useClinical();

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAgenda } from '../lib/agendaContext';
 import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
 import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
@@ -13,12 +14,22 @@ import { buildChurnRiskList } from '../lib/churnRisk';
 const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
 
 export function Crm() {
-  const { patients, transactions, setFunilStage, toast } = useApp();
+  const { transactions, toast } = useApp();
+  const { patients, setFunilStage } = usePatients();
   const { appointments } = useAgenda();
   const { surveys } = useClinical();
   const { patientPackages } = usePackages();
   const navigate = useNavigate();
   const [dragId, setDragId] = useState<string | null>(null);
+
+  const updateStage = (id: string, stage: FunilStage, successMessage: string) => {
+    void setFunilStage(id, stage)
+      .then(() => toast(successMessage))
+      .catch((error) => {
+        console.error('[MedicsPro] Falha ao atualizar o funil:', error);
+        toast('Falha ao atualizar o funil. Tente novamente.', 'warn');
+      });
+  };
 
   const byStage = useMemo(() => {
     const map = new Map<FunilStage, Patient[]>();
@@ -78,8 +89,7 @@ export function Crm() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => {
                   if (dragId) {
-                    setFunilStage(dragId, s);
-                    toast(`Paciente movido para "${meta.label}"`);
+                    updateStage(dragId, s, `Paciente movido para "${meta.label}"`);
                     setDragId(null);
                   }
                 }}
@@ -117,8 +127,7 @@ export function Crm() {
                           <button
                             onClick={() => {
                               const next = STAGE_META[p.funilStage].next!;
-                              setFunilStage(p.id, next);
-                              toast(`${p.nome} avançou para "${STAGE_META[next].label}"`);
+                              updateStage(p.id, next, `${p.nome} avançou para "${STAGE_META[next].label}"`);
                             }}
                             className="mt-2 w-full flex items-center justify-center gap-1.5 border border-line px-2 py-1 font-mono text-[10px] text-fog hover:text-mint hover:border-mint/40 transition-colors"
                           >

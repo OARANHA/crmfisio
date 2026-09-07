@@ -5,6 +5,7 @@ import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { Btn, Card, Field, Input, Select } from '../lib/ui';
 
 const DAYS = [
@@ -12,7 +13,8 @@ const DAYS = [
 ] as const;
 
 export function AppointmentRecurrencePanel() {
-  const { user, patients, toast } = useApp();
+  const { user, toast } = useApp();
+  const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { refreshAgenda } = useAgenda();
   const { rooms, unidades: units } = useInfrastructure();
