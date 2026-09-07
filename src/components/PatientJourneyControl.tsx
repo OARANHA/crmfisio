@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { supabase } from '../lib/supabaseClient';
 import { usePatients } from '../lib/patientContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -31,6 +32,7 @@ const REOPEN_REASONS = [
 
 export function PatientJourneyControl({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
+  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
   const { toast } = useToast();
   const { refreshPatients } = usePatients();
   const [action, setAction] = useState<JourneyAction | null>(null);
@@ -41,7 +43,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
   const available = useMemo<JourneyAction[]>(() => {
     if (!user) return [];
 
-    if (patient.funilStage === 'lead' && ['owner', 'admin', 'fisio', 'recep'].includes(user.role)) {
+    if (patient.funilStage === 'lead' && (canAttend || ['owner', 'admin', 'recep'].includes(user.role))) {
       return [{
         to: 'avaliacao',
         label: 'Encaminhar para avaliação',
@@ -51,7 +53,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
       }];
     }
 
-    if (patient.funilStage === 'avaliacao' && user.role === 'fisio') {
+    if (patient.funilStage === 'avaliacao' && canAttend) {
       return [{
         to: 'tratamento',
         label: 'Iniciar tratamento',
@@ -61,7 +63,7 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
       }];
     }
 
-    if (patient.funilStage === 'tratamento' && user.role === 'fisio') {
+    if (patient.funilStage === 'tratamento' && canAttend) {
       return [{
         to: 'alta',
         label: 'Registrar alta clínica',
@@ -71,20 +73,20 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
       }];
     }
 
-    if (patient.funilStage === 'alta' && ['owner', 'admin', 'fisio'].includes(user.role)) {
+    if (patient.funilStage === 'alta' && (canAttend || ['owner', 'admin'].includes(user.role))) {
       return [{
         to: 'tratamento',
-        label: user.role === 'fisio' ? 'Reabrir tratamento' : 'Corrigir / reabrir tratamento',
+        label: canAttend ? 'Reabrir tratamento' : 'Corrigir / reabrir tratamento',
         title: 'Reabrir tratamento preservando a alta anterior',
-        reasons: user.role === 'fisio'
+        reasons: canAttend
           ? REOPEN_REASONS
           : REOPEN_REASONS.filter((r) => r.value === 'correcao_administrativa'),
-        clinical: user.role === 'fisio',
+        clinical: canAttend,
       }];
     }
 
     return [];
-  }, [patient.funilStage, user]);
+  }, [patient.funilStage, user, canAttend]);
 
   if (!user || available.length === 0) return null;
 
