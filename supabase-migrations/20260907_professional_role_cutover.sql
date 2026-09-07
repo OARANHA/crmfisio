@@ -153,7 +153,7 @@ grant execute on function public.current_user_has_valid_clinical_identity() to a
 
 -- Capability authorization remains identity + capability. Explicit grants or
 -- revocations decide the fine-grained permission once identity is valid.
-create or replace function public.current_user_has_clinical_capability(p_capability_key text)
+create or replace function public.current_user_has_clinical_capability(p_capability text)
 returns boolean
 language plpgsql
 stable
@@ -170,7 +170,7 @@ begin
     and p.ativo = true
   limit 1;
 
-  if v_profile.id is null or coalesce(p_capability_key, '') = '' then
+  if v_profile.id is null or coalesce(p_capability, '') = '' then
     return false;
   end if;
 
@@ -184,7 +184,7 @@ begin
   join public.capability_catalog cc on cc.capability_key = pc.capability_key
   where pc.clinic_id = v_profile.clinic_id
     and pc.professional_id = v_profile.id
-    and pc.capability_key = p_capability_key
+    and pc.capability_key = p_capability
     and cc.active is true
     and cc.clinical is true
   limit 1;
@@ -194,7 +194,7 @@ begin
   end if;
 
   if v_profile.role::text = 'professional' then
-    return p_capability_key = any(array[
+    return p_capability = any(array[
       'clinical.attend',
       'clinical.timeline.read',
       'clinical.evolution.write',
