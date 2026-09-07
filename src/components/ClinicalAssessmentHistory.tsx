@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Patient } from '../lib/types';
 import { Card, CardHead, Chip, Empty } from '../lib/ui';
+import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { userName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
@@ -19,11 +20,12 @@ export function ClinicalAssessmentHistory({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { users } = useClinicDirectory();
+  const { allowed: canReadTimeline } = useClinicalCapability('clinical.timeline.read', user?.id);
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [assessments, setAssessments] = useState<ClinicalAssessment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const clinicalRead = user?.role === 'fisio' || isClinicManager(user?.role);
+  const clinicalRead = canReadTimeline || isClinicManager(user?.role);
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
   const finalized = useMemo(
     () => assessments.filter((item) => item.status === 'finalized'),
