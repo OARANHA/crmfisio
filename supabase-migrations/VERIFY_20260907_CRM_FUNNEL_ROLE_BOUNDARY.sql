@@ -27,8 +27,14 @@ SELECT position(
   IN pg_get_functiondef('public.guard_patient_crm_stage_entitlement()'::regprocedure)
 ) > 0 AS ok;
 
-\echo '5) trigger function is not executable by anon/public'
+\echo '5) trigger function is not executable by anon or PUBLIC'
 SELECT
   NOT has_function_privilege('anon', 'public.guard_patient_crm_stage_entitlement()', 'EXECUTE')
-  AND NOT has_function_privilege('public', 'public.guard_patient_crm_stage_entitlement()', 'EXECUTE')
-  AS ok;
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+    WHERE p.oid = 'public.guard_patient_crm_stage_entitlement()'::regprocedure
+      AND acl.grantee = 0
+      AND acl.privilege_type = 'EXECUTE'
+  ) AS ok;
