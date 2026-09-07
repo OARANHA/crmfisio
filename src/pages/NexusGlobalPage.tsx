@@ -21,13 +21,14 @@ const DOMAINS = [
 
 export function NexusGlobalPage() {
   const { user } = useCurrentUserAccess();
-  const { identity } = useProfessionalIdentity(user?.id);
+  const userId = user?.id;
+  const { identity } = useProfessionalIdentity(userId);
   const psychiatrist = isPsychiatristIdentity(identity);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
-    if (!user) {
+    if (!userId) {
       setAuthorized(false);
       return () => {
         active = false;
@@ -44,7 +45,7 @@ export function NexusGlobalPage() {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [userId]);
 
   if (authorized === null) {
     return <div className="rounded-2xl border border-line bg-panel p-6 text-[13px] text-fog">Validando acesso ao Nexus…</div>;
