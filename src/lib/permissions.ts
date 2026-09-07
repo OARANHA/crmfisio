@@ -24,6 +24,15 @@ export const isOperationalRole = (role: Role | null | undefined): boolean =>
 
 export const isClinicalRole = (role: Role | null | undefined): boolean => role === 'fisio';
 
+export const canTransitionClinicalAppointment = (
+  role: Role | null | undefined,
+  userId: string | null | undefined,
+  professionalId: string | null | undefined,
+): boolean =>
+  role === 'fisio'
+  && Boolean(userId)
+  && userId === professionalId;
+
 export const canManagePatientFunnel = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'recep';
 
