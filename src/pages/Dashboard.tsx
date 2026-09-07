@@ -69,13 +69,13 @@ export function Dashboard() {
   const prod = useMemo(() => {
     if (!reportsAllowed) return [];
     return users
-      .filter((u) => u.role === 'fisio')
-      .map((f) => {
-        const fin = appointments.filter((a) => a.fisioId === f.id && a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
-        const falt = appointments.filter((a) => a.fisioId === f.id && a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
+      .filter((u) => u.role === 'professional')
+      .map((professional) => {
+        const fin = appointments.filter((a) => a.fisioId === professional.id && a.status === 'finalizado' && dayOf(a).startsWith(mes) && inUnit(a));
+        const falt = appointments.filter((a) => a.fisioId === professional.id && a.status === 'faltou' && dayOf(a).startsWith(mes) && inUnit(a)).length;
         const valor = fin.reduce((s, a) => s + a.valor, 0);
         const comp = fin.length + falt > 0 ? Math.round((fin.length / (fin.length + falt)) * 100) : 100;
-        return { f, sessoes: fin.length, valor, comp };
+        return { professional, atendimentos: fin.length, valor, comp };
       });
   }, [appointments, users, mes, inUnit, reportsAllowed]);
   const maxProd = Math.max(...prod.map((p) => p.valor), 1);
@@ -107,7 +107,7 @@ export function Dashboard() {
 
       <Reveal delay={70}>
         <DashboardMetricGrid items={[
-          { label: 'Produção do mês', value: <>R$ <CountUp to={Math.round(k.producao / 100)} /></>, tone: 'text-mint', sub: `${k.realizadas} sessões finalizadas${unidade ? ' · unidade selecionada' : ''}`, to: '/relatorios' },
+          { label: 'Produção do mês', value: <>R$ <CountUp to={Math.round(k.producao / 100)} /></>, tone: 'text-mint', sub: `${k.realizadas} atendimentos finalizados${unidade ? ' · unidade selecionada' : ''}`, to: '/relatorios' },
           { label: 'A receber', value: <>R$ <CountUp to={Math.round(k.aReceber / 100)} /></>, tone: 'text-amber', sub: 'consolidado da clínica', to: '/financeiro' },
           { label: 'Comparecimento', value: <CountUp to={k.comparecimento} suffix="%" />, tone: k.comparecimento >= 85 ? 'text-mint' : 'text-pulse', sub: `${k.faltas} falta(s) registradas${unidade ? ' · unidade selecionada' : ''}`, to: '/agenda' },
           { label: 'Novos pacientes', value: <CountUp to={k.novos} />, tone: 'text-aqua', sub: 'consolidado da clínica · mês corrente', to: '/pacientes' },
@@ -152,16 +152,16 @@ export function Dashboard() {
 
       {reportsAllowed && <Reveal delay={200}>
         <Card>
-          <CardHead title="Produtividade por fisioterapeuta" sub={`competência ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })} · ${unidade ? unidade.nome : 'todas as unidades'}`} />
+          <CardHead title="Produtividade por profissional" sub={`competência ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })} · ${unidade ? unidade.nome : 'todas as unidades'}`} />
           <div className="p-5 space-y-4">
-            {prod.length === 0 && <p className="font-mono text-[11px] text-fog py-5 text-center">Nenhum fisioterapeuta ativo com produção no período.</p>}
+            {prod.length === 0 && <p className="font-mono text-[11px] text-fog py-5 text-center">Nenhum profissional ativo com produção no período.</p>}
             {prod.map((p) => (
-              <div key={p.f.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
+              <div key={p.professional.id} className="grid grid-cols-[auto_1fr] sm:grid-cols-[220px_1fr_auto] items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.f.cor }}>{p.f.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
-                  <div className="min-w-0"><p className="font-display font-semibold text-[13.5px] truncate">{p.f.nome}</p><p className="font-mono text-[10px] text-fog">{p.f.registro}</p></div>
+                  <span className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-[11px] text-on-accent shrink-0" style={{ background: p.professional.cor }}>{p.professional.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
+                  <div className="min-w-0"><p className="font-display font-semibold text-[13.5px] truncate">{p.professional.nome}</p><p className="font-mono text-[10px] text-fog">{p.professional.registro}</p></div>
                 </div>
-                <div className="col-span-2 sm:col-span-1"><div className="h-5 bg-deep border border-line relative overflow-hidden"><div className="h-full bar-anim" style={{ width: `${(p.valor / maxProd) * 100}%`, background: `${p.f.cor}cc` }} /><span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">{p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''} · {fmtBRL(p.valor)}</span></div></div>
+                <div className="col-span-2 sm:col-span-1"><div className="h-5 bg-deep border border-line relative overflow-hidden"><div className="h-full bar-anim" style={{ width: `${(p.valor / maxProd) * 100}%`, background: `${p.professional.cor}cc` }} /><span className="absolute inset-0 grid place-items-center font-mono text-[10px] text-paper/90">{p.atendimentos} atendimento{p.atendimentos !== 1 ? 's' : ''} · {fmtBRL(p.valor)}</span></div></div>
                 <div className="text-right"><Chip className={p.comp >= 85 ? 'border-mint/40 text-mint' : 'border-amber/45 text-amber'}>{p.comp}% pres.</Chip></div>
               </div>
             ))}
