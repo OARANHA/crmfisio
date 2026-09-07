@@ -27,8 +27,36 @@ describe('contextual help', () => {
     expect(text).not.toContain('session_id');
   });
 
-  it('returns no help outside the implemented P0 contexts', () => {
-    expect(resolveHelpContext('/crm', 'admin')).toBeNull();
-    expect(resolveHelpContext('/mensagens', 'recep')).toBeNull();
+  it('keeps CRM mutation guidance away from read-only roles', () => {
+    const fisio = resolveHelpContext('/crm', 'fisio');
+    const recep = resolveHelpContext('/crm', 'recep');
+    expect(fisio?.key).toBe('crm');
+    expect(fisio?.steps.some((step) => step.title === 'Use o funil para estado operacional')).toBe(false);
+    expect(recep?.steps.some((step) => step.title === 'Use o funil para estado operacional')).toBe(true);
+  });
+
+  it('warns operational WhatsApp users against retrying uncertain delivery', () => {
+    const help = resolveHelpContext('/mensagens', 'recep');
+    expect(help?.key).toBe('mensagens');
+    expect(help?.safetyNote).toContain('DELIVERY_UNCERTAIN');
+    expect(help?.steps.some((step) => step.title === 'Resultado incerto não é falha definitiva')).toBe(true);
+  });
+
+  it('teaches report readers to separate realized value from pipeline', () => {
+    const help = resolveHelpContext('/relatorios', 'financeiro');
+    expect(help?.key).toBe('relatorios');
+    expect(help?.steps.some((step) => step.title === 'Realizado e pipeline são diferentes')).toBe(true);
+    expect(resolveHelpContext('/relatorios', 'recep')).toBeNull();
+  });
+
+  it('includes package and custom assessment guidance in existing core contexts', () => {
+    const finance = resolveHelpContext('/financeiro', 'admin');
+    const clinical = resolveHelpContext('/pacientes/patient-1', 'fisio');
+    expect(finance?.steps.some((step) => step.title === 'Pacote não é o mesmo que lançamento avulso')).toBe(true);
+    expect(clinical?.steps.some((step) => step.title.includes('Avaliação padrão'))).toBe(true);
+  });
+
+  it('returns no help outside supported contexts', () => {
+    expect(resolveHelpContext('/configuracoes', 'admin')).toBeNull();
   });
 });
