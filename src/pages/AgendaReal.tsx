@@ -8,6 +8,7 @@ import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useApp, patientName } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
@@ -38,7 +39,8 @@ const compactWhatsapp = (state?: AppointmentWhatsappState) => {
 };
 
 export function AgendaReal() {
-  const { user, patients, toast } = useApp();
+  const { user, toast } = useApp();
+  const { patients } = usePatients();
   const { users } = useClinicDirectory();
   const { appointments, addAppointment, setAppointmentStatus, refreshAgenda } = useAgenda();
   const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
