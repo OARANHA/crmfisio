@@ -25,6 +25,7 @@ export function Reveal({ children, className = '', delay = 0 }: { children: Reac
 export function CountUp({ to, suffix = '', duration = 1000, className = '' }: { to: number; suffix?: string; duration?: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [val, setVal] = useState(0);
+  const valRef = useRef(0);
   const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -34,14 +35,16 @@ export function CountUp({ to, suffix = '', duration = 1000, className = '' }: { 
     let cancelled = false;
     const startAnimation = () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-      const from = val;
+      const from = valRef.current;
       const delta = to - from;
       if (delta === 0) return;
       const t0 = performance.now();
       const tick = (t: number) => {
         if (cancelled) return;
         const p = Math.min(1, (t - t0) / duration);
-        setVal(Math.round(from + delta * (1 - Math.pow(1 - p, 3))));
+        const next = Math.round(from + delta * (1 - Math.pow(1 - p, 3)));
+        valRef.current = next;
+        setVal(next);
         if (p < 1) frameRef.current = requestAnimationFrame(tick);
       };
       frameRef.current = requestAnimationFrame(tick);
