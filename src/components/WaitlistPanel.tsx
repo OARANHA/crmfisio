@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { flushMessageOutbox, queueWaitlistOffer, queueWaitlistSlotOffers } from '../lib/messageOutbox';
 import { resolveClinicId } from '../lib/repository';
@@ -42,13 +42,16 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
   const canManage = isOperationalRole(user?.role);
   const professionals = users.filter((item) => item.role === 'fisio' && item.ativo);
 
-  const refresh = async (id = clinicId) => { if (id) setEntries(await loadWaitlist(id)); };
+  const refresh = useCallback(async (id: string) => {
+    if (id) setEntries(await loadWaitlist(id));
+  }, []);
+
   useEffect(() => {
     if (!user?.id || !canManage) return;
     resolveClinicId(user.id).then((id) => { setClinicId(id); return refresh(id); }).catch((error) => {
       console.error('[MedicsPro] lista de espera:', error); toast('Não foi possível carregar a lista de espera.', 'warn');
     });
-  }, [user?.id, canManage]);
+  }, [user?.id, canManage, refresh, toast]);
 
   const releasedSlots = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -75,7 +78,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
       const values = { professionalId: professionalId || null, unitId: unitId || null, preferredDays, period, priority, notes };
       if (editingId) await updateWaitlistEntry(editingId, values);
       else await createWaitlistEntry({ clinicId, patientId, ...values });
-      await refresh(); resetForm(); toast(editingId ? 'Preferências da lista de espera atualizadas.' : 'Paciente incluído na lista de espera.');
+      await refresh(clinicId); resetForm(); toast(editingId ? 'Preferências da lista de espera atualizadas.' : 'Paciente incluído na lista de espera.');
     } catch (error) {
       console.error('[MedicsPro] salvar lista de espera:', error); toast('Não foi possível salvar a lista de espera.', 'warn');
     } finally { setBusy(false); }
@@ -83,14 +86,14 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
 
   const removeEntry = async (id: string) => {
     setBusy(true);
-    try { await updateWaitlistStatus(id, 'cancelado'); await refresh(); if (editingId === id) resetForm(); toast('Paciente removido da lista de espera.'); }
+    try { await updateWaitlistStatus(id, 'cancelado'); await refresh(clinicId); if (editingId === id) resetForm(); toast('Paciente removido da lista de espera.'); }
     catch (error) { console.error('[MedicsPro] remover lista de espera:', error); toast('Não foi possível remover a entrada.', 'warn'); }
     finally { setBusy(false); }
   };
 
   const recoverSlot = async (entry: WaitlistEntry, slot: Appointment) => {
     setBusy(true);
-    try { await claimWaitlistSlot(entry.id, slot.id); toast(`Vaga preenchida com ${patientName(patients, entry.patientId)}.`); await refresh(); onRecovered(); }
+    try { await claimWaitlistSlot(entry.id, slot.id); toast(`Vaga preenchida com ${patientName(patients, entry.patientId)}.`); await refresh(clinicId); onRecovered(); }
     catch (error) { console.error('[MedicsPro] recuperar vaga:', error); toast('A vaga pode ter sido ocupada por outro usuário.', 'warn'); }
     finally { setBusy(false); }
   };
@@ -100,7 +103,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
     try {
       await queueWaitlistOffer(entry.id, slot.id, 30);
       const dispatch = await flushMessageOutbox(1);
-      await refresh();
+      await refresh(clinicId);
       if (dispatch.sent === 1) toast(`Oferta enviada via WhatsApp para ${patientName(patients, entry.patientId)}.`);
       else toast('A oferta foi registrada, mas o provedor não confirmou o envio. Verifique a central de Mensagens.', 'warn');
     } catch (error) {
@@ -118,7 +121,7 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
         return;
       }
       const dispatch = await flushMessageOutbox(queued);
-      await refresh();
+      await refresh(clinicId);
       toast(`${dispatch.sent} oferta(s) enviada(s). O primeiro SIM dentro de 30 minutos ocupa a vaga automaticamente.`);
     } catch (error) {
       console.error('[MedicsPro] recuperação inteligente:', error);
