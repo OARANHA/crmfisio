@@ -9,6 +9,7 @@ import { useFinance } from '../lib/financeContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useClinical } from '../lib/clinicalContext';
 import { useInfrastructure, useUnitFilter } from '../lib/infrastructureContext';
+import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
 import { calculateAttendanceRate, calculateNpsSummary } from '../lib/reportMetrics';
 import { fmtBRL, dayOf } from '../lib/types';
 import { Card, CardHead, Btn, Chip, Input, IconDownload, IconChart } from '../lib/ui';
@@ -37,7 +38,7 @@ export function Relatorios() {
     const comparecimento = calculateAttendanceRate(fin.length, faltas.length);
 
     const porProfissional = users
-      .filter((u) => u.role === 'professional')
+      .filter((u) => u.ativo && hasClinicalDirectoryIdentity(u.professionalType))
       .map((professional) => {
         const atendimentos = fin.filter((a) => a.fisioId === professional.id);
         const faltasProfissional = faltas.filter((a) => a.fisioId === professional.id).length;
