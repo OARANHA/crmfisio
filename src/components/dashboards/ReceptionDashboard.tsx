@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { useClinicModuleEntitlementVisibility } from '../../hooks/useClinicModuleEntitlementVisibility';
 import { useAgenda } from '../../lib/agendaContext';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { useFinance } from '../../lib/financeContext';
@@ -33,6 +34,9 @@ export function ReceptionDashboard() {
   const { patientPackages } = usePackages();
   const { unidadeSel, unidades } = useInfrastructure();
   const inUnit = useUnitFilter();
+  const { visibility, resolved } = useClinicModuleEntitlementVisibility();
+  const financeAllowed = resolved && visibility.financeiro === true;
+  const crmAllowed = resolved && visibility.crm === true;
   const today = format(new Date(), 'yyyy-MM-dd');
   const unit = unidades.find((item) => item.id === unidadeSel);
 
@@ -48,7 +52,7 @@ export function ReceptionDashboard() {
     const confirmed = todayAppointments.filter((appointment) => appointment.status === 'confirmado').length;
     const inService = todayAppointments.filter((appointment) => appointment.status === 'em_atendimento').length;
     const pendingConsents = consents.filter((consent) => !consent.assinado).length;
-    const overdue = transactions.filter((transaction) => transaction.tipo === 'receber' && transaction.status === 'atrasado');
+    const overdue = financeAllowed ? transactions.filter((transaction) => transaction.tipo === 'receber' && transaction.status === 'atrasado') : [];
     return {
       pendingConfirmation,
       confirmed,
@@ -57,7 +61,7 @@ export function ReceptionDashboard() {
       overdueCount: overdue.length,
       overdueValue: overdue.reduce((sum, item) => sum + item.valor, 0),
     };
-  }, [todayAppointments, consents, transactions]);
+  }, [todayAppointments, consents, transactions, financeAllowed]);
 
   const actions = useMemo<ActionItem[]>(() => {
     const result: ActionItem[] = [];
@@ -65,15 +69,19 @@ export function ReceptionDashboard() {
       const patient = patients.find((item) => item.id === consent.pacienteId);
       if (patient) result.push({ icon: '✍️', label: `Coletar consentimento — ${patient.nome}`, to: `/pacientes/${patient.id}`, tone: 'text-amber' });
     });
-    transactions.filter((transaction) => transaction.tipo === 'receber' && transaction.status === 'atrasado').slice(0, 3).forEach((transaction) => {
-      result.push({ icon: '💸', label: `Cobrança vencida — ${transaction.descricao} (${fmtBRL(transaction.valor)})`, to: '/financeiro', tone: 'text-pulse' });
-    });
-    buildChurnRiskList(patients, appointments, patientPackages, transactions)
-      .filter((risk) => risk.level !== 'baixo').slice(0, 2).forEach((risk) => {
-      result.push({ icon: '📞', label: `Risco ${risk.level} — ${risk.patientName}`, to: '/crm', tone: 'text-aqua' });
-    });
+    if (financeAllowed) {
+      transactions.filter((transaction) => transaction.tipo === 'receber' && transaction.status === 'atrasado').slice(0, 3).forEach((transaction) => {
+        result.push({ icon: '💸', label: `Cobrança vencida — ${transaction.descricao} (${fmtBRL(transaction.valor)})`, to: '/financeiro', tone: 'text-pulse' });
+      });
+    }
+    if (crmAllowed) {
+      buildChurnRiskList(patients, appointments, patientPackages, transactions)
+        .filter((risk) => risk.level !== 'baixo').slice(0, 2).forEach((risk) => {
+        result.push({ icon: '📞', label: `Risco ${risk.level} — ${risk.patientName}`, to: '/crm', tone: 'text-aqua' });
+      });
+    }
     return result.slice(0, 6);
-  }, [consents, transactions, patients, appointments, patientPackages]);
+  }, [consents, transactions, patients, appointments, patientPackages, financeAllowed, crmAllowed]);
 
   return (
     <div className="space-y-4">
