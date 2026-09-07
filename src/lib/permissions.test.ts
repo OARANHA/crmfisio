@@ -5,6 +5,7 @@ import {
   canManagePackageCatalog,
   canManagePatientFunnel,
   canSellSessionPackage,
+  canTransitionClinicalAppointment,
   canViewCommissions,
   canViewFinancialPayables,
   canWriteFinancialTransaction,
@@ -40,6 +41,15 @@ describe('canonical permissions', () => {
     expect(appointmentActions('fisio', appointment).map((action) => action.status)).toContain('em_atendimento');
     expect(appointmentActions('owner', appointment).map((action) => action.status)).not.toContain('em_atendimento');
     expect(appointmentActions('admin', appointment).map((action) => action.status)).not.toContain('em_atendimento');
+  });
+
+  it('binds clinical appointment transitions to the assigned professional', () => {
+    expect(canTransitionClinicalAppointment('fisio', 'f1', 'f1')).toBe(true);
+    expect(canTransitionClinicalAppointment('fisio', 'f1', 'f2')).toBe(false);
+    expect(canTransitionClinicalAppointment('owner', 'f1', 'f1')).toBe(false);
+    expect(canTransitionClinicalAppointment('admin', 'f1', 'f1')).toBe(false);
+    expect(canTransitionClinicalAppointment('fisio', undefined, 'f1')).toBe(false);
+    expect(canTransitionClinicalAppointment('fisio', 'f1', null)).toBe(false);
   });
 
   it('keeps CRM funnel mutation with operational full-access roles only', () => {
@@ -96,6 +106,7 @@ describe('canonical permissions', () => {
   it('fails closed without a clinic role', () => {
     expect(accessFor(null, 'dashboard')).toBe('none');
     expect(isOperationalRole(undefined)).toBe(false);
+    expect(canTransitionClinicalAppointment(undefined, 'f1', 'f1')).toBe(false);
     expect(canManagePatientFunnel(undefined)).toBe(false);
     expect(canViewFinancialPayables(undefined)).toBe(false);
     expect(canSellSessionPackage(undefined)).toBe(false);
