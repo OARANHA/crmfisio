@@ -12,8 +12,8 @@ SELECT
 
 \echo '2) tenant/session RPCs are SECURITY DEFINER with pinned search_path where required'
 SELECT
-  bool_and(p.prosecdef) FILTER (WHERE p.proname IN ('current_tenant_access_state','current_active_profile')) AS security_definer,
-  bool_and(array_to_string(p.proconfig, ',') ILIKE '%search_path=public, pg_temp%') FILTER (WHERE p.proname IN ('current_tenant_access_state','current_active_profile')) AS search_path_pinned
+  bool_and(p.prosecdef) AS security_definer,
+  bool_and(array_to_string(p.proconfig, ',') ILIKE '%search_path=public, pg_temp%') AS search_path_pinned
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
@@ -29,7 +29,7 @@ FROM public.profiles;
 SELECT
   count(*) FILTER (WHERE u.id IS NULL) = 0 AS all_profiles_have_auth_user,
   count(*) FILTER (WHERE c.id IS NULL) = 0 AS all_profiles_have_clinic,
-  count(*) FILTER (WHERE p.id IS DISTINCT FROM u.id) = 0 AS auth_profile_ids_match
+  count(*) FILTER (WHERE u.id IS NOT NULL AND p.id IS DISTINCT FROM u.id) = 0 AS auth_profile_ids_match
 FROM public.profiles p
 LEFT JOIN auth.users u ON u.id = p.id
 LEFT JOIN public.clinics c ON c.id = p.clinic_id;
@@ -58,28 +58,29 @@ WITH expected(relname) AS (
     ('clinical_assessments'), ('assessment_body_points'),
     ('wa_logs'), ('wa_events')
 ), state AS (
-  SELECT e.relname, c.relrowsecurity
+  SELECT e.relname, c.oid, c.relrowsecurity
   FROM expected e
-  LEFT JOIN pg_class c ON c.relname = e.relname
-  LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+  LEFT JOIN pg_class c
+    ON c.relname = e.relname
+   AND c.relnamespace = 'public'::regnamespace
 )
 SELECT
-  count(*) = 10 AS all_tables_present,
+  count(*) FILTER (WHERE oid IS NOT NULL) = 10 AS all_tables_present,
   bool_and(coalesce(relrowsecurity, false)) AS rls_enabled_on_all
 FROM state;
 
 \echo '8) clinical care relationship boundary is present'
 SELECT
-  to_regprocedure('public.can_read_patient_clinical_data(uuid)') IS NOT NULL AS care_helper_exists,
+  to_regprocedure('public.can_access_patient_clinical_record(uuid)') IS NOT NULL AS care_helper_exists,
   EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname='public' AND tablename='physiotherapy_evolutions'
-      AND policyname='evolutions_read_care_relationship'
+      AND policyname='evolutions_select_care_relationship'
   ) AS evolutions_care_scoped,
   EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname='public' AND tablename='physiotherapy_evaluations'
-      AND policyname='evaluations_read_care_relationship'
+      AND policyname='evaluations_select_care_relationship'
   ) AS evaluations_care_scoped;
 
 \echo '9) server-authoritative LGPD export is installed and authenticated-only'
@@ -96,21 +97,37 @@ WITH fn AS (
 SELECT
   EXISTS (SELECT 1 FROM fn) AS export_rpc_exists,
   NOT EXISTS (SELECT 1 FROM acl WHERE grantee=0 AND privilege_type='EXECUTE') AS public_denied,
-  has_function_privilege('authenticated', 'public.export_patient_data_lgpd(uuid)', 'EXECUTE') AS authenticated_allowed;
+  coalesce((SELECT has_function_privilege('authenticated', oid, 'EXECUTE') FROM fn), false) AS authenticated_allowed;
 
 \echo '10) team atomic mutation RPCs remain service-role only'
+WITH fns AS (
+  SELECT p.oid, p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public'
+    AND p.proname IN ('admin_create_team_profile_atomic','admin_update_team_profile_atomic')
+)
 SELECT
-  to_regprocedure('public.admin_create_team_profile_atomic(uuid,uuid,text,text,text,text,uuid[])') IS NOT NULL AS create_rpc_exists,
-  to_regprocedure('public.admin_update_team_profile_atomic(uuid,uuid,text,text,text,text,boolean,uuid[])') IS NOT NULL AS update_rpc_exists,
-  NOT has_function_privilege('authenticated', 'public.admin_create_team_profile_atomic(uuid,uuid,text,text,text,text,uuid[])', 'EXECUTE') AS create_auth_denied,
-  NOT has_function_privilege('authenticated', 'public.admin_update_team_profile_atomic(uuid,uuid,text,text,text,text,boolean,uuid[])', 'EXECUTE') AS update_auth_denied;
+  count(*) FILTER (WHERE proname='admin_create_team_profile_atomic') = 1 AS create_rpc_exists,
+  count(*) FILTER (WHERE proname='admin_update_team_profile_atomic') = 1 AS update_rpc_exists,
+  bool_and(NOT has_function_privilege('authenticated', oid, 'EXECUTE')) AS authenticated_denied,
+  bool_and(has_function_privilege('service_role', oid, 'EXECUTE')) AS service_role_allowed
+FROM fns;
 
 \echo '11) WhatsApp uncertain-delivery safeguards remain installed'
+WITH fns AS (
+  SELECT p.oid, p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public'
+    AND p.proname IN ('requeue_stale_messages','reconcile_whatsapp_outbound_event')
+)
 SELECT
-  to_regprocedure('public.requeue_stale_messages(integer)') IS NOT NULL AS stale_guard_exists,
-  to_regprocedure('public.reconcile_whatsapp_outbound_event(text,text,text)') IS NOT NULL AS reconciliation_exists,
-  NOT has_function_privilege('authenticated', 'public.requeue_stale_messages(integer)', 'EXECUTE') AS stale_guard_auth_denied,
-  NOT has_function_privilege('authenticated', 'public.reconcile_whatsapp_outbound_event(text,text,text)', 'EXECUTE') AS reconciliation_auth_denied;
+  count(*) FILTER (WHERE proname='requeue_stale_messages') = 1 AS stale_guard_exists,
+  count(*) FILTER (WHERE proname='reconcile_whatsapp_outbound_event') = 1 AS reconciliation_exists,
+  bool_and(NOT has_function_privilege('authenticated', oid, 'EXECUTE')) AS authenticated_denied,
+  bool_and(has_function_privilege('service_role', oid, 'EXECUTE')) AS service_role_allowed
+FROM fns;
 
 \echo '12) no orphaned tenant rows in core operational tables'
 SELECT
@@ -141,4 +158,4 @@ JOIN public.clinics c ON c.id=p.clinic_id;
 
 \echo '15) P1 preflight summary'
 SELECT
-  'Runbook result is GREEN when checks 1-13 are true. Check 6 and section 14 indicate whether production already contains fixtures for the final two-clinic/suspended live smoke test.' AS guidance;
+  'GREEN when checks 1-13 are true. Check 6 and section 14 indicate whether production already contains fixtures for the final two-clinic/suspended live smoke test.' AS guidance;
