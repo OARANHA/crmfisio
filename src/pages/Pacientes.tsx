@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { STAGE_META, maskCpf, ageFrom, type FunilStage } from '../lib/types';
 import { Card, Btn, Input, Select, Chip, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
@@ -19,7 +19,7 @@ export function Pacientes() {
 }
 
 function Lista() {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [stage, setStage] = useState<'all' | FunilStage>('all');
@@ -100,7 +100,7 @@ function Lista() {
 }
 
 function Pep({ id }: { id: string }) {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const patient = patients.find((item) => item.id === id);
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
