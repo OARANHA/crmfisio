@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cancelAppointmentSeries, listAppointmentSeries, type AppointmentSeriesSummary } from '../lib/appointmentRecurrence';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
@@ -33,7 +33,7 @@ export function AppointmentSeriesManager() {
   const [reason, setReason] = useState('Tratamento interrompido ou replanejado');
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       setSeries(await listAppointmentSeries());
@@ -43,11 +43,11 @@ export function AppointmentSeriesManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const scopedSeries = useMemo(
     () => user?.role === 'fisio' ? series.filter((item) => item.fisioId === user.id) : series,
