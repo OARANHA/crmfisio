@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useApp } from '../lib/store';
+import { usePatients } from '../lib/patientContext';
 import { ageFrom, maskCpf, STAGE_META, type FunilStage } from '../lib/types';
 import {
   Btn, Card, Chip, Empty, Field, IconChevronL, IconMail, IconPhone,
@@ -19,7 +20,7 @@ export function ReceptionPatients() {
 }
 
 function ReceptionPatientList() {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const nav = useNavigate();
   const [query, setQuery] = useState('');
   const [stage, setStage] = useState<'all' | FunilStage>('all');
@@ -105,7 +106,8 @@ function ReceptionPatientList() {
 }
 
 function ReceptionNewPatientModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { addPatient, toast } = useApp();
+  const { addPatient } = usePatients();
+  const { toast } = useApp();
   const [nome, setNome] = useState('');
   const [nascimento, setNascimento] = useState('1990-01-01');
   const [telefone, setTelefone] = useState('');
@@ -113,15 +115,22 @@ function ReceptionNewPatientModal({ open, onClose }: { open: boolean; onClose: (
   const [cpf, setCpf] = useState('');
   const [optIn, setOptIn] = useState(true);
 
-  const save = () => {
+  const save = async () => {
     if (!nome.trim()) return;
-    addPatient({
-      nome: nome.trim(), nascimento, telefone, email, cpf: cpf || '000.000.000-00', convenio: null,
-      queixaPrincipal: '', cid10: [], funilStage: 'lead', status: 'ativo', ultimaVisita: null, optInWhats: optIn,
-    });
-    toast(`${nome.trim()} enviado para cadastro operacional.`, 'info');
-    setNome(''); setTelefone(''); setEmail(''); setCpf('');
-    onClose();
+    const patientName = nome.trim();
+    try {
+      await addPatient({
+        nome: patientName, nascimento, telefone, email, cpf: cpf || '000.000.000-00', convenio: null,
+        queixaPrincipal: '', cid10: [], funilStage: 'lead', status: 'ativo', ultimaVisita: null, optInWhats: optIn,
+      });
+      toast('Paciente salvo no Supabase.');
+      toast(`${patientName} enviado para cadastro operacional.`, 'info');
+      setNome(''); setTelefone(''); setEmail(''); setCpf('');
+      onClose();
+    } catch (error) {
+      console.error('[MedicsPro] Falha ao cadastrar paciente:', error);
+      toast('Falha ao cadastrar paciente. Tente novamente.', 'warn');
+    }
   };
 
   return (
@@ -142,14 +151,14 @@ function ReceptionNewPatientModal({ open, onClose }: { open: boolean; onClose: (
       </label>
       <div className="flex justify-end gap-2 mt-5">
         <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn onClick={save} disabled={!nome.trim()}><IconPlus className="w-4 h-4" /> Cadastrar</Btn>
+        <Btn onClick={() => void save()} disabled={!nome.trim()}><IconPlus className="w-4 h-4" /> Cadastrar</Btn>
       </div>
     </Modal>
   );
 }
 
 function ReceptionPatientDetail({ id }: { id: string }) {
-  const { patients } = useApp();
+  const { patients } = usePatients();
   const patient = patients.find((item) => item.id === id);
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
   const stage = STAGE_META[patient.funilStage];
