@@ -1,4 +1,5 @@
 import type { Appointment } from './types';
+import { professionalIdOf } from './professionalReference';
 
 export type AppointmentConflictKind = 'professional' | 'room' | 'patient';
 
@@ -18,7 +19,7 @@ export function intervalsOverlap(startA: string, endA: string, startB: string, e
 
 export function findAppointmentConflicts(
   appointments: Appointment[],
-  candidate: Pick<Appointment, 'data' | 'inicio' | 'fim' | 'fisioId' | 'roomId' | 'pacienteId'>,
+  candidate: Pick<Appointment, 'data' | 'inicio' | 'fim' | 'professionalId' | 'fisioId' | 'roomId' | 'pacienteId'>,
   ignoreId?: string,
 ): AppointmentConflict[] {
   const sameTime = appointments.filter((appointment) =>
@@ -28,9 +29,10 @@ export function findAppointmentConflicts(
     && intervalsOverlap(candidate.inicio, candidate.fim, appointment.inicio, appointment.fim)
   );
 
+  const candidateProfessionalId = professionalIdOf(candidate);
   const conflicts: AppointmentConflict[] = [];
   for (const appointment of sameTime) {
-    if (appointment.fisioId === candidate.fisioId) conflicts.push({ kind: 'professional', appointment });
+    if (professionalIdOf(appointment) === candidateProfessionalId) conflicts.push({ kind: 'professional', appointment });
     if (candidate.roomId && appointment.roomId === candidate.roomId) conflicts.push({ kind: 'room', appointment });
     if (appointment.pacienteId === candidate.pacienteId) conflicts.push({ kind: 'patient', appointment });
   }
