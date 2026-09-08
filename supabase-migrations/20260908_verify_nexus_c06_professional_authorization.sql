@@ -61,8 +61,8 @@ BEGIN
   FROM pg_proc
   WHERE oid = 'public.has_professional_capability(text)'::regprocedure;
 
-  IF v_has ILIKE '%v_role = ''professional''%nexus.%'
-     OR v_has ILIKE '%v_role = ''fisio''%v_is_nexus%p_capability IN%' THEN
+  IF v_has ~* 'v_role\s*=\s*''professional''[\s\S]*v_is_nexus[\s\S]*p_capability\s+IN'
+     OR v_has ~* 'v_role\s*=\s*''fisio''\s+AND\s+v_is_nexus\s+AND\s+p_capability\s+IN' THEN
     RAISE EXCEPTION 'nexus_c06_implicit_nexus_role_fallback_detected';
   END IF;
 
