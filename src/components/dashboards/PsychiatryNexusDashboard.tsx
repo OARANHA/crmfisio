@@ -6,6 +6,7 @@ import { useAgenda } from '../../lib/agendaContext';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { usePatients } from '../../lib/patientContext';
 import { useClinical } from '../../lib/clinicalContext';
+import { professionalIdOf } from '../../lib/professionalReference';
 import { STATUS_META } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
@@ -28,7 +29,7 @@ export function PsychiatryNexusDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const ownAppointments = useMemo(
-    () => appointments.filter((appointment) => appointment.fisioId === user?.id),
+    () => appointments.filter((appointment) => professionalIdOf(appointment) === user?.id),
     [appointments, user?.id],
   );
 
@@ -41,7 +42,7 @@ export function PsychiatryNexusDashboard() {
 
   const pendingNotes = useMemo(
     () => todayAppointments.filter((appointment) => appointment.status === 'finalizado'
-      && !evolutions.some((evolution) => evolution.fisioId === user?.id
+      && !evolutions.some((evolution) => professionalIdOf(evolution) === user?.id
         && evolution.pacienteId === appointment.pacienteId
         && evolution.data === today)),
     [todayAppointments, evolutions, user?.id, today],
