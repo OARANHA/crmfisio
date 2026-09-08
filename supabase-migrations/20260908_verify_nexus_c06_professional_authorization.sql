@@ -26,9 +26,9 @@ BEGIN
       ('public.current_app_role()', '7b2e6e62d9fb349ba6aa48c0744c34a7'),
       ('public.current_nexus_medical_identity_valid()', '59f4b68dda8c2c166ba803ad62f2b509'),
       ('public.current_nexus_entitlement_allowed()', 'fb31e7618a47bd017ad21ec60b12b084'),
-      ('public.has_professional_capability(text)', '858f6805dac644028692bcda9f4152bb'),
-      ('public.can_access_patient_clinical_record(uuid)', '968f8fede2551a284faf2b2b743832de'),
-      ('public.list_patient_clinical_snapshot()', '3c06241a532a3f131ef519f66f2553ed')
+      ('public.has_professional_capability(text)', '501cf03c6f0a99ca970f3f491c64083b'),
+      ('public.can_access_patient_clinical_record(uuid)', '6a9314528b66df705c5ff36c3619831d'),
+      ('public.list_patient_clinical_snapshot()', '2dfeb251865ec09623324341564b10f9')
     ) AS v(signature, body_md5)
   LOOP
     SELECT p.*
