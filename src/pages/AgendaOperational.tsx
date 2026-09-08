@@ -5,6 +5,7 @@ import { AppointmentSeriesManager } from '../components/AppointmentSeriesManager
 import { Reveal } from '../components/Reveal';
 import { Btn } from '../lib/ui';
 import '../styles/agenda-priority-v4.css';
+import '../styles/agenda-drawer-layout-fix.css';
 import { AgendaReal } from './AgendaReal';
 
 export function AgendaOperational() {
