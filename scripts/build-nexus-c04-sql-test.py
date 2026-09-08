@@ -19,4 +19,5 @@ baseline = subprocess.run(
 print(baseline.stdout)
 print((root / "supabase-migrations/20260908_nexus_c04_clinical_record_incorporation.sql").read_text())
 print((root / "supabase-migrations/20260908_nexus_c04_clinical_record_incorporation.sql").read_text())
+print((root / "tests/sql/nexus_c04_eem_soap_fixture.sql").read_text())
 print((root / "tests/sql/nexus_c04_cases.sql").read_text())
