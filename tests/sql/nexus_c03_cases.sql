@@ -126,18 +126,18 @@ SELECT public.complete_nexus_self_assessment_processing(
 RESET ROLE;
 
 DO $$
-DECLARE invite_id uuid; result_id uuid;
+DECLARE invite_id uuid; v_result_id uuid;
 BEGIN
   FOREACH invite_id IN ARRAY ARRAY[
     '00000000-0000-0000-0000-000000000902'::uuid,
     '00000000-0000-0000-0000-000000000903'::uuid
   ] LOOP
-    SELECT processed_result_id INTO result_id
+    SELECT processed_result_id INTO v_result_id
     FROM public.nexus_self_assessment_invites WHERE id=invite_id;
-    IF result_id IS NULL OR NOT EXISTS (
+    IF v_result_id IS NULL OR NOT EXISTS (
       SELECT 1 FROM public.nexus_clinical_results r
       JOIN public.nexus_result_clinical_lifecycle l ON l.result_id=r.id
-      WHERE r.id=result_id AND r.status='finalized' AND r.finalized_at IS NOT NULL
+      WHERE r.id=v_result_id AND r.status='finalized' AND r.finalized_at IS NOT NULL
         AND l.processed_at IS NOT NULL
         AND l.reviewed_at IS NULL AND l.reviewed_by IS NULL
         AND l.signed_at IS NULL AND l.signed_by IS NULL
