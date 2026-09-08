@@ -74,7 +74,7 @@ psql -X -At -v ON_ERROR_STOP=1 \
   > "$nexus_test_tmp/care-helper.sql"
 
 psql -X -v ON_ERROR_STOP=1 -c \
-  "CREATE OR REPLACE FUNCTION public.can_access_patient_clinical_record(uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS 'SELECT false'"
+  "CREATE OR REPLACE FUNCTION public.can_access_patient_clinical_record(p_patient_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS 'SELECT false'"
 
 if psql -X -v ON_ERROR_STOP=1 \
     -f supabase-migrations/20260908_nexus_c06_professional_authorization.sql \
