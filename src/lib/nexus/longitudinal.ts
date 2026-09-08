@@ -37,15 +37,18 @@ function numericAnswers(snapshot: Record<string,unknown>): number[] {
   return [];
 }
 
+const clinicallyReviewed = (item: NexusClinicalResult) =>
+  item.lifecycleState === 'reviewed' || item.lifecycleState === 'signed';
+
 export function toLongitudinalPoints(results:NexusClinicalResult[], toolKey:string):LongitudinalPoint[] {
   return results
-    .filter((item)=>item.status==='finalized'&&item.toolKey===toolKey&&item.totalScore!=null)
+    .filter((item)=>clinicallyReviewed(item)&&item.toolKey===toolKey&&item.totalScore!=null)
     .map((item)=>({id:item.id,toolKey:item.toolKey,date:item.finalizedAt??item.createdAt,score:Number(item.totalScore),maxScore:item.maxScore,classification:item.classification,ruleVersion:item.ruleVersion,answers:numericAnswers(item.inputSnapshot)}))
     .sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
 }
 
 export function summarizeTrend(points:LongitudinalPoint[]) {
-  if (points.length===0) return null;
+  if(points.length===0) return null;
   const first=points[0]; const last=points[points.length-1];
   const absoluteChange=last.score-first.score;
   const percentChange=first.score===0?null:Math.round((absoluteChange/first.score)*100);
@@ -54,7 +57,7 @@ export function summarizeTrend(points:LongitudinalPoint[]) {
 
 export function availableLongitudinalTools(results:NexusClinicalResult[]) {
   const map=new Map<string,number>();
-  for(const item of results){ if(item.status==='finalized'&&item.totalScore!=null) map.set(item.toolKey,(map.get(item.toolKey)??0)+1); }
+  for(const item of results){ if(clinicallyReviewed(item)&&item.totalScore!=null) map.set(item.toolKey,(map.get(item.toolKey)??0)+1); }
   return [...map.entries()].filter(([,count])=>count>=1).sort((a,b)=>toolTitle(a[0]).localeCompare(toolTitle(b[0])));
 }
 
