@@ -6,27 +6,31 @@ interface RescheduleInput {
   data: string;
   inicio: string;
   fim: string;
-  fisioId: string;
+  professionalId: string;
   roomId: string;
   reason: string;
   isFitIn?: boolean;
 }
 
-const mapRpcAppointment = (row: Record<string, unknown>): Appointment => ({
-  id: String(row.id),
-  pacienteId: String(row.paciente_id),
-  fisioId: String(row.fisio_id),
-  roomId: row.room_id ? String(row.room_id) : '',
-  data: String(row.data),
-  inicio: String(row.inicio).slice(0, 5),
-  fim: String(row.fim).slice(0, 5),
-  status: row.status as Appointment['status'],
-  tipo: String(row.tipo),
-  valor: Number(row.valor),
-  pacoteId: row.pacote_id ? String(row.pacote_id) : null,
-  serieId: row.serie_id ? String(row.serie_id) : null,
-  notas: row.notas ? String(row.notas) : '',
-});
+const mapRpcAppointment = (row: Record<string, unknown>): Appointment => {
+  const professionalId = String(row.professional_id ?? row.fisio_id);
+  return {
+    id: String(row.id),
+    pacienteId: String(row.paciente_id),
+    professionalId,
+    fisioId: professionalId,
+    roomId: row.room_id ? String(row.room_id) : '',
+    data: String(row.data),
+    inicio: String(row.inicio).slice(0, 5),
+    fim: String(row.fim).slice(0, 5),
+    status: row.status as Appointment['status'],
+    tipo: String(row.tipo),
+    valor: Number(row.valor),
+    pacoteId: row.pacote_id ? String(row.pacote_id) : null,
+    serieId: row.serie_id ? String(row.serie_id) : null,
+    notas: row.notas ? String(row.notas) : '',
+  };
+};
 
 export async function cancelAppointmentWithReason(appointmentId: string, reason: string): Promise<void> {
   const { error } = await (supabase.rpc as Function)('cancel_appointment_with_reason', {
@@ -42,7 +46,8 @@ export async function rescheduleAppointment(input: RescheduleInput): Promise<App
     p_data: input.data,
     p_inicio: input.inicio,
     p_fim: input.fim,
-    p_fisio_id: input.fisioId,
+    // RPC parameter stays legacy until the database contract is migrated.
+    p_fisio_id: input.professionalId,
     p_room_id: input.roomId,
     p_reason: input.reason,
     p_is_fit_in: input.isFitIn ?? false,
