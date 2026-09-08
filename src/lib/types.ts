@@ -86,12 +86,12 @@ export interface WaLog { id: string; pacienteId: string; template: WaTemplate; m
 export interface AuditEntry { id: string; ts: string; usuarioId: string; acao: string; detalhe: string }
 
 export const STATUS_META: Record<AppointmentStatus, { label: string; dot: string; chip: string }> = {
-  agendado: { label: 'Agendado', dot: '#9ab8c9', chip: 'bg-steel/10 border-steel/30 text-steel' },
-  confirmado: { label: 'Confirmado', dot: '#4fd1a5', chip: 'bg-mint/10 border-mint/30 text-mint' },
-  em_atendimento: { label: 'Em atendimento', dot: '#f2b441', chip: 'bg-amber/10 border-amber/35 text-amber' },
-  finalizado: { label: 'Finalizado', dot: '#6ec1e4', chip: 'bg-aqua/10 border-aqua/30 text-aqua' },
-  faltou: { label: 'Faltou', dot: '#f2545b', chip: 'bg-pulse/10 border-pulse/35 text-pulse' },
-  cancelado: { label: 'Cancelado', dot: '#94b0a4', chip: 'bg-fog/10 border-fog/25 text-fog' },
+  agendado: { label: 'Agendado', dot: '#4f8edc', chip: 'bg-steel/15 border-steel/45 text-steel' },
+  confirmado: { label: 'Confirmado', dot: '#00b56e', chip: 'bg-mint/15 border-mint/45 text-mint' },
+  em_atendimento: { label: 'Em atendimento', dot: '#f3a712', chip: 'bg-amber/15 border-amber/50 text-amber' },
+  finalizado: { label: 'Finalizado', dot: '#29a9e8', chip: 'bg-aqua/15 border-aqua/45 text-aqua' },
+  faltou: { label: 'Faltou', dot: '#ef4444', chip: 'bg-pulse/15 border-pulse/50 text-pulse' },
+  cancelado: { label: 'Cancelado', dot: '#7f8c8d', chip: 'bg-fog/12 border-fog/35 text-fog' },
 };
 export const STAGE_META: Record<FunilStage, { label: string; chip: string; bar: string; next: FunilStage | null }> = {
   lead: { label: 'Lead', chip: 'bg-steel/10 border-steel/30 text-steel', bar: '#9ab8c9', next: 'avaliacao' },
