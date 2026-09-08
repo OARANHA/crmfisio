@@ -1,4 +1,5 @@
 import { getISODay, parseISO } from 'date-fns';
+import { professionalIdOf } from '../../lib/professionalReference';
 import { Btn } from '../../lib/ui';
 import { WAITLIST_PERIOD_LABEL, type WaitlistEntry, type WaitlistPeriod } from '../../lib/waitlist';
 import type { Appointment, Room, Unidade, User } from '../../lib/types';
@@ -11,7 +12,7 @@ export function entryMatchesSlot(entry: WaitlistEntry, slot: Appointment, rooms:
   const unitId = rooms.find((room) => room.id === slot.roomId)?.unidadeId ?? null;
   if (entry.preferredDays.length && !entry.preferredDays.includes(getISODay(parseISO(slot.data)))) return false;
   if (entry.period !== 'qualquer' && entry.period !== slotPeriod(slot.inicio)) return false;
-  if (entry.professionalId && entry.professionalId !== slot.fisioId) return false;
+  if (entry.professionalId && entry.professionalId !== professionalIdOf(slot)) return false;
   if (entry.unitId && entry.unitId !== unitId) return false;
   return true;
 }
