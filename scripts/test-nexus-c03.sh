@@ -18,6 +18,7 @@ if ! psql -X -v ON_ERROR_STOP=1 -f "$tmp/c03.sql" > "$tmp/c03.log" 2>&1; then
 fi
 
 grep -F 'NEXUS_C03_FINALIZED_WITHOUT_HUMAN_REVIEW_REPRODUCED' "$tmp/c03.log"
+grep -F 'NEXUS_C03_HISTORICAL_GUARD_DRIFT_REPRODUCED' "$tmp/c03.log"
 grep -F 'NEXUS_C03_BEHAVIOR_OK' "$tmp/c03.log"
 grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' "$tmp/c03.log"
 
