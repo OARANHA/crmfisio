@@ -18,8 +18,8 @@ interface Props {
 }
 
 export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fisios, defaultFisioId, defaultUnitId, onClose, onChoose }: Props) {
-  const [search, setSearch] = useState<AvailabilitySearch>({ durationMin: 60, period: 'qualquer', daysAhead: 7, fisioId: defaultFisioId, unitId: defaultUnitId, roomId: 'all' });
-  const slots = useMemo(() => findAvailability({ appointments, rooms, fisioIds: fisios.map((item) => item.id), search }), [appointments, rooms, fisios, search]);
+  const [search, setSearch] = useState<AvailabilitySearch>({ durationMin: 60, period: 'qualquer', daysAhead: 7, professionalId: defaultFisioId, unitId: defaultUnitId, roomId: 'all' });
+  const slots = useMemo(() => findAvailability({ appointments, rooms, professionalIds: fisios.map((item) => item.id), search }), [appointments, rooms, fisios, search]);
   if (!open) return null;
 
   return (
@@ -42,7 +42,7 @@ export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fi
         <Select value={String(search.daysAhead)} onChange={(e) => setSearch((s) => ({ ...s, daysAhead: Number(e.target.value) }))}>
           <option value="3">Próximos 3 dias</option><option value="7">Próximos 7 dias</option><option value="14">Próximos 14 dias</option>
         </Select>
-        <Select value={search.fisioId} onChange={(e) => setSearch((s) => ({ ...s, fisioId: e.target.value }))}>
+        <Select value={search.professionalId} onChange={(e) => setSearch((s) => ({ ...s, professionalId: e.target.value }))}>
           <option value="all">Qualquer profissional</option>{fisios.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
         </Select>
         <Select value={search.unitId} onChange={(e) => setSearch((s) => ({ ...s, unitId: e.target.value, roomId: 'all' }))}>
@@ -56,13 +56,13 @@ export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fi
       <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[360px] overflow-y-auto">
         {slots.length === 0 && <p className="font-mono text-[11px] text-fog">Nenhum horário livre encontrado com estes critérios.</p>}
         {slots.map((slot) => {
-          const fisio = fisios.find((item) => item.id === slot.fisioId);
+          const professional = fisios.find((item) => item.id === slot.professionalId);
           const room = rooms.find((item) => item.id === slot.roomId);
           return (
-            <button key={`${slot.date}-${slot.start}-${slot.fisioId}-${slot.roomId}`} onClick={() => onChoose({ dia: slot.date, hora: slot.start, fisioId: slot.fisioId, roomId: slot.roomId })}
+            <button key={`${slot.date}-${slot.start}-${slot.professionalId}-${slot.roomId}`} onClick={() => onChoose({ dia: slot.date, hora: slot.start, fisioId: slot.professionalId, roomId: slot.roomId })}
               className="border border-line bg-deep hover:border-mint/50 hover:bg-mint/[0.04] text-left p-3 transition-colors">
               <p className="font-display font-semibold">{format(new Date(`${slot.date}T12:00:00`), "EEE, dd/MM", { locale: ptBR })} · {slot.start}</p>
-              <p className="font-mono text-[10px] text-fog mt-1">{fisio?.nome ?? 'Profissional'} · {room?.nome ?? 'Sala'}</p>
+              <p className="font-mono text-[10px] text-fog mt-1">{professional?.nome ?? 'Profissional'} · {room?.nome ?? 'Sala'}</p>
               <p className="font-mono text-[9px] text-mint mt-2">usar este horário →</p>
             </button>
           );
