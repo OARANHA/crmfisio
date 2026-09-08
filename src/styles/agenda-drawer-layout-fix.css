@@ -1,0 +1,24 @@
+/* Drawer layout correction: preserve a wide weekly calendar while keeping the appointment panel out of its content area. */
+@media (min-width: 1180px) {
+  body.agenda-detail-open .agenda-workspace-v6 {
+    width: min(1840px, calc(100vw - 640px)) !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    transform: none !important;
+  }
+
+  body.agenda-detail-open .agenda-priority-v4 [class*="min-w-[152px]"] {
+    min-width: 190px !important;
+  }
+}
+
+@media (min-width: 1700px) {
+  body.agenda-detail-open .agenda-workspace-v6 {
+    width: min(1900px, calc(100vw - 620px)) !important;
+  }
+
+  body.agenda-detail-open .agenda-priority-v4 [class*="min-w-[152px]"] {
+    min-width: 205px !important;
+  }
+}
