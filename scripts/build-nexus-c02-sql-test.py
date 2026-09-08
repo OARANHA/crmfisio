@@ -158,4 +158,8 @@ print((root / "tests/sql/nexus_c02_before.sql").read_text())
 # The migration is intentionally safe to replay before behavior creates rows.
 print(c02.read_text())
 print(c02.read_text())
-print((root / "tests/sql/nexus_c02_cases.sql").read_text())
+cases = (root / "tests/sql/nexus_c02_cases.sql").read_text()
+marker = "-- C02_FINALIZED_GUARD_ASSERTION"
+if cases.count(marker) != 1:
+    raise SystemExit("Expected exactly one finalized guard assertion")
+print(cases.replace(marker, (root / "tests/sql/nexus_c02_finalized_guard.sql").read_text()))

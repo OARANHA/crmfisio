@@ -143,8 +143,14 @@ BEGIN
     WHERE t.tgrelid='public.nexus_clinical_results'::regclass
       AND t.tgname='trg_nexus_result_immutable'
       AND NOT t.tgisinternal
+      AND t.tgenabled IN ('O','A')
+      AND t.tgtype = 19 -- ROW + BEFORE + UPDATE, with no other events
+      AND t.tgfoid = 'public.guard_nexus_result_immutability()'::regprocedure
+      AND t.tgattr = ''::int2vector -- every updated column, not UPDATE OF
+      AND t.tgqual IS NULL -- no WHEN predicate that can suppress the guard
+      AND t.tgnargs = 0
   ) THEN
-    RAISE EXCEPTION 'nexus_c02_finalized_trigger_missing';
+    RAISE EXCEPTION 'nexus_c02_finalized_trigger_missing_or_drift';
   END IF;
 END;
 $$;

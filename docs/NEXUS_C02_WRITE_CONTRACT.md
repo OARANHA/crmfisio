@@ -113,3 +113,22 @@ Regras adicionais:
 A migration recusa o rollout se encontrar em `nexus_clinical_results` um registro existente cuja combinação não esteja entre os contratos canônicos conhecidos ou cuja `required_capability` divirja do mapeamento. Ela não inventa, normaliza nem reclassifica resultados históricos.
 
 Se esse preflight falhar em produção, o rollout deve parar para auditoria dos registros encontrados; não se deve adicionar uma entrada ao catálogo apenas para fazer a migration passar.
+## Regressão investigada no PR #377
+
+Head investigado: `756f6ec7c4583e234013cc16b488010f13fb2b9f`. A falha `finalized mutation escaped: OK` vinha do harness: o helper retornava `OK` sem conferir `ROW_COUNT`. O UPDATE autenticado afetava **zero** linhas, porque `nexus_results_update_author.USING` só admite `status='draft'`. Não houve mutação de resultado finalizado nessa reprodução.
+
+A fixture realmente finalizava a linha e o trigger preenchia `finalized_at`. A coluna `interpretation` é coberta pelo guard histórico `BEFORE UPDATE` sem lista de colunas. Ela não pertence ao `UPDATE OF` do contexto C-02, o que não restringe o trigger independente de imutabilidade. O C-02 recria apenas `trg_nexus_result_context`; `trg_nexus_result_immutable` permanece ativo e com o corpo histórico. Os nomes e a ordem alfabética relativa dos triggers não mudaram: contexto precede imutabilidade quando ambos são elegíveis. Para o UPDATE isolado de `interpretation`, somente o guard histórico é elegível, mas precisa alcançar uma linha após a filtragem RLS.
+
+A suite agora exige todos os seguintes resultados, sem alterar policies ou o guard de produção:
+
+- finalização de exatamente uma linha, `status='finalized'` e `finalized_at` preenchido;
+- leitura da linha pelo autor autorizado e UPDATE autenticado com exatamente zero linhas afetadas;
+- tentativa separada sob `service_role` **somente na fixture descartável**, que ultrapassa RLS e deve receber exatamente SQLSTATE `P0001` e a mensagem histórica de imutabilidade;
+- snapshot integral da linha idêntico após as duas tentativas;
+- ao desativar o trigger no banco descartável, a asserção comportamental deve falhar com `finalized mutation escaped: ROWS:1`, e o verifier também deve rejeitar o estado; depois de reativá-lo, a mesma asserção deve passar.
+
+O verifier agora exige trigger ativo, BEFORE UPDATE FOR EACH ROW, função histórica correta, todas as colunas e ausência de WHEN que possa suprimir a execução. Helpers de UPDATE reportam a contagem, evitando tratar zero linhas como mutação bem-sucedida. A captura do teste de finalized exige código e mensagem exatos; erro de permissão ou outro erro não serve como prova do guard.
+
+Ao alcançar o próximo caso da suite, foi corrigido outro erro da fixture: o `ON CONFLICT` do grant EEM deve usar a chave canônica `(professional_id, capability_key)`, não uma chave inexistente de três colunas. Isso permite executar o positivo do writer EEM sem mudar constraints do produto. O harness também imprime o final do log SQL quando falha, em vez de apagar toda a evidência ao limpar seus arquivos temporários.
+
+Esta correção do PR altera testes, verifier e documentação. Não acrescenta operação a executar em produção nem altera a migration C-02 de autorização. O merge depende dos quatro workflows verdes no novo head: C-02/PostgreSQL 16, C-01, C-06 e CI geral. Nenhuma operação de produção foi executada nesta investigação.

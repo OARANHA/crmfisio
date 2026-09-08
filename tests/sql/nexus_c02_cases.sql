@@ -49,6 +49,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY INVOKER
 AS $$
+DECLARE v_rows bigint;
 BEGIN
   IF current_user <> 'authenticated' THEN
     RAISE EXCEPTION 'c02_test_must_run_under_authenticated';
@@ -61,7 +62,8 @@ BEGIN
       rule_key = coalesce(p_rule, rule_key),
       rule_version = coalesce(p_version, rule_version)
   WHERE id=p_result;
-  RETURN 'OK';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  RETURN 'ROWS:' || v_rows::text;
 EXCEPTION WHEN OTHERS THEN
   RETURN 'ERR:' || SQLERRM;
 END;
@@ -75,23 +77,25 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY INVOKER
 AS $$
+DECLARE v_rows bigint;
 BEGIN
-  IF current_user <> 'authenticated' THEN
+  IF current_user NOT IN ('authenticated', 'service_role') THEN
     RAISE EXCEPTION 'c02_test_must_run_under_authenticated';
   END IF;
   PERFORM set_config('request.jwt.claim.sub', p_actor::text, false);
   UPDATE public.nexus_clinical_results
   SET interpretation='tampered after finalization'
   WHERE id=p_result;
-  RETURN 'OK';
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  RETURN 'ROWS:' || v_rows::text;
 EXCEPTION WHEN OTHERS THEN
-  RETURN 'ERR:' || SQLERRM;
+  RETURN 'ERR:' || SQLSTATE || ':' || SQLERRM;
 END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.test_c02_try_insert(uuid,uuid,uuid,uuid,text,text,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.test_c02_try_contract_update(uuid,uuid,text,text,text,text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.test_c02_try_finalized_update(uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.test_c02_try_finalized_update(uuid,uuid) TO authenticated, service_role;
 
 -- 1) Authorized physician + known PHQ-9 contract. Client omits capability; the
 -- trusted BEFORE trigger resolves nexus.scales before RLS WITH CHECK.
@@ -262,23 +266,57 @@ DO $$ DECLARE v text; BEGIN
 END $$;
 RESET ROLE;
 
--- 10) Finalized result remains immutable.
+-- 10) Prove finalization affects exactly one draft before probing both layers.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000101',false);
-UPDATE public.nexus_clinical_results
-SET status='finalized'
-WHERE id='00000000-0000-0000-0000-000000000801';
-DO $$ DECLARE v text; BEGIN
-  v := public.test_c02_try_finalized_update(
-    '00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000801');
-  IF v NOT LIKE 'ERR:%Resultado Nexus finalizado é imutável%' THEN RAISE EXCEPTION 'finalized mutation escaped: %',v; END IF;
+DO $$ DECLARE n bigint; BEGIN
+  UPDATE public.nexus_clinical_results SET status='finalized'
+  WHERE id='00000000-0000-0000-0000-000000000801' AND status='draft';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN RAISE EXCEPTION 'C02 fixture finalization affected % rows',n; END IF;
 END $$;
 RESET ROLE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.nexus_clinical_results
+    WHERE id='00000000-0000-0000-0000-000000000801'
+      AND status='finalized' AND finalized_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'C02 fixture is not finalized';
+  END IF;
+END $$;
+CREATE TEMP TABLE test_c02_finalized_snapshot AS
+SELECT to_jsonb(r) AS snapshot FROM public.nexus_clinical_results r
+WHERE id='00000000-0000-0000-0000-000000000801';
+
+-- UPDATE USING admits only draft rows: authenticated must affect zero rows.
+-- This is distinct from the historical trigger exception asserted below.
+SET ROLE authenticated;
+DO $$ DECLARE v text; BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.nexus_clinical_results
+    WHERE id='00000000-0000-0000-0000-000000000801' AND status='finalized') THEN
+    RAISE EXCEPTION 'C02 finalized result is not readable to its authorized author';
+  END IF;
+  v := public.test_c02_try_finalized_update(
+    '00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000801');
+  IF v <> 'ROWS:0' THEN RAISE EXCEPTION 'C02 finalized browser UPDATE escaped RLS: %',v; END IF;
+END $$;
+RESET ROLE;
+
+-- service_role bypasses RLS, but never the historical BEFORE UPDATE guard.
+-- Run the unchanged exception expectation in a context that reaches the row.
+-- C02_FINALIZED_GUARD_ASSERTION
+
+DO $$ BEGIN
+  IF (SELECT to_jsonb(r) FROM public.nexus_clinical_results r
+      WHERE id='00000000-0000-0000-0000-000000000801')
+      IS DISTINCT FROM (SELECT snapshot FROM test_c02_finalized_snapshot) THEN
+    RAISE EXCEPTION 'C02 finalized row changed after rejected updates';
+  END IF;
+END $$;
 
 -- 11) Specific EEM writer still works when the physician has the exact grant.
 INSERT INTO public.professional_capabilities(clinic_id,professional_id,capability_key,granted)
 VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000101','nexus.eem',true)
-ON CONFLICT (clinic_id,professional_id,capability_key) DO UPDATE SET granted=EXCLUDED.granted;
+ON CONFLICT (professional_id,capability_key) DO UPDATE SET granted=EXCLUDED.granted;
 
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000101',false);

@@ -12,7 +12,10 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 python3 scripts/build-nexus-c02-sql-test.py > "$tmp/c02.sql"
-psql -X -v ON_ERROR_STOP=1 -f "$tmp/c02.sql" > "$tmp/c02.log" 2>&1
+if ! psql -X -v ON_ERROR_STOP=1 -f "$tmp/c02.sql" > "$tmp/c02.log" 2>&1; then
+  tail -n 80 "$tmp/c02.log" >&2
+  exit 1
+fi
 
 grep -F 'NEXUS_C02_EXPLOIT_REPRODUCED' "$tmp/c02.log"
 grep -F 'NEXUS_C02_BEHAVIOR_OK' "$tmp/c02.log"
@@ -27,6 +30,25 @@ psql -X -v ON_ERROR_STOP=1 \
   -f supabase-migrations/20260908_verify_nexus_c06_professional_authorization.sql \
   > "$tmp/c06-verifier.log"
 grep -F 'NEXUS_C06_VERIFIED' "$tmp/c06-verifier.log"
+
+# Prove the exception assertion is sensitive to the historical trigger itself.
+# This mutation is confined to the disposable database; failure rolls back the
+# attempted data change inside the assertion DO block.
+psql -X -v ON_ERROR_STOP=1 -c \
+  'ALTER TABLE public.nexus_clinical_results DISABLE TRIGGER trg_nexus_result_immutable'
+if psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c02_finalized_guard.sql > "$tmp/guard-behavior.log" 2>&1; then
+  echo 'Finalized assertion accepted a disabled guard.' >&2
+  exit 1
+fi
+grep -F 'finalized mutation escaped: ROWS:1' "$tmp/guard-behavior.log"
+if psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c02_trusted_result_contract.sql > "$tmp/guard-verifier.log" 2>&1; then
+  echo 'Verifier accepted a disabled finalized guard.' >&2
+  exit 1
+fi
+grep -F 'nexus_c02_finalized_trigger_missing_or_drift' "$tmp/guard-verifier.log"
+psql -X -v ON_ERROR_STOP=1 -c \
+  'ALTER TABLE public.nexus_clinical_results ENABLE TRIGGER trg_nexus_result_immutable'
+psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c02_finalized_guard.sql
 
 # Registry drift must be rejected by the C-02 verifier.
 psql -X -v ON_ERROR_STOP=1 -c \
