@@ -10,7 +10,7 @@ import { AgendaReal } from './AgendaReal';
 export function AgendaOperational() {
   const nav = useNavigate();
   return (
-    <div className="space-y-5">
+    <div className="agenda-workspace-v6 space-y-5">
       <div className="agenda-priority-v4 relative">
         <div className="agenda-reception-shortcut">
           <Btn variant="ghost" onClick={() => nav('/hoje')}>Hoje · Recepção →</Btn>
