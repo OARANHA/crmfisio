@@ -63,7 +63,6 @@ export type NexusResultDraftInput = {
   toolKey: string;
   ruleKey: string;
   ruleVersion: string;
-  requiredCapability: string;
   inputSnapshot: Record<string, unknown>;
   outputSnapshot?: Record<string, unknown>;
   totalScore?: number | null;
@@ -171,7 +170,6 @@ export async function createNexusResultDraft(
       tool_key: input.toolKey,
       rule_key: input.ruleKey,
       rule_version: input.ruleVersion,
-      required_capability: input.requiredCapability,
       status: 'draft',
       input_snapshot: input.inputSnapshot,
       output_snapshot: input.outputSnapshot ?? {},
