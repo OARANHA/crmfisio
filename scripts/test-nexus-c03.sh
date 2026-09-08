@@ -21,6 +21,13 @@ grep -F 'NEXUS_C03_FINALIZED_WITHOUT_HUMAN_REVIEW_REPRODUCED' "$tmp/c03.log"
 grep -F 'NEXUS_C03_BEHAVIOR_OK' "$tmp/c03.log"
 grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' "$tmp/c03.log"
 
+# Explicitly prove chronology while the lifecycle is still unsigned, then replay
+# process/review/sign and ensure no timestamp (including updated_at) regresses.
+psql -X -v ON_ERROR_STOP=1 \
+  -f tests/sql/nexus_c03_monotonicity_probe.sql \
+  > "$tmp/monotonicity.log"
+grep -F 'NEXUS_C03_MONOTONICITY_PROBE_OK' "$tmp/monotonicity.log"
+
 psql -X -v ON_ERROR_STOP=1 \
   -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
   > "$tmp/c03-verifier.log"
@@ -50,36 +57,48 @@ grep -F 'nexus_c03_lifecycle_trigger_missing_or_disabled' "$tmp/trigger-drift.lo
 psql -X -v ON_ERROR_STOP=1 -c \
   'ALTER TABLE public.nexus_result_clinical_lifecycle ENABLE TRIGGER trg_nexus_result_clinical_lifecycle'
 
-# It must also reject an enabled trigger whose function no longer contains the
-# signed terminal-state guard. This mutation exists only in the disposable DB.
-psql -X -v ON_ERROR_STOP=1 <<'SQL'
-CREATE OR REPLACE FUNCTION public.validate_nexus_result_clinical_lifecycle()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-BEGIN
-  IF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'nexus_clinical_lifecycle_delete_forbidden';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-SQL
+# Remove only the signed terminal guard while preserving the chronology/content
+# validations. Both the structural verifier and the neutral behavioral probe must
+# fail for that exact negative control.
+psql -X -v ON_ERROR_STOP=1 \
+  -f tests/sql/nexus_c03_remove_terminal_guard.sql \
+  > "$tmp/remove-terminal-guard.log"
+grep -F 'NEXUS_C03_TERMINAL_GUARD_REMOVED_FOR_NEGATIVE_CONTROL' \
+  "$tmp/remove-terminal-guard.log"
 
 if psql -X -v ON_ERROR_STOP=1 \
     -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
     > "$tmp/guard-drift.log" 2>&1; then
-  echo 'C-03 verifier accepted an enabled trigger without signed immutability.' >&2
+  echo 'C-03 verifier accepted the lifecycle function with only the terminal guard removed.' >&2
   exit 1
 fi
 grep -F 'nexus_c03_lifecycle_guard_drift' "$tmp/guard-drift.log"
 
-# Restore the canonical terminal guard and prove the verifier returns green.
+if psql -X -v ON_ERROR_STOP=1 \
+    -f tests/sql/nexus_c03_signed_immutability_probe.sql \
+    > "$tmp/guardless-neutral-probe.log" 2>&1; then
+  echo 'C-03 neutral probe passed after the terminal signed guard was removed.' >&2
+  exit 1
+fi
+grep -F 'C03 neutral signed lifecycle mutation escaped' \
+  "$tmp/guardless-neutral-probe.log"
+
+# The negative probe stops before its cleanup statements by design. Restore the
+# disposable DB ACL explicitly, then restore the canonical terminal guard.
+psql -X -v ON_ERROR_STOP=1 -c \
+  'REVOKE UPDATE ON public.nexus_result_clinical_lifecycle FROM service_role'
+
 psql -X -v ON_ERROR_STOP=1 \
   -f supabase-migrations/20260908_nexus_c03_signed_immutability_guard.sql \
   > "$tmp/restore-guard.log"
+
+# After restoration, the same neutral probe must again hit the signed-immutable
+# exception and the production-safe verifier must return green.
+psql -X -v ON_ERROR_STOP=1 \
+  -f tests/sql/nexus_c03_signed_immutability_probe.sql \
+  > "$tmp/restored-neutral-probe.log"
+grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' \
+  "$tmp/restored-neutral-probe.log"
 
 psql -X -v ON_ERROR_STOP=1 \
   -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
