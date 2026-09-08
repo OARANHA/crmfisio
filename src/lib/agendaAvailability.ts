@@ -6,7 +6,7 @@ export interface AvailabilitySearch {
   durationMin: number;
   period: 'qualquer' | 'manha' | 'tarde';
   daysAhead: number;
-  fisioId: string;
+  professionalId: string;
   unitId: string;
   roomId: string;
 }
@@ -15,7 +15,7 @@ export interface AvailabilitySlot {
   date: string;
   start: string;
   end: string;
-  fisioId: string;
+  professionalId: string;
   roomId: string;
 }
 
@@ -39,14 +39,14 @@ const inPeriod = (minute: number, period: AvailabilitySearch['period']) => {
 export function findAvailability({
   appointments,
   rooms,
-  fisioIds,
+  professionalIds,
   search,
   from = new Date(),
   limit = 24,
 }: {
   appointments: Appointment[];
   rooms: Room[];
-  fisioIds: string[];
+  professionalIds: string[];
   search: AvailabilitySearch;
   from?: Date;
   limit?: number;
@@ -54,7 +54,9 @@ export function findAvailability({
   const candidateRooms = rooms.filter((room) =>
     (search.unitId === 'all' || room.unidadeId === search.unitId) &&
     (search.roomId === 'all' || room.id === search.roomId));
-  const candidateFisios = search.fisioId === 'all' ? fisioIds : fisioIds.filter((id) => id === search.fisioId);
+  const candidateProfessionals = search.professionalId === 'all'
+    ? professionalIds
+    : professionalIds.filter((id) => id === search.professionalId);
   const active = appointments.filter((appointment) => !['cancelado', 'faltou'].includes(appointment.status));
   const results: AvailabilitySlot[] = [];
 
@@ -64,7 +66,7 @@ export function findAvailability({
     const isToday = day === 0;
     const nowMinute = from.getHours() * 60 + from.getMinutes();
 
-    for (const fisioId of candidateFisios) {
+    for (const professionalId of candidateProfessionals) {
       for (const room of candidateRooms) {
         for (let start = DAY_START; start + search.durationMin <= DAY_END; start += STEP) {
           if (isToday && start <= nowMinute) continue;
@@ -72,11 +74,11 @@ export function findAvailability({
           const end = start + search.durationMin;
           const conflict = active.some((appointment) =>
             appointment.data === iso &&
-            (professionalIdOf(appointment) === fisioId || appointment.roomId === room.id) &&
+            (professionalIdOf(appointment) === professionalId || appointment.roomId === room.id) &&
             toMin(appointment.inicio) < end &&
             toMin(appointment.fim) > start);
           if (conflict) continue;
-          results.push({ date: iso, start: toHHMM(start), end: toHHMM(end), fisioId, roomId: room.id });
+          results.push({ date: iso, start: toHHMM(start), end: toHHMM(end), professionalId, roomId: room.id });
           if (results.length >= limit) return results;
         }
       }
