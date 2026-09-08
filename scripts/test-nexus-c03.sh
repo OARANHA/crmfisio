@@ -28,6 +28,9 @@ psql -X -v ON_ERROR_STOP=1 \
   > "$tmp/monotonicity.log"
 grep -F 'NEXUS_C03_MONOTONICITY_PROBE_OK' "$tmp/monotonicity.log"
 
+# This is the explicit post-correction verifier for
+# 20260908_nexus_c03_lifecycle_guard_rollout_correction.sql. It validates the
+# canonical guard shape/precedence plus the unchanged C-03/C-02/C-06/C-01 contract.
 psql -X -v ON_ERROR_STOP=1 \
   -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
   > "$tmp/c03-verifier.log"
@@ -84,12 +87,13 @@ grep -F 'C03 neutral signed lifecycle mutation escaped' \
   "$tmp/guardless-neutral-probe.log"
 
 # The negative probe stops before its cleanup statements by design. Restore the
-# disposable DB ACL explicitly, then restore the canonical terminal guard.
+# disposable DB ACL explicitly, then restore using the same rollout correction that
+# would be used on an environment where the historical C-03 migration committed.
 psql -X -v ON_ERROR_STOP=1 -c \
   'REVOKE UPDATE ON public.nexus_result_clinical_lifecycle FROM service_role'
 
 psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_nexus_c03_signed_immutability_guard.sql \
+  -f supabase-migrations/20260908_nexus_c03_lifecycle_guard_rollout_correction.sql \
   > "$tmp/restore-guard.log"
 
 # After restoration, the same neutral probe must again hit the signed-immutable
