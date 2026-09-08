@@ -23,8 +23,6 @@ baseline = subprocess.run(
 )
 print(baseline.stdout)
 
-# The C-02 write harness did not need processor bookkeeping columns/functions.
-# Add only the historical processor dependencies before reproducing C-03.
 print("""
 ALTER TABLE public.nexus_self_assessment_invites
   ADD COLUMN IF NOT EXISTS processing_started_at timestamptz,
@@ -32,9 +30,7 @@ ALTER TABLE public.nexus_self_assessment_invites
   ADD COLUMN IF NOT EXISTS last_processing_error text;
 """)
 
-processor_source = (
-    migrations / "20260906_nexus_clinic_lifecycle_boundary.sql"
-).read_text()
+processor_source = (migrations / "20260906_nexus_clinic_lifecycle_boundary.sql").read_text()
 processor_fn = re.search(
     r"CREATE OR REPLACE FUNCTION public\.complete_nexus_self_assessment_processing\([\s\S]*?\$\$;",
     processor_source,
@@ -43,30 +39,20 @@ processor_fn = re.search(
 if not processor_fn:
     raise SystemExit("Missing effective pre-C03 self-assessment processor")
 print(processor_fn.group())
-print(
-    "REVOKE ALL ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) "
-    "FROM PUBLIC, anon, authenticated;"
-)
-print(
-    "GRANT EXECUTE ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) "
-    "TO service_role;"
-)
+print("REVOKE ALL ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) FROM PUBLIC, anon, authenticated;")
+print("GRANT EXECUTE ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) TO service_role;")
 
 print((root / "tests/sql/nexus_c03_before.sql").read_text())
 
-# Reproduce the already-committed historical rollout exactly. It intentionally
-# retains the old terminal guard ordering; do not edit this migration in place.
 c03 = migrations / "20260908_nexus_c03_clinical_lifecycle.sql"
 print(c03.read_text())
-print(c03.read_text())  # historical migration remains additive/idempotent
+print(c03.read_text())
 print((root / "tests/sql/nexus_c03_rollout_drift_reproduction.sql").read_text())
 
-# Apply only the dedicated corrective migration that a production database with
-# the historical C-03 migration already committed needs now. Replay it to prove
-# CREATE OR REPLACE idempotency without touching any table/RLS/ACL/data contract.
 rollout_correction = migrations / "20260908_nexus_c03_lifecycle_guard_rollout_correction.sql"
 print(rollout_correction.read_text())
 print(rollout_correction.read_text())
+print((root / "tests/sql/nexus_c03_post_correction_guard_shape.sql").read_text())
 
 cases = (root / "tests/sql/nexus_c03_cases.sql").read_text()
 probe_start = "-- 7) Even a privileged direct write cannot forge a reviewer different from the"
@@ -74,10 +60,6 @@ probe_end = "-- 11) EEM remains atomic and its existing explicit human finalizat
 if probe_start not in cases or probe_end not in cases:
     raise SystemExit("Missing C-03 privileged lifecycle probe markers")
 
-# Production intentionally gives service_role no direct lifecycle UPDATE. The two
-# destructive guard probes temporarily add that ACL only in this disposable DB so
-# the trigger is exercised as a second line of defense, then restore least privilege
-# before the verifier runs.
 cases = cases.replace(
     probe_start,
     "GRANT UPDATE ON public.nexus_result_clinical_lifecycle TO service_role;\n\n" + probe_start,
@@ -89,7 +71,4 @@ cases = cases.replace(
     1,
 )
 print(cases)
-
-# A second, neutral mutation touches only updated_at. It proves signed immutability
-# without relying on a timestamp-order violation to reach the terminal guard.
 print((root / "tests/sql/nexus_c03_signed_immutability_probe.sql").read_text())
