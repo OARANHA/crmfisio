@@ -3,7 +3,8 @@
 Dependency tables are reduced fixtures. Canonical Nexus table DDL, effective
 authorization helper bodies, historical Nexus policies and the shared clinical
 read policies are extracted from versioned migrations. C-01 is applied once as
-the prerequisite; C-06 is then applied without replaying C-01.
+the prerequisite; C-06 is then applied without replaying C-01. Later C-02 write
+contract changes are excluded so this gate keeps owning the C-06 baseline.
 """
 from pathlib import Path
 import re
@@ -13,12 +14,14 @@ root = Path(__file__).resolve().parents[1]
 migrations = root / "supabase-migrations"
 c01 = migrations / "20260908_nexus_c01_read_boundary.sql"
 c06 = migrations / "20260908_nexus_c06_professional_authorization.sql"
+c02 = migrations / "20260908_nexus_c02_trusted_result_contract.sql"
+c02_verifier = migrations / "20260908_verify_nexus_c02_trusted_result_contract.sql"
 
 sources = sorted(migrations.glob("20*.sql"))
 contents = [
     (path, path.read_text())
     for path in sources
-    if path not in {c01, c06}
+    if path not in {c01, c06, c02, c02_verifier}
 ]
 
 nexus_tables = (
@@ -83,7 +86,7 @@ for helper in helpers:
     print(f"REVOKE ALL ON FUNCTION public.{helper}({signature}) FROM PUBLIC, anon;")
     print(f"GRANT EXECUTE ON FUNCTION public.{helper}({signature}) TO authenticated;")
 
-# Replay historical Nexus policies in migration order, but not C-01/C-06.
+# Replay historical Nexus policies in migration order, but not C-01/C-06/C-02.
 for path, text in contents:
     for match in re.finditer(r"(?:CREATE|DROP) POLICY\s+[\s\S]*?;", text, re.I):
         sql = match.group()

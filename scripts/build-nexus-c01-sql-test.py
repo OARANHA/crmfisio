@@ -4,7 +4,7 @@ Only dependency tables are reduced fixtures. The auth.uid shim reads a test JWT
 subject. Actual domain helpers, Nexus table DDL and every historical Nexus policy
 are extracted from versioned SQL; no boolean authorization mocks are used.
 
-C-01 is a historical regression gate. Later C-06 helper replacements are excluded
+C-01 is a historical regression gate. Later C-06/C-02 replacements are excluded
 so this suite keeps reproducing and verifying the exact C-01 boundary it owns.
 """
 from pathlib import Path
@@ -15,13 +15,15 @@ root = Path(__file__).resolve().parents[1]
 fix = root / 'supabase-migrations/20260908_nexus_c01_read_boundary.sql'
 c06 = root / 'supabase-migrations/20260908_nexus_c06_professional_authorization.sql'
 c06_verifier = root / 'supabase-migrations/20260908_verify_nexus_c06_professional_authorization.sql'
+c02 = root / 'supabase-migrations/20260908_nexus_c02_trusted_result_contract.sql'
+c02_verifier = root / 'supabase-migrations/20260908_verify_nexus_c02_trusted_result_contract.sql'
 sources = sorted((root / 'supabase-migrations').glob('20*.sql'))
 tables = ('capability_catalog', 'professional_capabilities', 'nexus_evidence_sources',
           'nexus_clinical_results', 'nexus_red_flags', 'nexus_self_assessment_invites')
 helpers = ('current_clinic_id', 'current_app_role', 'current_nexus_medical_identity_valid',
            'current_nexus_entitlement_allowed', 'has_professional_capability',
            'can_access_patient_clinical_record')
-contents = [(p, p.read_text()) for p in sources if p not in {fix, c06, c06_verifier}]
+contents = [(p, p.read_text()) for p in sources if p not in {fix, c06, c06_verifier, c02, c02_verifier}]
 print((root / 'tests/sql/nexus_c01_fixture.sql').read_text())
 for table in tables:
     pattern = rf'CREATE TABLE IF NOT EXISTS public\.{table}\s*\([\s\S]*?\n\);'
