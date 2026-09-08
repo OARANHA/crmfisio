@@ -62,7 +62,7 @@ export function AppointmentRecurrencePanel() {
   const selectedPatient = selectablePatients.find((patient) => patient.id === patientId);
   const input = () => ({
     pacienteId: patientId,
-    fisioId: professionalId,
+    professionalId,
     roomId,
     tipo: type,
     diasSemana: weekdays,
