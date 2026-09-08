@@ -5,6 +5,7 @@ import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { patientName, userName } from '../lib/displayNames';
 import { usePatients } from '../lib/patientContext';
 import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
+import { professionalIdOf } from '../lib/professionalReference';
 import type { Appointment, Room, Unidade } from '../lib/types';
 import { Btn, Field, Input, Modal, Select } from '../lib/ui';
 
@@ -39,7 +40,7 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
   const [data, setData] = useState('');
   const [inicio, setInicio] = useState('08:00');
   const [duracao, setDuracao] = useState(50);
-  const [fisioId, setFisioId] = useState('');
+  const [professionalId, setProfessionalId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [reason, setReason] = useState('Solicitação do paciente');
@@ -51,7 +52,7 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
     setData(preset?.data ?? appointment.data);
     setInicio(preset?.inicio ?? appointment.inicio);
     setDuracao(Math.max(15, toMin(appointment.fim) - toMin(appointment.inicio)));
-    setFisioId(appointment.fisioId);
+    setProfessionalId(professionalIdOf(appointment));
     const room = rooms.find((item) => item.id === appointment.roomId);
     setUnitId(room?.unidadeId ?? '');
     setRoomId(appointment.roomId);
@@ -63,9 +64,9 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
   const availableRooms = rooms.filter((room) => !unitId || room.unidadeId === unitId);
   const professionals = users.filter((item) => item.ativo && hasClinicalDirectoryIdentity(item.professionalType));
   const conflicts = useMemo(() => {
-    if (!appointment || !data || !inicio || !fisioId || !roomId) return [];
-    return findAppointmentConflicts(appointments, { pacienteId: appointment.pacienteId, fisioId, roomId, data, inicio, fim }, appointment.id);
-  }, [appointment, appointments, data, inicio, fim, fisioId, roomId]);
+    if (!appointment || !data || !inicio || !professionalId || !roomId) return [];
+    return findAppointmentConflicts(appointments, { pacienteId: appointment.pacienteId, professionalId, fisioId: professionalId, roomId, data, inicio, fim }, appointment.id);
+  }, [appointment, appointments, data, inicio, fim, professionalId, roomId]);
 
   return (
     <Modal open={!!appointment} onClose={onClose} title="Remarcar atendimento" wide>
@@ -76,14 +77,14 @@ export function AppointmentRescheduleModal({ appointment, rooms, unidades, prese
             <Field label="Data"><Input type="date" value={data} onChange={(e) => setData(e.target.value)} /></Field>
             <Field label="Início"><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></Field>
             <Field label="Duração"><Select value={duracao} onChange={(e) => setDuracao(Number(e.target.value))}>{[30,40,50,60,90].map((d) => <option key={d} value={d}>{d} min</option>)}</Select></Field>
-            <Field label="Profissional"><Select value={fisioId} onChange={(e) => setFisioId(e.target.value)}>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
+            <Field label="Profissional"><Select value={professionalId} onChange={(e) => setProfessionalId(e.target.value)}>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
             <Field label="Unidade"><Select value={unitId} onChange={(e) => { const id = e.target.value; setUnitId(id); setRoomId(rooms.find((room) => room.unidadeId === id)?.id ?? ''); }}>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select></Field>
             <Field label="Sala / recurso"><Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>{availableRooms.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select></Field>
             <Field label="Motivo da remarcação"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: solicitação do paciente" /></Field>
             <label className="border border-line bg-deep px-3 py-2 text-[12px] flex items-center gap-2"><input type="checkbox" checked={isFitIn} onChange={(e) => setIsFitIn(e.target.checked)} />Marcar como encaixe</label>
           </div>
-          {conflicts.length > 0 && <div className="border border-pulse/40 bg-pulse/[0.05] p-4 space-y-1"><p className="font-display font-semibold text-pulse">Novo horário indisponível</p>{conflicts.map(({ kind, appointment: conflict }, index) => <p key={`${kind}-${conflict.id}-${index}`} className="text-[11.5px]"><span className="text-pulse">{conflictLabel(kind)}</span>{' '}<span className="font-mono text-fog">{conflict.inicio}–{conflict.fim} · {patientName(patients, conflict.pacienteId)} · {userName(users, conflict.fisioId)}</span></p>)}</div>}
-          <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Voltar</Btn><Btn disabled={busy || !data || !fisioId || !roomId || !reason.trim() || conflicts.length > 0} onClick={() => onConfirm({ data, inicio, fim, fisioId, roomId, reason: reason.trim(), isFitIn })}>{busy ? 'Remarcando…' : 'Confirmar remarcação'}</Btn></div>
+          {conflicts.length > 0 && <div className="border border-pulse/40 bg-pulse/[0.05] p-4 space-y-1"><p className="font-display font-semibold text-pulse">Novo horário indisponível</p>{conflicts.map(({ kind, appointment: conflict }, index) => <p key={`${kind}-${conflict.id}-${index}`} className="text-[11.5px]"><span className="text-pulse">{conflictLabel(kind)}</span>{' '}<span className="font-mono text-fog">{conflict.inicio}–{conflict.fim} · {patientName(patients, conflict.pacienteId)} · {userName(users, professionalIdOf(conflict))}</span></p>)}</div>}
+          <div className="flex justify-end gap-2"><Btn variant="ghost" onClick={onClose}>Voltar</Btn><Btn disabled={busy || !data || !professionalId || !roomId || !reason.trim() || conflicts.length > 0} onClick={() => onConfirm({ data, inicio, fim, fisioId: professionalId, roomId, reason: reason.trim(), isFitIn })}>{busy ? 'Remarcando…' : 'Confirmar remarcação'}</Btn></div>
         </div>
       )}
     </Modal>
