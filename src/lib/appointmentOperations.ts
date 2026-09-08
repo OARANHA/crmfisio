@@ -6,7 +6,9 @@ interface RescheduleInput {
   data: string;
   inicio: string;
   fim: string;
-  professionalId: string;
+  professionalId?: string;
+  /** @deprecated Temporary frontend alias during the staged professionalId cutover. */
+  fisioId?: string;
   roomId: string;
   reason: string;
   isFitIn?: boolean;
@@ -41,13 +43,16 @@ export async function cancelAppointmentWithReason(appointmentId: string, reason:
 }
 
 export async function rescheduleAppointment(input: RescheduleInput): Promise<Appointment> {
+  const professionalId = input.professionalId ?? input.fisioId;
+  if (!professionalId) throw new Error('Profissional obrigatório para remarcação');
+
   const { data, error } = await (supabase.rpc as Function)('reschedule_appointment', {
     p_appointment_id: input.appointmentId,
     p_data: input.data,
     p_inicio: input.inicio,
     p_fim: input.fim,
     // RPC parameter stays legacy until the database contract is migrated.
-    p_fisio_id: input.professionalId,
+    p_fisio_id: professionalId,
     p_room_id: input.roomId,
     p_reason: input.reason,
     p_is_fit_in: input.isFitIn ?? false,
