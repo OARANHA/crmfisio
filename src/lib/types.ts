@@ -46,18 +46,18 @@ export interface PatientGuardianInput {
 
 export interface Room { id: string; nome: string; tipo: 'sala' | 'equipamento'; unidadeId: string }
 export interface Appointment {
-  id: string; pacienteId: string; fisioId: string; roomId: string; data: string; inicio: string; fim: string; status: AppointmentStatus;
+  id: string; pacienteId: string; professionalId: string; roomId: string; data: string; inicio: string; fim: string; status: AppointmentStatus;
   tipo: string; valor: number; pacoteId: string | null; serieId: string | null; notas: string;
   isFitIn?: boolean; cancellationReason?: string | null; rescheduledFromId?: string | null;
 }
-export interface RecurrenceRule { id: string; pacienteId: string; fisioId: string; roomId: string; tipo: string; diasSemana: number[]; hora: string; duracaoMin: number; inicio: string; fim: string; valor: number }
+export interface RecurrenceRule { id: string; pacienteId: string; professionalId: string; roomId: string; tipo: string; diasSemana: number[]; hora: string; duracaoMin: number; inicio: string; fim: string; valor: number }
 export interface SessionPackage { id: string; nome: string; sessoes: number; preco: number; validadeDias: number }
 export interface PatientPackage { id: string; pacienteId: string; pacoteId: string; sessoesTotais: number; sessoesUsadas: number; compraData: string; valorPago: number; status: 'ativo' | 'esgotado' | 'vencido' }
 export type TxTipo = 'receber' | 'pagar';
 export type TxStatus = 'pendente' | 'pago' | 'atrasado';
 export interface FinancialTransaction { id: string; tipo: TxTipo; descricao: string; categoria: string; valor: number; vencimento: string; status: TxStatus; pacienteId: string | null; metodo: 'pix' | 'cartao' | 'dinheiro' | 'boleto' | null; paidAt: string | null }
-export interface Commission { id: string; fisioId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
-export interface Evolution { id: string; pacienteId: string; fisioId: string; sessionId?: string | null; data: string; texto: string; anexos: string[] }
+export interface Commission { id: string; professionalId: string; periodo: string; base: number; percentual: number; status: 'aberto' | 'pago' }
+export interface Evolution { id: string; pacienteId: string; professionalId: string; sessionId?: string | null; data: string; texto: string; anexos: string[] }
 export interface ConsentTerm { id: string; pacienteId: string; nome: string; versao: string; assinado: boolean; dataAssinatura: string | null; hash: string | null; assinaturaUrl?: string | null; ip?: string | null }
 export interface NpsSurvey { id: string; pacienteId: string; nota: number | null; comentario: string; data: string }
 export type WaStatus = 'fila' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou' | 'cancelado';
