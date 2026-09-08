@@ -3,8 +3,9 @@
 The C-02 builder establishes the real C-01/C-06/C-02 security baseline and its
 behavioral regressions. This suite then installs the effective pre-C03 automatic
 processor, proves that it can create a finalized result without human review,
-applies the historical C-03 migration exactly as committed, then applies the
-additive rollout correction before exercising the lifecycle matrix.
+applies the historical C-03 migration exactly as committed, reproduces its guard
+drift, then applies the additive rollout correction before exercising the lifecycle
+matrix.
 """
 from pathlib import Path
 import re
@@ -58,6 +59,7 @@ print((root / "tests/sql/nexus_c03_before.sql").read_text())
 c03 = migrations / "20260908_nexus_c03_clinical_lifecycle.sql"
 print(c03.read_text())
 print(c03.read_text())  # historical migration remains additive/idempotent
+print((root / "tests/sql/nexus_c03_rollout_drift_reproduction.sql").read_text())
 
 # Apply only the dedicated corrective migration that a production database with
 # the historical C-03 migration already committed needs now. Replay it to prove
