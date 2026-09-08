@@ -22,10 +22,10 @@ export function NexusLongitudinalPanel({ patient }: { patient: Patient }) {
   const chartData=points.map((point,index)=>({consultation:`#${index+1}`,date:format(new Date(point.date),'dd/MM/yy',{locale:ptBR}),score:point.score,classification:point.classification,version:point.ruleVersion}));
 
   if(loading)return <Card><div className="p-6 font-mono text-[11px] text-fog">Carregando evolução Nexus…</div></Card>;
-  if(!tools.length)return <Card><Empty title="Sem evolução longitudinal ainda" sub="Quando o paciente tiver resultados Nexus finalizados com escore, a série temporal aparecerá aqui." /></Card>;
+  if(!tools.length)return <Card><Empty title="Sem evolução longitudinal revisada ainda" sub="Resultados apenas processados não entram como evolução clínica. A série aparece após revisão humana explícita." /></Card>;
 
   return <div className="space-y-4">
-    <Card><CardHead title="Nexus · Evolução Longitudinal" sub="Resultados reais do paciente · sem dados demo · versões clínicas preservadas" />
+    <Card><CardHead title="Nexus · Evolução Longitudinal" sub="Resultados clinicamente revisados · sem dados demo · versões clínicas preservadas" />
       <div className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">{tools.map(([key,count])=><button key={key} type="button" onClick={()=>setSelected(key)} className={`rounded-lg border px-3 py-2 text-[10.5px] ${selected===key?'border-aqua bg-aqua/10 text-aqua':'border-line text-fog'}`}>{toolTitle(key)} · {count}</button>)}</div>
@@ -38,8 +38,8 @@ export function NexusLongitudinalPanel({ patient }: { patient: Patient }) {
           {view==='trend'?<ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" opacity={0.2}/><XAxis dataKey="date" fontSize={10}/><YAxis fontSize={10}/><Tooltip contentStyle={{fontSize:11}}/><Line type="monotone" dataKey="score" stroke="currentColor" strokeWidth={2}/></LineChart></ResponsiveContainer>:<ResponsiveContainer width="100%" height="100%"><RadarChart data={radar}><PolarGrid/><PolarAngleAxis dataKey="domain" fontSize={9}/><Radar name="Inicial" dataKey="baseline" stroke="currentColor" fill="currentColor" fillOpacity={0.12}/><Radar name="Atual" dataKey="current" stroke="currentColor" fill="currentColor" fillOpacity={0.08}/><Tooltip contentStyle={{fontSize:11}}/></RadarChart></ResponsiveContainer>}
         </div>
 
-        <div className="rounded-xl border border-line bg-deep p-4"><p className="font-mono text-[9.5px] uppercase tracking-wide text-fog">Histórico versionado</p><div className="mt-3 space-y-2">{points.map((point,index)=><div key={point.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/70 p-3"><Chip className="border-line text-fog">#{index+1}</Chip><span className="font-mono text-[10px] text-mint">{format(new Date(point.date),'dd MMM yyyy · HH:mm',{locale:ptBR})}</span><span className="text-[11px] font-semibold text-paper">{point.score}{point.maxScore!=null?`/${point.maxScore}`:''}</span>{point.classification&&<span className="text-[10.5px] text-fog">{point.classification}</span>}<Chip className="border-line text-fog">{point.ruleVersion}</Chip></div>)}</div></div>
-        <p className="text-[10.5px] leading-relaxed text-fog">A visualização calcula apenas a mudança entre escores registrados. Não reclassifica resultados antigos e não converte variação matemática em diagnóstico, resposta ou remissão sem regra clínica versionada do instrumento.</p>
+        <div className="rounded-xl border border-line bg-deep p-4"><p className="font-mono text-[9.5px] uppercase tracking-wide text-fog">Histórico revisado e versionado</p><div className="mt-3 space-y-2">{points.map((point,index)=><div key={point.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/70 p-3"><Chip className="border-line text-fog">#{index+1}</Chip><span className="font-mono text-[10px] text-mint">{format(new Date(point.date),'dd MMM yyyy · HH:mm',{locale:ptBR})}</span><span className="text-[11px] font-semibold text-paper">{point.score}{point.maxScore!=null?`/${point.maxScore}`:''}</span>{point.classification&&<span className="text-[10.5px] text-fog">{point.classification}</span>}<Chip className="border-line text-fog">{point.ruleVersion}</Chip></div>)}</div></div>
+        <p className="text-[10.5px] leading-relaxed text-fog">A visualização usa somente resultados com revisão humana explícita. Não reclassifica resultados antigos e não converte variação matemática em diagnóstico, resposta ou remissão sem regra clínica versionada do instrumento.</p>
       </div>
     </Card>
   </div>;
