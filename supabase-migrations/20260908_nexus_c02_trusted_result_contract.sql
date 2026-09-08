@@ -113,7 +113,7 @@ BEGIN
 
   IF v_md5 IS NULL OR v_md5 NOT IN (
     '9951beb5a10ba4b5b9485cd1b1e077d1',
-    'd61defde034772ae91a87ed47cb16c03'
+    'ea4032a698b42b5c495c0d192bca9bd0'
   ) THEN
     RAISE EXCEPTION 'nexus_c02_context_helper_drift';
   END IF;
@@ -388,7 +388,7 @@ BEGIN
   FROM pg_proc p
   WHERE p.oid='public.validate_nexus_result_context()'::regprocedure;
   IF NOT FOUND
-     OR md5(actual.prosrc) <> 'd61defde034772ae91a87ed47cb16c03'
+     OR md5(actual.prosrc) <> 'ea4032a698b42b5c495c0d192bca9bd0'
      OR NOT actual.prosecdef
      OR NOT coalesce(actual.proconfig @> ARRAY['search_path=public, pg_temp'], false) THEN
     RAISE EXCEPTION 'nexus_c02_context_postcondition_failed';
