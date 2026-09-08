@@ -12,7 +12,8 @@ import { patientName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
-import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus } from '../lib/types';
+import { professionalIdOf } from '../lib/professionalReference';
+import { STATUS_META, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { AppointmentCreateModal, type CreateAt } from '../components/AppointmentCreateModal';
@@ -21,6 +22,7 @@ import { AppointmentCancelModal } from '../components/AppointmentCancelModal';
 import { AppointmentRescheduleModal, type ReschedulePreset } from '../components/AppointmentRescheduleModal';
 import { AppointmentFinderPanel } from '../components/AppointmentFinderPanel';
 import { WaitlistPanel } from '../components/WaitlistPanel';
+import { AgendaV3Summary } from '../components/agenda/AgendaV3Summary';
 import { isOperationalRole } from '../lib/permissions';
 
 const DAY_START = 7 * 60;
@@ -120,7 +122,7 @@ export function AgendaReal() {
   }, [roomFilter, roomsForFilter]);
 
   const visibleAppointments = useMemo(() => appointments.filter((appointment) => {
-    if (professionalFilter !== 'all' && appointment.fisioId !== professionalFilter) return false;
+    if (professionalFilter !== 'all' && professionalIdOf(appointment) !== professionalFilter) return false;
     if (roomFilter !== 'all' && appointment.roomId !== roomFilter) return false;
     if (unitFilter !== 'all') {
       const room = rooms.find((item) => item.id === appointment.roomId);
@@ -129,7 +131,7 @@ export function AgendaReal() {
     const q = search.trim().toLocaleLowerCase('pt-BR');
     if (q) {
       const patient = patients.find((item) => item.id === appointment.pacienteId);
-      const professional = users.find((item) => item.id === appointment.fisioId);
+      const professional = users.find((item) => item.id === professionalIdOf(appointment));
       const room = rooms.find((item) => item.id === appointment.roomId);
       const haystack = `${patient?.nome ?? ''} ${patient?.telefone ?? ''} ${professional?.nome ?? ''} ${room?.nome ?? ''}`.toLocaleLowerCase('pt-BR');
       if (!haystack.includes(q)) return false;
@@ -262,12 +264,12 @@ export function AgendaReal() {
     const nowMinute = now.getHours() * 60 + now.getMinutes();
     const showNow = isToday && nowMinute >= DAY_START && nowMinute <= DAY_END;
     return (
-      <div key={iso} className="flex-1 min-w-[145px] border-l border-line/60">
-        <div className={`h-[52px] border-b border-line px-2 py-2 text-center ${isToday ? 'bg-mint/[0.07]' : 'bg-deep'}`}>
-          <p className={`font-mono text-[10px] uppercase ${isToday ? 'text-mint' : 'text-fog'}`}>{format(date, 'EEE', { locale: ptBR }).replace('.', '')}</p>
-          <p className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</p>
+      <div key={iso} className="flex-1 min-w-[152px] border-l border-line/55 first:border-l-0">
+        <div className={`sticky top-0 z-20 h-[62px] border-b border-line/65 px-3 py-2.5 text-center backdrop-blur-md ${isToday ? 'bg-mint/[0.09]' : 'bg-panel/95'}`}>
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${isToday ? 'text-mint' : 'text-fog'}`}>{format(date, 'EEE', { locale: ptBR }).replace('.', '')}</p>
+          <div className="mt-0.5 flex items-center justify-center gap-2"><p className={`font-display text-lg font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</p>{isToday && <span className="h-1.5 w-1.5 rounded-full bg-mint" />}</div>
         </div>
-        <div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>
+        <div className="relative bg-deep/15" style={{ height: (DAY_END - DAY_START) * PPM }}>
           {gridSlots.slice(0, -1).map((minute) => {
             const targetKey = `${iso}-${minute}`;
             return (
@@ -276,16 +278,16 @@ export function AgendaReal() {
                 onDragOver={(event) => { if (dragging) { event.preventDefault(); setDragTarget(targetKey); } }}
                 onDragLeave={() => dragTarget === targetKey && setDragTarget(null)}
                 onDrop={(event) => { event.preventDefault(); dropAppointment(iso, minute); }}
-                className={`absolute inset-x-0 border-t transition-colors ${minute % 60 === 0 ? 'border-line/35' : 'border-line/15'} ${dragTarget === targetKey ? 'bg-mint/15' : 'hover:bg-mint/[0.04]'}`}
+                className={`absolute inset-x-0 border-t transition-colors ${minute % 60 === 0 ? 'border-line/40' : 'border-line/15'} ${dragTarget === targetKey ? 'bg-mint/15' : 'hover:bg-mint/[0.045]'}`}
                 style={{ top: (minute - DAY_START) * PPM, height: SLOT_MINUTES * PPM }} />
             );
           })}
-          {showNow && <div className="absolute z-20 inset-x-0 border-t border-pulse pointer-events-none" style={{ top: (nowMinute - DAY_START) * PPM }}><span className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-pulse" /></div>}
+          {showNow && <div className="absolute z-20 inset-x-0 border-t border-pulse pointer-events-none" style={{ top: (nowMinute - DAY_START) * PPM }}><span className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-pulse shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-pulse)_16%,transparent)]" /></div>}
           {dayAppointments.map((appointment) => {
             const meta = STATUS_META[appointment.status];
             const whatsapp = whatsappByAppointment.get(appointment.id);
             const top = (toMin(appointment.inicio) - DAY_START) * PPM;
-            const height = Math.max((toMin(appointment.fim) - toMin(appointment.inicio)) * PPM, 28);
+            const height = Math.max((toMin(appointment.fim) - toMin(appointment.inicio)) * PPM, 30);
             const draggable = canDrag(appointment);
             return (
               <button key={appointment.id} draggable={draggable}
@@ -293,11 +295,11 @@ export function AgendaReal() {
                 onDragEnd={() => { setDragging(null); setDragTarget(null); }}
                 onClick={() => !dragging && setSelected(appointment)}
                 title={draggable ? 'Arraste para outro horário. A remarcação só ocorre após sua confirmação.' : undefined}
-                className={`absolute z-10 left-1 right-1 rounded-lg bg-panel/95 hover:bg-raise border border-line/60 border-l-[3px] text-left px-2 py-1 overflow-hidden shadow-sm transition-all hover:-translate-y-px hover:shadow-md ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === appointment.id ? 'opacity-50' : ''}`}
-                style={{ top, height, borderColor: meta.dot }}>
-                <p className="font-mono text-[9px] text-fog">{appointment.inicio}–{appointment.fim}{appointment.isFitIn ? ' · ENCAIXE' : ''}</p>
-                <p className="text-[11px] font-semibold truncate" style={{ color: meta.dot }}>{patientName(patients, appointment.pacienteId)}</p>
-                <p className="font-mono text-[9px] text-fog truncate">{roomLabel(appointment.roomId)}{compactWhatsapp(whatsapp) ? ` · ${compactWhatsapp(whatsapp)}` : ''}</p>
+                className={`absolute z-10 left-1.5 right-1.5 rounded-[12px] border border-line/60 border-l-[3px] bg-panel/95 px-2.5 py-1.5 text-left shadow-[0_8px_20px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-all hover:-translate-y-px hover:border-line2 hover:bg-raise hover:shadow-lg ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging?.id === appointment.id ? 'opacity-50' : ''}`}
+                style={{ top, height, borderLeftColor: meta.dot }}>
+                <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: meta.dot }} /><p className="text-[11px] font-semibold text-fog">{appointment.inicio}–{appointment.fim}{appointment.isFitIn ? ' · encaixe' : ''}</p></div>
+                <p className="mt-0.5 truncate text-[13px] font-semibold text-paper">{patientName(patients, appointment.pacienteId)}</p>
+                {height >= 48 && <p className="mt-0.5 truncate text-[11px] text-fog">{roomLabel(appointment.roomId)}{compactWhatsapp(whatsapp) ? ` · ${compactWhatsapp(whatsapp)}` : ''}</p>}
               </button>
             );
           })}
@@ -307,49 +309,59 @@ export function AgendaReal() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Reveal>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="min-w-[240px]"><h1 className="font-display text-3xl font-bold tracking-tight">Agenda</h1><p className="mt-1 text-[13px] capitalize text-fog">{periodLabel}</p></div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl border border-line overflow-hidden">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`px-3 py-2 text-[11px] font-semibold ${view === item ? 'bg-mint text-on-accent' : 'text-fog hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
-            <div className="flex overflow-hidden rounded-xl border border-line"><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(-1)} aria-label="Período anterior">←</button><button className="border-x border-line px-3 py-2 text-[11px] font-semibold text-fog hover:bg-raise hover:text-paper" onClick={() => setAnchor(new Date())}>Hoje</button><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(1)} aria-label="Próximo período">→</button></div>
-            <Btn variant="ghost" onClick={() => setFinderOpen((value) => !value)}>Encontrar horário</Btn>
-            <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Novo atendimento</Btn>
+        <section className="overflow-hidden rounded-[26px] border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_52%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] shadow-[0_20px_55px_rgba(0,0,0,0.07)]">
+          <div className="flex flex-wrap items-start gap-5 p-5 sm:p-6">
+            <div className="min-w-[260px] flex-1">
+              <div className="flex items-center gap-2"><span className="rounded-full border border-mint/25 bg-mint/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-mint">Agenda operacional</span>{activeFilterCount > 0 && <span className="rounded-full border border-line px-2.5 py-1 text-[11px] text-fog">{activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}</span>}</div>
+              <h1 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-[34px]">Agenda</h1>
+              <p className="mt-1 capitalize text-[14px] text-fog">{periodLabel}</p>
+              <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-fog">Organize o fluxo do dia, encontre disponibilidade e resolva pendências sem perder o contexto da agenda.</p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex overflow-hidden rounded-xl border border-line/75 bg-deep/35">{(['dia', 'semana', 'mes'] as View[]).map((item) => <button key={item} onClick={() => setView(item)} className={`min-w-[66px] px-3 py-2 text-[12px] font-semibold transition ${view === item ? 'bg-mint text-on-accent shadow-sm' : 'text-fog hover:bg-raise hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
+                <div className="flex overflow-hidden rounded-xl border border-line/75 bg-deep/35"><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(-1)} aria-label="Período anterior">←</button><button className="border-x border-line px-3.5 py-2 text-[12px] font-semibold text-fog hover:bg-raise hover:text-paper" onClick={() => setAnchor(new Date())}>Hoje</button><button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(1)} aria-label="Próximo período">→</button></div>
+              </div>
+              <div className="flex flex-wrap gap-2"><Btn variant="ghost" onClick={() => setFinderOpen((value) => !value)}>Encontrar horário</Btn><Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Novo atendimento</Btn></div>
+            </div>
           </div>
-        </div>
+          {isOperationalRole(user?.role) && view !== 'mes' && <div className="border-t border-line/55 bg-deep/20 px-5 py-3 text-[12px] text-fog sm:px-6"><span className="font-semibold text-paper/85">Remarcação rápida:</span> arraste atendimentos agendados ou confirmados. A mudança só é salva após confirmação.</div>}
+        </section>
       </Reveal>
-
-      {isOperationalRole(user?.role) && view !== 'mes' && <p className="font-mono text-[10px] text-fog">Dica: arraste atendimentos agendados ou confirmados para outro horário. Nada é salvo antes da confirmação da remarcação.</p>}
 
       <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={professionals} defaultFisioId={professionalFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
-      <Reveal delay={40}><div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">{[
-        [periodSummaryLabel, periodSummary.total], ['Confirmados', periodSummary.confirmed], ['Pendentes', periodSummary.pending], ['Em atendimento', periodSummary.inService], ['Finalizados', periodSummary.finished], ['Faltas', periodSummary.missed], ['Valor dos atendimentos', fmtBRL(periodSummary.nominalValue)],
-      ].map(([label, value]) => <Card key={String(label)} className="!rounded-xl !p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-fog">{label}</p><p className="mt-1 font-display text-xl font-bold">{value}</p></Card>)}</div></Reveal>
+      <Reveal delay={40}><AgendaV3Summary label={periodSummaryLabel} summary={periodSummary} /></Reveal>
 
-      <Reveal delay={60}><Card className="!rounded-2xl !p-3"><div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-[240px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" /></div>
-        <Btn variant="ghost" onClick={() => setFiltersOpen((value) => !value)}>Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''} <span aria-hidden>{filtersOpen ? '↑' : '↓'}</span></Btn>
-        {activeFilterCount > 0 && <button className="px-2 text-xs font-semibold text-fog hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setProfessionalFilter(user?.role === 'professional' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar</button>}
-      </div>{filtersOpen && <div className="mt-3 grid gap-2 border-t border-line pt-3 sm:grid-cols-3">
-        <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
-        <Select value={professionalFilter} onChange={(event) => setProfessionalFilter(event.target.value)}>{user?.role !== 'professional' && <option value="all">Todos os profissionais</option>}{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
-        <Select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)}><option value="all">Todas as salas/recursos</option>{roomsForFilter.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select>
-      </div>}</Card></Reveal>
+      <Reveal delay={60}>
+        <Card className="!rounded-[22px] !border-line/70 !p-3.5 sm:!p-4">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="min-w-[240px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" className="!bg-deep/55" /></div>
+            <Btn variant="ghost" onClick={() => setFiltersOpen((value) => !value)}>Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''} <span aria-hidden>{filtersOpen ? '↑' : '↓'}</span></Btn>
+            {activeFilterCount > 0 && <button className="rounded-lg px-2.5 py-2 text-[12px] font-semibold text-fog hover:bg-raise/60 hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setProfessionalFilter(user?.role === 'professional' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar</button>}
+          </div>
+          {filtersOpen && <div className="mt-3 grid gap-2.5 border-t border-line/60 pt-3.5 sm:grid-cols-3">
+            <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
+            <Select value={professionalFilter} onChange={(event) => setProfessionalFilter(event.target.value)}>{user?.role !== 'professional' && <option value="all">Todos os profissionais</option>}{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select>
+            <Select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)}><option value="all">Todas as salas/recursos</option>{roomsForFilter.map((room) => <option key={room.id} value={room.id}>{room.nome}</option>)}</Select>
+          </div>}
+        </Card>
+      </Reveal>
 
-      {!loadingInfra && rooms.length === 0 && <div className="border border-amber/40 bg-amber/[0.05] p-4 text-[12.5px] text-amber">A agenda ainda não possui sala/recurso real. Um administrador deve cadastrar a estrutura em Configurações → Estrutura da clínica.</div>}
-      <Reveal delay={80}><div className="flex flex-wrap gap-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="font-mono text-[10.5px] text-fog flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
+      {!loadingInfra && rooms.length === 0 && <div className="rounded-2xl border border-amber/40 bg-amber/[0.05] p-4 text-[13px] text-amber">A agenda ainda não possui sala/recurso real. Um administrador deve cadastrar a estrutura em Configurações → Estrutura da clínica.</div>}
+      <Reveal delay={80}><div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line/60 bg-panel/55 px-4 py-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="flex items-center gap-1.5 text-[12px] text-fog"><span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
       {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
 
       <Reveal delay={120}>{view === 'mes' ? (
-        <Card className="overflow-hidden"><div className="grid grid-cols-7 border-b border-line">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="px-2 py-2 text-center font-mono text-[10px] uppercase text-fog border-l border-line/60 first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
-          if (!date) return <div key={`empty-${index}`} className="min-h-[96px] border-l border-t border-line/40 bg-deep/30" />;
+        <Card className="overflow-hidden !rounded-[22px]"><div className="grid grid-cols-7 border-b border-line bg-deep/35">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="border-l border-line/55 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-fog first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
+          if (!date) return <div key={`empty-${index}`} className="min-h-[112px] border-l border-t border-line/35 bg-deep/20" />;
           const iso = format(date, 'yyyy-MM-dd'); const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso); const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado'); const isToday = iso === todayIso;
-          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[96px] border-l border-t border-line/40 p-2 text-left hover:bg-raise/50 ${isToday ? 'bg-mint/[0.06]' : ''}`}><span className={`font-display font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{active.length > 0 && <div className="mt-2 space-y-1"><span className="inline-block font-mono text-[9px] text-mint border border-mint/30 px-1.5 py-0.5">{active.length} atendimento{active.length > 1 ? 's' : ''}</span><p className="font-mono text-[9px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmados</p></div>}</button>;
+          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[112px] border-l border-t border-line/35 p-3 text-left transition hover:bg-raise/45 ${isToday ? 'bg-mint/[0.065]' : ''}`}><div className="flex items-center justify-between"><span className={`font-display text-lg font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{isToday && <span className="h-2 w-2 rounded-full bg-mint" />}</div>{active.length > 0 && <div className="mt-3 space-y-1.5"><span className="inline-flex rounded-full border border-mint/25 bg-mint/[0.06] px-2 py-0.5 text-[11px] font-semibold text-mint">{active.length} atendimento{active.length > 1 ? 's' : ''}</span><p className="text-[11px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmados</p></div>}</button>;
         })}</div></Card>
       ) : (
-        <Card className="overflow-x-auto"><div className={`flex ${view === 'semana' ? 'min-w-[950px]' : 'min-w-[420px]'}`}><div className="w-14 shrink-0"><div className="h-[52px] border-b border-line" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
+        <Card className="overflow-x-auto !rounded-[22px]"><div className={`flex ${view === 'semana' ? 'min-w-[980px]' : 'min-w-[430px]'}`}><div className="w-16 shrink-0 bg-deep/25"><div className="sticky top-0 z-20 h-[62px] border-b border-line/65 bg-panel/95" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2.5 -translate-y-1/2 text-[11px] font-medium text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
       )}</Reveal>
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={saveAppointment} />
