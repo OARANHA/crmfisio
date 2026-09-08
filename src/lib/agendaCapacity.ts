@@ -1,3 +1,4 @@
+import { professionalIdOf } from './professionalReference';
 import type { Appointment, User } from './types';
 
 const toMin = (value: string) => {
@@ -32,7 +33,7 @@ export function buildProfessionalCapacity(
     .map((professional) => {
       const dayAppointments = appointments
         .filter((appointment) => appointment.data === day)
-        .filter((appointment) => appointment.fisioId === professional.id)
+        .filter((appointment) => professionalIdOf(appointment) === professional.id)
         .filter((appointment) => !['cancelado', 'faltou'].includes(appointment.status))
         .sort((a, b) => a.inicio.localeCompare(b.inicio));
       const bookedMinutes = dayAppointments.reduce((total, appointment) => total + appointmentDurationMinutes(appointment), 0);
