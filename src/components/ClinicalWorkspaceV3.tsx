@@ -1,5 +1,6 @@
 import type { Patient } from '../lib/types';
 import { ClinicalWorkspace } from './ClinicalWorkspace';
+import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
 export function ClinicalWorkspaceV3({ patient, initialSessionId = null }: { patient: Patient; initialSessionId?: string | null }) {
   return (
@@ -21,8 +22,9 @@ export function ClinicalWorkspaceV3({ patient, initialSessionId = null }: { pati
         </div>
       </header>
 
-      <div className="px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
+      <div className="space-y-4 px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
         <ClinicalWorkspace patient={patient} initialSessionId={initialSessionId} />
+        <NexusRecordIncorporationPanel patient={patient} />
       </div>
     </section>
   );
