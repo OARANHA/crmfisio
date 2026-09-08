@@ -6,7 +6,7 @@ import { usePatients } from '../lib/patientContext';
 import { STAGE_META, maskCpf, ageFrom, type FunilStage } from '../lib/types';
 import { Card, Btn, Input, Select, Chip, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
-import { ClinicalWorkspace } from '../components/ClinicalWorkspace';
+import { ClinicalWorkspaceV3 } from '../components/ClinicalWorkspaceV3';
 import { PatientCareCockpit } from '../components/PatientCareCockpit';
 import { PatientOperationalActions } from '../components/PatientOperationalActions';
 import { PatientProfileHeader } from '../components/PatientProfileHeader';
@@ -138,7 +138,7 @@ function Pep({ id }: { id: string }) {
 
       <Reveal delay={65}>
         <div id="clinical-workspace" className="scroll-mt-4">
-          <ClinicalWorkspace patient={patient} initialSessionId={focusedSessionId} />
+          <ClinicalWorkspaceV3 patient={patient} initialSessionId={focusedSessionId} />
         </div>
       </Reveal>
     </div>
