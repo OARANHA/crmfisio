@@ -77,6 +77,13 @@
     order: 21;
   }
 
+  /* Keep the two cards above the calendar on the same visual baseline and height. */
+  .agenda-priority-v4 section.grid.xl\:grid-cols-\[1\.25fr_1fr_1fr_1\.1fr\] > :nth-child(1),
+  .agenda-priority-v4 section.grid.xl\:grid-cols-\[1\.25fr_1fr_1fr_1\.1fr\] > :nth-child(2) {
+    align-self: stretch;
+    height: 100%;
+  }
+
   .agenda-priority-v4 > .space-y-5 > :has([aria-label^="Agendar "]),
   .agenda-priority-v4 > .space-y-5 > :has(.grid.grid-cols-7) {
     grid-column: 1 / -1;
