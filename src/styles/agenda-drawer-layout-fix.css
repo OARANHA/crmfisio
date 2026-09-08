@@ -1,24 +1,30 @@
-/* Drawer layout correction: preserve a wide weekly calendar while keeping the appointment panel out of its content area. */
+/* Drawer layout correction: keep the normal widescreen workspace and reserve space INSIDE it for the appointment panel. */
 @media (min-width: 1180px) {
+  body.agenda-detail-open .agenda-detail-panel {
+    width: clamp(390px, 30vw, 500px) !important;
+  }
+
   body.agenda-detail-open .agenda-workspace-v6 {
-    width: min(1840px, calc(100vw - 640px)) !important;
+    width: min(2240px, calc(100vw - 310px)) !important;
     max-width: none !important;
-    margin-left: 0 !important;
+    margin-left: 50% !important;
     margin-right: 0 !important;
-    transform: none !important;
+    transform: translateX(-50%) !important;
+    box-sizing: border-box;
+    padding-right: calc(clamp(390px, 30vw, 500px) + 18px);
   }
 
   body.agenda-detail-open .agenda-priority-v4 [class*="min-w-[152px]"] {
-    min-width: 190px !important;
+    min-width: 180px !important;
   }
 }
 
 @media (min-width: 1700px) {
   body.agenda-detail-open .agenda-workspace-v6 {
-    width: min(1900px, calc(100vw - 620px)) !important;
+    width: min(2240px, calc(100vw - 294px)) !important;
   }
 
   body.agenda-detail-open .agenda-priority-v4 [class*="min-w-[152px]"] {
-    min-width: 205px !important;
+    min-width: 195px !important;
   }
 }
