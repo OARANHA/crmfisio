@@ -99,8 +99,11 @@ DECLARE
   v_red_flags jsonb := '[]'::jsonb;
   v_summary text;
 BEGIN
-  IF v_uid IS NULL OR v_clinic IS NULL THEN
+  IF v_uid IS NULL THEN
     RAISE EXCEPTION 'nexus_c04_authenticated_tenant_required' USING ERRCODE = '42501';
+  END IF;
+  IF v_clinic IS NULL THEN
+    RAISE EXCEPTION 'nexus_c04_active_clinical_context_required' USING ERRCODE = '42501';
   END IF;
 
   IF NOT EXISTS (
