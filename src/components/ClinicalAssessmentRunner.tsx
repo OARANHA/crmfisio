@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAgenda } from '../lib/agendaContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
+import { professionalIdOf } from '../lib/professionalReference';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
@@ -41,8 +42,13 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const clinicalRead = isClinicManager(user?.role) || canReadTimeline;
   const clinicalWrite = canApplyAssessment;
   const activeAppointment = useMemo(
-    () => appointments.find((item) => item.pacienteId === patient.id && item.status === 'em_atendimento') ?? null,
-    [appointments, patient.id],
+    () => appointments.find((item) =>
+      item.pacienteId === patient.id
+      && item.status === 'em_atendimento'
+      && userId !== null
+      && professionalIdOf(item) === userId,
+    ) ?? null,
+    [appointments, patient.id, userId],
   );
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
 
