@@ -20,7 +20,7 @@ BEGIN
       ('public.can_access_patient_clinical_record(uuid)', '6a9314528b66df705c5ff36c3619831d'),
       ('public.list_patient_clinical_snapshot()', '2dfeb251865ec09623324341564b10f9'),
       ('public.resolve_nexus_result_required_capability(text,text,text,text)', '3c780dc05d82c9d1b4e087f563892e40'),
-      ('public.validate_nexus_result_context()', 'd61defde034772ae91a87ed47cb16c03')
+      ('public.validate_nexus_result_context()', 'ea4032a698b42b5c495c0d192bca9bd0')
     ) AS v(signature, body_md5)
   LOOP
     SELECT p.* INTO actual
