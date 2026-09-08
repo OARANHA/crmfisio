@@ -95,7 +95,7 @@ Continua calculando e persistindo server-side. Após C-03, registra somente `pro
 
 ### EEM
 
-O EEM é finalizado por uma ação humana explícita na tela. A ação passa a ser apresentada como “Revisar e finalizar EEM”. A RPC específica continua atômica e, após persistir o snapshot congelado e red flags, registra processamento, revisão e finalização clínica pelo mesmo médico autor.
+O EEM já é finalizado por uma ação humana explícita na tela. C-03 preserva esse writer específico e a mesma ação passa a registrar, de forma atômica e separada no lifecycle, processamento, revisão humana e finalização clínica pelo médico autor. Não há inferência retrospectiva para EEM históricos.
 
 ### Writer genérico
 
