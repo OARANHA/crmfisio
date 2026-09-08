@@ -70,21 +70,21 @@ BEGIN
         'public.has_professional_capability(text)',
         ARRAY[
           'd3c1b16fc57c4da3f304ba086a382991',
-          '858f6805dac644028692bcda9f4152bb'
+          '501cf03c6f0a99ca970f3f491c64083b'
         ]::text[]
       ),
       (
         'public.can_access_patient_clinical_record(uuid)',
         ARRAY[
           'e466279f68d4858a34dfc9dee8de3d98',
-          '968f8fede2551a284faf2b2b743832de'
+          '6a9314528b66df705c5ff36c3619831d'
         ]::text[]
       ),
       (
         'public.list_patient_clinical_snapshot()',
         ARRAY[
-          '297948ff2f19bac0d9ee58ce136c55bc',
-          '3c06241a532a3f131ef519f66f2553ed'
+          '0b8351b84750496f726668a4c4e82ab9',
+          '2dfeb251865ec09623324341564b10f9'
         ]::text[]
       )
     ) AS v(signature, accepted_md5)
@@ -387,9 +387,9 @@ BEGIN
   FOR expected IN
     SELECT *
     FROM (VALUES
-      ('public.has_professional_capability(text)', '858f6805dac644028692bcda9f4152bb'),
-      ('public.can_access_patient_clinical_record(uuid)', '968f8fede2551a284faf2b2b743832de'),
-      ('public.list_patient_clinical_snapshot()', '3c06241a532a3f131ef519f66f2553ed')
+      ('public.has_professional_capability(text)', '501cf03c6f0a99ca970f3f491c64083b'),
+      ('public.can_access_patient_clinical_record(uuid)', '6a9314528b66df705c5ff36c3619831d'),
+      ('public.list_patient_clinical_snapshot()', '2dfeb251865ec09623324341564b10f9')
     ) AS v(signature, body_md5)
   LOOP
     SELECT p.*
