@@ -1,21 +1,19 @@
 -- MEDICSPRO — Nexus C-02 trusted result write contract
--- The client may identify a known versioned tool/rule, but required capability is
--- resolved from a trusted database registry. C-01 read guards and C-06 helpers
--- are prerequisites and are not replaced by this migration.
+-- required_capability is derived from an exact versioned server-side contract.
+-- C-01 read guards and C-06 authorization helpers are prerequisites only.
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 
--- C-06 must remain the effective authorization baseline.
+-- C-06 must remain byte-identical.
 DO $$
 DECLARE
   expected record;
   actual record;
 BEGIN
   FOR expected IN
-    SELECT *
-    FROM (VALUES
+    SELECT * FROM (VALUES
       ('public.current_clinic_id()', '678fac3c2bb8698a44f8a9d9b282f53d'),
       ('public.current_app_role()', '7b2e6e62d9fb349ba6aa48c0744c34a7'),
       ('public.current_nexus_medical_identity_valid()', '59f4b68dda8c2c166ba803ad62f2b509'),
@@ -42,8 +40,7 @@ BEGIN
 END;
 $$;
 
--- C-01 read guards must still be exactly present and restrictive. They are only
--- inspected here; C-02 never recreates them.
+-- C-01 policies are inspected exactly as in the proven C-06 guard check.
 DO $$
 DECLARE
   expected record;
@@ -51,8 +48,7 @@ DECLARE
   expr text;
 BEGIN
   FOR expected IN
-    SELECT *
-    FROM (VALUES
+    SELECT * FROM (VALUES
       ('nexus_clinical_results', 'nexus_results_read_care_relationship', 'nexus_results_read_guard', false),
       ('nexus_red_flags', 'nexus_red_flags_read_care_relationship', 'nexus_red_flags_read_guard', false),
       ('nexus_self_assessment_invites', 'nexus_self_assessment_care_read', 'nexus_self_assessment_read_guard', true)
@@ -64,31 +60,68 @@ BEGIN
     END IF;
 
     FOR actual IN
-      SELECT * FROM pg_policies
-      WHERE schemaname='public'
-        AND tablename=expected.table_name
+      SELECT *
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = expected.table_name
         AND policyname IN (expected.allow_name, expected.guard_name)
     LOOP
       IF actual.cmd <> 'SELECT'
          OR actual.with_check IS NOT NULL
-         OR actual.permissive <> CASE WHEN actual.policyname=expected.guard_name THEN 'RESTRICTIVE' ELSE 'PERMISSIVE' END
-         OR actual.roles <> CASE WHEN actual.policyname=expected.guard_name THEN ARRAY['public']::name[] ELSE ARRAY['authenticated']::name[] END
-         OR regexp_replace(replace(replace(actual.qual,'public.',''),'::text',''),'[[:space:]()]','','g') IS DISTINCT FROM expr THEN
+         OR actual.permissive <> (
+           CASE
+             WHEN actual.policyname = expected.guard_name THEN 'RESTRICTIVE'
+             ELSE 'PERMISSIVE'
+           END
+         )
+         OR actual.roles <> (
+           CASE
+             WHEN actual.policyname = expected.guard_name
+               THEN ARRAY['public']::name[]
+             ELSE ARRAY['authenticated']::name[]
+           END
+         )
+         OR regexp_replace(
+              replace(replace(actual.qual, 'public.', ''), '::text', ''),
+              '[[:space:]()]', '', 'g'
+            ) IS DISTINCT FROM expr THEN
         RAISE EXCEPTION 'nexus_c02_c01_policy_drift: %', actual.policyname;
       END IF;
     END LOOP;
 
-    IF (SELECT count(*) FROM pg_policies
-        WHERE schemaname='public' AND tablename=expected.table_name
-          AND policyname IN (expected.allow_name, expected.guard_name)) <> 2 THEN
+    IF (
+      SELECT count(*)
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND tablename = expected.table_name
+        AND policyname IN (expected.allow_name, expected.guard_name)
+    ) <> 2 THEN
       RAISE EXCEPTION 'nexus_c02_c01_policy_missing: %', expected.table_name;
     END IF;
   END LOOP;
 END;
 $$;
 
--- Refuse to reinterpret historical data. Only contracts already implemented by
--- the current codebase are accepted in this slice.
+-- Refuse unreviewed write-context drift before replacing the trigger helper.
+DO $$
+DECLARE
+  v_md5 text;
+BEGIN
+  SELECT md5(p.prosrc) INTO v_md5
+  FROM pg_proc p
+  WHERE p.oid = to_regprocedure('public.validate_nexus_result_context()');
+
+  IF v_md5 IS NULL OR v_md5 NOT IN (
+    '9951beb5a10ba4b5b9485cd1b1e077d1',
+    'd61defde034772ae91a87ed47cb16c03'
+  ) THEN
+    RAISE EXCEPTION 'nexus_c02_context_helper_drift';
+  END IF;
+END;
+$$;
+
+-- Historical rows must already correspond to one of the contracts implemented
+-- by the current code. No migration-time guessing/backfill is permitted.
 DO $$
 BEGIN
   IF EXISTS (
@@ -116,15 +149,18 @@ CREATE TABLE IF NOT EXISTS public.nexus_result_contracts (
   tool_key text NOT NULL,
   rule_key text NOT NULL,
   rule_version text NOT NULL,
-  required_capability text NOT NULL REFERENCES public.capability_catalog(capability_key),
+  required_capability text NOT NULL
+    REFERENCES public.capability_catalog(capability_key),
   created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT nexus_result_contracts_pkey PRIMARY KEY (module_key, tool_key, rule_key, rule_version),
+  CONSTRAINT nexus_result_contracts_pkey
+    PRIMARY KEY (module_key, tool_key, rule_key, rule_version),
   CONSTRAINT nexus_result_contracts_nonblank CHECK (
     module_key = btrim(module_key) AND module_key <> ''
     AND tool_key = btrim(tool_key) AND tool_key <> ''
     AND rule_key = btrim(rule_key) AND rule_key <> ''
     AND rule_version = btrim(rule_version) AND rule_version <> ''
-    AND required_capability = btrim(required_capability) AND required_capability LIKE 'nexus.%'
+    AND required_capability = btrim(required_capability)
+    AND required_capability LIKE 'nexus.%'
   )
 );
 
@@ -143,14 +179,20 @@ ON CONFLICT (module_key, tool_key, rule_key, rule_version) DO NOTHING;
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.nexus_result_contracts) <> 3
-     OR EXISTS (
-       SELECT 1
-       FROM public.nexus_result_contracts c
-       WHERE NOT (
-         (c.module_key='eem' AND c.tool_key='eem' AND c.rule_key='nexus.eem' AND c.rule_version='nexus-eem-2026-09-03' AND c.required_capability='nexus.eem')
-         OR (c.module_key='scales' AND c.tool_key='phq9' AND c.rule_key='nexus.phq9' AND c.rule_version='nexus-2026-09-03' AND c.required_capability='nexus.scales')
-         OR (c.module_key='scales' AND c.tool_key='gad7' AND c.rule_key='nexus.gad7' AND c.rule_version='nexus-2026-09-03' AND c.required_capability='nexus.scales')
-       )
+     OR NOT EXISTS (
+       SELECT 1 FROM public.nexus_result_contracts
+       WHERE module_key='eem' AND tool_key='eem' AND rule_key='nexus.eem'
+         AND rule_version='nexus-eem-2026-09-03' AND required_capability='nexus.eem'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM public.nexus_result_contracts
+       WHERE module_key='scales' AND tool_key='phq9' AND rule_key='nexus.phq9'
+         AND rule_version='nexus-2026-09-03' AND required_capability='nexus.scales'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM public.nexus_result_contracts
+       WHERE module_key='scales' AND tool_key='gad7' AND rule_key='nexus.gad7'
+         AND rule_version='nexus-2026-09-03' AND required_capability='nexus.scales'
      ) THEN
     RAISE EXCEPTION 'nexus_c02_contract_registry_drift';
   END IF;
@@ -178,11 +220,10 @@ AS $$
   LIMIT 1
 $$;
 
-REVOKE ALL ON FUNCTION public.resolve_nexus_result_required_capability(text,text,text,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.resolve_nexus_result_required_capability(text,text,text,text) TO authenticated, service_role;
-
-COMMENT ON FUNCTION public.resolve_nexus_result_required_capability(text,text,text,text) IS
-  'C-02 trusted resolver: exact versioned Nexus result contract determines the required capability; unknown combinations fail closed.';
+REVOKE ALL ON FUNCTION public.resolve_nexus_result_required_capability(text,text,text,text)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.resolve_nexus_result_required_capability(text,text,text,text)
+  TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.validate_nexus_result_context()
 RETURNS trigger
@@ -284,8 +325,6 @@ BEFORE INSERT OR UPDATE OF
 ON public.nexus_clinical_results
 FOR EACH ROW EXECUTE FUNCTION public.validate_nexus_result_context();
 
--- Write policies derive authorization from the trusted versioned contract. The
--- stored required_capability must equal that result, but it is not the authority.
 DROP POLICY IF EXISTS nexus_results_insert_author ON public.nexus_clinical_results;
 CREATE POLICY nexus_results_insert_author
 ON public.nexus_clinical_results
@@ -326,7 +365,7 @@ WITH CHECK (
   )
 );
 
--- Exact postconditions for the new trusted-side contract.
+-- Postconditions: exact reviewed helper bodies and trigger columns.
 DO $$
 DECLARE
   actual record;
@@ -337,7 +376,8 @@ BEGIN
   WHERE p.oid='public.resolve_nexus_result_required_capability(text,text,text,text)'::regprocedure;
   IF NOT FOUND
      OR md5(actual.prosrc) <> '3c780dc05d82c9d1b4e087f563892e40'
-     OR NOT actual.prosecdef OR actual.provolatile <> 's'
+     OR NOT actual.prosecdef
+     OR actual.provolatile <> 's'
      OR NOT coalesce(actual.proconfig @> ARRAY['search_path=public, pg_temp'], false)
      OR NOT has_function_privilege('authenticated', actual.oid, 'EXECUTE')
      OR has_function_privilege('anon', actual.oid, 'EXECUTE') THEN
