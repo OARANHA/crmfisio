@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import type { Database, Json } from './database.types';
 import { normalizeClinicRole } from './roleCompatibility';
+import { professionalIdOf } from './professionalReference';
 import type {
   Appointment,
   AuditEntry,
@@ -94,21 +95,25 @@ export const mapPatient = (row: PatientRow): Patient => ({
   anamnese: parseAnamnese(row.anamnese),
 });
 
-export const mapAppointment = (row: AppointmentRow): Appointment => ({
-  id: row.id,
-  pacienteId: row.paciente_id,
-  fisioId: row.fisio_id,
-  roomId: row.room_id ?? '',
-  data: row.data,
-  inicio: row.inicio.slice(0, 5),
-  fim: row.fim.slice(0, 5),
-  status: row.status,
-  tipo: row.tipo,
-  valor: row.valor,
-  pacoteId: row.pacote_id,
-  serieId: row.serie_id,
-  notas: row.notas ?? '',
-});
+export const mapAppointment = (row: AppointmentRow): Appointment => {
+  const professionalId = (row as AppointmentRow & { professional_id?: string }).professional_id ?? row.fisio_id;
+  return {
+    id: row.id,
+    pacienteId: row.paciente_id,
+    professionalId,
+    fisioId: row.fisio_id,
+    roomId: row.room_id ?? '',
+    data: row.data,
+    inicio: row.inicio.slice(0, 5),
+    fim: row.fim.slice(0, 5),
+    status: row.status,
+    tipo: row.tipo,
+    valor: row.valor,
+    pacoteId: row.pacote_id,
+    serieId: row.serie_id,
+    notas: row.notas ?? '',
+  };
+};
 
 export const mapPayment = (row: PaymentRow): FinancialTransaction => ({
   id: row.id,
@@ -126,7 +131,9 @@ export const mapPayment = (row: PaymentRow): FinancialTransaction => ({
 const mapEvolution = (row: EvolutionRow): Evolution => ({
   id: row.id,
   pacienteId: row.patient_id,
+  professionalId: row.professional_id,
   fisioId: row.professional_id,
+  sessionId: row.session_id,
   data: row.created_at.slice(0, 10),
   texto: row.texto,
   anexos: row.anexos ?? [],
@@ -190,6 +197,7 @@ const mapAudit = (row: AuditRow): AuditEntry => ({
 
 const mapCommission = (row: CommissionRow): Commission => ({
   id: row.id,
+  professionalId: row.professional_id,
   fisioId: row.professional_id,
   periodo: row.period.slice(0, 7),
   base: row.base_amount,
@@ -355,7 +363,7 @@ export async function insertAppointment(clinicId: string, appointment: Omit<Appo
   const { data, error } = await supabase.from('appointments').insert({
     clinic_id: clinicId,
     paciente_id: appointment.pacienteId,
-    fisio_id: appointment.fisioId,
+    fisio_id: professionalIdOf(appointment),
     room_id: appointment.roomId || null,
     data: appointment.data,
     inicio: appointment.inicio,
@@ -404,7 +412,8 @@ export async function insertEvolution(clinicId: string, evolution: Omit<Evolutio
   const { data, error } = await supabase.from('physiotherapy_evolutions').insert({
     clinic_id: clinicId,
     patient_id: evolution.pacienteId,
-    professional_id: evolution.fisioId,
+    professional_id: professionalIdOf(evolution),
+    session_id: evolution.sessionId ?? null,
     texto: evolution.texto,
     anexos: evolution.anexos,
     created_at: evolution.data ? `${evolution.data}T12:00:00.000Z` : undefined,
