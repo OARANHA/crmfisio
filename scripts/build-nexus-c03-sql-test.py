@@ -56,6 +56,12 @@ c03 = migrations / "20260908_nexus_c03_clinical_lifecycle.sql"
 print(c03.read_text())
 print(c03.read_text())  # additive/idempotent replay before new lifecycle rows
 
+# Terminal-state precedence is a small additive hardening layered after the base
+# C-03 migration. Replay it too so the disposable suite catches idempotency drift.
+signed_guard = migrations / "20260908_nexus_c03_signed_immutability_guard.sql"
+print(signed_guard.read_text())
+print(signed_guard.read_text())
+
 cases = (root / "tests/sql/nexus_c03_cases.sql").read_text()
 probe_start = "-- 7) Even a privileged direct write cannot forge a reviewer different from the"
 probe_end = "-- 11) EEM remains atomic and its existing explicit human finalization action now"
@@ -77,3 +83,7 @@ cases = cases.replace(
     1,
 )
 print(cases)
+
+# A second, neutral mutation touches only updated_at. It proves signed immutability
+# without relying on a timestamp-order violation to reach the terminal guard.
+print((root / "tests/sql/nexus_c03_signed_immutability_probe.sql").read_text())
