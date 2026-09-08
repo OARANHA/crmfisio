@@ -3,7 +3,12 @@ import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
-import { acknowledgeNexusRedFlag, hasProfessionalCapability } from '../lib/nexusClinical';
+import {
+  acknowledgeNexusRedFlag,
+  hasProfessionalCapability,
+  reviewNexusResult,
+  signNexusResult,
+} from '../lib/nexusClinical';
 import { Btn, Chip } from '../lib/ui';
 
 type InviteRow = {
@@ -20,8 +25,17 @@ type InviteRow = {
   last_processing_error: string | null;
 };
 
+type LifecycleRow = {
+  processed_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  signed_at: string | null;
+  signed_by: string | null;
+};
+
 type ResultRow = {
   id: string;
+  professional_id: string;
   tool_key: string;
   rule_version: string;
   status: string;
@@ -30,6 +44,7 @@ type ResultRow = {
   classification: string | null;
   severity: string | null;
   finalized_at: string | null;
+  nexus_result_clinical_lifecycle: LifecycleRow | LifecycleRow[] | null;
 };
 
 type RedFlagRow = {
@@ -67,6 +82,20 @@ function fmtDate(value: string | null | undefined) {
   return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+function lifecycleOf(result: ResultRow): LifecycleRow | null {
+  const value = result.nexus_result_clinical_lifecycle;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function lifecycleMeta(result: ResultRow) {
+  const lifecycle = lifecycleOf(result);
+  if (lifecycle?.signed_at) return { label: 'Finalizado clinicamente', cls: 'border-mint/35 bg-mint/10 text-mint' };
+  if (lifecycle?.reviewed_at) return { label: 'Revisado · aguarda finalização', cls: 'border-aqua/35 bg-aqua/10 text-aqua' };
+  if (lifecycle?.processed_at) return { label: 'Processado · aguarda revisão', cls: 'border-amber/35 bg-amber/10 text-amber' };
+  return { label: 'Histórico · revisão não comprovada', cls: 'border-fog/30 bg-fog/10 text-fog' };
+}
+
 export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
@@ -75,6 +104,7 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [lifecycleActionId, setLifecycleActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,7 +131,9 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
       let redFlags: RedFlagRow[] = [];
       if (resultIds.length > 0) {
         const [{ data: resultData, error: resultError }, { data: flagData, error: flagError }] = await Promise.all([
-          db.from('nexus_clinical_results').select('id,tool_key,rule_version,status,total_score,max_score,classification,severity,finalized_at').in('id', resultIds),
+          db.from('nexus_clinical_results')
+            .select('id,professional_id,tool_key,rule_version,status,total_score,max_score,classification,severity,finalized_at,nexus_result_clinical_lifecycle(processed_at,reviewed_at,reviewed_by,signed_at,signed_by)')
+            .in('id', resultIds),
           db.from('nexus_red_flags').select('id,result_id,flag_code,severity,title,message,required_action,created_at,acknowledged_at').in('result_id', resultIds),
         ]);
         if (resultError) throw resultError;
@@ -141,6 +173,26 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
     }
   };
 
+  const actOnLifecycle = async (result: ResultRow, action: 'review' | 'sign') => {
+    if (!user || lifecycleActionId) return;
+    setLifecycleActionId(result.id);
+    try {
+      if (action === 'review') {
+        await reviewNexusResult(result.id);
+        toast('Resultado Nexus revisado. A finalização clínica continua sendo uma ação separada.', 'info');
+      } else {
+        await signNexusResult(result.id);
+        toast('Resultado Nexus finalizado clinicamente pelo autor.', 'info');
+      }
+      await load();
+    } catch (cause) {
+      console.error(`[MedicsPro] ${action} resultado Nexus:`, cause);
+      toast(action === 'review' ? 'Não foi possível revisar este resultado Nexus.' : 'Não foi possível finalizar clinicamente este resultado Nexus.', 'warn');
+    } finally {
+      setLifecycleActionId(null);
+    }
+  };
+
   const openFlags = useMemo(() => items.flatMap((item) => item.redFlags).filter((flag) => !flag.acknowledged_at), [items]);
 
   if (allowed === false) return null;
@@ -150,7 +202,7 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
       <div className="min-w-0 flex-1">
         <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-aqua">Nexus · acompanhamento</p>
         <h3 className="mt-1 font-display text-[15px] font-semibold">Autoavaliações recentes</h3>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-fog">Acompanhe envio, abertura, resposta e resultado processado sem sair do prontuário.</p>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-fog">Acompanhe processamento, revisão humana e finalização clínica como etapas distintas.</p>
       </div>
       <div className="flex items-center gap-2">{openFlags.length > 0 && <Chip className="border-pulse/35 bg-pulse/10 text-pulse">{openFlags.length} alerta(s) aberto(s)</Chip>}<Btn variant="ghost" onClick={() => void load()} disabled={loading}>{loading ? 'Atualizando…' : 'Atualizar'}</Btn></div>
     </div>
@@ -162,16 +214,20 @@ export function NexusSelfAssessmentStatus({ patient }: { patient: Patient }) {
       {items.map((item) => {
         const status = STATUS_META[item.status] ?? { label: item.status, cls: 'border-line bg-panel text-fog' };
         const result = item.result;
+        const lifecycle = result ? lifecycleOf(result) : null;
+        const resultLifecycle = result ? lifecycleMeta(result) : null;
+        const isAuthor = Boolean(user && result && result.professional_id === user.id);
         return <article key={item.id} className="p-3.5">
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2"><span className="font-display text-[13.5px] font-semibold">{SCALE_LABEL[item.scale_key] ?? item.scale_key.toUpperCase()}</span><Chip className={status.cls}>{status.label}</Chip>{item.redFlags.some((flag) => !flag.acknowledged_at) && <Chip className="border-pulse/35 bg-pulse/10 text-pulse">red flag</Chip>}</div>
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10.5px] text-fog"><span>enviado {fmtDate(item.created_at)}</span>{item.opened_at && <span>aberto {fmtDate(item.opened_at)}</span>}{item.submitted_at && <span>respondido {fmtDate(item.submitted_at)}</span>}</div>
+              <div className="flex flex-wrap items-center gap-2"><span className="font-display text-[13.5px] font-semibold">{SCALE_LABEL[item.scale_key] ?? item.scale_key.toUpperCase()}</span><Chip className={status.cls}>{status.label}</Chip>{resultLifecycle && <Chip className={resultLifecycle.cls}>{resultLifecycle.label}</Chip>}{item.redFlags.some((flag) => !flag.acknowledged_at) && <Chip className="border-pulse/35 bg-pulse/10 text-pulse">red flag</Chip>}</div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10.5px] text-fog"><span>enviado {fmtDate(item.created_at)}</span>{item.opened_at && <span>aberto {fmtDate(item.opened_at)}</span>}{item.submitted_at && <span>respondido {fmtDate(item.submitted_at)}</span>}{lifecycle?.reviewed_at && <span>revisado {fmtDate(lifecycle.reviewed_at)}</span>}{lifecycle?.signed_at && <span>finalizado clinicamente {fmtDate(lifecycle.signed_at)}</span>}</div>
             </div>
-            {result && <div className="min-w-[190px] rounded-lg border border-line/70 bg-panel/70 px-3 py-2 text-right"><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-fog">Resultado finalizado</p><p className="mt-1 font-display text-[17px] font-bold text-paper">{result.total_score ?? '—'}{result.max_score != null ? ` / ${result.max_score}` : ''}</p><p className="mt-0.5 text-[11.5px] text-fog">{result.classification || result.severity || 'Classificação não informada'}</p></div>}
+            {result && <div className="min-w-[210px] rounded-lg border border-line/70 bg-panel/70 px-3 py-2 text-right"><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-fog">Resultado processado</p><p className="mt-1 font-display text-[17px] font-bold text-paper">{result.total_score ?? '—'}{result.max_score != null ? ` / ${result.max_score}` : ''}</p><p className="mt-0.5 text-[11.5px] text-fog">{result.classification || result.severity || 'Classificação não informada'}</p>{isAuthor && !lifecycle?.signed_at && <div className="mt-2 flex justify-end">{lifecycle?.reviewed_at ? <Btn variant="ghost" onClick={() => void actOnLifecycle(result, 'sign')} disabled={lifecycleActionId !== null}>{lifecycleActionId === result.id ? 'Finalizando…' : 'Finalizar clinicamente'}</Btn> : <Btn variant="ghost" onClick={() => void actOnLifecycle(result, 'review')} disabled={lifecycleActionId !== null}>{lifecycleActionId === result.id ? 'Revisando…' : 'Revisar resultado'}</Btn>}</div>}</div>}
           </div>
+          {result && !lifecycle?.reviewed_at && <p className="mt-2 text-[11px] leading-relaxed text-amber">Resultado processado não equivale a revisão médica. Interpretação, SOAP e red flags continuam sujeitos a julgamento clínico humano.</p>}
           {item.status === 'submitted' && item.processing_attempts === 0 && <p className="mt-2 text-[11.5px] text-aqua">Resposta recebida. O processor automático deve concluir no próximo ciclo.</p>}
-          {item.last_processing_error && <p className="mt-2 rounded-lg border border-pulse/25 bg-pulse/[0.04] px-2.5 py-2 text-[11.5px] text-pulse">Falha de processamento registrada. O dado clínico não foi finalizado silenciosamente.</p>}
+          {item.last_processing_error && <p className="mt-2 rounded-lg border border-pulse/25 bg-pulse/[0.04] px-2.5 py-2 text-[11.5px] text-pulse">Falha de processamento registrada. O processamento clínico não foi concluído silenciosamente.</p>}
           {item.redFlags.length > 0 && <div className="mt-2 space-y-1.5">{item.redFlags.map((flag) => <div key={flag.id} className="rounded-lg border border-pulse/25 bg-pulse/[0.035] px-2.5 py-2"><div className="flex flex-wrap items-start gap-2"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-[11.5px] font-semibold text-pulse">{flag.title}</span><span className="font-mono text-[10px] uppercase text-fog">{flag.severity}</span>{flag.acknowledged_at ? <span className="text-[10.5px] text-mint">reconhecido</span> : <span className="text-[10.5px] text-pulse">aberto</span>}</div><p className="mt-1 text-[11px] leading-relaxed text-fog">{flag.message}</p>{flag.required_action && <p className="mt-1 text-[10.5px] font-medium leading-relaxed text-pulse">{flag.required_action}</p>}</div>{!flag.acknowledged_at && <Btn variant="ghost" onClick={() => void acknowledge(flag.id)} disabled={acknowledgingId !== null}>{acknowledgingId === flag.id ? 'Reconhecendo…' : 'Reconhecer alerta'}</Btn>}</div></div>)}</div>}
           {item.redFlags.some((flag) => flag.acknowledged_at) && <p className="mt-2 text-[10.5px] leading-relaxed text-fog">Reconhecer confirma revisão do alerta; não apaga o achado nem substitui avaliação, registro ou conduta clínica.</p>}
         </article>;

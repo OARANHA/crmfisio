@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 export type NexusSeverity = 'low' | 'moderate' | 'high' | 'severe';
 export type NexusRedFlagSeverity = 'warning' | 'critical';
 export type NexusResultStatus = 'draft' | 'finalized';
+export type NexusClinicalLifecycleState = 'draft' | 'legacy-frozen' | 'processed' | 'reviewed' | 'signed';
 
 export type NexusEvidenceSnapshot = {
   evidenceKey?: string;
@@ -25,6 +26,12 @@ export type NexusClinicalResult = {
   ruleVersion: string;
   requiredCapability: string;
   status: NexusResultStatus;
+  lifecycleState: NexusClinicalLifecycleState;
+  processedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  signedAt: string | null;
+  signedBy: string | null;
   inputSnapshot: Record<string, unknown>;
   outputSnapshot: Record<string, unknown>;
   totalScore: number | null;
@@ -98,6 +105,7 @@ export type NexusRedFlagInput = {
 };
 
 const db = supabase as any;
+const RESULT_SELECT = '*, nexus_result_clinical_lifecycle(processed_at,reviewed_at,reviewed_by,signed_at,signed_by)';
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -107,32 +115,55 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 const asEvidence = (value: unknown): NexusEvidenceSnapshot[] =>
   Array.isArray(value) ? value as NexusEvidenceSnapshot[] : [];
 
-const mapResult = (row: any): NexusClinicalResult => ({
-  id: row.id,
-  clinicId: row.clinic_id,
-  patientId: row.patient_id,
-  professionalId: row.professional_id,
-  appointmentId: row.appointment_id ?? null,
-  moduleKey: row.module_key,
-  toolKey: row.tool_key,
-  ruleKey: row.rule_key,
-  ruleVersion: row.rule_version,
-  requiredCapability: row.required_capability,
-  status: row.status,
-  inputSnapshot: asRecord(row.input_snapshot),
-  outputSnapshot: asRecord(row.output_snapshot),
-  totalScore: row.total_score == null ? null : Number(row.total_score),
-  maxScore: row.max_score == null ? null : Number(row.max_score),
-  classification: row.classification ?? null,
-  severity: row.severity ?? null,
-  interpretation: row.interpretation ?? null,
-  soapText: row.soap_text ?? null,
-  evidenceSnapshot: asEvidence(row.evidence_snapshot),
-  startedAt: row.started_at,
-  finalizedAt: row.finalized_at ?? null,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const asLifecycle = (row: any): any | null => {
+  const value = row?.nexus_result_clinical_lifecycle;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value && typeof value === 'object' ? value : null;
+};
+
+const lifecycleState = (row: any, lifecycle: any | null): NexusClinicalLifecycleState => {
+  if (lifecycle?.signed_at) return 'signed';
+  if (lifecycle?.reviewed_at) return 'reviewed';
+  if (lifecycle?.processed_at) return 'processed';
+  if (row.status === 'finalized') return 'legacy-frozen';
+  return 'draft';
+};
+
+const mapResult = (row: any): NexusClinicalResult => {
+  const lifecycle = asLifecycle(row);
+  return {
+    id: row.id,
+    clinicId: row.clinic_id,
+    patientId: row.patient_id,
+    professionalId: row.professional_id,
+    appointmentId: row.appointment_id ?? null,
+    moduleKey: row.module_key,
+    toolKey: row.tool_key,
+    ruleKey: row.rule_key,
+    ruleVersion: row.rule_version,
+    requiredCapability: row.required_capability,
+    status: row.status,
+    lifecycleState: lifecycleState(row, lifecycle),
+    processedAt: lifecycle?.processed_at ?? null,
+    reviewedAt: lifecycle?.reviewed_at ?? null,
+    reviewedBy: lifecycle?.reviewed_by ?? null,
+    signedAt: lifecycle?.signed_at ?? null,
+    signedBy: lifecycle?.signed_by ?? null,
+    inputSnapshot: asRecord(row.input_snapshot),
+    outputSnapshot: asRecord(row.output_snapshot),
+    totalScore: row.total_score == null ? null : Number(row.total_score),
+    maxScore: row.max_score == null ? null : Number(row.max_score),
+    classification: row.classification ?? null,
+    severity: row.severity ?? null,
+    interpretation: row.interpretation ?? null,
+    soapText: row.soap_text ?? null,
+    evidenceSnapshot: asEvidence(row.evidence_snapshot),
+    startedAt: row.started_at,
+    finalizedAt: row.finalized_at ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
 const mapRedFlag = (row: any): NexusRedFlag => ({
   id: row.id,
@@ -234,23 +265,33 @@ export async function createNexusRedFlag(input: NexusRedFlagInput): Promise<Nexu
   return mapRedFlag(data);
 }
 
-export async function finalizeNexusResult(resultId: string): Promise<NexusClinicalResult> {
-  const { data, error } = await db
-    .from('nexus_clinical_results')
-    .update({ status: 'finalized', finalized_at: new Date().toISOString() })
-    .eq('id', resultId)
-    .eq('status', 'draft')
-    .select('*')
-    .single();
+export async function completeNexusResultProcessing(resultId: string): Promise<NexusClinicalResult> {
+  const { error } = await db.rpc('complete_nexus_result_processing', { p_result_id: resultId });
+  if (error) throw error;
+  return getNexusResultById(resultId);
+}
 
-  if (error || !data) throw error ?? new Error('Não foi possível finalizar o resultado Nexus.');
-  return mapResult(data);
+export async function reviewNexusResult(resultId: string): Promise<NexusClinicalResult> {
+  const { error } = await db.rpc('review_nexus_result', { p_result_id: resultId });
+  if (error) throw error;
+  return getNexusResultById(resultId);
+}
+
+export async function signNexusResult(resultId: string): Promise<NexusClinicalResult> {
+  const { error } = await db.rpc('sign_nexus_result', { p_result_id: resultId });
+  if (error) throw error;
+  return getNexusResultById(resultId);
+}
+
+/** @deprecated Use completeNexusResultProcessing -> reviewNexusResult -> signNexusResult. */
+export async function finalizeNexusResult(resultId: string): Promise<NexusClinicalResult> {
+  return signNexusResult(resultId);
 }
 
 export async function getNexusResultById(resultId: string): Promise<NexusClinicalResult> {
   const { data, error } = await db
     .from('nexus_clinical_results')
-    .select('*')
+    .select(RESULT_SELECT)
     .eq('id', resultId)
     .single();
 
@@ -280,7 +321,7 @@ export async function acknowledgeNexusRedFlag(
 export async function listPatientNexusResults(patientId: string): Promise<NexusClinicalResult[]> {
   const { data, error } = await db
     .from('nexus_clinical_results')
-    .select('*')
+    .select(RESULT_SELECT)
     .eq('patient_id', patientId)
     .eq('status', 'finalized')
     .order('created_at', { ascending: false });

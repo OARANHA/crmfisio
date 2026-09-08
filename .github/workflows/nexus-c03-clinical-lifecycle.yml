@@ -1,0 +1,35 @@
+name: Nexus C-03 PostgreSQL Clinical Lifecycle
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  nexus-c03-clinical-lifecycle:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: nexus_c03_disposable_test
+          POSTGRES_DB: nexus_c03_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nexus_c03_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: nexus_c03_disposable_test
+      PGDATABASE: nexus_c03_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Reproduce ambiguity and verify C-03 clinical lifecycle
+        run: bash scripts/test-nexus-c03.sh
