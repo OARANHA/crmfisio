@@ -55,4 +55,25 @@ print((root / "tests/sql/nexus_c03_before.sql").read_text())
 c03 = migrations / "20260908_nexus_c03_clinical_lifecycle.sql"
 print(c03.read_text())
 print(c03.read_text())  # additive/idempotent replay before new lifecycle rows
-print((root / "tests/sql/nexus_c03_cases.sql").read_text())
+
+cases = (root / "tests/sql/nexus_c03_cases.sql").read_text()
+probe_start = "-- 7) Even a privileged direct write cannot forge a reviewer different from the"
+probe_end = "-- 11) EEM remains atomic and its existing explicit human finalization action now"
+if probe_start not in cases or probe_end not in cases:
+    raise SystemExit("Missing C-03 privileged lifecycle probe markers")
+
+# Production intentionally gives service_role no direct lifecycle UPDATE. The two
+# destructive guard probes temporarily add that ACL only in this disposable DB so
+# the trigger is exercised as a second line of defense, then restore least privilege
+# before the verifier runs.
+cases = cases.replace(
+    probe_start,
+    "GRANT UPDATE ON public.nexus_result_clinical_lifecycle TO service_role;\n\n" + probe_start,
+    1,
+)
+cases = cases.replace(
+    probe_end,
+    "REVOKE UPDATE ON public.nexus_result_clinical_lifecycle FROM service_role;\n\n" + probe_end,
+    1,
+)
+print(cases)
