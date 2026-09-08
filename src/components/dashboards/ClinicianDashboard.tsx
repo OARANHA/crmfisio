@@ -7,6 +7,7 @@ import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { usePatients } from '../../lib/patientContext';
 import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
+import { professionalIdOf } from '../../lib/professionalReference';
 import { STATUS_META } from '../../lib/types';
 import { Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
@@ -23,7 +24,7 @@ export function ClinicianDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   const ownAppointments = useMemo(
-    () => appointments.filter((appointment) => appointment.fisioId === user?.id),
+    () => appointments.filter((appointment) => professionalIdOf(appointment) === user?.id),
     [appointments, user?.id],
   );
 
