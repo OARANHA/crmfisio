@@ -11,6 +11,7 @@ import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useFinance } from '../lib/financeContext';
 import { usePackages } from '../lib/packageContext';
 import { useClinical } from '../lib/clinicalContext';
+import { professionalIdOf } from '../lib/professionalReference';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
@@ -104,7 +105,7 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
 
   const clinicalRead = canReadTimeline || isClinicManager(user?.role);
   const documentWrite = canManageClinicalDocuments || isClinicManager(user?.role) || user?.role === 'recep';
-  const canTransitionSession = (session: Appointment) => Boolean(canAttend && user?.id && user.id === session.fisioId);
+  const canTransitionSession = (session: Appointment) => Boolean(canAttend && user?.id && user.id === professionalIdOf(session));
 
   const sessions = useMemo(
     () => appointments
@@ -123,7 +124,7 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
     const session = sessions.find((item) => item.id === initialSessionId);
     if (!session) return;
     focusedSessionRef.current = initialSessionId;
-    if (canAttend && user?.id === session.fisioId && session.status === 'em_atendimento') {
+    if (canAttend && user?.id === professionalIdOf(session) && session.status === 'em_atendimento') {
       setSessionId(session.id);
       setTab('evolucoes');
       return;
