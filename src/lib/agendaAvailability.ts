@@ -1,4 +1,5 @@
 import { addDays, format } from 'date-fns';
+import { professionalIdOf } from './professionalReference';
 import type { Appointment, Room } from './types';
 
 export interface AvailabilitySearch {
@@ -71,7 +72,7 @@ export function findAvailability({
           const end = start + search.durationMin;
           const conflict = active.some((appointment) =>
             appointment.data === iso &&
-            (appointment.fisioId === fisioId || appointment.roomId === room.id) &&
+            (professionalIdOf(appointment) === fisioId || appointment.roomId === room.id) &&
             toMin(appointment.inicio) < end &&
             toMin(appointment.fim) > start);
           if (conflict) continue;
