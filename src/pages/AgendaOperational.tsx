@@ -1,26 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import { AgendaCapacityInsights } from '../components/AgendaCapacityInsights';
 import { AppointmentRecurrencePanel } from '../components/AppointmentRecurrencePanel';
 import { AppointmentSeriesManager } from '../components/AppointmentSeriesManager';
 import { Reveal } from '../components/Reveal';
-import { Btn } from '../lib/ui';
 import '../styles/agenda-priority-v4.css';
 import { AgendaReal } from './AgendaReal';
 
 export function AgendaOperational() {
-  const nav = useNavigate();
   return (
     <div className="space-y-6">
-      <Reveal>
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-line/60 bg-panel/55 px-4 py-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-mint">Visão operacional</p>
-            <p className="mt-0.5 text-[13px] text-fog">O calendário é a superfície principal; filtros e sinais ficam como apoio lateral.</p>
-          </div>
-          <Btn variant="ghost" onClick={() => nav('/hoje')}>Hoje · Recepção →</Btn>
-        </div>
-      </Reveal>
-
       <div className="agenda-priority-v4">
         <AgendaReal />
       </div>
