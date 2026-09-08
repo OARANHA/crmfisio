@@ -18,91 +18,46 @@ if ! psql -X -v ON_ERROR_STOP=1 -f "$tmp/c03.sql" > "$tmp/c03.log" 2>&1; then
 fi
 
 grep -F 'NEXUS_C03_FINALIZED_WITHOUT_HUMAN_REVIEW_REPRODUCED' "$tmp/c03.log"
+grep -F 'NEXUS_C03_HISTORICAL_GUARD_DRIFT_REPRODUCED' "$tmp/c03.log"
+grep -F 'NEXUS_C03_ROLLOUT_CORRECTION_SHAPE_OK' "$tmp/c03.log"
 grep -F 'NEXUS_C03_BEHAVIOR_OK' "$tmp/c03.log"
 grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' "$tmp/c03.log"
 
-# Explicitly prove chronology while the lifecycle is still unsigned, then replay
-# process/review/sign and ensure no timestamp (including updated_at) regresses.
-psql -X -v ON_ERROR_STOP=1 \
-  -f tests/sql/nexus_c03_monotonicity_probe.sql \
-  > "$tmp/monotonicity.log"
+psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c03_monotonicity_probe.sql > "$tmp/monotonicity.log"
 grep -F 'NEXUS_C03_MONOTONICITY_PROBE_OK' "$tmp/monotonicity.log"
 
-psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
-  > "$tmp/c03-verifier.log"
+# Explicit posterior verifier reused for the rollout correction.
+psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql > "$tmp/c03-verifier.log"
 grep -F 'NEXUS_C03_VERIFIED' "$tmp/c03-verifier.log"
 
-# Earlier contracts remain independently verifiable after C-03.
-psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_verify_nexus_c02_trusted_result_contract.sql \
-  > "$tmp/c02-verifier.log"
+psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c02_trusted_result_contract.sql > "$tmp/c02-verifier.log"
 grep -F 'NEXUS_C02_VERIFIED' "$tmp/c02-verifier.log"
-
-psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_verify_nexus_c06_professional_authorization.sql \
-  > "$tmp/c06-verifier.log"
+psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c06_professional_authorization.sql > "$tmp/c06-verifier.log"
 grep -F 'NEXUS_C06_VERIFIED' "$tmp/c06-verifier.log"
 
-# The C-03 verifier must reject a disabled lifecycle guard trigger.
-psql -X -v ON_ERROR_STOP=1 -c \
-  'ALTER TABLE public.nexus_result_clinical_lifecycle DISABLE TRIGGER trg_nexus_result_clinical_lifecycle'
-if psql -X -v ON_ERROR_STOP=1 \
-    -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
-    > "$tmp/trigger-drift.log" 2>&1; then
-  echo 'C-03 verifier accepted a disabled lifecycle trigger.' >&2
-  exit 1
+psql -X -v ON_ERROR_STOP=1 -c 'ALTER TABLE public.nexus_result_clinical_lifecycle DISABLE TRIGGER trg_nexus_result_clinical_lifecycle'
+if psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql > "$tmp/trigger-drift.log" 2>&1; then
+  echo 'C-03 verifier accepted a disabled lifecycle trigger.' >&2; exit 1
 fi
 grep -F 'nexus_c03_lifecycle_trigger_missing_or_disabled' "$tmp/trigger-drift.log"
-psql -X -v ON_ERROR_STOP=1 -c \
-  'ALTER TABLE public.nexus_result_clinical_lifecycle ENABLE TRIGGER trg_nexus_result_clinical_lifecycle'
+psql -X -v ON_ERROR_STOP=1 -c 'ALTER TABLE public.nexus_result_clinical_lifecycle ENABLE TRIGGER trg_nexus_result_clinical_lifecycle'
 
-# Remove only the signed terminal guard while preserving the chronology/content
-# validations. Both the structural verifier and the neutral behavioral probe must
-# fail for that exact negative control.
-psql -X -v ON_ERROR_STOP=1 \
-  -f tests/sql/nexus_c03_remove_terminal_guard.sql \
-  > "$tmp/remove-terminal-guard.log"
-grep -F 'NEXUS_C03_TERMINAL_GUARD_REMOVED_FOR_NEGATIVE_CONTROL' \
-  "$tmp/remove-terminal-guard.log"
-
-if psql -X -v ON_ERROR_STOP=1 \
-    -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
-    > "$tmp/guard-drift.log" 2>&1; then
-  echo 'C-03 verifier accepted the lifecycle function with only the terminal guard removed.' >&2
-  exit 1
+psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c03_remove_terminal_guard.sql > "$tmp/remove-terminal-guard.log"
+grep -F 'NEXUS_C03_TERMINAL_GUARD_REMOVED_FOR_NEGATIVE_CONTROL' "$tmp/remove-terminal-guard.log"
+if psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql > "$tmp/guard-drift.log" 2>&1; then
+  echo 'C-03 verifier accepted the lifecycle function with only the terminal guard removed.' >&2; exit 1
 fi
 grep -F 'nexus_c03_lifecycle_guard_drift' "$tmp/guard-drift.log"
-
-if psql -X -v ON_ERROR_STOP=1 \
-    -f tests/sql/nexus_c03_signed_immutability_probe.sql \
-    > "$tmp/guardless-neutral-probe.log" 2>&1; then
-  echo 'C-03 neutral probe passed after the terminal signed guard was removed.' >&2
-  exit 1
+if psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c03_signed_immutability_probe.sql > "$tmp/guardless-neutral-probe.log" 2>&1; then
+  echo 'C-03 neutral probe passed after the terminal signed guard was removed.' >&2; exit 1
 fi
-grep -F 'C03 neutral signed lifecycle mutation escaped' \
-  "$tmp/guardless-neutral-probe.log"
+grep -F 'C03 neutral signed lifecycle mutation escaped' "$tmp/guardless-neutral-probe.log"
 
-# The negative probe stops before its cleanup statements by design. Restore the
-# disposable DB ACL explicitly, then restore the canonical terminal guard.
-psql -X -v ON_ERROR_STOP=1 -c \
-  'REVOKE UPDATE ON public.nexus_result_clinical_lifecycle FROM service_role'
-
-psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_nexus_c03_signed_immutability_guard.sql \
-  > "$tmp/restore-guard.log"
-
-# After restoration, the same neutral probe must again hit the signed-immutable
-# exception and the production-safe verifier must return green.
-psql -X -v ON_ERROR_STOP=1 \
-  -f tests/sql/nexus_c03_signed_immutability_probe.sql \
-  > "$tmp/restored-neutral-probe.log"
-grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' \
-  "$tmp/restored-neutral-probe.log"
-
-psql -X -v ON_ERROR_STOP=1 \
-  -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql \
-  > "$tmp/final-verifier.log"
+psql -X -v ON_ERROR_STOP=1 -c 'REVOKE UPDATE ON public.nexus_result_clinical_lifecycle FROM service_role'
+psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_nexus_c03_lifecycle_guard_rollout_correction.sql > "$tmp/restore-guard.log"
+psql -X -v ON_ERROR_STOP=1 -f tests/sql/nexus_c03_signed_immutability_probe.sql > "$tmp/restored-neutral-probe.log"
+grep -F 'NEXUS_C03_SIGNED_IMMUTABILITY_NEUTRAL_PROBE_OK' "$tmp/restored-neutral-probe.log"
+psql -X -v ON_ERROR_STOP=1 -f supabase-migrations/20260908_verify_nexus_c03_clinical_lifecycle.sql > "$tmp/final-verifier.log"
 grep -F 'NEXUS_C03_VERIFIED' "$tmp/final-verifier.log"
 
 echo 'NEXUS_C03_POSTGRES16_OK'

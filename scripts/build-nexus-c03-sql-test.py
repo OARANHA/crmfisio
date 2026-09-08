@@ -3,7 +3,9 @@
 The C-02 builder establishes the real C-01/C-06/C-02 security baseline and its
 behavioral regressions. This suite then installs the effective pre-C03 automatic
 processor, proves that it can create a finalized result without human review,
-applies C-03 and exercises the new lifecycle matrix.
+applies the historical C-03 migration exactly as committed, reproduces its guard
+drift, then applies the additive rollout correction before exercising the lifecycle
+matrix.
 """
 from pathlib import Path
 import re
@@ -21,8 +23,6 @@ baseline = subprocess.run(
 )
 print(baseline.stdout)
 
-# The C-02 write harness did not need processor bookkeeping columns/functions.
-# Add only the historical processor dependencies before reproducing C-03.
 print("""
 ALTER TABLE public.nexus_self_assessment_invites
   ADD COLUMN IF NOT EXISTS processing_started_at timestamptz,
@@ -30,9 +30,7 @@ ALTER TABLE public.nexus_self_assessment_invites
   ADD COLUMN IF NOT EXISTS last_processing_error text;
 """)
 
-processor_source = (
-    migrations / "20260906_nexus_clinic_lifecycle_boundary.sql"
-).read_text()
+processor_source = (migrations / "20260906_nexus_clinic_lifecycle_boundary.sql").read_text()
 processor_fn = re.search(
     r"CREATE OR REPLACE FUNCTION public\.complete_nexus_self_assessment_processing\([\s\S]*?\$\$;",
     processor_source,
@@ -41,26 +39,20 @@ processor_fn = re.search(
 if not processor_fn:
     raise SystemExit("Missing effective pre-C03 self-assessment processor")
 print(processor_fn.group())
-print(
-    "REVOKE ALL ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) "
-    "FROM PUBLIC, anon, authenticated;"
-)
-print(
-    "GRANT EXECUTE ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) "
-    "TO service_role;"
-)
+print("REVOKE ALL ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) FROM PUBLIC, anon, authenticated;")
+print("GRANT EXECUTE ON FUNCTION public.complete_nexus_self_assessment_processing(uuid,jsonb,jsonb) TO service_role;")
 
 print((root / "tests/sql/nexus_c03_before.sql").read_text())
 
 c03 = migrations / "20260908_nexus_c03_clinical_lifecycle.sql"
 print(c03.read_text())
-print(c03.read_text())  # additive/idempotent replay before new lifecycle rows
+print(c03.read_text())
+print((root / "tests/sql/nexus_c03_rollout_drift_reproduction.sql").read_text())
 
-# Terminal-state precedence is a small additive hardening layered after the base
-# C-03 migration. Replay it too so the disposable suite catches idempotency drift.
-signed_guard = migrations / "20260908_nexus_c03_signed_immutability_guard.sql"
-print(signed_guard.read_text())
-print(signed_guard.read_text())
+rollout_correction = migrations / "20260908_nexus_c03_lifecycle_guard_rollout_correction.sql"
+print(rollout_correction.read_text())
+print(rollout_correction.read_text())
+print((root / "tests/sql/nexus_c03_post_correction_guard_shape.sql").read_text())
 
 cases = (root / "tests/sql/nexus_c03_cases.sql").read_text()
 probe_start = "-- 7) Even a privileged direct write cannot forge a reviewer different from the"
@@ -68,10 +60,6 @@ probe_end = "-- 11) EEM remains atomic and its existing explicit human finalizat
 if probe_start not in cases or probe_end not in cases:
     raise SystemExit("Missing C-03 privileged lifecycle probe markers")
 
-# Production intentionally gives service_role no direct lifecycle UPDATE. The two
-# destructive guard probes temporarily add that ACL only in this disposable DB so
-# the trigger is exercised as a second line of defense, then restore least privilege
-# before the verifier runs.
 cases = cases.replace(
     probe_start,
     "GRANT UPDATE ON public.nexus_result_clinical_lifecycle TO service_role;\n\n" + probe_start,
@@ -83,7 +71,4 @@ cases = cases.replace(
     1,
 )
 print(cases)
-
-# A second, neutral mutation touches only updated_at. It proves signed immutability
-# without relying on a timestamp-order violation to reach the terminal guard.
 print((root / "tests/sql/nexus_c03_signed_immutability_probe.sql").read_text())
