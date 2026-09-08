@@ -7,7 +7,7 @@ const source = readFileSync(fileURLToPath(new URL('../components/PatientCareCock
 describe('patient care cockpit', () => {
   it('keeps clinical continuation bound to clinical.attend and the assigned professional', () => {
     expect(source).toContain("useClinicalCapability('clinical.attend'");
-    expect(source).toContain('activeSession.fisioId === user?.id');
+    expect(source).toContain('professionalIdOf(activeSession) === user?.id');
     expect(source).toContain('Continuar atendimento');
   });
 
@@ -18,9 +18,9 @@ describe('patient care cockpit', () => {
   });
 
   it('keeps the patient page as the operational hub instead of creating a separate solo login', () => {
-    expect(source).toContain('Central do paciente');
-    expect(source).toContain('Seu consultório em um único contexto');
-    expect(source).toContain('Agendar próximo atendimento');
+    expect(source).toContain('Cockpit do paciente');
+    expect(source).toContain('Atendimento, prontuário, continuidade e próximos passos reunidos no mesmo contexto.');
+    expect(source).toContain('Agendar atendimento');
     expect(source).toContain('Ver Financeiro');
   });
 });
