@@ -7,7 +7,7 @@ const modal = readFileSync(fileURLToPath(new URL('../components/AppointmentActio
 describe('agenda clinical action boundary', () => {
   it('binds clinical actions to clinical.attend and the assigned professional', () => {
     expect(modal).toContain("useClinicalCapability('clinical.attend'");
-    expect(modal).toContain('user?.id === appointment.fisioId');
+    expect(modal).toContain('user?.id === professionalIdOf(appointment)');
     expect(modal).toContain("if (action.status === 'em_atendimento') return canClinicalTransition");
   });
 

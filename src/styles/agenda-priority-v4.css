@@ -1,4 +1,4 @@
-/* Agenda V6 — calendar-first workspace. Supporting information flows below the calendar. */
+/* Agenda V7 — widescreen calendar-first workspace with stronger operational typography. */
 .agenda-priority-v4 {
   position: relative;
 }
@@ -25,6 +25,8 @@
 
 .agenda-priority-v4 > .space-y-5 > :first-child section h1 {
   margin-top: 0 !important;
+  font-size: 34px !important;
+  line-height: 1.05 !important;
 }
 
 .agenda-priority-v4 > .space-y-5 > :first-child section h1 ~ p:last-child {
@@ -32,8 +34,8 @@
 }
 
 .agenda-priority-v4 > .space-y-5 > :first-child section > div:first-child {
-  padding-top: 16px !important;
-  padding-bottom: 14px !important;
+  padding-top: 18px !important;
+  padding-bottom: 16px !important;
 }
 
 /* The drag explanation is useful during discovery, but should not permanently consume vertical space. */
@@ -47,13 +49,14 @@
 .agenda-reception-shortcut {
   position: absolute;
   z-index: 35;
-  top: 72px;
+  top: 74px;
   right: 238px;
 }
 
 .agenda-reception-shortcut button {
-  min-height: 36px;
+  min-height: 40px;
   white-space: nowrap;
+  font-size: 13.5px !important;
 }
 
 /* The existing status legend is attached to the agenda card itself. */
@@ -68,22 +71,28 @@
   border-radius: 0 0 18px 18px !important;
   border-top: 0 !important;
   background: color-mix(in srgb, var(--color-panel) 91%, var(--color-deep) 9%) !important;
-  padding: 10px 18px !important;
+  padding: 12px 20px !important;
 }
 
 .agenda-priority-v4 > .space-y-5 > :has(span > span[style*="background"]) > div > span {
-  font-size: 12px !important;
-  font-weight: 600;
+  font-size: 13.5px !important;
+  font-weight: 650;
 }
 
 .agenda-priority-v4 > .space-y-5 > :has(span > span[style*="background"]) > div > span > span {
-  width: 9px !important;
-  height: 9px !important;
+  width: 10px !important;
+  height: 10px !important;
 }
 
 /* Filters remain immediately above the calendar, not in a side rail. */
 .agenda-priority-v4 > .space-y-5 > :has(input[placeholder^="Buscar paciente"]) {
   order: 10;
+}
+
+.agenda-priority-v4 > .space-y-5 > :has(input[placeholder^="Buscar paciente"]) input,
+.agenda-priority-v4 > .space-y-5 > :has(input[placeholder^="Buscar paciente"]) button,
+.agenda-priority-v4 > .space-y-5 > :has(input[placeholder^="Buscar paciente"]) select {
+  font-size: 14px !important;
 }
 
 /* Availability finder and infrastructure warnings sit between filters and calendar when present. */
@@ -113,44 +122,68 @@
 }
 
 .agenda-priority-v4 [aria-label^="Agendar "] {
-  min-height: 40px;
+  min-height: 42px;
+}
+
+/* Operational type scale: the agenda is used all day, so 11–12px labels are too small. */
+.agenda-workspace-v6 [class*="text-[11px]"] {
+  font-size: 13px !important;
+}
+
+.agenda-workspace-v6 [class*="text-[11.5px]"] {
+  font-size: 13.5px !important;
+}
+
+.agenda-workspace-v6 [class*="text-[12px]"] {
+  font-size: 13.5px !important;
+}
+
+.agenda-workspace-v6 [class*="text-[12.5px]"] {
+  font-size: 14px !important;
+}
+
+.agenda-workspace-v6 [class*="text-[13px]"] {
+  font-size: 14.5px !important;
+}
+
+.agenda-workspace-v6 [class*="text-[14px]"] {
+  font-size: 15px !important;
 }
 
 /* Give day columns and appointments room to breathe. */
 .agenda-priority-v4 [class*="min-w-[152px]"] {
-  min-width: 184px !important;
+  min-width: 205px !important;
 }
 
 .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"] {
-  border-left-width: 5px !important;
-  border-radius: 15px !important;
-  padding-left: 12px !important;
-  padding-right: 12px !important;
-  background: color-mix(in srgb, var(--color-panel) 92%, var(--color-paper) 8%) !important;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.11) !important;
+  border-left-width: 6px !important;
+  border-radius: 16px !important;
+  padding: 8px 13px !important;
+  background: color-mix(in srgb, var(--color-panel) 90%, var(--color-paper) 10%) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.13) !important;
 }
 
 .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"]:hover {
   transform: translateY(-1px) scale(1.008);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16) !important;
 }
 
 .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"] p:first-of-type {
-  font-size: 12px !important;
+  font-size: 13px !important;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"] p:nth-of-type(2) {
-  margin-top: 3px !important;
-  font-size: 15px !important;
-  line-height: 1.2;
-  font-weight: 700;
+  margin-top: 4px !important;
+  font-size: 16px !important;
+  line-height: 1.18;
+  font-weight: 750;
 }
 
 .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"] p:nth-of-type(3) {
-  margin-top: 3px !important;
-  font-size: 11.5px !important;
+  margin-top: 4px !important;
+  font-size: 13px !important;
   line-height: 1.25;
 }
 
@@ -163,7 +196,7 @@
 }
 
 .agenda-priority-v4 [class*="bg-mint/[0.09]"] {
-  background: color-mix(in srgb, var(--color-mint) 15%, var(--color-panel)) !important;
+  background: color-mix(in srgb, var(--color-mint) 17%, var(--color-panel)) !important;
 }
 
 .agenda-priority-v4 [class*="border-t border-pulse"] {
@@ -175,21 +208,46 @@
   scrollbar-gutter: stable;
 }
 
+/* The reference UI uses larger navigation labels. Apply that scale to the desktop shell. */
+@media (min-width: 1024px) {
+  .app-surface > aside nav a {
+    min-height: 46px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    gap: 14px !important;
+  }
+
+  .app-surface > aside nav a svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
 /* Escape the old central-column feeling on desktop and use the monitor width. */
 @media (min-width: 1180px) {
   .agenda-workspace-v6 {
-    width: min(1720px, calc(100vw - 96px));
+    width: min(2240px, calc(100vw - 310px));
     margin-left: 50%;
     transform: translateX(-50%);
   }
 
   .agenda-priority-v4 > .space-y-5 > :has([aria-label^="Agendar "]) > div,
   .agenda-priority-v4 > .space-y-5 > :has(.grid.grid-cols-7) > div {
-    min-height: 780px;
+    min-height: 800px;
   }
 
   .agenda-priority-v4 > .space-y-5 > :has(section.grid.xl\:grid-cols-\[1\.25fr_1fr_1fr_1\.1fr\]) section {
-    grid-template-columns: 1.35fr 1fr 1fr 1.15fr;
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+  }
+}
+
+@media (min-width: 1700px) {
+  .agenda-workspace-v6 {
+    width: min(2240px, calc(100vw - 294px));
+  }
+
+  .agenda-priority-v4 [class*="min-w-[152px]"] {
+    min-width: 220px !important;
   }
 }
 
@@ -203,8 +261,14 @@
 }
 
 @media (max-width: 1179px) {
+  .agenda-workspace-v6 {
+    width: 100%;
+    margin-left: 0;
+    transform: none;
+  }
+
   .agenda-priority-v4 button[class*="absolute z-10 left-1.5 right-1.5"] p:nth-of-type(2) {
-    font-size: 14px !important;
+    font-size: 15px !important;
   }
 
   .agenda-priority-v4 > .space-y-5 > :has(span > span[style*="background"]) {
