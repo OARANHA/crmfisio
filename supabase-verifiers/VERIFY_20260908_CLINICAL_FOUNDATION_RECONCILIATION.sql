@@ -22,7 +22,7 @@ BEGIN
   IF position('a.professional_id = new.professional_id' IN lower(v_assessment)) = 0 THEN
     RAISE EXCEPTION 'clinical_reconciliation_assessment_appointment_author_missing';
   END IF;
-  IF v_assessment ~* $$['"]fisio['"]$$ OR v_assessment ~* '\.fisio_id' THEN
+  IF position('''fisio''' IN lower(v_assessment)) > 0 OR v_assessment ~* '\.fisio_id' THEN
     RAISE EXCEPTION 'clinical_reconciliation_assessment_legacy_fisio_dependency';
   END IF;
 
@@ -30,7 +30,7 @@ BEGIN
      OR position('clinical.evolution.write' IN v_authorship) = 0 THEN
     RAISE EXCEPTION 'clinical_reconciliation_legacy_authorship_capability_missing';
   END IF;
-  IF v_authorship ~* $$['"]fisio['"]$$ THEN
+  IF position('''fisio''' IN lower(v_authorship)) > 0 THEN
     RAISE EXCEPTION 'clinical_reconciliation_legacy_authorship_role_dependency';
   END IF;
 
