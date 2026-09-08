@@ -21,7 +21,7 @@ BEGIN
 END
 $$;
 
-SET LOCAL request.jwt.claim.sub = '00000000-0000-0000-0000-000000000011';
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000011';
 DO $$
 BEGIN
   BEGIN
