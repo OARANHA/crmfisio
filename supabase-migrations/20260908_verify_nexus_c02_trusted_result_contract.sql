@@ -31,14 +31,30 @@ BEGIN
       RAISE EXCEPTION 'nexus_c02_helper_drift: %', expected.signature;
     END IF;
 
-    IF expected.signature <> 'public.validate_nexus_result_context()' AND (
-      NOT actual.prosecdef
-      OR actual.provolatile <> 's'
-      OR NOT coalesce(actual.proconfig @> ARRAY['search_path=public, pg_temp'], false)
-    ) THEN
+    IF expected.signature = 'public.validate_nexus_result_context()' THEN
+      IF NOT actual.prosecdef
+         OR NOT coalesce(actual.proconfig @> ARRAY['search_path=public, pg_temp'], false) THEN
+        RAISE EXCEPTION 'nexus_c02_helper_contract_drift: %', expected.signature;
+      END IF;
+    ELSIF NOT actual.prosecdef
+       OR actual.provolatile <> 's'
+       OR NOT coalesce(actual.proconfig @> ARRAY['search_path=public, pg_temp'], false) THEN
       RAISE EXCEPTION 'nexus_c02_helper_contract_drift: %', expected.signature;
     END IF;
   END LOOP;
+
+  IF NOT has_function_privilege(
+       'authenticated',
+       'public.resolve_nexus_result_required_capability(text,text,text,text)',
+       'EXECUTE'
+     )
+     OR has_function_privilege(
+       'anon',
+       'public.resolve_nexus_result_required_capability(text,text,text,text)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'nexus_c02_resolver_acl_drift';
+  END IF;
 END;
 $$;
 
@@ -175,22 +191,47 @@ BEGIN
     ) AS v(table_name,allow_name,guard_name,scales)
   LOOP
     expr := 'clinic_id=current_clinic_idANDcan_access_patient_clinical_recordpatient_idANDhas_professional_capability''nexus.access''';
-    IF expected.scales THEN expr := expr || 'ANDhas_professional_capability''nexus.scales'''; END IF;
+    IF expected.scales THEN
+      expr := expr || 'ANDhas_professional_capability''nexus.scales''';
+    END IF;
 
-    FOR actual IN SELECT * FROM pg_policies
-      WHERE schemaname='public' AND tablename=expected.table_name
+    FOR actual IN
+      SELECT *
+      FROM pg_policies
+      WHERE schemaname='public'
+        AND tablename=expected.table_name
         AND policyname IN (expected.allow_name,expected.guard_name)
     LOOP
       IF actual.cmd <> 'SELECT'
          OR actual.with_check IS NOT NULL
-         OR actual.permissive <> CASE WHEN actual.policyname=expected.guard_name THEN 'RESTRICTIVE' ELSE 'PERMISSIVE' END
-         OR actual.roles <> CASE WHEN actual.policyname=expected.guard_name THEN ARRAY['public']::name[] ELSE ARRAY['authenticated']::name[] END
-         OR regexp_replace(replace(replace(actual.qual,'public.',''),'::text',''),'[[:space:]()]','','g') IS DISTINCT FROM expr THEN
+         OR actual.permissive <> (
+           CASE
+             WHEN actual.policyname=expected.guard_name THEN 'RESTRICTIVE'
+             ELSE 'PERMISSIVE'
+           END
+         )
+         OR actual.roles <> (
+           CASE
+             WHEN actual.policyname=expected.guard_name
+               THEN ARRAY['public']::name[]
+             ELSE ARRAY['authenticated']::name[]
+           END
+         )
+         OR regexp_replace(
+              replace(replace(actual.qual,'public.',''),'::text',''),
+              '[[:space:]()]','','g'
+            ) IS DISTINCT FROM expr THEN
         RAISE EXCEPTION 'nexus_c02_c01_policy_drift: %', actual.policyname;
       END IF;
     END LOOP;
 
-    IF (SELECT count(*) FROM pg_policies WHERE schemaname='public' AND tablename=expected.table_name AND policyname IN (expected.allow_name,expected.guard_name)) <> 2 THEN
+    IF (
+      SELECT count(*)
+      FROM pg_policies
+      WHERE schemaname='public'
+        AND tablename=expected.table_name
+        AND policyname IN (expected.allow_name,expected.guard_name)
+    ) <> 2 THEN
       RAISE EXCEPTION 'nexus_c02_c01_policy_missing: %', expected.table_name;
     END IF;
   END LOOP;
