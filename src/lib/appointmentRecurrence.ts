@@ -11,7 +11,7 @@ export interface RecurrencePreviewSlot {
 
 export interface RecurrenceInput {
   pacienteId: string;
-  fisioId: string;
+  professionalId: string;
   roomId: string;
   tipo: string;
   diasSemana: number[];
@@ -25,7 +25,7 @@ export interface RecurrenceInput {
 export interface AppointmentSeriesSummary {
   id: string;
   pacienteId: string;
-  fisioId: string;
+  professionalId: string;
   roomId: string;
   tipo: string;
   diasSemana: number[];
@@ -37,9 +37,13 @@ export interface AppointmentSeriesSummary {
   status: 'ativa' | 'cancelada' | 'concluida';
 }
 
+/**
+ * The recurrence RPCs still expose p_fisio_id in the current database contract.
+ * Keep that legacy name isolated here until the DB-side recurrence cutover.
+ */
 const params = (input: RecurrenceInput) => ({
   p_paciente_id: input.pacienteId,
-  p_fisio_id: input.fisioId,
+  p_fisio_id: input.professionalId,
   p_room_id: input.roomId,
   p_dias_semana: input.diasSemana,
   p_hora: input.hora,
@@ -86,7 +90,7 @@ export async function listAppointmentSeries(): Promise<AppointmentSeriesSummary[
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     id: String(row.id),
     pacienteId: String(row.paciente_id),
-    fisioId: String(row.fisio_id),
+    professionalId: String(row.fisio_id),
     roomId: row.room_id ? String(row.room_id) : '',
     tipo: String(row.tipo),
     diasSemana: (row.dias_semana as number[]) ?? [],
