@@ -277,7 +277,7 @@ export function Shell() {
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
         </header>
-        <main className="px-4 sm:px-6 md:px-8 xl:px-10 py-7 md:py-9 max-w-[1760px] mx-auto">
+        <main className="w-full min-w-0 px-4 sm:px-6 md:px-8 xl:px-10 py-7 md:py-9">
           <Outlet />
         </main>
       </div>
