@@ -73,6 +73,9 @@ $$;
 DO $$
 DECLARE
   v_columns integer;
+  v_timestamp_order text;
+  v_sign_requires_review text;
+  v_review_after_processing text;
 BEGIN
   IF to_regclass('public.nexus_result_clinical_lifecycle') IS NULL THEN
     RAISE EXCEPTION 'nexus_c03_lifecycle_table_missing';
@@ -103,6 +106,31 @@ BEGIN
     RAISE EXCEPTION 'nexus_c03_lifecycle_constraints_drift';
   END IF;
 
+  SELECT pg_get_constraintdef(oid) INTO v_timestamp_order
+  FROM pg_constraint
+  WHERE conrelid='public.nexus_result_clinical_lifecycle'::regclass
+    AND conname='nexus_result_lifecycle_timestamp_order';
+  SELECT pg_get_constraintdef(oid) INTO v_sign_requires_review
+  FROM pg_constraint
+  WHERE conrelid='public.nexus_result_clinical_lifecycle'::regclass
+    AND conname='nexus_result_lifecycle_sign_requires_review';
+  SELECT pg_get_constraintdef(oid) INTO v_review_after_processing
+  FROM pg_constraint
+  WHERE conrelid='public.nexus_result_clinical_lifecycle'::regclass
+    AND conname='nexus_result_lifecycle_review_after_processing';
+
+  IF v_timestamp_order IS NULL
+     OR position('reviewed_at >= processed_at' IN v_timestamp_order)=0
+     OR position('signed_at >= reviewed_at' IN v_timestamp_order)=0
+     OR v_sign_requires_review IS NULL
+     OR position('signed_at IS NULL' IN v_sign_requires_review)=0
+     OR position('reviewed_at IS NOT NULL' IN v_sign_requires_review)=0
+     OR v_review_after_processing IS NULL
+     OR position('reviewed_at IS NULL' IN v_review_after_processing)=0
+     OR position('processed_at IS NOT NULL' IN v_review_after_processing)=0 THEN
+    RAISE EXCEPTION 'nexus_c03_lifecycle_monotonicity_drift';
+  END IF;
+
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.nexus_result_clinical_lifecycle'::regclass) THEN
     RAISE EXCEPTION 'nexus_c03_lifecycle_rls_disabled';
   END IF;
@@ -121,6 +149,10 @@ DO $$
 DECLARE
   p record;
   fn text;
+  v_terminal_guard_pos integer;
+  v_review_timestamp_pos integer;
+  v_sign_timestamp_pos integer;
+  v_updated_at_pos integer;
 BEGIN
   SELECT * INTO p FROM pg_policies
   WHERE schemaname='public'
@@ -135,14 +167,42 @@ BEGIN
     RAISE EXCEPTION 'nexus_c03_lifecycle_unexpected_policy';
   END IF;
 
-  SELECT prosrc INTO fn FROM pg_proc
+  SELECT * INTO p FROM pg_proc
   WHERE oid='public.validate_nexus_result_clinical_lifecycle()'::regprocedure;
+  IF NOT FOUND OR NOT p.prosecdef
+     OR NOT coalesce(p.proconfig @> ARRAY['search_path=public, pg_temp'],false) THEN
+    RAISE EXCEPTION 'nexus_c03_lifecycle_guard_contract_drift';
+  END IF;
+  fn := p.prosrc;
+
+  v_terminal_guard_pos := position(
+    'IF TG_OP = ''UPDATE'' AND OLD.signed_at IS NOT NULL THEN' IN fn
+  );
+  v_review_timestamp_pos := position(
+    'IF NEW.reviewed_at IS NOT NULL AND NEW.reviewed_at < NEW.processed_at THEN' IN fn
+  );
+  v_sign_timestamp_pos := position(
+    'IF NEW.signed_at IS NOT NULL AND NEW.signed_at < NEW.reviewed_at THEN' IN fn
+  );
+  v_updated_at_pos := position('NEW.updated_at := now()' IN fn);
+
   IF fn IS NULL
      OR position('nexus_clinical_review_author_mismatch' IN fn)=0
      OR position('nexus_clinical_sign_requires_review' IN fn)=0
      OR position('nexus_clinical_lifecycle_signed_immutable' IN fn)=0
-     OR position('nexus_clinical_lifecycle_delete_forbidden' IN fn)=0 THEN
+     OR position('nexus_clinical_lifecycle_delete_forbidden' IN fn)=0
+     OR v_terminal_guard_pos=0
+     OR position('NEW IS DISTINCT FROM OLD' IN fn)>0 THEN
     RAISE EXCEPTION 'nexus_c03_lifecycle_guard_drift';
+  END IF;
+
+  IF v_review_timestamp_pos=0
+     OR v_sign_timestamp_pos=0
+     OR v_updated_at_pos=0
+     OR v_terminal_guard_pos > v_review_timestamp_pos
+     OR v_terminal_guard_pos > v_sign_timestamp_pos
+     OR v_terminal_guard_pos > v_updated_at_pos THEN
+    RAISE EXCEPTION 'nexus_c03_signed_immutability_precedence_drift';
   END IF;
 
   IF NOT EXISTS (
