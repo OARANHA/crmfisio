@@ -120,13 +120,21 @@ print(
 
 print((root / "tests/sql/nexus_c06_seed.sql").read_text())
 
-# C-01 is applied exactly once as a prerequisite. C-06 changes helpers later and
-# its verifier becomes authoritative for those fingerprints.
-print(c01.read_text())
+c01_sql = c01.read_text()
 
 if "--before" in sys.argv:
+    # The disposable pre-fix run is wrapped by psql --single-transaction so its
+    # expected failure can roll back fixture roles/schema completely. Strip only
+    # C-01's transaction wrapper in this generated copy; its SQL body, guards and
+    # helper fingerprint checks remain byte-for-byte sourced from the migration.
+    c01_before = re.sub(r"(?m)^BEGIN;\s*$", "", c01_sql, count=1)
+    c01_before = re.sub(r"(?m)^COMMIT;\s*$", "", c01_before, count=1)
+    print(c01_before)
     print((root / "tests/sql/nexus_c06_before.sql").read_text())
 else:
+    # Normal after-fix test applies the real C-01 migration exactly once, then
+    # C-06. C-01 is never replayed to update the later helper fingerprints.
+    print(c01_sql)
     print(c06.read_text())
     print(c06.read_text())  # C-06 must be safely re-runnable.
     print((root / "tests/sql/nexus_c06_cases.sql").read_text())
