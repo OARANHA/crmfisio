@@ -1,3 +1,33 @@
+/* Keep the agenda controls as page chrome instead of a second large card. */
+.agenda-priority-v4 > .space-y-5 > :first-child section {
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.agenda-priority-v4 > .space-y-5 > :first-child section > div:first-child {
+  padding: 0 0 4px !important;
+}
+
+/* Remove redundant explanatory chrome while preserving the useful controls. */
+.agenda-priority-v4 > .space-y-5 > :first-child section > div:first-child > div:first-child > div:first-child > div:first-child {
+  display: none !important;
+}
+
+.agenda-priority-v4 > .space-y-5 > :first-child section h1 {
+  margin-top: 0 !important;
+}
+
+.agenda-priority-v4 > .space-y-5 > :first-child section h1 ~ p:last-child {
+  display: none !important;
+}
+
+.agenda-priority-v4 > .space-y-5 > :first-child section > div:first-child + div {
+  display: none !important;
+}
+
 @media (min-width: 1180px) {
   .agenda-priority-v4 > .space-y-5 {
     display: grid;
