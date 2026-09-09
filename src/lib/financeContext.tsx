@@ -13,8 +13,11 @@ import {
   resolveAppointmentFinancialException,
   type FinancialException,
   type FinancialExceptionDisposition,
-  type FinancialExceptionResolution,
 } from './financialExceptionResolution';
+import {
+  executeFinancialExceptionCommand,
+  type FinancialExceptionCommandResult,
+} from './financialExceptionCommand';
 import {
   canChargeFinancialException,
   canListFinancialExceptions,
@@ -48,7 +51,7 @@ interface FinanceState {
     exceptionId: string,
     disposition: FinancialExceptionDisposition,
     reason?: string | null,
-  ) => Promise<FinancialExceptionResolution>;
+  ) => Promise<FinancialExceptionCommandResult>;
   addTransaction: (transaction: Omit<FinancialTransaction, 'id'>) => Promise<FinancialTransaction>;
   setTransactionStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => Promise<FinancialTransaction>;
   closeCommissions: (period: string) => Promise<number>;
@@ -165,15 +168,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       throw new Error('Perfil sem permissão para conceder cortesia desta pendência.');
     }
 
-    const persisted = await resolveAppointmentFinancialException(exceptionId, disposition, reason);
-
-    if (disposition === 'charge') {
-      await Promise.all([refreshFinance(), refreshFinancialExceptions()]);
-    } else {
-      await refreshFinancialExceptions();
-    }
-
-    return persisted;
+    const commandGeneration = financialExceptionGeneration.current;
+    return executeFinancialExceptionCommand(exceptionId, disposition, reason, {
+      resolve: resolveAppointmentFinancialException,
+      onPersisted: (persisted) => {
+        if (commandGeneration !== financialExceptionGeneration.current) return;
+        setFinancialExceptions((current) => current.filter((item) => item.id !== persisted.exceptionId));
+      },
+      refreshFinance,
+      refreshQueue: refreshFinancialExceptions,
+    });
   }, [profileRole, refreshFinance, refreshFinancialExceptions]);
 
   const addTransaction = useCallback(async (transaction: Omit<FinancialTransaction, 'id'>) => {
