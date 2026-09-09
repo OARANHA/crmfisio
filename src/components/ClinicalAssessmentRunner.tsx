@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAgenda } from '../lib/agendaContext';
+import { rankAssessmentTemplatesForContext, resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
-import { professionalIdOf } from '../lib/professionalReference';
 import type { Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
+import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { BodyMapV2 } from './BodyMapV2';
 import {
   createClinicalAssessmentDraft,
@@ -27,6 +28,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { appointments } = useAgenda();
+  const { identity } = useProfessionalIdentity(user?.id);
   const { allowed: canReadTimeline } = useClinicalCapability('clinical.timeline.read', user?.id);
   const { allowed: canApplyAssessment } = useClinicalCapability('clinical.assessment.apply', user?.id);
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
@@ -37,20 +39,25 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const [bodyPoints, setBodyPoints] = useState<AssessmentBodyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [showOtherTemplates, setShowOtherTemplates] = useState(false);
 
   const userId = user?.id ?? null;
   const clinicalRead = isClinicManager(user?.role) || canReadTimeline;
   const clinicalWrite = canApplyAssessment;
   const activeAppointment = useMemo(
-    () => appointments.find((item) =>
-      item.pacienteId === patient.id
-      && item.status === 'em_atendimento'
-      && userId !== null
-      && professionalIdOf(item) === userId,
-    ) ?? null,
+    () => resolveOwnActiveEncounter(appointments, patient.id, userId),
     [appointments, patient.id, userId],
   );
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
+  const contextualTemplates = useMemo(
+    () => rankAssessmentTemplatesForContext(templates, {
+      professionalType: identity?.professionalType,
+      specialty: identity?.specialty,
+    }),
+    [identity?.professionalType, identity?.specialty, templates],
+  );
+
+  useEffect(() => { setShowOtherTemplates(false); }, [patient.id, userId, identity?.specialty]);
 
   const openDraft = useCallback(async (assessment: ClinicalAssessment) => {
     const versions = await listPublishedTemplateVersions(assessment.templateId);
@@ -163,6 +170,24 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
 
   if (!clinicalRead) return null;
 
+  const renderTemplate = (template: AssessmentTemplate) => (
+    <button
+      type="button"
+      key={template.id}
+      onClick={() => void startAssessment(template)}
+      disabled={busy}
+      className="text-left rounded-xl border border-line bg-deep p-4 hover:border-mint/45 transition-colors disabled:opacity-40"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-display font-semibold text-[13px]">{template.name}</p>
+        <Chip className={template.ownerType === 'platform' ? 'border-aqua/40 text-aqua' : 'border-mint/40 text-mint'}>
+          {template.ownerType === 'platform' ? 'padrão' : 'minha avaliação'}
+        </Chip>
+      </div>
+      <p className="text-[11px] text-fog mt-2">{template.description || 'Modelo clínico sem descrição.'}</p>
+    </button>
+  );
+
   return (
     <Card>
       <CardHead title="Avaliação atual" sub="preenchimento clínico em foco, com rascunho seguro e finalização versionada" />
@@ -174,28 +199,26 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
             {clinicalWrite && !draft && (
               <div>
                 <p className="font-display font-semibold text-[13.5px]">Escolha um modelo</p>
-                <div className="mt-3 grid md:grid-cols-2 gap-2">
-                  {templates.map((template) => (
-                    <button
-                      type="button"
-                      key={template.id}
-                      onClick={() => void startAssessment(template)}
-                      disabled={busy}
-                      className="text-left rounded-xl border border-line bg-deep p-4 hover:border-mint/45 transition-colors disabled:opacity-40"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-display font-semibold text-[13px]">{template.name}</p>
-                        <Chip className={template.ownerType === 'platform' ? 'border-aqua/40 text-aqua' : 'border-mint/40 text-mint'}>
-                          {template.ownerType === 'platform' ? 'padrão' : 'minha avaliação'}
-                        </Chip>
-                      </div>
-                      <p className="text-[11px] text-fog mt-2">{template.description || 'Modelo clínico sem descrição.'}</p>
+                {contextualTemplates.recommended.length > 0 ? (
+                  <div className="mt-3 grid md:grid-cols-2 gap-2">
+                    {contextualTemplates.recommended.map(renderTemplate)}
+                  </div>
+                ) : templates.length > 0 ? (
+                  <div className="mt-3 rounded-xl border border-line bg-deep p-4 text-[11.5px] leading-relaxed text-fog">
+                    Nenhum modelo publicado é uma recomendação contextual para esta especialidade. Outros modelos permitidos continuam disponíveis abaixo.
+                  </div>
+                ) : (
+                  <Empty title="Nenhum modelo publicado" sub="Publique um modelo em Configurações para iniciar avaliações estruturadas." />
+                )}
+
+                {contextualTemplates.other.length > 0 && (
+                  <div className="mt-3">
+                    <button type="button" className="text-[11px] font-semibold text-aqua" onClick={() => setShowOtherTemplates((value) => !value)}>
+                      {showOtherTemplates ? 'Ocultar outros modelos permitidos' : `Ver outros modelos permitidos (${contextualTemplates.other.length})`}
                     </button>
-                  ))}
-                  {templates.length === 0 && (
-                    <Empty title="Nenhum modelo publicado" sub="Publique um modelo em Configurações para iniciar avaliações estruturadas." />
-                  )}
-                </div>
+                    {showOtherTemplates && <div className="mt-3 grid md:grid-cols-2 gap-2">{contextualTemplates.other.map(renderTemplate)}</div>}
+                  </div>
+                )}
               </div>
             )}
 
