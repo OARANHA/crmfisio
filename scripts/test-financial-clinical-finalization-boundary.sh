@@ -20,8 +20,8 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_clinical_authorization_reconciliation.sql
 
 # Reconstruct the effective main reschedule stack at the requested base SHA.
-# The reduced #387 fixture lacks only the legacy notes column used by the RPC.
-"${PSQL[@]}" -c "ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS notas text"
+# The reduced #387 fixture lacks only schema defaults/columns used by the real RPC.
+"${PSQL[@]}" -c "ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS notas text; ALTER TABLE public.appointments ALTER COLUMN id SET DEFAULT gen_random_uuid()"
 "${PSQL[@]}" -f supabase-migrations/20260908_appointment_professional_id_compatibility.sql
 "${PSQL[@]}" -f supabase-migrations/20260901_appointment_reschedule.sql
 "${PSQL[@]}" -f supabase-migrations/20260905_appointment_cancellation_reason_guard.sql
