@@ -12,17 +12,21 @@ vi.mock('../lib/supabaseClient', () => ({
 import { useClinicalCapability } from './useClinicalCapability';
 
 type HookState = ReturnType<typeof useClinicalCapability>;
+type Capability = Parameters<typeof useClinicalCapability>[0];
 
 let current: HookState;
 let renderer: ReactTestRenderer | undefined;
+let observed: HookState[] = [];
 
-function Probe({ userId = 'user-1' }: { userId?: string | null }) {
-  current = useClinicalCapability('clinical.attend', userId);
+function Probe({ userId = 'user-1', capability = 'clinical.attend' }: { userId?: string | null; capability?: Capability }) {
+  current = useClinicalCapability(capability, userId);
+  observed.push(current);
   return null;
 }
 
 beforeEach(() => {
   mocks.rpc.mockReset();
+  observed = [];
 });
 
 afterEach(() => {
@@ -93,5 +97,85 @@ describe('useClinicalCapability frontend contract', () => {
 
     expect(current).toMatchObject({ status: 'denied', allowed: false, denied: true, loading: false, error: false });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('never exposes user A allowed state when switching to user B', async () => {
+    let resolveUserB!: (value: { data: boolean; error: null }) => void;
+    mocks.rpc
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveUserB = resolve; }));
+
+    await act(async () => {
+      renderer = create(<Probe userId="user-a" />);
+    });
+    expect(current.allowed).toBe(true);
+
+    observed = [];
+    await act(async () => {
+      renderer?.update(<Probe userId="user-b" />);
+    });
+
+    expect(observed.length).toBeGreaterThan(0);
+    expect(observed.every((state) => state.allowed === false)).toBe(true);
+    expect(current).toMatchObject({ status: 'loading', allowed: false });
+
+    await act(async () => {
+      resolveUserB({ data: false, error: null });
+    });
+    expect(current.status).toBe('denied');
+  });
+
+  it('never exposes an allowed capability when switching to another capability', async () => {
+    let resolveDocuments!: (value: { data: boolean; error: null }) => void;
+    mocks.rpc
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveDocuments = resolve; }));
+
+    await act(async () => {
+      renderer = create(<Probe capability="clinical.attend" />);
+    });
+    expect(current.allowed).toBe(true);
+
+    observed = [];
+    await act(async () => {
+      renderer?.update(<Probe capability="clinical.documents" />);
+    });
+
+    expect(observed.length).toBeGreaterThan(0);
+    expect(observed.every((state) => state.allowed === false)).toBe(true);
+    expect(current).toMatchObject({ status: 'loading', allowed: false });
+
+    await act(async () => {
+      resolveDocuments({ data: false, error: null });
+    });
+    expect(current.status).toBe('denied');
+  });
+
+  it('ignores an old response that arrives after identity changes', async () => {
+    let resolveUserA!: (value: { data: boolean; error: null }) => void;
+    let resolveUserB!: (value: { data: boolean; error: null }) => void;
+    mocks.rpc
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveUserA = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveUserB = resolve; }));
+
+    await act(async () => {
+      renderer = create(<Probe userId="user-a" />);
+    });
+    expect(current.status).toBe('loading');
+
+    await act(async () => {
+      renderer?.update(<Probe userId="user-b" />);
+    });
+    expect(current).toMatchObject({ status: 'loading', allowed: false });
+
+    await act(async () => {
+      resolveUserA({ data: true, error: null });
+    });
+    expect(current).toMatchObject({ status: 'loading', allowed: false });
+
+    await act(async () => {
+      resolveUserB({ data: false, error: null });
+    });
+    expect(current).toMatchObject({ status: 'denied', allowed: false });
   });
 });
