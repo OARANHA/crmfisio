@@ -7,7 +7,6 @@ const repository = readFileSync(fileURLToPath(new URL('./financialExceptionResol
 const permissions = readFileSync(fileURLToPath(new URL('./permissions.ts', import.meta.url)), 'utf8');
 const queue = readFileSync(fileURLToPath(new URL('../components/FinancialExceptionQueue.tsx', import.meta.url)), 'utf8');
 const page = readFileSync(fileURLToPath(new URL('../pages/FinanceiroOperational.tsx', import.meta.url)), 'utf8');
-const store = readFileSync(fileURLToPath(new URL('./store.tsx', import.meta.url)), 'utf8');
 
 const refreshStart = financeContext.indexOf('const refreshFinancialExceptions = useCallback');
 const resolveStart = financeContext.indexOf('const resolveFinancialException = useCallback');
@@ -74,14 +73,15 @@ describe('financial exception frontend boundary', () => {
     expect(financeContext).toContain('[clinicId, profileId, profileRole, tenantAccessState]');
   });
 
-  it('shows a dedicated compact queue in Financeiro without moving it to store.tsx', () => {
+  it('keeps the queue owned by FinanceProvider and surfaced only by Financeiro', () => {
+    expect(financeContext).toContain('financialExceptions: FinancialException[];');
+    expect(financeContext).toContain('refreshFinancialExceptions: () => Promise<void>;');
+    expect(financeContext).toContain('resolveFinancialException: (');
     expect(page).toContain('<FinancialExceptionQueue />');
     expect(queue).toContain('Pendências de cobertura · ${financialExceptions.length}');
     expect(queue).toContain('financialExceptionReasonLabel(item.reasonCode)');
     expect(queue).toContain('item.patientName');
     expect(queue).toContain('item.packageName');
     expect(queue).toContain('item.detectedAt');
-    expect(store).not.toContain('financialExceptions');
-    expect(store).not.toContain('FinancialExceptionQueue');
   });
 });
