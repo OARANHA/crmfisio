@@ -9,8 +9,9 @@ describe('solo owner clinician frontend boundary', () => {
   it('uses the canonical server-side capability helper and fails closed', () => {
     expect(hook).toContain("rpc('current_user_has_clinical_capability'");
     expect(hook).toContain("{ p_capability: capability }");
-    expect(hook).toContain("setStatus('error')");
+    expect(hook).toContain("setResolution({ key: requestKey, status: 'error' })");
     expect(hook).toContain("allowed: status === 'allowed'");
+    expect(hook).toContain('resolution.key === resolutionKey');
     expect(hook).not.toContain("role === 'owner'");
   });
 
