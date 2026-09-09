@@ -40,6 +40,7 @@ const managedClinicalCapabilities = [
   'clinical.documents',
 ] as const;
 const managedClinicalCapabilitySet = new Set<string>(managedClinicalCapabilities);
+const safeCaughtMessages = new Set(['Permissões clínicas inválidas']);
 
 const normalizeCapabilityKeys = (value: unknown): string[] => {
   if (value === undefined) return [];
@@ -271,6 +272,9 @@ Deno.serve(async (req) => {
     return json({ error: 'Ação inválida' }, 400);
   } catch (error) {
     console.error('[admin-team]', error);
-    return json({ error: error instanceof Error ? error.message : 'Falha ao gerenciar equipe' }, 400);
+    if (error instanceof Error && safeCaughtMessages.has(error.message)) {
+      return json({ error: error.message }, 400);
+    }
+    return json({ error: 'Falha ao gerenciar equipe' }, 500);
   }
 });
