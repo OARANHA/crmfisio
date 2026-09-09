@@ -51,13 +51,13 @@ REVOKE ALL ON public.appointment_financial_exception_dispositions
 GRANT SELECT ON public.appointment_financial_exception_dispositions
   TO authenticated, service_role;
 
--- Preserve #388 exactly: authenticated cannot mutate the detection queue;
--- service_role may append detections but cannot resolve/update/delete them.
+-- #388 allows service_role to materialize detection events but keeps the queue
+-- read-only for browser actors. Preserve that exact boundary here.
 REVOKE INSERT, UPDATE, DELETE ON public.appointment_financial_exceptions
   FROM authenticated;
 REVOKE UPDATE, DELETE ON public.appointment_financial_exceptions
   FROM service_role;
-GRANT SELECT, INSERT ON public.appointment_financial_exceptions
+GRANT INSERT, SELECT ON public.appointment_financial_exceptions
   TO service_role;
 
 CREATE OR REPLACE FUNCTION public.guard_financial_exception_disposition_immutability()
@@ -87,9 +87,6 @@ COMMENT ON TABLE public.appointment_financial_exception_dispositions IS
 COMMENT ON COLUMN public.appointment_financial_exception_dispositions.actor_id IS
   'Actor UUID snapshot intentionally retained without a destructive FK so identity offboarding cannot erase financial audit history.';
 
--- FinanceProvider consumes a minimal, tenant-scoped queue projection instead of
--- joining patient/appointment/package data in browser state. Package metadata is
--- exposed only when the source patient_package belongs to the same clinic/patient.
 CREATE OR REPLACE FUNCTION public.list_pending_appointment_financial_exceptions()
 RETURNS TABLE (
   exception_id uuid,
@@ -167,10 +164,6 @@ REVOKE ALL ON FUNCTION public.list_pending_appointment_financial_exceptions()
 GRANT EXECUTE ON FUNCTION public.list_pending_appointment_financial_exceptions()
   TO authenticated;
 
--- Canonical resolution boundary. The exception row is the serialization point.
--- The appointment row is locked next so source coherence is verified against the
--- immutable finalized appointment. Payment + disposition + queue transition are
--- committed or rolled back together by PostgreSQL.
 CREATE OR REPLACE FUNCTION public.resolve_appointment_financial_exception(
   p_exception_id uuid,
   p_disposition text,
@@ -236,8 +229,6 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
-  -- Tenant scope is part of the lookup itself so a foreign UUID is
-  -- indistinguishable from a nonexistent exception.
   SELECT * INTO v_exception
   FROM public.appointment_financial_exceptions
   WHERE id = p_exception_id
@@ -261,6 +252,12 @@ BEGIN
 
     IF v_existing_disposition.disposition IS DISTINCT FROM v_disposition THEN
       RAISE EXCEPTION 'Pendência financeira já possui disposição imutável'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF v_existing_disposition.disposition = 'waived'
+       AND v_existing_disposition.reason IS DISTINCT FROM v_reason THEN
+      RAISE EXCEPTION 'Pendência financeira já possui cortesia com motivo imutável'
         USING ERRCODE = '23514';
     END IF;
 
@@ -341,8 +338,6 @@ BEGIN
       USING ERRCODE = '23514';
   END IF;
 
-  -- Any pre-existing receivable is semantically ambiguous for a still-pending
-  -- #388 exception. Do not silently adopt, duplicate, or waive around it.
   SELECT * INTO v_existing_payment
   FROM public.payments p
   WHERE p.clinic_id = v_appointment.clinic_id
@@ -440,6 +435,6 @@ GRANT EXECUTE ON FUNCTION public.resolve_appointment_financial_exception(uuid, t
   TO authenticated;
 
 COMMENT ON FUNCTION public.resolve_appointment_financial_exception(uuid, text, text) IS
-  'Canonical transactional CHARGE/WAIVE resolution for #388 coverage exceptions. Server authorization is active profile + same tenant + finance.access + role-specific disposition authority.';
+  'Canonical transactional CHARGE/WAIVE resolution for #388 coverage exceptions. Server authorization is active profile + same tenant + finance.access + role-specific disposition.';
 
 COMMIT;
