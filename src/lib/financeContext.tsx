@@ -8,6 +8,18 @@ import {
   mapPayment,
   updatePayment,
 } from './repository';
+import {
+  loadPendingFinancialExceptions,
+  resolveAppointmentFinancialException,
+  type FinancialException,
+  type FinancialExceptionDisposition,
+  type FinancialExceptionResolution,
+} from './financialExceptionResolution';
+import {
+  canChargeFinancialException,
+  canListFinancialExceptions,
+  canWaiveFinancialException,
+} from './permissions';
 import type { Commission, FinancialTransaction } from './types';
 import type { Database } from './database.types';
 
@@ -25,9 +37,18 @@ const mapCommission = (row: CommissionRow): Commission => ({
 interface FinanceState {
   transactions: FinancialTransaction[];
   commissions: Commission[];
+  financialExceptions: FinancialException[];
   loading: boolean;
   error: string | null;
+  financialExceptionsLoading: boolean;
+  financialExceptionsError: string | null;
   refreshFinance: () => Promise<void>;
+  refreshFinancialExceptions: () => Promise<void>;
+  resolveFinancialException: (
+    exceptionId: string,
+    disposition: FinancialExceptionDisposition,
+    reason?: string | null,
+  ) => Promise<FinancialExceptionResolution>;
   addTransaction: (transaction: Omit<FinancialTransaction, 'id'>) => Promise<FinancialTransaction>;
   setTransactionStatus: (id: string, status: FinancialTransaction['status'], metodo?: FinancialTransaction['metodo']) => Promise<FinancialTransaction>;
   closeCommissions: (period: string) => Promise<number>;
@@ -38,12 +59,18 @@ const FinanceContext = createContext<FinanceState | null>(null);
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const { profile, tenantAccessState } = useAuth();
+  const profileId = profile?.id ?? null;
+  const profileRole = profile?.role ?? null;
   const clinicId = profile?.clinic_id ?? null;
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [commissions, setCommissions] = useState<Commission[]>([]);
+  const [financialExceptions, setFinancialExceptions] = useState<FinancialException[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [financialExceptionsLoading, setFinancialExceptionsLoading] = useState(false);
+  const [financialExceptionsError, setFinancialExceptionsError] = useState<string | null>(null);
   const generation = useRef(0);
+  const financialExceptionGeneration = useRef(0);
 
   const refreshFinance = useCallback(async () => {
     const request = ++generation.current;
@@ -83,7 +110,71 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   }, [clinicId, tenantAccessState]);
 
+  const refreshFinancialExceptions = useCallback(async () => {
+    const request = ++financialExceptionGeneration.current;
+    if (
+      !profileId
+      || !clinicId
+      || tenantAccessState !== 'active'
+      || !canListFinancialExceptions(profileRole)
+    ) {
+      setFinancialExceptions([]);
+      setFinancialExceptionsLoading(false);
+      setFinancialExceptionsError(null);
+      return;
+    }
+
+    setFinancialExceptionsLoading(true);
+    try {
+      const next = await loadPendingFinancialExceptions();
+      if (request !== financialExceptionGeneration.current) return;
+      setFinancialExceptions(next);
+      setFinancialExceptionsError(null);
+    } catch (cause) {
+      if (request !== financialExceptionGeneration.current) return;
+      console.error('[MedicsPro] pendências de cobertura:', cause);
+      setFinancialExceptionsError('Não foi possível carregar as pendências de cobertura.');
+      throw cause;
+    } finally {
+      if (request === financialExceptionGeneration.current) setFinancialExceptionsLoading(false);
+    }
+  }, [clinicId, profileId, profileRole, tenantAccessState]);
+
   useEffect(() => { void refreshFinance().catch(() => undefined); }, [refreshFinance]);
+
+  useEffect(() => {
+    financialExceptionGeneration.current += 1;
+    setFinancialExceptions([]);
+    setFinancialExceptionsLoading(false);
+    setFinancialExceptionsError(null);
+  }, [clinicId, profileId, profileRole, tenantAccessState]);
+
+  useEffect(() => {
+    void refreshFinancialExceptions().catch(() => undefined);
+  }, [refreshFinancialExceptions]);
+
+  const resolveFinancialException = useCallback(async (
+    exceptionId: string,
+    disposition: FinancialExceptionDisposition,
+    reason?: string | null,
+  ) => {
+    if (disposition === 'charge' && !canChargeFinancialException(profileRole)) {
+      throw new Error('Perfil sem permissão para gerar cobrança desta pendência.');
+    }
+    if (disposition === 'waived' && !canWaiveFinancialException(profileRole)) {
+      throw new Error('Perfil sem permissão para conceder cortesia desta pendência.');
+    }
+
+    const persisted = await resolveAppointmentFinancialException(exceptionId, disposition, reason);
+
+    if (disposition === 'charge') {
+      await Promise.all([refreshFinance(), refreshFinancialExceptions()]);
+    } else {
+      await refreshFinancialExceptions();
+    }
+
+    return persisted;
+  }, [profileRole, refreshFinance, refreshFinancialExceptions]);
 
   const addTransaction = useCallback(async (transaction: Omit<FinancialTransaction, 'id'>) => {
     if (!clinicId) throw new Error('Clínica não identificada');
@@ -111,7 +202,38 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setCommissions((current) => current.map((item) => item.id === id ? paid : item));
   }, []);
 
-  const value = useMemo<FinanceState>(() => ({ transactions, commissions, loading, error, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus }), [transactions, commissions, loading, error, refreshFinance, addTransaction, setTransactionStatus, closeCommissions, setCommissionStatus]);
+  const value = useMemo<FinanceState>(() => ({
+    transactions,
+    commissions,
+    financialExceptions,
+    loading,
+    error,
+    financialExceptionsLoading,
+    financialExceptionsError,
+    refreshFinance,
+    refreshFinancialExceptions,
+    resolveFinancialException,
+    addTransaction,
+    setTransactionStatus,
+    closeCommissions,
+    setCommissionStatus,
+  }), [
+    transactions,
+    commissions,
+    financialExceptions,
+    loading,
+    error,
+    financialExceptionsLoading,
+    financialExceptionsError,
+    refreshFinance,
+    refreshFinancialExceptions,
+    resolveFinancialException,
+    addTransaction,
+    setTransactionStatus,
+    closeCommissions,
+    setCommissionStatus,
+  ]);
+
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
 
