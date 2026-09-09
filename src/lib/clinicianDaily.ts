@@ -1,9 +1,10 @@
 import { format, isSameDay, subDays } from 'date-fns';
 import { resolveOwnActiveEncounter } from './activeClinicalEncounter';
+import type { AgendaView } from './agendaPresentation';
 import { professionalIdOf } from './professionalReference';
 import type { Appointment } from './types';
 
-export type AgendaStatusFilter = 'pending' | 'in_service' | 'finished';
+export type AgendaStatusFilter = 'pending' | 'confirmed' | 'in_service' | 'finished';
 
 export type AgendaPeriodSummary = {
   total: number;
@@ -18,7 +19,7 @@ export type AgendaPeriodSummary = {
 /**
  * Resolve the one canonical active encounter owned by a professional across
  * every patient and date. The patient-scoped primitive remains the authority;
- * this wrapper only lifts it to the clinician's daily home.
+ * this wrapper only lifts it to clinician-facing surfaces.
  */
 export function resolveProfessionalActiveEncounter(
   appointments: readonly Appointment[],
@@ -44,6 +45,25 @@ export function clinicianEncounterPath(appointment: Pick<Appointment, 'id' | 'pa
   return `/pacientes/${appointment.pacienteId}?session=${appointment.id}#clinical-workspace`;
 }
 
+export function clinicianAgendaPath(input: {
+  status?: AgendaStatusFilter | null;
+  view?: AgendaView | null;
+  date?: string | null;
+} = {}): string {
+  const params = new URLSearchParams();
+  if (input.status) params.set('status', input.status);
+  if (input.view) params.set('view', input.view);
+  if (input.date) params.set('date', input.date);
+  const query = params.toString();
+  return query ? `/agenda?${query}` : '/agenda';
+}
+
+export function parseAgendaStatusFilter(value: string | null | undefined): AgendaStatusFilter | null {
+  return value === 'pending' || value === 'confirmed' || value === 'in_service' || value === 'finished'
+    ? value
+    : null;
+}
+
 export function activeEncounterStartedLabel(appointment: Pick<Appointment, 'data' | 'inicio'>, now = new Date()): string {
   const encounterDate = new Date(`${appointment.data}T12:00:00`);
   const clock = appointment.inicio.slice(0, 5);
@@ -55,6 +75,7 @@ export function activeEncounterStartedLabel(appointment: Pick<Appointment, 'data
 export function matchesAgendaStatusFilter(appointment: Appointment, filter: AgendaStatusFilter | null): boolean {
   if (!filter) return true;
   if (filter === 'pending') return appointment.status === 'agendado';
+  if (filter === 'confirmed') return appointment.status === 'confirmado';
   if (filter === 'in_service') return appointment.status === 'em_atendimento';
   return appointment.status === 'finalizado';
 }
