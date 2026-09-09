@@ -6,6 +6,7 @@ import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalR
 import type { ProfessionalIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Patient } from '../lib/types';
 import { Chip } from '../lib/ui';
+import { NexusSelfAssessmentInviteAction } from './NexusSelfAssessmentInviteAction';
 
 export function ActiveEncounterClinicalTools({
   patient,
@@ -72,28 +73,31 @@ export function ActiveEncounterClinicalTools({
   if (!psychiatry || visible.status !== 'allowed') return null;
 
   return (
-    <section className="rounded-2xl border border-aqua/25 bg-aqua/[0.035] p-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Ferramentas clínicas</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-fog">Nexus contextual ao atendimento atual. Autorização continua cumulativa por entitlement, capability e vínculo assistencial.</p>
+    <div className="space-y-3">
+      <section className="rounded-2xl border border-aqua/25 bg-aqua/[0.035] p-4">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Ferramentas clínicas</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-fog">Nexus contextual ao atendimento atual. Autorização continua cumulativa por entitlement, capability e vínculo assistencial.</p>
+          </div>
+          <Chip className="border-aqua/30 text-aqua">Psiquiatria</Chip>
         </div>
-        <Chip className="border-aqua/30 text-aqua">Psiquiatria</Chip>
-      </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {visible.canEem && <ToolLink to={`/pacientes/${patient.id}/nexus/eem`} title="Exame do Estado Mental" detail="EEM · encontro atual" />}
-        {visible.canScales && <ToolLink to={`/pacientes/${patient.id}/nexus`} title="PHQ-9 / GAD-7" detail="autoavaliação Nexus" />}
-        <ToolLink to={`/pacientes/${patient.id}/nexus/evolution`} title="Longitudinal" detail="comparabilidade C-05" />
-        <ToolLink to={`/pacientes/${patient.id}/nexus`} title="Resultados Nexus" detail="revisão, assinatura e C-04" />
-      </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.canEem && <ToolLink to={`/pacientes/${patient.id}/nexus/eem`} title="Exame do Estado Mental" detail="EEM · encontro atual" />}
+          <ToolLink to={`/pacientes/${patient.id}/nexus/evolution`} title="Longitudinal" detail="comparabilidade C-05" />
+          <ToolLink to={`/pacientes/${patient.id}/nexus`} title="Resultados Nexus" detail="revisão, assinatura e C-04" />
+        </div>
 
-      {(status.pendingReview > 0 || status.pendingSignature > 0 || status.readyToIncorporate > 0) && <div className="mt-3 flex flex-wrap gap-2">
-        {status.pendingReview > 0 && <Chip className="border-amber/30 text-amber">{status.pendingReview} aguardando revisão</Chip>}
-        {status.pendingSignature > 0 && <Chip className="border-amber/30 text-amber">{status.pendingSignature} aguardando assinatura</Chip>}
-        {status.readyToIncorporate > 0 && <Chip className="border-mint/30 text-mint">{status.readyToIncorporate} pronto para incorporar</Chip>}
-      </div>}
-    </section>
+        {(status.pendingReview > 0 || status.pendingSignature > 0 || status.readyToIncorporate > 0) && <div className="mt-3 flex flex-wrap gap-2">
+          {status.pendingReview > 0 && <Chip className="border-amber/30 text-amber">{status.pendingReview} aguardando revisão</Chip>}
+          {status.pendingSignature > 0 && <Chip className="border-amber/30 text-amber">{status.pendingSignature} aguardando assinatura</Chip>}
+          {status.readyToIncorporate > 0 && <Chip className="border-mint/30 text-mint">{status.readyToIncorporate} pronto para incorporar</Chip>}
+        </div>}
+      </section>
+
+      {visible.canScales && <NexusSelfAssessmentInviteAction patient={patient} appointmentId={encounter.id} />}
+    </div>
   );
 }
 
