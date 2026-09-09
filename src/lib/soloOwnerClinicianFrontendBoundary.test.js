@@ -8,7 +8,9 @@ const dashboard = readFileSync(fileURLToPath(new URL('../pages/DashboardRoleAwar
 describe('solo owner clinician frontend boundary', () => {
   it('uses the canonical server-side capability helper and fails closed', () => {
     expect(hook).toContain("rpc('current_user_has_clinical_capability'");
-    expect(hook).toContain('setAllowed(false)');
+    expect(hook).toContain("{ p_capability: capability }");
+    expect(hook).toContain("setStatus('error')");
+    expect(hook).toContain("allowed: status === 'allowed'");
     expect(hook).not.toContain("role === 'owner'");
   });
 
@@ -17,7 +19,7 @@ describe('solo owner clinician frontend boundary', () => {
     expect(dashboard).toContain('isPsychiatristIdentity(identity)');
   });
 
-  it('routes any validated attending clinician to the clinical home without changing operational role', () => {
+  it('routes only a confirmed attending clinician to the clinical home without changing operational role', () => {
     expect(dashboard).toContain("useClinicalCapability('clinical.attend'");
     expect(dashboard).toContain('if (!capabilityLoading && canAttend)');
     expect(dashboard).toContain('return <ClinicianDashboard />;');
