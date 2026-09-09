@@ -9,6 +9,7 @@ import {
   canFinalizeEncounter,
   hasOwnLinkedEncounterEvolution,
   longitudinalPatientContext,
+  resolveEncounterClosingState,
   resolveEncounterProgress,
   type EncounterProgressItem,
 } from '../lib/clinicalEncounterUx';
@@ -70,11 +71,17 @@ export function ClinicalEncounterWorkspaceV4({
     canWriteEvolution: evolutionCapability.allowed,
     hasLinkedEvolution,
   });
+  const closing = resolveEncounterClosingState({
+    hasLinkedEvolution,
+    attendStatus: attendCapability.status,
+    evolutionWriteStatus: evolutionCapability.status,
+    canFinalize,
+  });
   const progress = resolveEncounterProgress({
     canApplyAssessment: assessmentCapability.allowed,
-    canWriteEvolution: evolutionCapability.allowed,
+    evolutionWriteStatus: evolutionCapability.status,
     hasLinkedEvolution,
-    canFinalize,
+    closing,
   });
   const patientContext = longitudinalPatientContext(patient);
   const patientConsents = consents.filter((consent) => consent.pacienteId === patient.id);
@@ -141,6 +148,20 @@ export function ClinicalEncounterWorkspaceV4({
   };
 
   const scrollToEvolution = () => evolutionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const closingStyle = closing.tone === 'ready'
+    ? 'border-mint/30 bg-mint/[0.045]'
+    : closing.tone === 'checking'
+      ? 'border-aqua/30 bg-aqua/[0.035]'
+      : closing.tone === 'pending'
+        ? 'border-amber/30 bg-amber/[0.04]'
+        : 'border-pulse/30 bg-pulse/[0.04]';
+  const closingTitleStyle = closing.tone === 'ready'
+    ? 'text-mint'
+    : closing.tone === 'checking'
+      ? 'text-aqua'
+      : closing.tone === 'pending'
+        ? 'text-amber'
+        : 'text-pulse';
 
   return (
     <section data-clinical-encounter-mode="active" className="space-y-4">
@@ -190,6 +211,8 @@ export function ClinicalEncounterWorkspaceV4({
             </div>
           ) : evolutionCapability.loading ? (
             <NeutralState>Validando permissão para registrar evolução…</NeutralState>
+          ) : evolutionCapability.error ? (
+            <BlockedState title="Não foi possível verificar seu acesso">A permissão para registrar evolução não pôde ser confirmada agora. O sistema não assume ausência de autorização enquanto essa verificação está com erro.</BlockedState>
           ) : evolutionCapability.allowed ? (
             <div className="rounded-2xl border border-amber/25 bg-amber/[0.035] p-4">
               <p className="text-[11.5px] leading-relaxed text-fog">Este texto será salvo no prontuário com <span className="font-semibold text-paper">session_id = {canonicalEncounter.id.slice(0, 8)}…</span>. Não há seletor de outra sessão durante um atendimento ativo.</p>
@@ -207,14 +230,14 @@ export function ClinicalEncounterWorkspaceV4({
         <NeutralState>Motivo desta consulta, HDA, hipótese e plano encounter-scoped ainda não possuem modelo próprio nesta versão. Esta tela não grava esses dados em campos longitudinais para simular contexto da consulta.</NeutralState>
       </EncounterSection>
 
-      <EncounterSection id="encounter-closing" step="6" eyebrow="Encerramento" title={canFinalize ? 'Pronto para finalizar' : 'Ainda falta a evolução'} detail={canFinalize ? 'Os requisitos clínicos visíveis foram satisfeitos. A transição continua validada pelo PostgreSQL.' : 'Registre uma evolução vinculada a esta sessão para liberar o encerramento.'}>
-        <div className={`rounded-2xl border p-4 ${canFinalize ? 'border-mint/30 bg-mint/[0.045]' : 'border-amber/30 bg-amber/[0.04]'}`}>
+      <EncounterSection id="encounter-closing" step="6" eyebrow="Encerramento" title={closing.sectionTitle} detail={closing.sectionDetail}>
+        <div className={`rounded-2xl border p-4 ${closingStyle}`}>
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-[220px] flex-1">
-              <p className={`font-display text-[15px] font-semibold ${canFinalize ? 'text-mint' : 'text-amber'}`}>{canFinalize ? 'Evolução vinculada · encerramento liberado' : 'Evolução ainda não registrada'}</p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{canFinalize ? 'Finalizar mantém as proteções clínicas e a separação do ciclo financeiro.' : 'O banco também bloqueia a finalização sem evolução; a interface apenas antecipa essa regra.'}</p>
+              <p className={`font-display text-[15px] font-semibold ${closingTitleStyle}`}>{closing.noticeTitle}</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{closing.noticeDetail}</p>
             </div>
-            {!hasLinkedEvolution && evolutionCapability.allowed && <Btn variant="subtle" onClick={scrollToEvolution}>Registrar evolução</Btn>}
+            {closing.action === 'register_evolution' && <Btn variant="subtle" onClick={scrollToEvolution}>Registrar evolução</Btn>}
             <Btn disabled={!canFinalize || finishing} onClick={() => void finishEncounter()}>{finishing ? 'Finalizando…' : 'Finalizar atendimento'}</Btn>
           </div>
         </div>
@@ -273,9 +296,11 @@ function ProgressCard({ item }: { item: EncounterProgressItem }) {
       ? 'border-amber/30 bg-amber/[0.04] text-amber'
       : item.state === 'blocked'
         ? 'border-pulse/25 bg-pulse/[0.035] text-pulse'
-        : item.state === 'optional'
+        : item.state === 'checking'
           ? 'border-aqua/25 bg-aqua/[0.035] text-aqua'
-          : 'border-line/70 bg-panel text-paper';
+          : item.state === 'optional'
+            ? 'border-aqua/25 bg-aqua/[0.035] text-aqua'
+            : 'border-line/70 bg-panel text-paper';
   return <div className={`rounded-2xl border px-3.5 py-3 ${style}`}><p className="text-[11.5px] font-semibold">{item.label}</p><p className="mt-1 text-[10px] text-fog">{item.detail}</p></div>;
 }
 
