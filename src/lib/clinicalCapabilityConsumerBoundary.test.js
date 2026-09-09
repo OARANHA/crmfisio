@@ -15,16 +15,17 @@ describe('clinical capability consumer boundary', () => {
     expect(hook).not.toContain('p_capability_key');
   });
 
-  it('keeps technical errors distinct from explicit denials', () => {
+  it('keeps technical errors distinct from explicit denials and keys resolved state to the current request', () => {
     expect(hook).toContain("export type ClinicalCapabilityStatus = 'loading' | 'allowed' | 'denied' | 'error'");
-    expect(hook).toContain("setStatus('error')");
-    expect(hook).toContain("setStatus(data === true ? 'allowed' : 'denied')");
+    expect(hook).toContain('resolution.key === resolutionKey');
+    expect(hook).toContain("setResolution({ key: requestKey, status: 'error' })");
+    expect(hook).toContain("status: data === true ? 'allowed' : 'denied'");
   });
 
   it('does not grant clinical actions from role fallbacks', () => {
     expect(modal).not.toContain('if (!canAttend) return true');
     expect(workspace).toContain('const clinicalRead = canReadTimeline;');
-    expect(workspace).toContain('const documentWrite = canManageClinicalDocuments;');
+    expect(workspace).not.toContain("useClinicalCapability('clinical.documents'");
     expect(workspace).not.toContain('canReadTimeline || isClinicManager');
     expect(workspace).not.toContain('canManageClinicalDocuments || isClinicManager');
   });
