@@ -12,9 +12,9 @@ describe('patient consent collection boundary', () => {
   it('keeps consent acceptance on its dedicated server-side RPC', () => {
     expect(repository).toContain("rpc('accept_patient_consent', {");
     expect(repository).toContain('p_consent_id: id');
-    expect(consentMigration).toContain('accept_patient_consent(p_consent_id uuid)');
-    expect(consentMigration).toContain('accept_patient_consent_not_allowed');
-    expect(consentMigration).toContain("'recep'");
+    expect(consentMigration).toContain('CREATE OR REPLACE FUNCTION public.accept_patient_consent(');
+    expect(consentMigration).toContain('p_consent_id uuid');
+    expect(consentMigration).toContain("IF v_role NOT IN ('owner','admin','fisio','recep') THEN");
   });
 
   it('preserves reception collection without granting clinical.documents', () => {
