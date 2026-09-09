@@ -1,11 +1,17 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useClinicalCapability } from '../../hooks/useClinicalCapability';
 import { useProfessionalIdentity } from '../../hooks/useProfessionalIdentity';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { resolveNexusClinicalTools } from '../../lib/nexus/clinicalToolRegistry';
+import { hasProfessionalCapability } from '../../lib/nexusClinical';
 import { Card, Chip, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
 import { ClinicianDashboard } from './ClinicianDashboard';
+
+type NexusHomeCapabilities = {
+  eem: boolean;
+  scales: boolean;
+};
 
 export function PsychiatryNexusDashboard() {
   return <ClinicianDashboard nexusContext={<PsychiatryNexusContext />} />;
@@ -14,9 +20,32 @@ export function PsychiatryNexusDashboard() {
 function PsychiatryNexusContext() {
   const { user } = useCurrentUserAccess();
   const { identity, loading: identityLoading } = useProfessionalIdentity(user?.id);
-  const eem = useClinicalCapability('nexus.eem', user?.id);
-  const scales = useClinicalCapability('nexus.scales', user?.id);
-  const resolving = identityLoading || eem.loading || scales.loading;
+  const [capabilities, setCapabilities] = useState<NexusHomeCapabilities | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setCapabilities({ eem: false, scales: false });
+      return () => { active = false; };
+    }
+
+    setCapabilities(null);
+    void Promise.all([
+      hasProfessionalCapability('nexus.eem'),
+      hasProfessionalCapability('nexus.scales'),
+    ])
+      .then(([eem, scales]) => {
+        if (active) setCapabilities({ eem, scales });
+      })
+      .catch((error) => {
+        console.error('[Nexus] clinician Home capabilities:', error);
+        if (active) setCapabilities({ eem: false, scales: false });
+      });
+
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const resolving = identityLoading || capabilities === null;
 
   if (resolving) {
     return (
@@ -34,11 +63,13 @@ function PsychiatryNexusContext() {
 
   const tools = resolveNexusClinicalTools({
     state: 'ready',
+    // The parent dashboard is reachable only after the canonical nexus.access
+    // resolver succeeds. Per-tool grants remain on the separate Nexus path.
     entitlementAllowed: true,
     nexusAccess: true,
     capabilities: {
-      'nexus.eem': eem.allowed,
-      'nexus.scales': scales.allowed,
+      'nexus.eem': capabilities.eem,
+      'nexus.scales': capabilities.scales,
     },
   }, identity)
     // Clinician-assisted PHQ/GAD is intentionally outside this slice. The
