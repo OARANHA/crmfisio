@@ -51,12 +51,12 @@ BEGIN
   END IF;
 END $$;
 
-\echo '3) service role has controlled queue access but no delete grant'
+\echo '3) service role can append detections but cannot generically resolve or delete them'
 DO $$
 BEGIN
   IF NOT has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'SELECT')
      OR NOT has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'INSERT')
-     OR NOT has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'UPDATE')
+     OR has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'UPDATE')
      OR has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'DELETE') THEN
     RAISE EXCEPTION 'financial_exception_service_contract_invalid';
   END IF;
@@ -99,7 +99,7 @@ BEGIN
   END IF;
 END $$;
 
-\echo '6) package reservation is enforced server-side and serialized'
+\echo '6) package reservation is enforced server-side and serialized without reschedule bypass'
 DO $$
 DECLARE v_def text := pg_get_functiondef('public.guard_appointment_package_reservation_capacity()'::regprocedure);
 BEGIN
@@ -107,6 +107,9 @@ BEGIN
      OR v_def NOT ILIKE '%sessoes_usadas + v_reserved >= v_package.sessoes_totais%'
      OR v_def NOT ILIKE '%agendado%confirmado%em_atendimento%' THEN
     RAISE EXCEPTION 'package_reservation_capacity_not_serialized';
+  END IF;
+  IF v_def ILIKE '%rescheduled_from_id%' THEN
+    RAISE EXCEPTION 'arbitrary_rescheduled_from_bypass_present';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
@@ -129,14 +132,13 @@ BEGIN
   END IF;
 END $$;
 
-\echo '8) an appointment cannot be both pending coverage and consumed'
+\echo '8) an appointment cannot be both a coverage exception and consumed'
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1
     FROM public.appointment_financial_exceptions e
     JOIN public.package_session_usage u ON u.appointment_id = e.appointment_id
-    WHERE e.status = 'pending'
   ) THEN
     RAISE EXCEPTION 'appointment_has_usage_and_financial_exception';
   END IF;
@@ -181,6 +183,63 @@ BEGIN
        'EXECUTE'
      ) THEN
     RAISE EXCEPTION 'financial_internal_function_browser_execute_exposed';
+  END IF;
+END $$;
+
+\echo '12) canonical reschedule releases the locked source before inserting replacement'
+DO $$
+DECLARE
+  v_proc regprocedure := to_regprocedure(
+    'public.reschedule_appointment(uuid,date,time without time zone,time without time zone,uuid,uuid,text,boolean)'
+  );
+  v_def text;
+  v_upper text;
+  v_update_pos integer;
+  v_insert_pos integer;
+BEGIN
+  IF v_proc IS NULL THEN
+    RAISE EXCEPTION 'canonical_reschedule_missing';
+  END IF;
+
+  v_def := pg_get_functiondef(v_proc);
+  v_upper := upper(v_def);
+  v_update_pos := strpos(v_upper, 'UPDATE PUBLIC.APPOINTMENTS');
+  v_insert_pos := strpos(v_upper, 'INSERT INTO PUBLIC.APPOINTMENTS');
+
+  IF v_update_pos = 0 OR v_insert_pos = 0 OR v_update_pos >= v_insert_pos THEN
+    RAISE EXCEPTION 'reschedule_insert_precedes_source_release';
+  END IF;
+  IF v_def NOT ILIKE '%cancellation_reason%'
+     OR v_def NOT ILIKE '%old_app.pacote_id%'
+     OR v_def NOT ILIKE '%rescheduled_from_id%old_app.id%' THEN
+    RAISE EXCEPTION 'reschedule_transfer_contract_incomplete';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid = v_proc AND p.prosecdef
+  ) THEN
+    RAISE EXCEPTION 'reschedule_not_security_definer';
+  END IF;
+  IF NOT has_function_privilege('authenticated', v_proc, 'EXECUTE')
+     OR has_function_privilege('anon', v_proc, 'EXECUTE') THEN
+    RAISE EXCEPTION 'reschedule_execute_boundary_invalid';
+  END IF;
+END $$;
+
+\echo '13) financial exception queue has no canonical generic resolve RPC in this slice'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN (
+        'resolve_appointment_financial_exception',
+        'resolve_appointment_financial_exception_with_note'
+      )
+  ) THEN
+    RAISE EXCEPTION 'unmaterialized_financial_exception_resolution_exposed';
   END IF;
 END $$;
 
