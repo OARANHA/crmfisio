@@ -43,12 +43,11 @@ export function AppointmentActionModal({
   onCancel,
 }: Props) {
   const { user } = useCurrentUserAccess();
-  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
-  const canClinicalTransition = Boolean(appointment && canAttend && user?.id === professionalIdOf(appointment));
+  const attendCapability = useClinicalCapability('clinical.attend', user?.id);
+  const canClinicalTransition = Boolean(appointment && attendCapability.allowed && user?.id === professionalIdOf(appointment));
   const actions = appointment ? appointmentActions(role, appointment)
     .filter((action) => action.status !== 'cancelado')
     .filter((action) => {
-      if (!canAttend) return true;
       if (action.status === 'finalizado') return false;
       if (action.status === 'em_atendimento') return canClinicalTransition;
       return true;
@@ -99,6 +98,9 @@ export function AppointmentActionModal({
             <div className="rounded-xl bg-raise/55 px-3.5 py-3 text-[12.5px] leading-relaxed text-fog">{appointmentStatusGuidance(appointment.status)}</div>
 
             {(canReschedule || canCancel) && <div className="grid grid-cols-2 gap-2">{canReschedule && <Btn variant="ghost" onClick={onReschedule}>Remarcar</Btn>}{canCancel && <Btn variant="ghost" onClick={onCancel}>Cancelar</Btn>}</div>}
+
+            {attendCapability.error && <p className="rounded-xl border border-amber/25 bg-amber/[0.04] px-3.5 py-3 text-[12px] text-fog">Não foi possível verificar suas permissões clínicas.</p>}
+            {attendCapability.loading && <p className="text-[12px] text-fog">Verificando permissões clínicas…</p>}
 
             {canContinueClinicalSession && <Btn className="w-full" onClick={onOpenPatient}>Continuar atendimento no prontuário</Btn>}
 
