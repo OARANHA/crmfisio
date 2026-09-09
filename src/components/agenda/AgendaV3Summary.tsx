@@ -11,25 +11,34 @@ type Summary = {
   nominalValue: number;
 };
 
-type Props = {
-  label: string;
+type NavigationProps = {
   summary: Summary;
   activeFilter?: AgendaStatusFilter | null;
   onFilterChange?: (filter: AgendaStatusFilter) => void;
 };
 
-export function AgendaV3Summary({ label, summary, activeFilter = null, onFilterChange }: Props) {
+export function AgendaStatusNavigation({ summary, activeFilter = null, onFilterChange }: NavigationProps) {
+  return (
+    <section aria-label="Navegação por status" className="grid gap-2 sm:grid-cols-3">
+      <StatusMetric label="Pendentes" value={summary.pending} tone="text-amber" border="border-amber/25" filter="pending" active={activeFilter === 'pending'} onActivate={onFilterChange} />
+      <StatusMetric label="Em atendimento" value={summary.inService} tone="text-aqua" border="border-aqua/30" filter="in_service" active={activeFilter === 'in_service'} onActivate={onFilterChange} />
+      <StatusMetric label="Finalizados" value={summary.finished} tone="text-mint" border="border-mint/25" filter="finished" active={activeFilter === 'finished'} onActivate={onFilterChange} />
+    </section>
+  );
+}
+
+export function AgendaAnalytics({ label, summary }: { label: string; summary: Summary }) {
   const attendanceBase = summary.finished + summary.missed;
   const attendanceRate = attendanceBase > 0 ? Math.round((summary.finished / attendanceBase) * 100) : 100;
   const confirmationBase = summary.confirmed + summary.pending;
   const confirmationRate = confirmationBase > 0 ? Math.round((summary.confirmed / confirmationBase) * 100) : 100;
 
   return (
-    <section className="grid gap-3 xl:grid-cols-[1.25fr_1fr_1fr_1.1fr]">
-      <div className="rounded-[22px] border border-mint/20 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_10%,var(--color-panel)),var(--color-panel)_58%)] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
+    <section aria-label="Indicadores analíticos da agenda" className="grid gap-3 xl:grid-cols-[1.25fr_1fr_1fr_1.1fr]">
+      <div className="rounded-[22px] border border-line/75 bg-panel p-5 shadow-[0_12px_36px_rgba(0,0,0,0.045)]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-mint/80">Fluxo do período</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-fog">Fluxo do período</p>
             <p className="mt-2 font-display text-[34px] font-bold leading-none">{summary.total}</p>
             <p className="mt-2 text-[13px] text-fog">{label}</p>
           </div>
@@ -37,11 +46,6 @@ export function AgendaV3Summary({ label, summary, activeFilter = null, onFilterC
             <p className="text-[11px] text-fog">Valor nominal</p>
             <p className="mt-1 font-display text-lg font-semibold text-paper">{fmtBRL(summary.nominalValue)}</p>
           </div>
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line/55 pt-4">
-          <MetricMini label="Pendentes" value={summary.pending} tone="text-amber" filter="pending" active={activeFilter === 'pending'} onActivate={onFilterChange} />
-          <MetricMini label="Em atendimento" value={summary.inService} tone="text-aqua" filter="in_service" active={activeFilter === 'in_service'} onActivate={onFilterChange} />
-          <MetricMini label="Finalizados" value={summary.finished} tone="text-mint" filter="finished" active={activeFilter === 'finished'} onActivate={onFilterChange} />
         </div>
       </div>
 
@@ -60,10 +64,26 @@ export function AgendaV3Summary({ label, summary, activeFilter = null, onFilterC
   );
 }
 
-function MetricMini({
+/** @deprecated Compose AgendaStatusNavigation and AgendaAnalytics explicitly in the page. */
+export function AgendaV3Summary({
+  label,
+  summary,
+  activeFilter = null,
+  onFilterChange,
+}: { label: string; summary: Summary; activeFilter?: AgendaStatusFilter | null; onFilterChange?: (filter: AgendaStatusFilter) => void }) {
+  return (
+    <div className="space-y-3">
+      <AgendaStatusNavigation summary={summary} activeFilter={activeFilter} onFilterChange={onFilterChange} />
+      <AgendaAnalytics label={label} summary={summary} />
+    </div>
+  );
+}
+
+function StatusMetric({
   label,
   value,
   tone,
+  border,
   filter,
   active,
   onActivate,
@@ -71,6 +91,7 @@ function MetricMini({
   label: string;
   value: number;
   tone: string;
+  border: string;
   filter: AgendaStatusFilter;
   active: boolean;
   onActivate?: (filter: AgendaStatusFilter) => void;
@@ -81,10 +102,10 @@ function MetricMini({
       aria-pressed={active}
       aria-label={`Filtrar agenda por ${label.toLowerCase()}: ${value}`}
       onClick={() => onActivate?.(filter)}
-      className={`rounded-xl px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/60 ${active ? 'bg-raise ring-1 ring-aqua/35' : 'hover:bg-raise/65'}`}
+      className={`rounded-[18px] border ${border} px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/60 ${active ? 'bg-raise shadow-sm ring-1 ring-aqua/30' : 'bg-panel hover:bg-raise/65'}`}
     >
-      <p className="text-[11px] text-fog">{label}</p>
-      <p className={`mt-1 font-display text-lg font-semibold ${tone}`}>{value}</p>
+      <p className="text-[11.5px] font-semibold text-fog">{label}</p>
+      <p className={`mt-1 font-display text-[24px] font-bold leading-none ${tone}`}>{value}</p>
     </button>
   );
 }

@@ -9,6 +9,7 @@ import { useClinical } from '../../lib/clinicalContext';
 import { usePackages } from '../../lib/packageContext';
 import {
   activeEncounterStartedLabel,
+  clinicianAgendaPath,
   clinicianEncounterPath,
   resolveProfessionalActiveEncounter,
 } from '../../lib/clinicianDaily';
@@ -83,6 +84,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
   const activePatient = activeEncounter ? patients.find((patient) => patient.id === activeEncounter.pacienteId) : null;
   const nextPatient = next ? patients.find((patient) => patient.id === next.pacienteId) : null;
   const firstName = user?.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ')[0] ?? 'Profissional';
+  const dayAgendaPath = clinicianAgendaPath({ view: 'dia', date: today });
 
   return <div className="space-y-5">
     <Reveal>
@@ -95,7 +97,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
             <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-fog">Atendimentos, próximo movimento e pendências clínicas em uma única visão para você decidir rápido o que fazer agora.</p>
           </div>
           <DashboardQuickActions actions={[
-            { label: 'Abrir Agenda', to: '/agenda', primary: true },
+            { label: 'Abrir Agenda', to: dayAgendaPath, primary: true },
             { label: 'Pacientes', to: '/pacientes' },
           ]} />
         </div>
@@ -122,11 +124,11 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
     <Reveal delay={55}>
       <DashboardMetricGrid items={[
-        { label: 'Atendimentos hoje', value: todayAppointments.length, sub: next ? `próximo às ${next.inicio.slice(0, 5)}` : 'sem próximo pendente', to: '/agenda' },
-        { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', tone: confirmed ? 'text-amber' : 'text-fog', to: '/agenda' },
-        { label: 'Em atendimento', value: inServiceToday, sub: 'no período de hoje', tone: inServiceToday ? 'text-aqua' : 'text-fog', to: '/agenda' },
-        { label: 'Finalizados', value: finished, sub: 'no dia', tone: 'text-mint', to: '/agenda' },
-        { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', tone: missingEvolution.length ? 'text-amber' : 'text-mint', to: '/agenda' },
+        { label: 'Atendimentos hoje', value: todayAppointments.length, sub: next ? `próximo às ${next.inicio.slice(0, 5)}` : 'sem próximo pendente', to: dayAgendaPath },
+        { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', tone: confirmed ? 'text-amber' : 'text-fog', to: clinicianAgendaPath({ status: 'confirmed', view: 'dia', date: today }) },
+        { label: 'Em atendimento', value: inServiceToday, sub: 'no período de hoje', tone: inServiceToday ? 'text-aqua' : 'text-fog', to: clinicianAgendaPath({ status: 'in_service', view: 'dia', date: today }) },
+        { label: 'Finalizados', value: finished, sub: 'no dia', tone: 'text-mint', to: clinicianAgendaPath({ status: 'finished', view: 'dia', date: today }) },
+        { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', tone: missingEvolution.length ? 'text-amber' : 'text-mint', to: dayAgendaPath },
       ]} />
     </Reveal>
 

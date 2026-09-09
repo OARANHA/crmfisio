@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeEncounterStartedLabel,
+  clinicianAgendaPath,
   clinicianEncounterPath,
   filterAgendaAppointments,
+  parseAgendaStatusFilter,
   resolveProfessionalActiveEncounter,
   summarizeAgendaPeriod,
 } from './clinicianDaily';
@@ -49,6 +51,16 @@ describe('clinician daily operational view', () => {
     const second = appointment('two', 'em_atendimento', { pacienteId: 'patient-b' });
     expect(resolveProfessionalActiveEncounter([first, second], 'professional-a')).toBeNull();
   });
+
+  it('deep-links Em atendimento into the day agenda with refresh-safe query state', () => {
+    const path = clinicianAgendaPath({ status: 'in_service', view: 'dia', date: '2026-09-09' });
+    const params = new URLSearchParams(path.split('?')[1]);
+
+    expect(path).toBe('/agenda?status=in_service&view=dia&date=2026-09-09');
+    expect(parseAgendaStatusFilter(params.get('status'))).toBe('in_service');
+    expect(params.get('view')).toBe('dia');
+    expect(params.get('date')).toBe('2026-09-09');
+  });
 });
 
 describe('agenda summary navigation contract', () => {
@@ -61,8 +73,9 @@ describe('agenda summary navigation contract', () => {
     appointment('cancelled', 'cancelado', { valor: 9000 }),
   ];
 
-  it('filters Pendentes, Em atendimento and Finalizados without changing the period source', () => {
+  it('filters Pendentes, Confirmados, Em atendimento and Finalizados without changing the period source', () => {
     expect(filterAgendaAppointments(period, 'pending').map((item) => item.id)).toEqual(['pending']);
+    expect(filterAgendaAppointments(period, 'confirmed').map((item) => item.id)).toEqual(['confirmed']);
     expect(filterAgendaAppointments(period, 'in_service').map((item) => item.id)).toEqual(['service']);
     expect(filterAgendaAppointments(period, 'finished').map((item) => item.id)).toEqual(['finished']);
     expect(period).toHaveLength(6);
@@ -72,8 +85,11 @@ describe('agenda summary navigation contract', () => {
     expect(filterAgendaAppointments(period, null)).toEqual(period);
   });
 
-  it('keeps metrics numerically coherent with the selected period independently of navigation filter', () => {
-    expect(summarizeAgendaPeriod(period)).toEqual({
+  it('keeps analytics numerically coherent with the selected period independently of navigation', () => {
+    const summaryBeforeNavigation = summarizeAgendaPeriod(period);
+    const navigated = filterAgendaAppointments(period, 'in_service');
+
+    expect(summaryBeforeNavigation).toEqual({
       total: 5,
       confirmed: 1,
       inService: 1,
@@ -82,6 +98,7 @@ describe('agenda summary navigation contract', () => {
       missed: 1,
       nominalValue: 57000,
     });
-    expect(summarizeAgendaPeriod(period)).toEqual(summarizeAgendaPeriod(filterAgendaAppointments(period, null)));
+    expect(navigated.map((item) => item.id)).toEqual(['service']);
+    expect(summarizeAgendaPeriod(period)).toEqual(summaryBeforeNavigation);
   });
 });
