@@ -33,4 +33,13 @@ describe('clinical session workspace boundary', () => {
     expect(workspace).toContain('setSessionId(session.id)');
     expect(workspace).toContain('refreshClinical().catch');
   });
+
+  it('binds assessment and evolution read access only to clinical.timeline.read', () => {
+    expect(workspace).toContain("useClinicalCapability('clinical.timeline.read'");
+    expect(workspace).toContain('const clinicalRead = canReadTimeline;');
+    expect(workspace).toContain("{ key: 'avaliacao', label: 'Avaliações', locked: !clinicalRead }");
+    expect(workspace).toContain("{ key: 'evolucoes', label: `Evoluções (${evolutions.length})`, locked: !clinicalRead }");
+    expect(workspace).toContain("tab === 'avaliacao' && clinicalRead");
+    expect(workspace).toContain("tab === 'evolucoes' && clinicalRead");
+  });
 });
