@@ -1,0 +1,1 @@
+GRANT UPDATE ON public.appointment_financial_exception_dispositions TO authenticated;
