@@ -67,3 +67,17 @@ export const canViewCommissions = (role: Role | null | undefined): boolean =>
 
 export const canManageCommissions = (role: Role | null | undefined): boolean =>
   role === 'owner' || role === 'admin' || role === 'financeiro';
+
+/**
+ * Financial exception resolution is deliberately narrower than generic finance
+ * module access. In particular, reception may create a generic receivable and a
+ * professional may read finance, but neither may inspect/resolve this queue.
+ */
+export const canListFinancialExceptions = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'financeiro';
+
+export const canChargeFinancialException = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin' || role === 'financeiro';
+
+export const canWaiveFinancialException = (role: Role | null | undefined): boolean =>
+  role === 'owner' || role === 'admin';
