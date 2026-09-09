@@ -3,6 +3,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { usePatients } from '../lib/patientContext';
+import { useAgenda } from '../lib/agendaContext';
+import { resolveClinicalEncounterWorkspace } from '../lib/clinicalEncounterUx';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { STAGE_META, maskCpf, ageFrom, type FunilStage } from '../lib/types';
 import { Card, Btn, Input, Select, Chip, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
@@ -110,9 +113,17 @@ function Lista() {
 
 function Pep({ id }: { id: string }) {
   const { patients } = usePatients();
+  const { appointments } = useAgenda();
+  const { user } = useCurrentUserAccess();
   const [searchParams] = useSearchParams();
   const patient = patients.find((item) => item.id === id);
   const focusedSessionId = searchParams.get('session');
+  const encounterResolution = useMemo(
+    () => resolveClinicalEncounterWorkspace(appointments, patient?.id, user?.id, focusedSessionId),
+    [appointments, focusedSessionId, patient?.id, user?.id],
+  );
+  const inOwnEncounter = encounterResolution.mode === 'encounter';
+
   if (!patient) return <Empty title="Paciente não encontrado" action={<Link to="/pacientes"><Btn variant="ghost">Voltar</Btn></Link>} />;
 
   return (
@@ -121,22 +132,26 @@ function Pep({ id }: { id: string }) {
         <Link to="/pacientes" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fog transition-colors hover:text-mint">
           <IconChevronL className="h-4 w-4" /> Pacientes
         </Link>
-        <div className="mt-2"><PatientProfileHeader patient={patient} /></div>
+        {!inOwnEncounter && <div className="mt-2"><PatientProfileHeader patient={patient} /></div>}
       </Reveal>
 
-      <Reveal delay={30}>
-        <PatientCareCockpit patient={patient} />
-      </Reveal>
+      {!inOwnEncounter && (
+        <>
+          <Reveal delay={30}>
+            <PatientCareCockpit patient={patient} />
+          </Reveal>
 
-      <Reveal delay={45}>
-        <PatientOperationalActions patient={patient} />
-      </Reveal>
+          <Reveal delay={45}>
+            <PatientOperationalActions patient={patient} />
+          </Reveal>
 
-      <Reveal delay={55}>
-        <NexusPatientContextHub patient={patient} />
-      </Reveal>
+          <Reveal delay={55}>
+            <NexusPatientContextHub patient={patient} />
+          </Reveal>
+        </>
+      )}
 
-      <Reveal delay={65}>
+      <Reveal delay={inOwnEncounter ? 20 : 65}>
         <div id="clinical-workspace" className="scroll-mt-4">
           <ClinicalWorkspaceV3 patient={patient} initialSessionId={focusedSessionId} />
         </div>

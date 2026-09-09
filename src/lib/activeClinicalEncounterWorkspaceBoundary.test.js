@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 const workspaceV3 = read('../components/ClinicalWorkspaceV3.tsx');
+const encounterWorkspace = read('../components/ClinicalEncounterWorkspaceV4.tsx');
+const encounterUx = read('./clinicalEncounterUx.ts');
 const workspace = read('../components/ClinicalWorkspace.tsx');
 const assessment = read('../components/ClinicalAssessmentRunner.tsx');
 const eem = read('../components/NexusEemPanel.tsx');
@@ -13,16 +15,18 @@ const selfAssessment = read('../components/NexusSelfAssessmentInviteAction.tsx')
 
 describe('Active Clinical Encounter workspace boundary', () => {
   it('derives the encounter from current patient + current professional instead of first patient session', () => {
-    expect(workspaceV3).toContain('resolveOwnActiveEncounter(appointments, patient.id, user?.id)');
+    expect(workspaceV3).toContain('resolveClinicalEncounterWorkspace(appointments, patient.id, user?.id, initialSessionId)');
+    expect(encounterUx).toContain('resolveOwnActiveEncounter(appointments, patientId, professionalId)');
     expect(workspace).toContain('resolveOwnActiveEncounter(appointments, patient.id, user?.id)');
     expect(workspace).not.toContain("sessions.find((s) => s.status === 'em_atendimento')");
   });
 
-  it('auto-binds evolution to the canonical encounter and removes the redundant active-session selector', () => {
+  it('auto-binds evolution to the canonical encounter and exposes no arbitrary session selector in v4', () => {
+    expect(encounterWorkspace).toContain('buildEncounterEvolutionDraft({');
+    expect(encounterWorkspace).toContain('encounter: canonicalEncounter');
+    expect(encounterWorkspace).not.toContain('setSessionId');
     expect(workspace).toContain('setSessionId(activeSession.id)');
     expect(workspace).toContain("activeSession?.id !== session.id");
-    expect(workspace).toContain('sessionId !== activeSession.id');
-    expect(workspace).toContain('Nenhum atendimento próprio em andamento');
   });
 
   it('uses the same canonical appointment for new assessments', () => {
@@ -54,6 +58,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
   });
 
   it('makes Nexus availability capability-first and keeps specialty presentation-only', () => {
+    expect(encounterWorkspace).toContain('<ActiveEncounterClinicalTools');
     expect(tools).toContain("loadCurrentClinicEntitlementState('nexus.access')");
     expect(tools).toContain("hasProfessionalCapability('nexus.access')");
     expect(tools).toContain("hasProfessionalCapability('nexus.eem')");
@@ -70,13 +75,13 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(toolRegistry).not.toContain('nexus.results');
   });
 
-  it('propagates the active encounter to PHQ-9/GAD-7 invitations and resets their local state by context', () => {
+  it('propagates the active encounter to self-assessment invitations and resets their local state by context', () => {
     expect(tools).toContain('key={key} patient={patient} appointmentId={encounter.id}');
     expect(selfAssessment).toContain('body: { patientId: patient.id, scaleKey, appointmentId, expiresHours: 48 }');
   });
 
   it('isolates Nexus allow state by user, patient and encounter', () => {
-    expect(workspaceV3).toContain('userId={user?.id}');
+    expect(encounterWorkspace).toContain('userId={user?.id}');
     expect(tools).toContain('nexusClinicalToolContextKey({ userId, patientId: patient.id, encounterId: encounter.id })');
     expect(tools).toContain("state.key === key ? state : emptyToolState(key, 'loading')");
   });
@@ -87,7 +92,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(toolRegistry).toContain("routeSuffix: '/evolution'");
   });
 
-  it('resets encounter-scoped evolution draft context when patient or user changes', () => {
+  it('resets the legacy encounter-scoped evolution draft context when patient or user changes', () => {
     expect(workspace).toContain("setSessionId('')");
     expect(workspace).toContain("setEvolutionText('')");
     expect(workspace).toContain('[patient.id, user?.id]');
