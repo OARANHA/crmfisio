@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAgenda } from '../lib/agendaContext';
+import { resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
-import type { Patient } from '../lib/types';
+import type { Appointment, Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty } from '../lib/ui';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
 import {
@@ -18,7 +19,7 @@ import {
 } from '../lib/nexus/eem';
 import { persistEemResult } from '../lib/nexus/eemPersistence';
 
-export function NexusEemPanel({ patient }: { patient: Patient }) {
+export function NexusEemPanel({ patient, encounter = null }: { patient: Patient; encounter?: Appointment | null }) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { appointments } = useAgenda();
@@ -29,10 +30,11 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
   const [busy, setBusy] = useState(false);
   const [showNarrative, setShowNarrative] = useState(true);
 
-  const activeAppointment = useMemo(
-    () => appointments.find((item) => item.pacienteId === patient.id && item.status === 'em_atendimento') ?? null,
-    [appointments, patient.id],
-  );
+  const activeAppointment = useMemo(() => {
+    const canonical = resolveOwnActiveEncounter(appointments, patient.id, user?.id);
+    if (!encounter) return canonical;
+    return canonical?.id === encounter.id ? canonical : null;
+  }, [appointments, encounter, patient.id, user?.id]);
   const narrative = useMemo(() => generateEemNarrative(state), [state]);
   const flags = useMemo(() => eemRedFlags(state), [state]);
 
@@ -51,6 +53,10 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
         }
       } catch (error) {
         console.error('[MedicsPro/Nexus] carregar EEM:', error);
+        if (!cancelled) {
+          setCanApply(false);
+          setHistory([]);
+        }
         toast('Não foi possível carregar o EEM Nexus.', 'warn');
       } finally {
         if (!cancelled) setLoading(false);
@@ -61,13 +67,13 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
   }, [patient.id, user?.id, toast]);
 
   const submit = async () => {
-    if (!user || !canApply) return;
+    if (!user || !canApply || !activeAppointment) return;
     setBusy(true);
     try {
       const result = await persistEemResult({
         patientId: patient.id,
         professionalId: user.id,
-        appointmentId: activeAppointment?.id ?? null,
+        appointmentId: activeAppointment.id,
         state,
       });
       setHistory((current) => [result, ...current]);
@@ -100,7 +106,7 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
           <div className="mt-3 space-y-2">{flags.map((flag) => <div key={flag.flagCode} className="rounded-lg border border-pulse/25 bg-deep p-3"><p className="text-[11.5px] font-semibold text-paper">{flag.title}</p><p className="mt-1 text-[10.5px] text-fog">{flag.message}</p>{flag.requiredAction && <p className="mt-2 text-[10.5px] font-medium text-pulse">{flag.requiredAction}</p>}{flag.flagCode === 'eem.thought.suicidal-ideation' && <div className="mt-2 rounded-lg border border-pulse/25 bg-pulse/[0.04] px-3 py-2 text-[10.5px] leading-relaxed text-fog"><span className="font-semibold text-pulse">Protocolo dedicado de risco ainda não habilitado no Nexus.</span> Use o protocolo assistencial vigente da clínica e o julgamento clínico do profissional responsável.</div>}</div>)}</div>
         </div>}
 
-        {canApply ? <div className="space-y-3">
+        {canApply && activeAppointment ? <div className="space-y-3">
           {EEM_DOMAINS.map((domain) => <section key={domain.id} className="rounded-xl border border-line bg-deep p-4">
             <div><p className="font-display text-[13px] font-semibold text-paper">{domain.title}</p><p className="mt-1 text-[10.5px] text-fog">{domain.instructions}</p></div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -121,7 +127,7 @@ export function NexusEemPanel({ patient }: { patient: Patient }) {
             {showNarrative && <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-line bg-deep p-3 font-sans text-[10.5px] leading-relaxed text-fog">{narrative}</pre>}
             <div className="mt-4 flex flex-wrap justify-end gap-2"><Btn variant="ghost" disabled={busy} onClick={() => setState(createInitialEemState())}>Restaurar padrão</Btn><Btn disabled={busy} onClick={() => void submit()}>{busy ? 'Finalizando…' : 'Finalizar EEM'}</Btn></div>
           </div>
-        </div> : <div className="rounded-xl border border-line bg-deep p-4 text-[11.5px] text-fog">Seu acesso permite consultar histórico, mas registrar EEM exige <span className="font-mono text-paper">nexus.eem</span>.</div>}
+        </div> : <div className="rounded-xl border border-line bg-deep p-4 text-[11.5px] text-fog">{!canApply ? <>Seu acesso permite consultar histórico, mas registrar EEM exige <span className="font-mono text-paper">nexus.eem</span>.</> : <>O EEM só pode ser registrado quando este paciente possui um atendimento ativo do próprio profissional.</>}</div>}
       </div>
     </Card>
 
