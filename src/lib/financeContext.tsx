@@ -171,8 +171,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const commandGeneration = financialExceptionGeneration.current;
     return executeFinancialExceptionCommand(exceptionId, disposition, reason, {
       resolve: resolveAppointmentFinancialException,
+      isProjectionCurrent: () => commandGeneration === financialExceptionGeneration.current,
       onPersisted: (persisted) => {
-        if (commandGeneration !== financialExceptionGeneration.current) return;
         setFinancialExceptions((current) => current.filter((item) => item.id !== persisted.exceptionId));
       },
       refreshFinance,
