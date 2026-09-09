@@ -7,7 +7,6 @@ import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '..
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import {
-  activeEncounterStartedLabel,
   clinicianEncounterPath,
   filterAgendaAppointments,
   parseAgendaStatusFilter,
@@ -18,7 +17,6 @@ import {
 import { parseAgendaView, type AgendaExperienceMode, type AgendaView } from '../lib/agendaPresentation';
 import {
   AGENDA_SLOT_MINUTES,
-  agendaClockToMinutes,
   appointmentAgendaGeometry,
   buildAgendaGridSlots,
   resolveAgendaTimeRange,
@@ -40,6 +38,7 @@ import { AppointmentRescheduleModal, type ReschedulePreset } from '../components
 import { AppointmentFinderPanel } from '../components/AppointmentFinderPanel';
 import { WaitlistPanel } from '../components/WaitlistPanel';
 import { AgendaAnalytics, AgendaStatusNavigation } from '../components/agenda/AgendaV3Summary';
+import { ClinicianActiveEncounterBanner } from '../components/agenda/ClinicianActiveEncounterBanner';
 import { isOperationalRole } from '../lib/permissions';
 
 const PPM = 1.08;
@@ -414,7 +413,11 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex overflow-hidden rounded-xl border border-line/75 bg-deep/35">{(['dia', 'semana', 'mes'] as AgendaView[]).map((item) => <button key={item} onClick={() => setView(item)} className={`min-w-[62px] px-3 py-2 text-[12px] font-semibold transition ${view === item ? 'bg-mint text-on-accent shadow-sm' : 'text-fog hover:bg-raise hover:text-paper'}`}>{item === 'mes' ? 'mês' : item}</button>)}</div>
-                <button className="rounded-xl border border-line/75 px-3 py-2 text-[12px] font-semibold text-fog hover:bg-raise hover:text-paper" onClick={() => updateAgendaQuery({ date: null })}>Hoje</button>
+                <div className="flex overflow-hidden rounded-xl border border-line/75 bg-deep/35">
+                  <button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(-1)} aria-label="Período anterior">←</button>
+                  <button className="border-x border-line px-3.5 py-2 text-[12px] font-semibold text-fog hover:bg-raise hover:text-paper" onClick={() => updateAgendaQuery({ date: null })}>Hoje</button>
+                  <button className="px-3 py-2 text-fog hover:bg-raise hover:text-paper" onClick={() => moveAnchor(1)} aria-label="Próximo período">→</button>
+                </div>
                 <Btn onClick={() => setCreating({ dia: format(anchor, 'yyyy-MM-dd'), hora: '08:00' })}>+ Atendimento</Btn>
               </div>
             </div>
@@ -449,17 +452,12 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
 
       {mode === 'professional' && activeEncounter && (
         <Reveal delay={30}>
-          <section className="rounded-[18px] border border-aqua/35 bg-aqua/[0.055] px-4 py-3.5">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Atendimento em andamento</p>
-                <p className="mt-1 truncate font-display text-[17px] font-semibold text-paper">{activePatient?.preferredName || activePatient?.nome || 'Paciente'}</p>
-                <p className="mt-0.5 text-[11.5px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)} · {activeEncounter.tipo}</p>
-                {activeEncounter.data !== todayIso && <p className="mt-1.5 text-[11px] text-amber">Atendimento aberto de uma data anterior.</p>}
-              </div>
-              <Btn onClick={() => nav(clinicianEncounterPath(activeEncounter))}>Continuar atendimento</Btn>
-            </div>
-          </section>
+          <ClinicianActiveEncounterBanner
+            encounter={activeEncounter}
+            patientLabel={activePatient?.preferredName || activePatient?.nome || 'Paciente'}
+            now={now}
+            onContinue={() => nav(clinicianEncounterPath(activeEncounter))}
+          />
         </Reveal>
       )}
 
