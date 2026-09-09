@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { isPsychiatryContext } from '../lib/activeClinicalEncounter';
 import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
+import { listPatientNexusRecordIncorporations } from '../lib/nexusRecordIncorporation';
 import type { ProfessionalIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Patient } from '../lib/types';
 import { Chip } from '../lib/ui';
@@ -24,17 +25,19 @@ export function ActiveEncounterClinicalTools({
     canEem: boolean;
     canScales: boolean;
     results: NexusClinicalResult[];
-  }>(() => ({ key: '', status: 'loading', canEem: false, canScales: false, results: [] }));
+    incorporatedResultIds: string[];
+  }>(() => ({ key: '', status: 'loading', canEem: false, canScales: false, results: [], incorporatedResultIds: [] }));
   const key = `${patient.id}:${encounter.id}`;
 
   useEffect(() => {
     let active = true;
+    const closed = { key, status: 'denied' as const, canEem: false, canScales: false, results: [] as NexusClinicalResult[], incorporatedResultIds: [] as string[] };
     if (!psychiatry) {
-      setState({ key, status: 'denied', canEem: false, canScales: false, results: [] });
+      setState(closed);
       return () => { active = false; };
     }
 
-    setState({ key, status: 'loading', canEem: false, canScales: false, results: [] });
+    setState({ ...closed, status: 'loading' });
     void Promise.all([
       loadCurrentClinicEntitlementState('nexus.access'),
       hasProfessionalCapability('nexus.access'),
@@ -43,31 +46,42 @@ export function ActiveEncounterClinicalTools({
     ]).then(async ([entitlement, canAccess, canEem, canScales]) => {
       if (!active) return;
       if (!isCurrentClinicEntitlementAllowed(entitlement) || !canAccess) {
-        setState({ key, status: 'denied', canEem: false, canScales: false, results: [] });
+        setState(closed);
         return;
       }
       try {
-        const results = await listPatientNexusResults(patient.id);
-        if (active) setState({ key, status: 'allowed', canEem, canScales, results });
+        const [results, incorporations] = await Promise.all([
+          listPatientNexusResults(patient.id),
+          listPatientNexusRecordIncorporations(patient.id),
+        ]);
+        if (active) setState({
+          key,
+          status: 'allowed',
+          canEem,
+          canScales,
+          results,
+          incorporatedResultIds: incorporations.map((item) => item.nexusResultId),
+        });
       } catch (error) {
         console.error('[MedicsPro/Nexus] ferramentas do encounter:', error);
-        if (active) setState({ key, status: 'error', canEem: false, canScales: false, results: [] });
+        if (active) setState({ ...closed, status: 'error' });
       }
     }).catch((error) => {
       console.error('[MedicsPro/Nexus] autorização do encounter:', error);
-      if (active) setState({ key, status: 'error', canEem: false, canScales: false, results: [] });
+      if (active) setState({ ...closed, status: 'error' });
     });
 
     return () => { active = false; };
   }, [encounter.id, key, patient.id, psychiatry]);
 
-  const visible = state.key === key ? state : { key, status: 'loading' as const, canEem: false, canScales: false, results: [] as NexusClinicalResult[] };
+  const visible = state.key === key ? state : { key, status: 'loading' as const, canEem: false, canScales: false, results: [] as NexusClinicalResult[], incorporatedResultIds: [] as string[] };
   const status = useMemo(() => {
+    const incorporated = new Set(visible.incorporatedResultIds);
     const pendingReview = visible.results.filter((result) => result.processedAt && !result.reviewedAt).length;
     const pendingSignature = visible.results.filter((result) => result.reviewedAt && !result.signedAt).length;
-    const readyToIncorporate = visible.results.filter((result) => result.signedAt && !result.incorporatedAt).length;
+    const readyToIncorporate = visible.results.filter((result) => result.lifecycleState === 'signed' && !incorporated.has(result.id)).length;
     return { pendingReview, pendingSignature, readyToIncorporate };
-  }, [visible.results]);
+  }, [visible.incorporatedResultIds, visible.results]);
 
   // Specialty contextualizes only. It never opens Nexus. Loading/error/denied all fail closed.
   if (!psychiatry || visible.status !== 'allowed') return null;
