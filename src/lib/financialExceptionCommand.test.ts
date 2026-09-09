@@ -83,7 +83,7 @@ describe('financial exception command/projection boundary', () => {
   });
 
   it('does not remove or project an item before the RPC confirms persistence', async () => {
-    let confirmPersisted: ((resolution: FinancialExceptionResolution) => void) | null = null;
+    let confirmPersisted!: (resolution: FinancialExceptionResolution) => void;
     const command = vi.fn(() => new Promise<FinancialExceptionResolution>((resolve) => {
       confirmPersisted = resolve;
     }));
@@ -103,7 +103,7 @@ describe('financial exception command/projection boundary', () => {
     expect(refreshFinance).not.toHaveBeenCalled();
     expect(refreshQueue).not.toHaveBeenCalled();
 
-    confirmPersisted?.(chargeResolution);
+    confirmPersisted(chargeResolution);
     await expect(pending).resolves.toMatchObject({ resolution: chargeResolution });
 
     expect(onPersisted).toHaveBeenCalledWith(chargeResolution);
