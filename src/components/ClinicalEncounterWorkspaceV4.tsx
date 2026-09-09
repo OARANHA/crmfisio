@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { format, isSameDay, isYesterday } from 'date-fns';
+import { format, isSameDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
@@ -20,7 +20,7 @@ import { usePackages } from '../lib/packageContext';
 import { professionalIdOf } from '../lib/professionalReference';
 import type { ProfessionalIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Patient } from '../lib/types';
-import { Btn, Card, Chip, Textarea } from '../lib/ui';
+import { Btn, Chip, Textarea } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
@@ -84,8 +84,6 @@ export function ClinicalEncounterWorkspaceV4({
   ));
 
   if (!isCurrentEncounter || !canonicalEncounter) {
-    // Context changed while the screen was mounted. Fail closed and fall back to
-    // the existing longitudinal record instead of leaving stale encounter edits.
     return <>{historicalWorkspace}</>;
   }
 
@@ -291,6 +289,6 @@ function BlockedState({ title, children }: { title: string; children: ReactNode 
 
 export function encounterTemporalLabel(encounter: Appointment, now = new Date()): string {
   const date = new Date(`${encounter.data}T12:00:00`);
-  const dayLabel = isSameDay(date, now) ? 'Hoje' : isYesterday(date) ? 'Ontem' : format(date, 'dd/MM/yyyy', { locale: ptBR });
+  const dayLabel = isSameDay(date, now) ? 'Hoje' : isSameDay(date, subDays(now, 1)) ? 'Ontem' : format(date, 'dd/MM/yyyy', { locale: ptBR });
   return `${dayLabel} · ${encounter.inicio.slice(0, 5)}`;
 }
