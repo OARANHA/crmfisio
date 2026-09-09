@@ -217,6 +217,7 @@ DECLARE
   v_usage_id uuid;
   v_existing_usage public.package_session_usage%ROWTYPE;
   v_package public.patient_packages%ROWTYPE;
+  v_old_package_found boolean := false;
   v_reason text;
 BEGIN
   IF TG_OP = 'UPDATE'
@@ -227,8 +228,9 @@ BEGIN
   END IF;
 
   -- Preserve the existing audited reversal semantics. Only a real ledger row
-  -- returns one unit, and an impossible zero balance is treated as integrity
-  -- failure instead of being hidden with greatest(0, ...).
+  -- returns one unit. Scope the SECURITY DEFINER lookup to the source tenant and
+  -- patient before materializing package data, and fail closed on any corrupt
+  -- ledger that points outside that boundary.
   IF TG_OP = 'UPDATE'
      AND OLD.status = 'finalizado'
      AND (NEW.status <> 'finalizado' OR OLD.pacote_id IS DISTINCT FROM NEW.pacote_id)
@@ -236,7 +238,10 @@ BEGIN
     SELECT * INTO v_package
     FROM public.patient_packages
     WHERE id = v_old_package
+      AND clinic_id = OLD.clinic_id
+      AND patient_id = OLD.paciente_id
     FOR UPDATE;
+    v_old_package_found := FOUND;
 
     v_usage_id := NULL;
     DELETE FROM public.package_session_usage
@@ -245,7 +250,7 @@ BEGIN
     RETURNING id INTO v_usage_id;
 
     IF v_usage_id IS NOT NULL THEN
-      IF NOT FOUND OR v_package.sessoes_usadas <= 0 THEN
+      IF NOT v_old_package_found OR v_package.sessoes_usadas <= 0 THEN
         RAISE EXCEPTION 'Integridade financeira inválida ao reverter consumo de pacote'
           USING ERRCODE = '23514';
       END IF;
@@ -254,6 +259,8 @@ BEGIN
       SET sessoes_usadas = sessoes_usadas - 1,
           updated_at = now()
       WHERE id = v_old_package
+        AND clinic_id = OLD.clinic_id
+        AND patient_id = OLD.paciente_id
         AND sessoes_usadas > 0;
 
       IF NOT FOUND THEN
@@ -284,13 +291,16 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- SECURITY DEFINER must never materialize financial metadata from another
+  -- clinic or patient into this tenant's exception queue. Missing, foreign and
+  -- wrong-patient links intentionally collapse into the same opaque outcome.
   SELECT * INTO v_package
   FROM public.patient_packages
   WHERE id = v_new_package
+    AND clinic_id = NEW.clinic_id
+    AND patient_id = NEW.paciente_id
   FOR UPDATE;
 
-  -- Missing/foreign/wrong-patient package links are coverage failures for the
-  -- clinical event, not permission to fabricate a package consumption.
   IF NOT FOUND THEN
     PERFORM public.record_appointment_financial_exception(
       NEW.clinic_id, NEW.id, NEW.paciente_id, v_new_package,
@@ -306,17 +316,22 @@ BEGIN
       USING ERRCODE = '23514';
   END IF;
 
-  IF v_package.clinic_id IS DISTINCT FROM NEW.clinic_id
-     OR v_package.patient_id IS DISTINCT FROM NEW.paciente_id THEN
-    v_reason := 'package_not_eligible';
-  ELSIF v_package.status = 'vencido'
-     OR (v_package.validade_ate IS NOT NULL AND v_package.validade_ate < NEW.data) THEN
+  -- Package status is a current operational materialization. In particular,
+  -- refresh_patient_package_status marks a package 'vencido' using current_date.
+  -- Coverage for a completed session is historical: compare validade_ate to the
+  -- appointment date, and derive exhaustion from the real counters. A package
+  -- that became vencido after a covered appointment therefore remains eligible.
+  IF v_package.validade_ate IS NOT NULL
+     AND v_package.validade_ate < NEW.data THEN
     v_reason := 'package_expired';
-  ELSIF v_package.status = 'esgotado'
-     OR v_package.sessoes_usadas >= v_package.sessoes_totais THEN
+  ELSIF v_package.sessoes_usadas >= v_package.sessoes_totais THEN
     v_reason := 'package_exhausted';
-  ELSIF v_package.status <> 'ativo' THEN
-    v_reason := 'package_not_eligible';
+  ELSIF v_package.status = 'esgotado' THEN
+    RAISE EXCEPTION 'Integridade financeira inválida no status do pacote'
+      USING ERRCODE = '23514';
+  ELSIF v_package.status NOT IN ('ativo','vencido') THEN
+    RAISE EXCEPTION 'Integridade financeira inválida no status do pacote'
+      USING ERRCODE = '23514';
   ELSE
     v_reason := NULL;
   END IF;
@@ -365,6 +380,8 @@ BEGIN
   SET sessoes_usadas = sessoes_usadas + 1,
       updated_at = now()
   WHERE id = v_new_package
+    AND clinic_id = NEW.clinic_id
+    AND patient_id = NEW.paciente_id
     AND sessoes_usadas < sessoes_totais;
 
   IF NOT FOUND THEN
