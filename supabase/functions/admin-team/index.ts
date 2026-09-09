@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     }));
     const { error } = await admin
       .from('professional_capabilities')
-      .upsert(rows, { onConflict: 'clinic_id,professional_id,capability_key' });
+      .upsert(rows, { onConflict: 'professional_id,capability_key' });
     if (error) throw error;
   };
 
