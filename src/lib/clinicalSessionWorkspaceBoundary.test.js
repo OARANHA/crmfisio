@@ -7,6 +7,7 @@ const source = (relative) => readFileSync(fileURLToPath(new URL(relative, import
 const types = source('./types.ts');
 const clinicalContext = source('./clinicalContext.tsx');
 const dashboard = source('../components/dashboards/ClinicianDashboard.tsx');
+const clinicianDaily = source('./clinicianDaily.ts');
 const workspace = source('../components/ClinicalWorkspace.tsx');
 const patientsPage = source('../pages/Pacientes.tsx');
 
@@ -21,8 +22,9 @@ describe('clinical session workspace boundary', () => {
     expect(dashboard).not.toContain('evolution.pacienteId === appointment.pacienteId && evolution.data === today');
   });
 
-  it('routes clinician agenda rows into the patient session workspace', () => {
-    expect(dashboard).toContain('/pacientes/${patientId}?session=${sessionId}#clinical-workspace');
+  it('routes clinician agenda rows into the patient session workspace through the canonical path helper', () => {
+    expect(dashboard).toContain('clinicianEncounterPath(appointment)');
+    expect(clinicianDaily).toContain('`/pacientes/${appointment.pacienteId}?session=${appointment.id}#clinical-workspace`');
     expect(patientsPage).toContain("searchParams.get('session')");
     expect(patientsPage).toContain('initialSessionId={focusedSessionId}');
   });
