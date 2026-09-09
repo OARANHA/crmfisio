@@ -56,6 +56,14 @@ describe('financial exception frontend boundary', () => {
     expect(resolveBlock).toContain('executeFinancialExceptionCommand');
   });
 
+  it('gates persisted local projection and refresh callbacks by the same context epoch', () => {
+    expect(resolveBlock).toContain('const commandGeneration = financialExceptionGeneration.current;');
+    expect(resolveBlock).toContain('isProjectionCurrent: () => commandGeneration === financialExceptionGeneration.current');
+    expect(command).toContain('if (!dependencies.isProjectionCurrent())');
+    expect(command).toContain("queue: 'skipped_stale'");
+    expect(command).toContain('projectionWarning: null');
+  });
+
   it('requires a non-empty WAIVE reason before and at the RPC boundary', () => {
     expect(repository).toContain("disposition === 'waived' && !normalizedReason");
     expect(repository).toContain('Informe o motivo da cortesia.');
