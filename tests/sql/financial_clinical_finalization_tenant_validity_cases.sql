@@ -49,7 +49,7 @@ INSERT INTO public.patient_packages(
   valor_pago,
   status
 ) VALUES (
-  '61000000-0000-0000-0000-000000000006',
+  '6f100000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
   '31000000-0000-0000-0000-000000000001',
   '51000000-0000-0000-0000-000000000002',
@@ -77,7 +77,7 @@ INSERT INTO public.appointments(
   valor,
   pacote_id
 ) VALUES (
-  '45000000-0000-0000-0000-000000000001',
+  '4f100000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
   '31000000-0000-0000-0000-000000000001',
   '10000000-0000-0000-0000-000000000001',
@@ -88,7 +88,7 @@ INSERT INTO public.appointments(
   'em_atendimento',
   'Finalização tardia na validade histórica',
   10000,
-  '61000000-0000-0000-0000-000000000006'
+  '6f100000-0000-0000-0000-000000000001'
 );
 
 INSERT INTO public.physiotherapy_evolutions(
@@ -99,21 +99,21 @@ INSERT INTO public.physiotherapy_evolutions(
   session_id,
   texto
 ) VALUES (
-  '75000000-0000-0000-0000-000000000001',
+  '7f100000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
   '31000000-0000-0000-0000-000000000001',
   '10000000-0000-0000-0000-000000000001',
-  '45000000-0000-0000-0000-000000000001',
+  '4f100000-0000-0000-0000-000000000001',
   'Evolução de sessão ocorrida no último dia de validade'
 );
 
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.appointments
-      WHERE pacote_id = '61000000-0000-0000-0000-000000000006'
+      WHERE pacote_id = '6f100000-0000-0000-0000-000000000001'
         AND status IN ('agendado','confirmado','em_atendimento')) <> 1
      OR (SELECT sessoes_usadas FROM public.patient_packages
-         WHERE id = '61000000-0000-0000-0000-000000000006') <> 0 THEN
+         WHERE id = '6f100000-0000-0000-0000-000000000001') <> 0 THEN
     RAISE EXCEPTION 'historical_validity_reservation_precondition_failed';
   END IF;
 END $$;
@@ -121,13 +121,13 @@ END $$;
 -- Simulate the ordinary lifecycle refresh happening after D. It legitimately
 -- materializes the current package status as vencido because current_date > D.
 SELECT public.refresh_patient_package_status(
-  '61000000-0000-0000-0000-000000000006'
+  '6f100000-0000-0000-0000-000000000001'
 );
 
 DO $$
 BEGIN
   IF (SELECT status FROM public.patient_packages
-      WHERE id = '61000000-0000-0000-0000-000000000006') <> 'vencido' THEN
+      WHERE id = '6f100000-0000-0000-0000-000000000001') <> 'vencido' THEN
     RAISE EXCEPTION 'package_was_not_materialized_as_vencido_for_regression';
   END IF;
 END $$;
@@ -137,7 +137,7 @@ SELECT set_config('request.jwt.claim.role', 'authenticated', false);
 SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
 UPDATE public.appointments
 SET status = 'finalizado'
-WHERE id = '45000000-0000-0000-0000-000000000001';
+WHERE id = '4f100000-0000-0000-0000-000000000001';
 RESET ROLE;
 SELECT set_config('request.jwt.claim.role', '', false);
 SELECT set_config('request.jwt.claim.sub', '', false);
@@ -145,19 +145,19 @@ SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT status FROM public.appointments
-      WHERE id = '45000000-0000-0000-0000-000000000001') <> 'finalizado'
+      WHERE id = '4f100000-0000-0000-0000-000000000001') <> 'finalizado'
      OR (SELECT sessoes_usadas FROM public.patient_packages
-         WHERE id = '61000000-0000-0000-0000-000000000006') <> 1
+         WHERE id = '6f100000-0000-0000-0000-000000000001') <> 1
      OR (SELECT count(*) FROM public.package_session_usage
-         WHERE appointment_id = '45000000-0000-0000-0000-000000000001'
-           AND patient_package_id = '61000000-0000-0000-0000-000000000006') <> 1
+         WHERE appointment_id = '4f100000-0000-0000-0000-000000000001'
+           AND patient_package_id = '6f100000-0000-0000-0000-000000000001') <> 1
      OR (SELECT count(*) FROM public.appointment_financial_exceptions
-         WHERE appointment_id = '45000000-0000-0000-0000-000000000001') <> 0 THEN
+         WHERE appointment_id = '4f100000-0000-0000-0000-000000000001') <> 0 THEN
     RAISE EXCEPTION 'historical_service_date_package_eligibility_regressed';
   END IF;
 
   IF (SELECT status FROM public.patient_packages
-      WHERE id = '61000000-0000-0000-0000-000000000006') <> 'vencido' THEN
+      WHERE id = '6f100000-0000-0000-0000-000000000001') <> 'vencido' THEN
     RAISE EXCEPTION 'current_package_status_materialization_changed_unexpectedly';
   END IF;
 END $$;
