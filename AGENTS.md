@@ -97,15 +97,19 @@ Do not report a broad change as complete without these checks unless there is a 
 
 ## 4. Canonical role model — critical
 
-`public.profiles.role` is the source of truth for clinic-level application authorization.
+`public.profiles.role` is the source of truth for clinic-level operational authorization.
 
-The canonical documented roles are:
+The canonical roles are:
 
-- `owner`: clinic owner; management, settings, users, finance and clinical read access as permitted, but ownership alone does not authorize signing clinical acts;
-- `admin`: administrative management; scheduling, registration, finance, CRM, reports and clinical read access only where appropriate; does not grant clinical discharge;
-- `fisio`: care professional; own schedule, assessment, treatment plan, evolution, reassessment, discharge and clinical reopening;
+- `owner`: clinic owner; management, settings, users, finance and clinical read access as permitted, but ownership alone does not authorize clinical authorship or signing;
+- `admin`: administrative management; scheduling, registration, finance, CRM, reports and clinical read access only where appropriate; the administrative role does not grant a clinical act;
+- `professional`: canonical care-professional operational role; clinical actions additionally require valid professional identity, the applicable clinical capability and authorship/care-relationship boundaries;
 - `recep`: reception; registration, scheduling, documents/consents and operational communication; no unnecessary clinical content;
 - `financeiro`: finance; billing, receipts, commissions and financial reports; no unnecessary clinical content.
+
+`role` is not profession. `professional_type` describes the profession independently and currently includes identities such as `fisioterapeuta`, `medico`, `psicologo` and `quiropraxista`. Council/registration fields complete the professional identity where required.
+
+Historical physical names such as `appointments.fisio_id`, `physiotherapy_evaluations` and `physiotherapy_evolutions` may remain temporarily as compatibility/schema names. They do not define authorization or restrict MedicsPro to physiotherapy. `appointments.professional_id` is the canonical care-professional reference while `fisio_id` remains a staged compatibility alias.
 
 Canonical principles:
 
@@ -113,9 +117,11 @@ Canonical principles:
 2. never collapse `financeiro` into `recep`;
 3. UI reflects permissions but is not an authorization boundary;
 4. sensitive decisions belong in PostgreSQL/RPC/RLS/server code;
-5. clinical discharge is a care-professional act;
-6. administrative corrections must preserve history and be auditable;
-7. team accounts must be real Supabase Auth users linked to `public.profiles` in the same `clinic_id`.
+5. clinical authorization is identity + capability + authorship/care relationship, never operational role alone;
+6. owner/admin may perform a clinical act only when they independently satisfy the same clinical boundary; the administrative role is never a bypass;
+7. general CRM authorization is separate from clinical journey decisions — `clinical.attend` must not grant arbitrary funnel editing;
+8. administrative corrections must preserve history and be auditable;
+9. team accounts must be real Supabase Auth users linked to `public.profiles` in the same `clinic_id`.
 
 ### Platform administration is a separate security domain
 
@@ -135,11 +141,9 @@ Canonical principles:
 6. platform support is deny-by-default;
 7. plan/feature entitlement does not equal data authorization.
 
-### Known role-model divergence
+### Legacy naming and authorization drift
 
-`docs/ROLE_MODEL.md` currently defines five canonical roles, while parts of the frontend may still contain legacy role assumptions.
-
-If a task touches roles, permissions, navigation, team management, Auth, RLS or profile mapping, inspect all consumers and resolve the divergence coherently or explicitly preserve it and report why.
+If a task touches roles, permissions, navigation, team management, Auth, RLS or profile mapping, inspect all consumers for legacy `fisio` role checks. Do not mechanically rename physical compatibility fields; remove legacy role-based authorization only where the canonical `professional` + identity/capability/authorship contract applies.
 
 ---
 
