@@ -8,6 +8,7 @@ const workspace = read('../components/ClinicalWorkspace.tsx');
 const assessment = read('../components/ClinicalAssessmentRunner.tsx');
 const eem = read('../components/NexusEemPanel.tsx');
 const tools = read('../components/ActiveEncounterClinicalTools.tsx');
+const toolRegistry = read('./nexus/clinicalToolRegistry.ts');
 const selfAssessment = read('../components/NexusSelfAssessmentInviteAction.tsx');
 
 describe('Active Clinical Encounter workspace boundary', () => {
@@ -52,24 +53,38 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(eem).not.toContain("appointments.find((item) => item.pacienteId === patient.id && item.status === 'em_atendimento')");
   });
 
-  it('keeps psychiatry contextual and Nexus authorization cumulative + fail closed', () => {
+  it('makes Nexus availability capability-first and keeps specialty presentation-only', () => {
     expect(tools).toContain("loadCurrentClinicEntitlementState('nexus.access')");
     expect(tools).toContain("hasProfessionalCapability('nexus.access')");
     expect(tools).toContain("hasProfessionalCapability('nexus.eem')");
     expect(tools).toContain("hasProfessionalCapability('nexus.scales')");
-    expect(tools).toContain("if (!psychiatry || visible.status !== 'allowed') return null");
+    expect(tools).toContain('resolveNexusClinicalTools({');
+    expect(tools).not.toContain('if (!psychiatry');
+    expect(tools).not.toContain('isPsychiatryContext');
     expect(tools).not.toContain('NexusPatientContextHub');
+    expect(tools).not.toContain('patient.queixaPrincipal');
+    expect(toolRegistry).toContain("requiredCapability: 'nexus.eem'");
+    expect(toolRegistry).toContain("requiredCapability: 'nexus.scales'");
+    expect(toolRegistry.match(/requiredCapability: null/g)?.length).toBe(2);
+    expect(toolRegistry).not.toContain('nexus.longitudinal');
+    expect(toolRegistry).not.toContain('nexus.results');
   });
 
-  it('propagates the active encounter to PHQ-9/GAD-7 invitations', () => {
-    expect(tools).toContain('appointmentId={encounter.id}');
+  it('propagates the active encounter to PHQ-9/GAD-7 invitations and resets their local state by context', () => {
+    expect(tools).toContain('key={key} patient={patient} appointmentId={encounter.id}');
     expect(selfAssessment).toContain('body: { patientId: patient.id, scaleKey, appointmentId, expiresHours: 48 }');
+  });
+
+  it('isolates Nexus allow state by user, patient and encounter', () => {
+    expect(workspaceV3).toContain('userId={user?.id}');
+    expect(tools).toContain('nexusClinicalToolContextKey({ userId, patientId: patient.id, encounterId: encounter.id })');
+    expect(tools).toContain("state.key === key ? state : emptyToolState(key, 'loading')");
   });
 
   it('preserves explicit C-04 readiness and C-05 navigation', () => {
     expect(tools).toContain('listPatientNexusRecordIncorporations(patient.id)');
     expect(tools).toContain("result.lifecycleState === 'signed'");
-    expect(tools).toContain('/nexus/evolution');
+    expect(toolRegistry).toContain("routeSuffix: '/evolution'");
   });
 
   it('resets encounter-scoped evolution draft context when patient or user changes', () => {
