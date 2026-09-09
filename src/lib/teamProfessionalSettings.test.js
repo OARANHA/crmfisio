@@ -36,7 +36,8 @@ describe('multiprofessional team settings', () => {
       expect(edge).toContain(capability);
     }
     expect(edge).toContain(".from('professional_capabilities')");
-    expect(edge).toContain("onConflict: 'clinic_id,professional_id,capability_key'");
+    expect(edge).toContain("onConflict: 'professional_id,capability_key'");
+    expect(edge).not.toContain("onConflict: 'clinic_id,professional_id,capability_key'");
   });
 
   it('lets the owner receive clinical identity without changing owner role', () => {

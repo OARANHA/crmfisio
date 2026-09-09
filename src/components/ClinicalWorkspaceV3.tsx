@@ -37,7 +37,7 @@ export function ClinicalWorkspaceV3({ patient, initialSessionId = null }: { pati
         />
 
         <div className="space-y-4 px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
-          {!identityLoading && <ActiveEncounterClinicalTools patient={patient} encounter={activeEncounter} identity={identity} />}
+          {!identityLoading && <ActiveEncounterClinicalTools patient={patient} encounter={activeEncounter} identity={identity} userId={user?.id} />}
           <ClinicalWorkspace patient={patient} initialSessionId={focusedSessionId} />
           <NexusRecordIncorporationPanel patient={patient} />
         </div>
