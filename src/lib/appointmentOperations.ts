@@ -68,9 +68,8 @@ export function verifyAppointmentStatusMutation(
 }
 
 /**
- * Low-level verified mutation primitive. Application consumers should use the
- * canonical repository.updateAppointmentStatus() path so Agenda and clinical
- * workflows cannot drift into different persistence semantics.
+ * Single low-level primitive for appointment status persistence. Both the
+ * repository/Agenda path and the clinical compatibility alias delegate here.
  */
 export async function executeVerifiedAppointmentStatusMutation(
   appointmentId: string,
@@ -87,6 +86,14 @@ export async function executeVerifiedAppointmentStatusMutation(
     appointmentId,
     status,
   );
+}
+
+/** @deprecated Use repository.updateAppointmentStatus() in application code. */
+export async function updateAppointmentStatusVerified(
+  appointmentId: string,
+  status: AppointmentStatus,
+): Promise<AppointmentStatusMutationRow> {
+  return executeVerifiedAppointmentStatusMutation(appointmentId, status);
 }
 
 export async function cancelAppointmentWithReason(appointmentId: string, reason: string): Promise<void> {
