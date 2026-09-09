@@ -15,7 +15,6 @@ import { professionalIdOf } from '../lib/professionalReference';
 import { STATUS_META, fmtBRL, type Appointment, type AppointmentStatus, type Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty, Field, Input, Select, Textarea } from '../lib/ui';
 import { IconLock } from './icons';
-import { isClinicManager } from '../lib/permissions';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalAssessmentHistory } from './ClinicalAssessmentHistory';
 import { ClinicalSummaryMvd } from './ClinicalSummaryMvd';
@@ -86,11 +85,18 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
   const { appointments, refreshAgenda } = useAgenda();
   const { refreshFinance } = useFinance();
   const { refreshPackages } = usePackages();
-  const { allowed: canReadTimeline } = useClinicalCapability('clinical.timeline.read', user?.id);
-  const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
-  const { allowed: canWriteEvolution } = useClinicalCapability('clinical.evolution.write', user?.id);
-  const { allowed: canApplyAssessment } = useClinicalCapability('clinical.assessment.apply', user?.id);
-  const { allowed: canManageClinicalDocuments } = useClinicalCapability('clinical.documents', user?.id);
+  const timelineCapability = useClinicalCapability('clinical.timeline.read', user?.id);
+  const attendCapability = useClinicalCapability('clinical.attend', user?.id);
+  const evolutionCapability = useClinicalCapability('clinical.evolution.write', user?.id);
+  const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
+  const documentsCapability = useClinicalCapability('clinical.documents', user?.id);
+  const canReadTimeline = timelineCapability.allowed;
+  const canAttend = attendCapability.allowed;
+  const canWriteEvolution = evolutionCapability.allowed;
+  const canApplyAssessment = assessmentCapability.allowed;
+  const canManageClinicalDocuments = documentsCapability.allowed;
+  const capabilityCheckError = [timelineCapability, attendCapability, evolutionCapability, assessmentCapability, documentsCapability]
+    .some((capability) => capability.error);
   const [tab, setTab] = useState<Tab>('resumo');
   const [assessmentTab, setAssessmentTab] = useState<AssessmentTab>('atual');
   const [evaluations, setEvaluations] = useState<ClinicalEvaluation[]>([]);
@@ -103,8 +109,8 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
   const [sessionId, setSessionId] = useState('');
   const focusedSessionRef = useRef<string | null>(null);
 
-  const clinicalRead = canReadTimeline || isClinicManager(user?.role);
-  const documentWrite = canManageClinicalDocuments || isClinicManager(user?.role) || user?.role === 'recep';
+  const clinicalRead = canReadTimeline;
+  const documentWrite = canManageClinicalDocuments;
   const canTransitionSession = (session: Appointment) => Boolean(canAttend && user?.id && user.id === professionalIdOf(session));
 
   const sessions = useMemo(
@@ -257,6 +263,7 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
 
   return (
     <div className="space-y-4">
+      {capabilityCheckError && <div className="rounded-xl border border-amber/25 bg-amber/[0.04] px-4 py-3 text-[12px] text-fog">Não foi possível verificar suas permissões clínicas.</div>}
       <div className="flex border-b border-line overflow-x-auto">{tabs.map((item) => <button key={item.key} disabled={item.locked} onClick={() => !item.locked && setTab(item.key)} className={`px-4 py-3 font-display font-semibold text-[13px] border-b-2 whitespace-nowrap transition-colors ${item.locked ? 'text-fog/35 cursor-not-allowed' : tab === item.key ? 'border-mint text-mint' : 'border-transparent text-fog hover:text-paper'}`}>{item.locked && <IconLock className="w-3 h-3 inline mr-1.5 -mt-0.5" />}{item.label}</button>)}</div>
       {tab === 'resumo' && <ClinicalSummaryMvd complaint={patient.queixaPrincipal || 'Sem queixa principal registrada'} cid={patient.cid10.join(' · ') || 'Sem CID-10 registrado'} objective={latestEvaluation?.objetivos || patient.anamnese.objetivo || 'Ainda não definido'} plan={latestEvaluation?.planoTerapeutico || 'Ainda não definido'} lastSession={lastSession ? `${format(new Date(`${lastSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} · ${lastSession.tipo}` : 'Nenhum atendimento finalizado'} nextSession={nextSession ? `${format(new Date(`${nextSession.data}T12:00`), 'dd/MM/yyyy', { locale: ptBR })} às ${nextSession.inicio}` : 'Sem próximo atendimento'} hasNextSession={Boolean(nextSession)} readiness={[{ label: 'Avaliação', ok: Boolean(latestEvaluation) }, { label: 'Plano', ok: Boolean(latestEvaluation?.planoTerapeutico) }, { label: 'Agenda', ok: Boolean(nextSession) }, { label: 'Consentimento', ok: patientConsents.some((c) => c.assinado) }]} activeSessionTime={activeSession?.inicio} />}
       {tab === 'avaliacao' && clinicalRead && <div className="space-y-4"><div className="flex items-center gap-1 rounded-xl border border-line bg-panel p-1 overflow-x-auto">{assessmentTabs.map((item) => <button key={item.key} type="button" onClick={() => setAssessmentTab(item.key)} className={`rounded-lg px-3 py-2 text-[11.5px] font-semibold whitespace-nowrap transition-colors ${assessmentTab === item.key ? 'bg-mint text-on-accent' : 'text-fog hover:text-paper hover:bg-deep'}`}>{item.label}{item.badge ? ` (${item.badge})` : ''}</button>)}</div>{assessmentTab === 'atual' && <ClinicalAssessmentRunner patient={patient} />}{assessmentTab === 'historico' && <ClinicalAssessmentHistory patient={patient} />}{assessmentTab === 'legado' && <Card><CardHead title="Avaliações legadas" sub={canApplyAssessment ? 'compatibilidade temporária com o modelo anterior' : 'visualização do prontuário clínico anterior'} />{loading ? <div className="p-6 font-mono text-[12px] text-fog">Carregando prontuário anterior…</div> : <div className="p-5 space-y-5"><div className="border border-amber/30 bg-amber/[0.04] rounded-xl p-3 text-[11px] text-amber">Esta área existe apenas para manter compatibilidade com registros antigos. Para novos atendimentos, use a aba Atual com modelos versionados.</div>{evaluations.length > 0 && <div className="rounded-xl border border-line bg-deep p-3"><p className="font-display font-semibold text-[12.5px]">{evaluations.length} registro(s) no modelo anterior</p><p className="font-mono text-[10px] text-fog mt-1">Último registro: {format(new Date(evaluations[0].data), 'dd/MM/yyyy', { locale: ptBR })}</p></div>}<div className="grid sm:grid-cols-2 gap-4"><Field label="História da condição atual"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.anamnese.historia} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, historia: e.target.value } }))} /></Field><Field label="Exame físico / achados"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.anamnese.exameFisico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, exameFisico: e.target.value } }))} /></Field><Field label="Cirurgias prévias"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.anamnese.cirurgias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, cirurgias: e.target.value } }))} /></Field><Field label="Medicamentos em uso"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.anamnese.medicamentos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, medicamentos: e.target.value } }))} /></Field><Field label="Alergias"><Input disabled={!canApplyAssessment} value={evaluationDraft.anamnese.alergias} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, alergias: e.target.value } }))} /></Field><Field label="Dor / escala (0–10)"><Input disabled={!canApplyAssessment} value={evaluationDraft.anamnese.eva} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, eva: e.target.value } }))} placeholder="Ex.: 6/10" /></Field></div><Field label="Objetivos terapêuticos"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.objetivos} onChange={(e) => setEvaluationDraft((d) => ({ ...d, objetivos: e.target.value }))} placeholder="Resultados clínicos esperados e critérios de sucesso." /></Field><Field label="Plano terapêutico"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.planoTerapeutico} onChange={(e) => setEvaluationDraft((d) => ({ ...d, planoTerapeutico: e.target.value }))} placeholder="Frequência, condutas, progressão, reavaliação e critérios de alta." /></Field><Field label="Observações clínicas"><Textarea disabled={!canApplyAssessment} value={evaluationDraft.anamnese.observacoes} onChange={(e) => setEvaluationDraft((d) => ({ ...d, anamnese: { ...d.anamnese, observacoes: e.target.value } }))} /></Field><div className="flex items-center justify-between border-t border-line pt-4"><p className="font-mono text-[10.5px] text-fog">Cada salvamento continua criando um novo registro no modelo anterior.</p>{canApplyAssessment && <Btn variant="ghost" onClick={saveEvaluation} disabled={saving}>{saving ? 'Salvando…' : 'Registrar no modelo anterior'}</Btn>}</div></div>}</Card>}</div>}
