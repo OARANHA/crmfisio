@@ -2,26 +2,19 @@
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.role', 'authenticated', false);
 SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
-
-UPDATE public.appointments
-SET status = 'finalizado'
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000002';
+RESET ROLE;
 
 DO $$
 DECLARE
-  v_status text;
-  v_used integer;
-  v_total integer;
-  v_usage_a integer;
-  v_usage_b integer;
-  v_pending_b integer;
-  v_reason text;
+  v_status text; v_used integer; v_total integer;
+  v_usage_a integer; v_usage_b integer; v_pending_b integer; v_reason text;
 BEGIN
   SELECT status INTO v_status FROM public.appointments
   WHERE id = '41000000-0000-0000-0000-000000000002';
   SELECT sessoes_usadas, sessoes_totais INTO v_used, v_total
-  FROM public.patient_packages
-  WHERE id = '61000000-0000-0000-0000-000000000001';
+  FROM public.patient_packages WHERE id = '61000000-0000-0000-0000-000000000001';
   SELECT count(*) INTO v_usage_a FROM public.package_session_usage
   WHERE appointment_id = '41000000-0000-0000-0000-000000000001';
   SELECT count(*) INTO v_usage_b FROM public.package_session_usage
@@ -30,19 +23,20 @@ BEGIN
   FROM public.appointment_financial_exceptions
   WHERE appointment_id = '41000000-0000-0000-0000-000000000002';
 
-  IF v_status <> 'finalizado'
-     OR v_used <> 1 OR v_total <> 1
+  IF v_status <> 'finalizado' OR v_used <> 1 OR v_total <> 1
      OR v_usage_a <> 1 OR v_usage_b <> 0
      OR v_pending_b <> 1 OR v_reason <> 'package_exhausted' THEN
     RAISE EXCEPTION 'exhausted_package_finalization_contract_failed';
   END IF;
 END $$;
 
-\echo '2) repeated final status processing is idempotent and does not duplicate pending'
-UPDATE public.appointments
-SET status = 'finalizado'
+\echo '2) repeated final status processing is idempotent'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000002';
-
+RESET ROLE;
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.appointment_financial_exceptions
@@ -56,88 +50,89 @@ BEGIN
 END $$;
 
 \echo '3) valid package still consumes exactly one session'
-UPDATE public.appointments
-SET status = 'finalizado'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000003';
-
+RESET ROLE;
 DO $$
-DECLARE v_used integer; v_usage integer; v_pending integer;
 BEGIN
-  SELECT sessoes_usadas INTO v_used FROM public.patient_packages
-  WHERE id = '61000000-0000-0000-0000-000000000002';
-  SELECT count(*) INTO v_usage FROM public.package_session_usage
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000003';
-  SELECT count(*) INTO v_pending FROM public.appointment_financial_exceptions
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000003';
-  IF v_used <> 1 OR v_usage <> 1 OR v_pending <> 0 THEN
+  IF (SELECT sessoes_usadas FROM public.patient_packages
+      WHERE id = '61000000-0000-0000-0000-000000000002') <> 1
+     OR (SELECT count(*) FROM public.package_session_usage
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000003') <> 1
+     OR (SELECT count(*) FROM public.appointment_financial_exceptions
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000003') <> 0 THEN
     RAISE EXCEPTION 'valid_package_consumption_regressed';
   END IF;
 END $$;
 
-\echo '4) appointment without package still materializes one standalone receivable'
-UPDATE public.appointments
-SET status = 'finalizado'
+\echo '4) no-package appointment still creates one standalone receivable'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000004';
-
+RESET ROLE;
 DO $$
 DECLARE v_count integer; v_amount integer; v_category text;
 BEGIN
-  SELECT count(*), max(valor), max(categoria)
-    INTO v_count, v_amount, v_category
+  SELECT count(*), max(valor), max(categoria) INTO v_count, v_amount, v_category
   FROM public.payments
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000004'
-    AND tipo = 'receber';
+  WHERE appointment_id = '41000000-0000-0000-0000-000000000004' AND tipo = 'receber';
   IF v_count <> 1 OR v_amount <> 15000 OR v_category <> 'Atendimento avulso' THEN
     RAISE EXCEPTION 'standalone_receivable_regressed';
   END IF;
 END $$;
 
-\echo '5) expired package creates pending exception without blocking clinical truth'
-UPDATE public.appointments
-SET status = 'finalizado'
+\echo '5) expired package becomes a finance exception without blocking clinical truth'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000005';
-
+RESET ROLE;
 DO $$
-DECLARE v_status text; v_reason text; v_usage integer;
 BEGIN
-  SELECT status INTO v_status FROM public.appointments
-  WHERE id = '41000000-0000-0000-0000-000000000005';
-  SELECT reason_code INTO v_reason FROM public.appointment_financial_exceptions
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000005';
-  SELECT count(*) INTO v_usage FROM public.package_session_usage
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000005';
-  IF v_status <> 'finalizado' OR v_reason <> 'package_expired' OR v_usage <> 0 THEN
+  IF (SELECT status FROM public.appointments
+      WHERE id = '41000000-0000-0000-0000-000000000005') <> 'finalizado'
+     OR (SELECT reason_code FROM public.appointment_financial_exceptions
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000005') <> 'package_expired'
+     OR (SELECT count(*) FROM public.package_session_usage
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000005') <> 0 THEN
     RAISE EXCEPTION 'expired_package_boundary_failed';
   END IF;
 END $$;
 
 \echo '6) foreign patient/tenant package never becomes legitimate consumption'
-UPDATE public.appointments
-SET status = 'finalizado'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000006';
-
+RESET ROLE;
 DO $$
-DECLARE v_status text; v_reason text; v_usage integer; v_foreign_used integer;
 BEGIN
-  SELECT status INTO v_status FROM public.appointments
-  WHERE id = '41000000-0000-0000-0000-000000000006';
-  SELECT reason_code INTO v_reason FROM public.appointment_financial_exceptions
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000006';
-  SELECT count(*) INTO v_usage FROM public.package_session_usage
-  WHERE appointment_id = '41000000-0000-0000-0000-000000000006';
-  SELECT sessoes_usadas INTO v_foreign_used FROM public.patient_packages
-  WHERE id = '62000000-0000-0000-0000-000000000001';
-  IF v_status <> 'finalizado' OR v_reason <> 'package_not_eligible'
-     OR v_usage <> 0 OR v_foreign_used <> 0 THEN
+  IF (SELECT status FROM public.appointments
+      WHERE id = '41000000-0000-0000-0000-000000000006') <> 'finalizado'
+     OR (SELECT reason_code FROM public.appointment_financial_exceptions
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000006') <> 'package_not_eligible'
+     OR (SELECT count(*) FROM public.package_session_usage
+         WHERE appointment_id = '41000000-0000-0000-0000-000000000006') <> 0
+     OR (SELECT sessoes_usadas FROM public.patient_packages
+         WHERE id = '62000000-0000-0000-0000-000000000001') <> 0 THEN
     RAISE EXCEPTION 'foreign_package_was_treated_as_coverage';
   END IF;
 END $$;
 
-\echo '7) valid consumption reversal returns exactly one session'
-UPDATE public.appointments
-SET status = 'finalizado'
+\echo '7) legitimate package consumption reversal returns exactly one unit'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000007';
-
+RESET ROLE;
 DO $$
 BEGIN
   IF (SELECT sessoes_usadas FROM public.patient_packages
@@ -147,12 +142,8 @@ BEGIN
     RAISE EXCEPTION 'reversal_precondition_consumption_missing';
   END IF;
 END $$;
-
-RESET ROLE;
-UPDATE public.appointments
-SET status = 'cancelado'
+UPDATE public.appointments SET status = 'cancelado'
 WHERE id = '41000000-0000-0000-0000-000000000007';
-
 DO $$
 BEGIN
   IF (SELECT sessoes_usadas FROM public.patient_packages
@@ -165,7 +156,44 @@ BEGIN
   END IF;
 END $$;
 
-\echo '8) server-side reservation rejects a second uncovered appointment even if UI is stale'
+\echo '8) unexpected package integrity corruption still fails closed'
+-- Re-establish a valid reservation first; only then corrupt the package so the
+-- finalization path, not the scheduling guard, proves technical failures raise.
+UPDATE public.appointments SET status = 'em_atendimento'
+WHERE id = '41000000-0000-0000-0000-000000000007';
+UPDATE public.patient_packages SET sessoes_usadas = 2, status = 'esgotado'
+WHERE id = '61000000-0000-0000-0000-000000000005';
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.role', 'authenticated', false);
+SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+DO $$
+DECLARE v_message text;
+BEGIN
+  BEGIN
+    UPDATE public.appointments SET status = 'finalizado'
+    WHERE id = '41000000-0000-0000-0000-000000000007';
+    RAISE EXCEPTION 'corrupt_package_was_silently_accepted';
+  EXCEPTION WHEN check_violation THEN
+    GET STACKED DIAGNOSTICS v_message = MESSAGE_TEXT;
+    IF v_message NOT LIKE 'Integridade financeira inválida%' THEN RAISE; END IF;
+  END;
+END $$;
+RESET ROLE;
+DO $$
+BEGIN
+  IF (SELECT status FROM public.appointments
+      WHERE id = '41000000-0000-0000-0000-000000000007') <> 'em_atendimento'
+     OR EXISTS (SELECT 1 FROM public.appointment_financial_exceptions
+                WHERE appointment_id = '41000000-0000-0000-0000-000000000007') THEN
+    RAISE EXCEPTION 'technical_integrity_failure_did_not_roll_back';
+  END IF;
+END $$;
+UPDATE public.patient_packages SET sessoes_usadas = 0, status = 'ativo'
+WHERE id = '61000000-0000-0000-0000-000000000005';
+UPDATE public.appointments SET status = 'cancelado'
+WHERE id = '41000000-0000-0000-0000-000000000007';
+
+\echo '9) server-side reservation rejects stale-UI overbooking'
 INSERT INTO public.appointments(
   id, clinic_id, paciente_id, professional_id, fisio_id, data, inicio, fim,
   status, tipo, valor, pacote_id
@@ -178,7 +206,6 @@ INSERT INTO public.appointments(
   current_date, '16:00', '16:30', 'agendado', 'Reserva válida', 10000,
   '61000000-0000-0000-0000-000000000005'
 );
-
 DO $$
 DECLARE v_message text;
 BEGIN
@@ -202,7 +229,7 @@ BEGIN
   END;
 END $$;
 
-\echo '9) new cross-tenant package assignment is rejected at scheduling boundary'
+\echo '10) new cross-tenant package assignment is rejected at scheduling boundary'
 DO $$
 BEGIN
   BEGIN
@@ -219,44 +246,9 @@ BEGIN
       '62000000-0000-0000-0000-000000000001'
     );
     RAISE EXCEPTION 'cross_tenant_package_reservation_was_allowed';
-  EXCEPTION WHEN check_violation THEN
-    NULL;
+  EXCEPTION WHEN check_violation THEN NULL;
   END;
 END $$;
-
-\echo '10) unexpected package integrity corruption still fails closed'
-UPDATE public.patient_packages
-SET sessoes_usadas = 2, status = 'esgotado'
-WHERE id = '61000000-0000-0000-0000-000000000005';
-
-UPDATE public.appointments
-SET status = 'em_atendimento'
-WHERE id = '41000000-0000-0000-0000-000000000007';
-
-SET ROLE authenticated;
-SELECT set_config('request.jwt.claim.role', 'authenticated', false);
-SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
-DO $$
-DECLARE v_message text;
-BEGIN
-  BEGIN
-    UPDATE public.appointments
-    SET status = 'finalizado'
-    WHERE id = '41000000-0000-0000-0000-000000000007';
-    RAISE EXCEPTION 'corrupt_package_was_silently_accepted';
-  EXCEPTION WHEN check_violation THEN
-    GET STACKED DIAGNOSTICS v_message = MESSAGE_TEXT;
-    IF v_message NOT LIKE 'Integridade financeira inválida%' THEN RAISE; END IF;
-  END;
-END $$;
-RESET ROLE;
-
-UPDATE public.patient_packages
-SET sessoes_usadas = 0, status = 'ativo'
-WHERE id = '61000000-0000-0000-0000-000000000005';
-UPDATE public.appointments
-SET status = 'cancelado'
-WHERE id = '41000000-0000-0000-0000-000000000007';
 
 \echo '11) authenticated browser cannot mutate consumption ledger or finance exception queue'
 SET ROLE authenticated;
@@ -266,15 +258,10 @@ DO $$
 BEGIN
   BEGIN
     INSERT INTO public.package_session_usage(clinic_id, patient_package_id, appointment_id)
-    VALUES (
-      '00000000-0000-0000-0000-000000000001',
-      '61000000-0000-0000-0000-000000000005',
-      '41000000-0000-0000-0000-000000000004'
-    );
+    VALUES ('00000000-0000-0000-0000-000000000001', '61000000-0000-0000-0000-000000000005', '41000000-0000-0000-0000-000000000004');
     RAISE EXCEPTION 'browser_package_ledger_write_allowed';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-
   BEGIN
     UPDATE public.appointment_financial_exceptions
     SET status = 'resolved', resolved_at = now(), resolved_by = auth.uid()
@@ -285,7 +272,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-\echo '12) service role can use the controlled queue write/update grant, but not delete'
+\echo '12) service role has controlled queue insert/update but no delete grant'
 INSERT INTO public.appointments(
   id, clinic_id, paciente_id, professional_id, fisio_id, data, inicio, fim,
   status, tipo, valor, pacote_id
@@ -297,7 +284,6 @@ INSERT INTO public.appointments(
   '10000000-0000-0000-0000-000000000001',
   current_date, '19:00', '19:30', 'cancelado', 'Controle service role', 10000, NULL
 );
-
 SET ROLE service_role;
 SELECT set_config('request.jwt.claim.role', 'service_role', false);
 INSERT INTO public.appointment_financial_exceptions(
@@ -305,9 +291,7 @@ INSERT INTO public.appointment_financial_exceptions(
 ) VALUES (
   '00000000-0000-0000-0000-000000000001',
   '43000000-0000-0000-0000-000000000004',
-  '31000000-0000-0000-0000-000000000001',
-  NULL,
-  'package_not_eligible'
+  '31000000-0000-0000-0000-000000000001', NULL, 'package_not_eligible'
 );
 UPDATE public.appointment_financial_exceptions
 SET status = 'resolved', resolved_at = now(), resolution_note = 'controlled test'
@@ -323,13 +307,11 @@ BEGIN
 END $$;
 RESET ROLE;
 
-\echo '13) package balances never exceed their totals after all scenarios'
+\echo '13) package balances never exceed totals after all scenarios'
 DO $$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM public.patient_packages
-    WHERE sessoes_usadas < 0 OR sessoes_usadas > sessoes_totais
-  ) THEN
+  IF EXISTS (SELECT 1 FROM public.patient_packages
+             WHERE sessoes_usadas < 0 OR sessoes_usadas > sessoes_totais) THEN
     RAISE EXCEPTION 'package_overconsumption_after_cases';
   END IF;
 END $$;
