@@ -64,15 +64,16 @@ BEGIN
   END IF;
 END $$;
 
-\echo '3) #388 exception queue remains read-only outside the canonical RPC'
+\echo '3) #388 exception queue remains read-only for browser while service_role keeps append-only detection'
 DO $$
 BEGIN
   IF has_table_privilege('authenticated','public.appointment_financial_exceptions','UPDATE')
      OR has_table_privilege('authenticated','public.appointment_financial_exceptions','INSERT')
      OR has_table_privilege('authenticated','public.appointment_financial_exceptions','DELETE')
+     OR NOT has_table_privilege('service_role','public.appointment_financial_exceptions','INSERT')
      OR has_table_privilege('service_role','public.appointment_financial_exceptions','UPDATE')
      OR has_table_privilege('service_role','public.appointment_financial_exceptions','DELETE') THEN
-    RAISE EXCEPTION 'financial_exception_queue_generic_mutation_reintroduced';
+    RAISE EXCEPTION 'financial_exception_queue_detection_or_mutation_contract_regressed';
   END IF;
 END $$;
 
@@ -134,7 +135,7 @@ BEGIN
   END IF;
 END $$;
 
-\echo '8) CHARGE reuses the canonical receivable domain and existing appointment uniqueness'
+\echo '8) CHARGE reuses the canonical positive-value receivable domain and existing appointment uniqueness'
 DO $$
 DECLARE v_def text := lower(pg_get_functiondef('public.resolve_appointment_financial_exception(uuid,text,text)'::regprocedure));
 BEGIN
@@ -144,8 +145,8 @@ BEGIN
      OR v_def NOT LIKE '%v_appointment.valor%'
      OR v_def NOT LIKE '%v_appointment.data%'
      OR v_def NOT LIKE '%''pendente''%'
-     OR v_def LIKE '%valor%0%payment%'
-     OR v_def NOT LIKE '%atendimento já possui recebível%reconciliação financeira explícita necessária%' THEN
+     OR v_def NOT LIKE '%v_appointment.valor <= 0%'
+     OR v_def NOT LIKE '%atendimento já possui recebível; reconciliação financeira explícita necessária%' THEN
     RAISE EXCEPTION 'financial_exception_charge_materialization_incomplete';
   END IF;
 
@@ -192,7 +193,7 @@ BEGIN
   END IF;
 END $$;
 
-\echo '11) WAIVE is full-value, reasoned and never materializes a zero-value payment'
+\echo '11) WAIVE is full-value, reasoned and never reuses cancellation resolution'
 DO $$
 DECLARE v_def text := lower(pg_get_functiondef('public.resolve_appointment_financial_exception(uuid,text,text)'::regprocedure));
 BEGIN
