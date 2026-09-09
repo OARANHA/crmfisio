@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
-import { AgendaV3Summary } from './AgendaV3Summary';
+import { AgendaAnalytics, AgendaStatusNavigation } from './AgendaV3Summary';
 
 const summary = {
   total: 7,
@@ -13,12 +13,12 @@ const summary = {
   nominalValue: 95000,
 };
 
-describe('AgendaV3Summary status navigation', () => {
+describe('Agenda status navigation', () => {
   it('emits the pending filter when Pendentes is clicked', () => {
     const onFilterChange = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => {
-      renderer = create(<AgendaV3Summary label="Atendimentos na semana" summary={summary} onFilterChange={onFilterChange} />);
+      renderer = create(<AgendaStatusNavigation summary={summary} onFilterChange={onFilterChange} />);
     });
 
     const button = renderer.root.findByProps({ 'aria-label': 'Filtrar agenda por pendentes: 1' });
@@ -31,7 +31,7 @@ describe('AgendaV3Summary status navigation', () => {
     const onFilterChange = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => {
-      renderer = create(<AgendaV3Summary label="Atendimentos na semana" summary={summary} onFilterChange={onFilterChange} />);
+      renderer = create(<AgendaStatusNavigation summary={summary} onFilterChange={onFilterChange} />);
     });
 
     const button = renderer.root.findByProps({ 'aria-label': 'Filtrar agenda por em atendimento: 1' });
@@ -40,17 +40,29 @@ describe('AgendaV3Summary status navigation', () => {
     renderer.unmount();
   });
 
-  it('emits the finished filter when Finalizados is clicked and exposes the active filter', () => {
+  it('emits the finished filter and exposes the active status', () => {
     const onFilterChange = vi.fn();
     let renderer!: ReactTestRenderer;
     act(() => {
-      renderer = create(<AgendaV3Summary label="Atendimentos na semana" summary={summary} activeFilter="finished" onFilterChange={onFilterChange} />);
+      renderer = create(<AgendaStatusNavigation summary={summary} activeFilter="finished" onFilterChange={onFilterChange} />);
     });
 
     const button = renderer.root.findByProps({ 'aria-label': 'Filtrar agenda por finalizados: 3' });
     expect(button.props['aria-pressed']).toBe(true);
     act(() => button.props.onClick());
     expect(onFilterChange).toHaveBeenCalledWith('finished');
+    renderer.unmount();
+  });
+
+  it('keeps analytics separate from status navigation', () => {
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = create(<AgendaAnalytics label="Atendimentos na semana" summary={summary} />);
+    });
+    const text = renderer.root.findAllByType('p').map((node) => node.children.join(' ')).join(' ');
+    expect(text).toContain('Fluxo do período');
+    expect(text).toContain('Confirmação');
+    expect(text).toContain('Comparecimento');
     renderer.unmount();
   });
 });
