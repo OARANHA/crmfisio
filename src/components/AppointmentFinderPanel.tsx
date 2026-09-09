@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { findAvailability, type AvailabilitySearch } from '../lib/agendaAvailability';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import type { Appointment, Room, Unidade, User } from '../lib/types';
 import { Btn, Card, Select } from '../lib/ui';
 
@@ -13,48 +14,34 @@ interface Props {
   fisios: User[];
   defaultFisioId: string;
   defaultUnitId: string;
-  /**
-   * `undefined` keeps the operational finder. Any defined value enables the
-   * professional self-scoped finder; `null` is the fail-closed unresolved state.
-   */
-  selfProfessionalId?: string | null;
   onClose: () => void;
   onChoose: (slot: { dia: string; hora: string; fisioId: string; roomId: string }) => void;
 }
 
-export function AppointmentFinderPanel({
-  open,
-  appointments,
-  rooms,
-  unidades,
-  fisios,
-  defaultFisioId,
-  defaultUnitId,
-  selfProfessionalId,
-  onClose,
-  onChoose,
-}: Props) {
-  const selfScoped = selfProfessionalId !== undefined;
+export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fisios, defaultFisioId, defaultUnitId, onClose, onChoose }: Props) {
+  const { user } = useCurrentUserAccess();
+  const selfScoped = user?.role === 'professional';
+  const selfProfessionalId = selfScoped ? user.id : null;
   const [search, setSearch] = useState<AvailabilitySearch>({
     durationMin: 60,
     period: 'qualquer',
     daysAhead: 7,
-    professionalId: selfScoped ? (selfProfessionalId ?? '') : defaultFisioId,
+    professionalId: selfProfessionalId ?? defaultFisioId,
     unitId: defaultUnitId,
     roomId: 'all',
   });
 
-  // Keep the internal finder epoch aligned with the current actor. The effective
-  // search below is also derived directly from the prop, so a context switch is
-  // fail-closed immediately rather than waiting for this effect to commit.
+  // The finder is presentation-only, but its state must never outlive the actor
+  // it represents. A professional context switch immediately replaces the old
+  // professionalId; operational users retain the existing selectable finder.
   useEffect(() => {
-    const nextProfessionalId = selfScoped ? (selfProfessionalId ?? '') : defaultFisioId;
+    const nextProfessionalId = selfScoped ? selfProfessionalId ?? '' : defaultFisioId;
     setSearch((current) => current.professionalId === nextProfessionalId
       ? current
       : { ...current, professionalId: nextProfessionalId });
   }, [defaultFisioId, selfProfessionalId, selfScoped]);
 
-  const effectiveProfessionalId = selfScoped ? (selfProfessionalId ?? '') : search.professionalId;
+  const effectiveProfessionalId = selfScoped ? selfProfessionalId ?? '' : search.professionalId;
   const selfProfessional = selfScoped && selfProfessionalId
     ? fisios.find((item) => item.id === selfProfessionalId)
     : null;
@@ -95,7 +82,7 @@ export function AppointmentFinderPanel({
         {selfScoped ? (
           <div aria-label="Profissional da busca" className="min-h-10 rounded-lg border border-line bg-deep px-3 py-2 text-[12px] text-fog">
             <span className="block text-[10.5px] uppercase tracking-[0.08em]">Profissional</span>
-            <strong className="mt-0.5 block truncate font-semibold text-paper">{selfProfessional?.nome ?? (selfProfessionalId ? 'Meu usuário' : 'Resolvendo usuário…')}</strong>
+            <strong className="mt-0.5 block truncate font-semibold text-paper">{selfProfessional?.nome ?? 'Meu usuário'}</strong>
           </div>
         ) : (
           <Select value={search.professionalId} onChange={(e) => setSearch((s) => ({ ...s, professionalId: e.target.value }))}>
