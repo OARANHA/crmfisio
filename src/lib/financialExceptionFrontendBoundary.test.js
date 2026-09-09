@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const financeContext = readFileSync(fileURLToPath(new URL('./financeContext.tsx', import.meta.url)), 'utf8');
+const command = readFileSync(fileURLToPath(new URL('./financialExceptionCommand.ts', import.meta.url)), 'utf8');
 const repository = readFileSync(fileURLToPath(new URL('./financialExceptionResolution.ts', import.meta.url)), 'utf8');
 const permissions = readFileSync(fileURLToPath(new URL('./permissions.ts', import.meta.url)), 'utf8');
 const queue = readFileSync(fileURLToPath(new URL('../components/FinancialExceptionQueue.tsx', import.meta.url)), 'utf8');
@@ -39,19 +40,20 @@ describe('financial exception frontend boundary', () => {
     expect(refreshBlock).not.toContain('setCommissions(');
   });
 
-  it('does not optimistically remove a pending item when resolution fails', () => {
-    expect(resolveBlock).toContain('const persisted = await resolveAppointmentFinancialException');
-    expect(resolveBlock).not.toContain('setFinancialExceptions(');
-    expect(queue).not.toContain('.filter((item) => item.id !==');
-    expect(queue).toContain('A pendência permanece aberta.');
+  it('removes a resolved item locally only after persisted RPC confirmation', () => {
+    const commandStart = command.indexOf('const resolution = await dependencies.resolve');
+    const persistedStart = command.indexOf('dependencies.onPersisted(resolution)');
+    expect(commandStart).toBeGreaterThan(-1);
+    expect(persistedStart).toBeGreaterThan(commandStart);
+    expect(resolveBlock).toContain('setFinancialExceptions((current) => current.filter((item) => item.id !== persisted.exceptionId))');
   });
 
-  it('refreshes payment plus queue after CHARGE and only queue after WAIVE', () => {
-    expect(resolveBlock).toContain('await Promise.all([refreshFinance(), refreshFinancialExceptions()]);');
-    expect(resolveBlock).toContain('await refreshFinancialExceptions();');
-    expect(resolveBlock.indexOf('const persisted = await resolveAppointmentFinancialException')).toBeLessThan(
-      resolveBlock.indexOf('await Promise.all([refreshFinance(), refreshFinancialExceptions()]);'),
-    );
+  it('treats post-COMMIT refreshes as independent projection work', () => {
+    expect(command).toContain('Promise.allSettled');
+    expect(command).toContain("financeProjection.status === 'fulfilled' ? 'fresh' : 'stale'");
+    expect(command).toContain("queueProjection.status === 'fulfilled' ? 'fresh' : 'stale'");
+    expect(command).toContain('projectionWarning');
+    expect(resolveBlock).toContain('executeFinancialExceptionCommand');
   });
 
   it('requires a non-empty WAIVE reason before and at the RPC boundary', () => {
@@ -71,6 +73,14 @@ describe('financial exception frontend boundary', () => {
     expect(financeContext).toContain('financialExceptionGeneration.current += 1;');
     expect(financeContext).toContain('setFinancialExceptions([]);');
     expect(financeContext).toContain('[clinicId, profileId, profileRole, tenantAccessState]');
+  });
+
+  it('handles manual refresh rejection and distinguishes projection warning from command failure', () => {
+    expect(queue).toContain('void refreshFinancialExceptions().catch(() => undefined);');
+    expect(queue).toContain('if (outcome.projectionWarning)');
+    expect(queue).toContain("toast(outcome.projectionWarning, 'warn');");
+    expect(queue).toContain('Não foi possível gerar a cobrança desta pendência.');
+    expect(queue).toContain('Não foi possível registrar a cortesia. A pendência permanece aberta.');
   });
 
   it('keeps the queue owned by FinanceProvider and surfaced only by Financeiro', () => {
