@@ -215,7 +215,8 @@ describe('FinanceProvider financial exception refresh behavior', () => {
     expect(latestFinance?.financialExceptions).toEqual([pendingExceptionB]);
     expect(supabaseMocks.paymentsOrder).toHaveBeenCalledTimes(financeCallsBeforeConfirmation);
     expect(financialMocks.loadPendingFinancialExceptions).toHaveBeenCalledTimes(queueCallsBeforeConfirmation);
-    expect(supabaseMocks.paymentsEq.mock.calls.at(-1)?.[0]).toBe('clinic-b');
+    const lastPaymentsEq = supabaseMocks.paymentsEq.mock.calls[supabaseMocks.paymentsEq.mock.calls.length - 1];
+    expect(lastPaymentsEq?.[0]).toBe('clinic-b');
 
     renderer?.unmount();
   });
