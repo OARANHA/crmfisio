@@ -15,16 +15,42 @@ fi
 PSQL=(psql -v ON_ERROR_STOP=1 -X)
 
 # Reuse the exact clinical authorization fixture and migration from #387 so the
-# new financial slice is tested behind the already-approved clinical guards.
+# financial slice remains behind the already-approved clinical guards.
 "${PSQL[@]}" -f tests/sql/clinical_authorization_reconciliation_fixture.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_clinical_authorization_reconciliation.sql
+
+# Reconstruct the effective main reschedule stack at the requested base SHA.
+# The reduced #387 fixture lacks only the legacy notes column used by the RPC.
+"${PSQL[@]}" -c "ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS notas text"
+"${PSQL[@]}" -f supabase-migrations/20260908_appointment_professional_id_compatibility.sql
+"${PSQL[@]}" -f supabase-migrations/20260901_appointment_reschedule.sql
+"${PSQL[@]}" -f supabase-migrations/20260905_appointment_cancellation_reason_guard.sql
+
 "${PSQL[@]}" -f tests/sql/financial_clinical_finalization_fixture.sql
+
+# Prove the new capacity guard + the effective insert-first reschedule RPC from
+# main reproduces the fully-reserved 1/1 failure before the correction is loaded.
+"${PSQL[@]}" -f tests/sql/financial_clinical_reschedule_precondition.sql
+
+# Preserve the original production regression proof: A consumes 1/1 and the old
+# package sync rolls a clinically valid B finalization back.
 "${PSQL[@]}" -f tests/sql/financial_clinical_finalization_precondition.sql
 
-# Additive migration is replayed twice to prove safe reapplication.
+# Original boundary migration is replayed twice to prove safe reapplication.
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f tests/sql/financial_clinical_finalization_cases.sql
+
+# The follow-up migration keeps the capacity guard strict, atomically transfers
+# a reservation through the canonical reschedule RPC, and removes generic queue
+# UPDATE permission until a real financial disposition contract is approved.
+"${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
+"${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
+
+# Use the actual main agenda-conflict trigger for the rollback regression: the
+# replacement INSERT must fail while the prior source cancellation rolls back.
+"${PSQL[@]}" -f supabase-migrations/20260901_appointment_conflicts.sql
+"${PSQL[@]}" -f tests/sql/financial_clinical_reschedule_cases.sql
 
 # True concurrent reservation test. Transaction 1 holds the package row lock;
 # transaction 2 must wait, then observe the committed reservation and fail.
