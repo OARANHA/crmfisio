@@ -79,9 +79,11 @@ BEGIN
   END IF;
 END $$;
 
-\echo '5) sync distinguishes coverage failure from integrity failure'
+\echo '5) sync distinguishes coverage failure, tenant isolation, historical validity and integrity failure'
 DO $$
-DECLARE v_def text := pg_get_functiondef('public.sync_appointment_package_usage()'::regprocedure);
+DECLARE
+  v_def text := pg_get_functiondef('public.sync_appointment_package_usage()'::regprocedure);
+  v_refresh text := pg_get_functiondef('public.refresh_patient_package_status(uuid)'::regprocedure);
 BEGIN
   IF v_def ILIKE '%RAISE EXCEPTION ''Pacote sem saldo ou fora da validade''%' THEN
     RAISE EXCEPTION 'package_business_failure_blocks_clinical_finalization';
@@ -96,6 +98,30 @@ BEGIN
   END IF;
   IF v_def ILIKE '%appointment_payment_resolutions%' THEN
     RAISE EXCEPTION 'prepaid_cancellation_resolution_domain_reused';
+  END IF;
+
+  -- SECURITY DEFINER must scope the package before loading its financial fields.
+  IF v_def NOT ILIKE '%WHERE id = v_new_package%AND clinic_id = NEW.clinic_id%AND patient_id = NEW.paciente_id%FOR UPDATE%' THEN
+    RAISE EXCEPTION 'package_security_definer_lookup_not_tenant_patient_scoped';
+  END IF;
+
+  -- Missing, foreign and wrong-patient links collapse to an opaque exception;
+  -- no package status/balance/validity metadata may cross that boundary.
+  IF v_def NOT ILIKE '%''package_not_eligible'', NULL, NULL, NULL, NULL%' THEN
+    RAISE EXCEPTION 'package_not_eligible_snapshot_not_redacted';
+  END IF;
+
+  -- refresh_patient_package_status is intentionally clock-based current state,
+  -- while finalization eligibility must be historical to the service date.
+  IF v_refresh NOT ILIKE '%validade_ate%<%current_date%''vencido''%' THEN
+    RAISE EXCEPTION 'package_current_status_refresh_contract_missing';
+  END IF;
+  IF v_def NOT ILIKE '%v_package.validade_ate IS NOT NULL%v_package.validade_ate < NEW.data%' THEN
+    RAISE EXCEPTION 'package_historical_service_date_validity_missing';
+  END IF;
+  IF v_def ILIKE '%v_package.status = ''vencido''%'
+     OR v_def ILIKE '%v_package.status <> ''ativo''%' THEN
+    RAISE EXCEPTION 'package_finalization_expiry_depends_on_current_status';
   END IF;
 END $$;
 
