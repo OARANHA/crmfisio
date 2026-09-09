@@ -56,9 +56,20 @@ describe('financial exception frontend boundary', () => {
     expect(resolveBlock).toContain('executeFinancialExceptionCommand');
   });
 
-  it('gates persisted local projection and refresh callbacks by the same context epoch', () => {
-    expect(resolveBlock).toContain('const commandGeneration = financialExceptionGeneration.current;');
-    expect(resolveBlock).toContain('isProjectionCurrent: () => commandGeneration === financialExceptionGeneration.current');
+  it('separates context epoch from queue request generation', () => {
+    expect(financeContext).toContain('const financialExceptionContextEpoch = useRef(0);');
+    expect(financeContext).toContain('const financialExceptionRequestGeneration = useRef(0);');
+    expect(refreshBlock).toContain('const request = ++financialExceptionRequestGeneration.current;');
+    expect(refreshBlock).not.toContain('++financialExceptionContextEpoch.current');
+    expect(resolveBlock).toContain('const commandContextEpoch = financialExceptionContextEpoch.current;');
+    expect(resolveBlock).toContain('isProjectionCurrent: () => commandContextEpoch === financialExceptionContextEpoch.current');
+  });
+
+  it('invalidates both context projection and stale queue requests only on context transitions', () => {
+    expect(financeContext).toContain('financialExceptionContextEpoch.current += 1;');
+    expect(financeContext).toContain('financialExceptionRequestGeneration.current += 1;');
+    expect(financeContext).toContain('setFinancialExceptions([]);');
+    expect(financeContext).toContain('[clinicId, profileId, profileRole, tenantAccessState]');
     expect(command).toContain('if (!dependencies.isProjectionCurrent())');
     expect(command).toContain("queue: 'skipped_stale'");
     expect(command).toContain('projectionWarning: null');
@@ -75,12 +86,6 @@ describe('financial exception frontend boundary', () => {
     expect(repository).not.toContain("tipo: 'receber'");
     expect(queue).not.toContain('addTransaction');
     expect(resolveBlock).not.toContain('setTransactions(');
-  });
-
-  it('clears stale queue state across user, clinic, role or access transitions', () => {
-    expect(financeContext).toContain('financialExceptionGeneration.current += 1;');
-    expect(financeContext).toContain('setFinancialExceptions([]);');
-    expect(financeContext).toContain('[clinicId, profileId, profileRole, tenantAccessState]');
   });
 
   it('handles manual refresh rejection and distinguishes projection warning from command failure', () => {
