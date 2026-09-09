@@ -1,0 +1,52 @@
+name: Financial Clinical Finalization Boundary
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260909_financial_clinical_finalization_boundary.sql'
+      - 'supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql'
+      - 'tests/sql/financial_clinical_finalization_*.sql'
+      - 'scripts/test-financial-clinical-finalization-boundary.sh'
+      - '.github/workflows/financial-clinical-finalization-boundary.yml'
+      - 'tests/sql/clinical_authorization_reconciliation_fixture.sql'
+      - 'supabase-migrations/20260909_clinical_authorization_reconciliation.sql'
+  workflow_dispatch:
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: financial_clinical_finalization_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create isolated PostgreSQL 16 test database
+        env:
+          PGDATABASE: postgres
+        run: createdb financial_clinical_finalization_test
+
+      - name: Run financial/clinical finalization boundary PostgreSQL 16 gate
+        run: bash scripts/test-financial-clinical-finalization-boundary.sh
