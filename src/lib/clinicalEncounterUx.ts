@@ -8,13 +8,36 @@ export type ClinicalEncounterWorkspaceResolution = {
   focusedSessionId: string | null;
 };
 
-export type EncounterProgressState = 'available' | 'optional' | 'pending' | 'complete' | 'blocked';
+export type EncounterProgressState = 'available' | 'optional' | 'pending' | 'complete' | 'blocked' | 'checking';
 
 export type EncounterProgressItem = {
   key: 'context' | 'assessment' | 'tools' | 'evolution' | 'closing';
   label: string;
   state: EncounterProgressState;
   detail: string;
+};
+
+export type ClinicalRequirementStatus = 'loading' | 'allowed' | 'denied' | 'error';
+
+export type EncounterClosingStateKey =
+  | 'checking'
+  | 'verification_error'
+  | 'missing_evolution'
+  | 'missing_evolution_permission'
+  | 'missing_attend_permission'
+  | 'missing_evolution_write_permission'
+  | 'ready';
+
+export type EncounterClosingPresentation = {
+  key: EncounterClosingStateKey;
+  progressState: Extract<EncounterProgressState, 'checking' | 'pending' | 'blocked' | 'complete'>;
+  progressDetail: string;
+  sectionTitle: string;
+  sectionDetail: string;
+  noticeTitle: string;
+  noticeDetail: string;
+  tone: 'checking' | 'pending' | 'blocked' | 'ready';
+  action: 'register_evolution' | null;
 };
 
 export function resolveClinicalEncounterWorkspace(
@@ -104,17 +127,151 @@ export function canFinalizeEncounter({
   );
 }
 
-export function resolveEncounterProgress({
-  canApplyAssessment,
-  canWriteEvolution,
+export function resolveEncounterClosingState({
   hasLinkedEvolution,
+  attendStatus,
+  evolutionWriteStatus,
   canFinalize,
 }: {
-  canApplyAssessment: boolean;
-  canWriteEvolution: boolean;
   hasLinkedEvolution: boolean;
+  attendStatus: ClinicalRequirementStatus;
+  evolutionWriteStatus: ClinicalRequirementStatus;
   canFinalize: boolean;
+}): EncounterClosingPresentation {
+  if (attendStatus === 'loading' || evolutionWriteStatus === 'loading') {
+    return {
+      key: 'checking',
+      progressState: 'checking',
+      progressDetail: 'Validando requisitos clínicos',
+      sectionTitle: 'Validando requisitos clínicos',
+      sectionDetail: 'Estamos verificando seu acesso antes de liberar o encerramento.',
+      noticeTitle: 'Validando requisitos clínicos',
+      noticeDetail: 'Aguarde a verificação das permissões clínicas necessárias para encerrar este atendimento.',
+      tone: 'checking',
+      action: null,
+    };
+  }
+
+  if (attendStatus === 'error' || evolutionWriteStatus === 'error') {
+    return {
+      key: 'verification_error',
+      progressState: 'blocked',
+      progressDetail: 'Não foi possível verificar o acesso',
+      sectionTitle: 'Verificação de acesso necessária',
+      sectionDetail: 'Não foi possível confirmar todos os requisitos clínicos de autorização para o encerramento.',
+      noticeTitle: 'Não foi possível verificar os requisitos clínicos',
+      noticeDetail: 'O encerramento permanece indisponível até que a verificação de acesso seja concluída. Nenhum diagnóstico sobre ausência de evolução é inferido neste estado.',
+      tone: 'blocked',
+      action: null,
+    };
+  }
+
+  if (!hasLinkedEvolution) {
+    if (evolutionWriteStatus !== 'allowed') {
+      return {
+        key: 'missing_evolution_permission',
+        progressState: 'blocked',
+        progressDetail: 'Evolução necessária · acesso insuficiente',
+        sectionTitle: 'Evolução necessária, sem permissão para registrar',
+        sectionDetail: 'A evolução desta sessão é obrigatória, mas seu acesso atual não permite registrá-la.',
+        noticeTitle: 'Evolução necessária, mas indisponível para seu acesso',
+        noticeDetail: 'Este atendimento não pode ser encerrado até existir uma evolução vinculada à sessão e a autorização clínica necessária estiver válida.',
+        tone: 'blocked',
+        action: null,
+      };
+    }
+
+    return {
+      key: 'missing_evolution',
+      progressState: 'pending',
+      progressDetail: 'Evolução pendente',
+      sectionTitle: 'Evolução pendente',
+      sectionDetail: 'Registre uma evolução vinculada a esta sessão para liberar o encerramento.',
+      noticeTitle: 'Evolução ainda não registrada',
+      noticeDetail: 'O banco também exige uma evolução desta sessão antes da finalização; a interface antecipa essa regra.',
+      tone: 'pending',
+      action: 'register_evolution',
+    };
+  }
+
+  if (attendStatus !== 'allowed') {
+    return {
+      key: 'missing_attend_permission',
+      progressState: 'blocked',
+      progressDetail: 'Evolução registrada · encerramento sem acesso',
+      sectionTitle: 'Evolução registrada; encerramento indisponível',
+      sectionDetail: 'Seu acesso clínico atual não permite finalizar este atendimento.',
+      noticeTitle: 'Evolução registrada, mas falta autorização para finalizar',
+      noticeDetail: 'O registro clínico está presente e preservado. A finalização continua bloqueada porque a permissão para conduzir e encerrar o atendimento não está ativa.',
+      tone: 'blocked',
+      action: null,
+    };
+  }
+
+  if (evolutionWriteStatus !== 'allowed') {
+    return {
+      key: 'missing_evolution_write_permission',
+      progressState: 'blocked',
+      progressDetail: 'Evolução registrada · requisito de autorização pendente',
+      sectionTitle: 'Evolução registrada; requisito clínico não satisfeito',
+      sectionDetail: 'A evolução existe, mas a autorização clínica exigida para autoria e encerramento não está ativa no seu acesso atual.',
+      noticeTitle: 'Evolução registrada, mas a autorização clínica está incompleta',
+      noticeDetail: 'O PostgreSQL exige também a permissão clínica de evolução no momento da finalização. A evolução registrada não é tratada como ausente.',
+      tone: 'blocked',
+      action: null,
+    };
+  }
+
+  if (canFinalize) {
+    return {
+      key: 'ready',
+      progressState: 'complete',
+      progressDetail: 'Pronto para finalizar',
+      sectionTitle: 'Pronto para finalizar',
+      sectionDetail: 'Os requisitos clínicos visíveis foram satisfeitos. A transição continua validada pelo PostgreSQL.',
+      noticeTitle: 'Evolução vinculada · encerramento liberado',
+      noticeDetail: 'Finalizar mantém as proteções clínicas e a separação do ciclo financeiro.',
+      tone: 'ready',
+      action: null,
+    };
+  }
+
+  // The capability checks and evolution are satisfied, but the canonical guard
+  // still refused finalization. Do not invent a more specific diagnosis.
+  return {
+    key: 'verification_error',
+    progressState: 'blocked',
+    progressDetail: 'Revalidar requisitos clínicos',
+    sectionTitle: 'Revalidação clínica necessária',
+    sectionDetail: 'O estado atual não pôde ser confirmado como elegível para encerramento.',
+    noticeTitle: 'Encerramento ainda não confirmado',
+    noticeDetail: 'A interface não liberará a ação enquanto o guard canônico de finalização não confirmar todos os requisitos.',
+    tone: 'blocked',
+    action: null,
+  };
+}
+
+export function resolveEncounterProgress({
+  canApplyAssessment,
+  evolutionWriteStatus,
+  hasLinkedEvolution,
+  closing,
+}: {
+  canApplyAssessment: boolean;
+  evolutionWriteStatus: ClinicalRequirementStatus;
+  hasLinkedEvolution: boolean;
+  closing: EncounterClosingPresentation;
 }): EncounterProgressItem[] {
+  const evolutionState: EncounterProgressItem = hasLinkedEvolution
+    ? { key: 'evolution', label: 'Evolução', state: 'complete', detail: 'Registrada ✓' }
+    : evolutionWriteStatus === 'loading'
+      ? { key: 'evolution', label: 'Evolução', state: 'checking', detail: 'Validando acesso para registrar' }
+      : evolutionWriteStatus === 'error'
+        ? { key: 'evolution', label: 'Evolução', state: 'blocked', detail: 'Não foi possível verificar o acesso' }
+        : evolutionWriteStatus === 'allowed'
+          ? { key: 'evolution', label: 'Evolução', state: 'pending', detail: 'Pendente' }
+          : { key: 'evolution', label: 'Evolução', state: 'blocked', detail: 'Sem permissão para registrar' };
+
   return [
     { key: 'context', label: 'Contexto', state: 'available', detail: 'Dados longitudinais disponíveis' },
     {
@@ -124,17 +281,12 @@ export function resolveEncounterProgress({
       detail: canApplyAssessment ? 'Opcional · disponível' : 'Consulta disponível conforme acesso',
     },
     { key: 'tools', label: 'Instrumentos', state: 'optional', detail: 'Ferramentas permitidas quando úteis' },
-    {
-      key: 'evolution',
-      label: 'Evolução',
-      state: hasLinkedEvolution ? 'complete' : canWriteEvolution ? 'pending' : 'blocked',
-      detail: hasLinkedEvolution ? 'Registrada ✓' : canWriteEvolution ? 'Pendente' : 'Sem permissão para registrar',
-    },
+    evolutionState,
     {
       key: 'closing',
       label: 'Encerramento',
-      state: canFinalize ? 'complete' : 'blocked',
-      detail: canFinalize ? 'Pronto para finalizar' : 'Bloqueado pela evolução',
+      state: closing.progressState,
+      detail: closing.progressDetail,
     },
   ];
 }
