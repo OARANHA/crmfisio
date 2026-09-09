@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { findAvailability, type AvailabilitySearch } from '../lib/agendaAvailability';
@@ -13,13 +13,63 @@ interface Props {
   fisios: User[];
   defaultFisioId: string;
   defaultUnitId: string;
+  /**
+   * `undefined` keeps the operational finder. Any defined value enables the
+   * professional self-scoped finder; `null` is the fail-closed unresolved state.
+   */
+  selfProfessionalId?: string | null;
   onClose: () => void;
   onChoose: (slot: { dia: string; hora: string; fisioId: string; roomId: string }) => void;
 }
 
-export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fisios, defaultFisioId, defaultUnitId, onClose, onChoose }: Props) {
-  const [search, setSearch] = useState<AvailabilitySearch>({ durationMin: 60, period: 'qualquer', daysAhead: 7, professionalId: defaultFisioId, unitId: defaultUnitId, roomId: 'all' });
-  const slots = useMemo(() => findAvailability({ appointments, rooms, professionalIds: fisios.map((item) => item.id), search }), [appointments, rooms, fisios, search]);
+export function AppointmentFinderPanel({
+  open,
+  appointments,
+  rooms,
+  unidades,
+  fisios,
+  defaultFisioId,
+  defaultUnitId,
+  selfProfessionalId,
+  onClose,
+  onChoose,
+}: Props) {
+  const selfScoped = selfProfessionalId !== undefined;
+  const [search, setSearch] = useState<AvailabilitySearch>({
+    durationMin: 60,
+    period: 'qualquer',
+    daysAhead: 7,
+    professionalId: selfScoped ? (selfProfessionalId ?? '') : defaultFisioId,
+    unitId: defaultUnitId,
+    roomId: 'all',
+  });
+
+  // Keep the internal finder epoch aligned with the current actor. The effective
+  // search below is also derived directly from the prop, so a context switch is
+  // fail-closed immediately rather than waiting for this effect to commit.
+  useEffect(() => {
+    const nextProfessionalId = selfScoped ? (selfProfessionalId ?? '') : defaultFisioId;
+    setSearch((current) => current.professionalId === nextProfessionalId
+      ? current
+      : { ...current, professionalId: nextProfessionalId });
+  }, [defaultFisioId, selfProfessionalId, selfScoped]);
+
+  const effectiveProfessionalId = selfScoped ? (selfProfessionalId ?? '') : search.professionalId;
+  const selfProfessional = selfScoped && selfProfessionalId
+    ? fisios.find((item) => item.id === selfProfessionalId)
+    : null;
+
+  const slots = useMemo(() => {
+    if (selfScoped && !selfProfessionalId) return [];
+    const professionalIds = selfScoped
+      ? [selfProfessionalId as string]
+      : fisios.map((item) => item.id);
+    const effectiveSearch = search.professionalId === effectiveProfessionalId
+      ? search
+      : { ...search, professionalId: effectiveProfessionalId };
+    return findAvailability({ appointments, rooms, professionalIds, search: effectiveSearch });
+  }, [appointments, rooms, fisios, search, selfScoped, selfProfessionalId, effectiveProfessionalId]);
+
   if (!open) return null;
 
   return (
@@ -42,9 +92,16 @@ export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fi
         <Select value={String(search.daysAhead)} onChange={(e) => setSearch((s) => ({ ...s, daysAhead: Number(e.target.value) }))}>
           <option value="3">Próximos 3 dias</option><option value="7">Próximos 7 dias</option><option value="14">Próximos 14 dias</option>
         </Select>
-        <Select value={search.professionalId} onChange={(e) => setSearch((s) => ({ ...s, professionalId: e.target.value }))}>
-          <option value="all">Qualquer profissional</option>{fisios.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
-        </Select>
+        {selfScoped ? (
+          <div aria-label="Profissional da busca" className="min-h-10 rounded-lg border border-line bg-deep px-3 py-2 text-[12px] text-fog">
+            <span className="block text-[10.5px] uppercase tracking-[0.08em]">Profissional</span>
+            <strong className="mt-0.5 block truncate font-semibold text-paper">{selfProfessional?.nome ?? (selfProfessionalId ? 'Meu usuário' : 'Resolvendo usuário…')}</strong>
+          </div>
+        ) : (
+          <Select value={search.professionalId} onChange={(e) => setSearch((s) => ({ ...s, professionalId: e.target.value }))}>
+            <option value="all">Qualquer profissional</option>{fisios.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+          </Select>
+        )}
         <Select value={search.unitId} onChange={(e) => setSearch((s) => ({ ...s, unitId: e.target.value, roomId: 'all' }))}>
           <option value="all">Qualquer unidade</option>{unidades.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
         </Select>
