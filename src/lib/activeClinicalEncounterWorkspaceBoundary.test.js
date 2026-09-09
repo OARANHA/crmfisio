@@ -24,9 +24,25 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(workspace).toContain('Nenhum atendimento próprio em andamento');
   });
 
-  it('uses the same canonical appointment for assessments', () => {
+  it('uses the same canonical appointment for new assessments', () => {
     expect(assessment).toContain('resolveOwnActiveEncounter(appointments, patient.id, userId)');
-    expect(assessment).toContain('appointmentId: activeAppointment?.id ?? null');
+    expect(assessment).toContain('const appointmentId = activeAppointmentId');
+    expect(assessment).toContain('appointmentId,');
+  });
+
+  it('isolates resumed assessment drafts by patient, professional and canonical encounter', () => {
+    expect(assessment).toContain('selectAssessmentDraftForContext(history');
+    expect(assessment).toContain('patientId: patient.id');
+    expect(assessment).toContain('professionalId: userId');
+    expect(assessment).toContain('activeAppointmentId,');
+    expect(assessment).toContain("setEditorContextKey(null)");
+    expect(assessment).toContain('contextKeyRef.current !== contextKey');
+  });
+
+  it('never labels a draft with an encounter that is not its provenance', () => {
+    expect(assessment).toContain('visibleDraft?.appointmentId === activeAppointment.id');
+    expect(assessment).toContain('visibleDraftAppointment ? ` · atendimento ${visibleDraftAppointment.inicio}` :');
+    expect(assessment).not.toContain('rascunho em andamento{activeAppointment ?');
   });
 
   it('makes EEM accept only the canonical own encounter', () => {
@@ -56,7 +72,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(tools).toContain('/nexus/evolution');
   });
 
-  it('resets encounter-scoped draft context when patient or user changes', () => {
+  it('resets encounter-scoped evolution draft context when patient or user changes', () => {
     expect(workspace).toContain("setSessionId('')");
     expect(workspace).toContain("setEvolutionText('')");
     expect(workspace).toContain('[patient.id, user?.id]');
