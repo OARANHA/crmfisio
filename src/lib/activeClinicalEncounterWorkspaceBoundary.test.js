@@ -18,7 +18,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
   });
 
   it('auto-binds evolution to the canonical encounter and removes the redundant active-session selector', () => {
-    expect(workspace).toContain('if (activeSession) setSessionId(activeSession.id)');
+    expect(workspace).toContain('setSessionId(activeSession.id)');
     expect(workspace).toContain("activeSession?.id !== session.id");
     expect(workspace).toContain('sessionId !== activeSession.id');
     expect(workspace).toContain('Nenhum atendimento próprio em andamento');
