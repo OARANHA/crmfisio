@@ -43,7 +43,9 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
   const available = useMemo<JourneyAction[]>(() => {
     if (!user) return [];
 
-    if (patient.funilStage === 'lead' && (canAttend || ['owner', 'admin', 'recep'].includes(user.role))) {
+    // Lead -> avaliação is an operational CRM handoff. Clinical capability does
+    // not grant general CRM authority to a professional.
+    if (patient.funilStage === 'lead' && ['owner', 'admin', 'recep'].includes(user.role)) {
       return [{
         to: 'avaliacao',
         label: 'Encaminhar para avaliação',
@@ -73,15 +75,13 @@ export function PatientJourneyControl({ patient }: { patient: Patient }) {
       }];
     }
 
-    if (patient.funilStage === 'alta' && (canAttend || ['owner', 'admin'].includes(user.role))) {
+    if (patient.funilStage === 'alta' && canAttend) {
       return [{
         to: 'tratamento',
-        label: canAttend ? 'Reabrir tratamento' : 'Corrigir / reabrir tratamento',
+        label: 'Reabrir tratamento',
         title: 'Reabrir tratamento preservando a alta anterior',
-        reasons: canAttend
-          ? REOPEN_REASONS
-          : REOPEN_REASONS.filter((r) => r.value === 'correcao_administrativa'),
-        clinical: canAttend,
+        reasons: REOPEN_REASONS,
+        clinical: true,
       }];
     }
 

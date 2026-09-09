@@ -70,6 +70,30 @@ npm run build
 7. Fazer merge apenas quando a revisão estiver deploy-safe.
 8. Acompanhar atualização do Portainer e validar app/logs.
 
+## Rollout coordenado — Clinical Authorization Reconciliation (#387)
+
+O PR #386 já mergeado alterou `supabase/functions/admin-team/index.ts`, mas aquela versão ainda não foi implantada em produção. Se o #387 for aprovado para produção, tratar o rollout como uma sequência coordenada; não aplicar etapas isoladas fora dessa ordem sem nova revisão.
+
+1. merge do PR #387;
+2. aplicar `supabase-migrations/20260909_clinical_authorization_reconciliation.sql`;
+3. executar `supabase-verifiers/VERIFY_20260909_CLINICAL_AUTHORIZATION_RECONCILIATION.sql` em produção;
+4. redeploy da Edge Function `admin-team` com a versão pós-#386;
+5. redeploy do frontend contendo #386 + #387;
+6. executar smoke test real.
+
+Smoke test mínimo após o rollout:
+
+- editar **Dr. Médico Nexus Teste / Psiquiatria**;
+- iniciar atendimento;
+- avançar **avaliação → tratamento**;
+- registrar evolução;
+- finalizar atendimento;
+- confirmar `status = finalizado` no banco;
+- confirmar o Patient Journey persistido;
+- confirmar ausência de falso toast de sucesso quando uma mutation de status não persistir.
+
+Esta seção documenta somente a ordem futura. Nenhuma dessas etapas deve ser executada sem autorização explícita de produção.
+
 ## Migrations no Supabase self-hosted
 
 Não tratar `supabase-schema.sql` como mecanismo de atualização contínua de produção. Para mudanças incrementais, usar as migrations versionadas em `supabase-migrations/`.

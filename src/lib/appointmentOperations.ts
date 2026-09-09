@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Appointment } from './types';
+import type { Appointment, AppointmentStatus } from './types';
 
 interface RescheduleInput {
   appointmentId: string;
@@ -13,6 +13,16 @@ interface RescheduleInput {
   reason: string;
   isFitIn?: boolean;
 }
+
+type AppointmentStatusMutationRow = {
+  id: string;
+  status: AppointmentStatus;
+};
+
+type AppointmentStatusMutationResult = {
+  data: AppointmentStatusMutationRow[] | null;
+  error: unknown;
+};
 
 const mapRpcAppointment = (row: Record<string, unknown>): Appointment => {
   const professionalId = String(row.professional_id ?? row.fisio_id);
@@ -33,6 +43,58 @@ const mapRpcAppointment = (row: Record<string, unknown>): Appointment => {
     notas: row.notas ? String(row.notas) : '',
   };
 };
+
+export function verifyAppointmentStatusMutation(
+  result: AppointmentStatusMutationResult,
+  expectedAppointmentId: string,
+  expectedStatus: AppointmentStatus,
+): AppointmentStatusMutationRow {
+  if (result.error) throw result.error;
+
+  const rows = result.data ?? [];
+  if (rows.length !== 1) {
+    throw new Error('appointment_status_update_not_persisted');
+  }
+
+  const [row] = rows;
+  if (row.id !== expectedAppointmentId) {
+    throw new Error('appointment_status_update_wrong_appointment');
+  }
+  if (row.status !== expectedStatus) {
+    throw new Error('appointment_status_update_wrong_status');
+  }
+
+  return row;
+}
+
+/**
+ * Single low-level primitive for appointment status persistence. Both the
+ * repository/Agenda path and the clinical compatibility alias delegate here.
+ */
+export async function executeVerifiedAppointmentStatusMutation(
+  appointmentId: string,
+  status: AppointmentStatus,
+): Promise<AppointmentStatusMutationRow> {
+  const result = await supabase
+    .from('appointments')
+    .update({ status })
+    .eq('id', appointmentId)
+    .select('id,status');
+
+  return verifyAppointmentStatusMutation(
+    result as AppointmentStatusMutationResult,
+    appointmentId,
+    status,
+  );
+}
+
+/** @deprecated Use repository.updateAppointmentStatus() in application code. */
+export async function updateAppointmentStatusVerified(
+  appointmentId: string,
+  status: AppointmentStatus,
+): Promise<AppointmentStatusMutationRow> {
+  return executeVerifiedAppointmentStatusMutation(appointmentId, status);
+}
 
 export async function cancelAppointmentWithReason(appointmentId: string, reason: string): Promise<void> {
   const { error } = await (supabase.rpc as Function)('cancel_appointment_with_reason', {

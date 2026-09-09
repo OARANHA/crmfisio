@@ -1,0 +1,58 @@
+name: Clinical Authorization Reconciliation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/ClinicalWorkspace.tsx'
+      - 'src/components/PatientJourneyControl.tsx'
+      - 'src/lib/appointmentOperations.ts'
+      - 'src/lib/appointmentOperations.test.ts'
+      - 'supabase-migrations/20260909_clinical_authorization_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260909_CLINICAL_AUTHORIZATION_RECONCILIATION.sql'
+      - 'tests/sql/clinical_authorization_*.sql'
+      - 'scripts/test-clinical-authorization-reconciliation.sh'
+      - 'docs/ROLE_MODEL.md'
+      - 'AGENTS.md'
+      - '.github/workflows/clinical-authorization-reconciliation.yml'
+  workflow_dispatch:
+
+jobs:
+  reconciliation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinical_authorization_reconciliation_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create isolated PostgreSQL 16 test database
+        env:
+          PGDATABASE: postgres
+        run: createdb clinical_authorization_reconciliation_test
+
+      - name: Run clinical authorization reconciliation PostgreSQL 16 gate
+        run: bash scripts/test-clinical-authorization-reconciliation.sh
