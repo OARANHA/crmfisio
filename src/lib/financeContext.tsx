@@ -73,7 +73,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [financialExceptionsLoading, setFinancialExceptionsLoading] = useState(false);
   const [financialExceptionsError, setFinancialExceptionsError] = useState<string | null>(null);
   const generation = useRef(0);
-  const financialExceptionGeneration = useRef(0);
+  const financialExceptionContextEpoch = useRef(0);
+  const financialExceptionRequestGeneration = useRef(0);
 
   const refreshFinance = useCallback(async () => {
     const request = ++generation.current;
@@ -114,7 +115,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [clinicId, tenantAccessState]);
 
   const refreshFinancialExceptions = useCallback(async () => {
-    const request = ++financialExceptionGeneration.current;
+    const request = ++financialExceptionRequestGeneration.current;
     if (
       !profileId
       || !clinicId
@@ -130,23 +131,24 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setFinancialExceptionsLoading(true);
     try {
       const next = await loadPendingFinancialExceptions();
-      if (request !== financialExceptionGeneration.current) return;
+      if (request !== financialExceptionRequestGeneration.current) return;
       setFinancialExceptions(next);
       setFinancialExceptionsError(null);
     } catch (cause) {
-      if (request !== financialExceptionGeneration.current) return;
+      if (request !== financialExceptionRequestGeneration.current) return;
       console.error('[MedicsPro] pendências de cobertura:', cause);
       setFinancialExceptionsError('Não foi possível carregar as pendências de cobertura.');
       throw cause;
     } finally {
-      if (request === financialExceptionGeneration.current) setFinancialExceptionsLoading(false);
+      if (request === financialExceptionRequestGeneration.current) setFinancialExceptionsLoading(false);
     }
   }, [clinicId, profileId, profileRole, tenantAccessState]);
 
   useEffect(() => { void refreshFinance().catch(() => undefined); }, [refreshFinance]);
 
   useEffect(() => {
-    financialExceptionGeneration.current += 1;
+    financialExceptionContextEpoch.current += 1;
+    financialExceptionRequestGeneration.current += 1;
     setFinancialExceptions([]);
     setFinancialExceptionsLoading(false);
     setFinancialExceptionsError(null);
@@ -168,10 +170,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       throw new Error('Perfil sem permissão para conceder cortesia desta pendência.');
     }
 
-    const commandGeneration = financialExceptionGeneration.current;
+    const commandContextEpoch = financialExceptionContextEpoch.current;
     return executeFinancialExceptionCommand(exceptionId, disposition, reason, {
       resolve: resolveAppointmentFinancialException,
-      isProjectionCurrent: () => commandGeneration === financialExceptionGeneration.current,
+      isProjectionCurrent: () => commandContextEpoch === financialExceptionContextEpoch.current,
       onPersisted: (persisted) => {
         setFinancialExceptions((current) => current.filter((item) => item.id !== persisted.exceptionId));
       },
