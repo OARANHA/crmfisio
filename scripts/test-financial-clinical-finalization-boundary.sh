@@ -41,6 +41,11 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f tests/sql/financial_clinical_finalization_cases.sql
 
+# Tenant isolation and historical-validity regressions: foreign package metadata
+# must not leak into clinic A, and a session valid on D remains covered when the
+# package is materialized as vencido before a delayed clinical finalization.
+"${PSQL[@]}" -f tests/sql/financial_clinical_finalization_tenant_validity_cases.sql
+
 # The follow-up migration keeps the capacity guard strict, atomically transfers
 # a reservation through the canonical reschedule RPC, and removes generic queue
 # UPDATE permission until a real financial disposition contract is approved.
@@ -154,3 +159,4 @@ run_negative_control() {
 
 run_negative_control package_blocker tests/sql/financial_clinical_finalization_negative_raise.sql
 run_negative_control overconsumption tests/sql/financial_clinical_finalization_negative_overconsumption.sql
+run_negative_control status_clock_expiry tests/sql/financial_clinical_finalization_negative_status_clock_expiry.sql
