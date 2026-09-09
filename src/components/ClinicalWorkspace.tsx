@@ -148,8 +148,17 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
   }, [initialSessionId, sessions, user?.id, canAttend, activeSession?.id]);
 
   useEffect(() => {
-    if (activeSession) setSessionId(activeSession.id);
-    else setSessionId((current) => sessions.some((session) => session.id === current && canTransitionSession(session) && session.status === 'em_atendimento') ? current : '');
+    if (activeSession) {
+      setSessionId(activeSession.id);
+      return;
+    }
+    setSessionId((current) => sessions.some((session) => (
+      session.id === current
+      && canAttend
+      && Boolean(user?.id)
+      && user?.id === professionalIdOf(session)
+      && session.status === 'em_atendimento'
+    )) ? current : '');
   }, [activeSession, sessions, canAttend, user?.id]);
 
   useEffect(() => {
