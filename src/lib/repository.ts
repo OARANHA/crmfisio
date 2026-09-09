@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { Database, Json } from './database.types';
+import { executeVerifiedAppointmentStatusMutation } from './appointmentOperations';
 import { normalizeClinicRole } from './roleCompatibility';
 import { professionalIdOf } from './professionalReference';
 import type {
@@ -380,8 +381,7 @@ export async function insertAppointment(clinicId: string, appointment: Omit<Appo
 }
 
 export async function updateAppointmentStatus(id: string, status: Appointment['status']): Promise<void> {
-  const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-  if (error) throw error;
+  await executeVerifiedAppointmentStatusMutation(id, status);
 }
 
 export async function insertPayment(clinicId: string, payment: Omit<FinancialTransaction, 'id'>): Promise<FinancialTransaction> {
