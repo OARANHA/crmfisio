@@ -34,8 +34,12 @@ export function FinancialExceptionQueue() {
   const charge = async (item: FinancialException) => {
     setResolvingId(item.id);
     try {
-      await resolveFinancialException(item.id, 'charge');
-      toast('Cobrança gerada e pendência de cobertura resolvida.');
+      const outcome = await resolveFinancialException(item.id, 'charge');
+      if (outcome.projectionWarning) {
+        toast(outcome.projectionWarning, 'warn');
+      } else {
+        toast('Cobrança gerada e pendência de cobertura resolvida.');
+      }
     } catch (error) {
       console.error('[MedicsPro] resolver pendência com cobrança:', error);
       toast('Não foi possível gerar a cobrança desta pendência.', 'warn');
@@ -55,10 +59,14 @@ export function FinancialExceptionQueue() {
     setResolvingId(waiveTarget.id);
     setWaiveError(null);
     try {
-      await resolveFinancialException(waiveTarget.id, 'waived', reason);
-      toast('Cortesia registrada e pendência de cobertura resolvida.');
+      const outcome = await resolveFinancialException(waiveTarget.id, 'waived', reason);
       setWaiveTarget(null);
       setWaiveReason('');
+      if (outcome.projectionWarning) {
+        toast(outcome.projectionWarning, 'warn');
+      } else {
+        toast('Cortesia registrada e pendência de cobertura resolvida.');
+      }
     } catch (error) {
       console.error('[MedicsPro] resolver pendência com cortesia:', error);
       setWaiveError('Não foi possível registrar a cortesia. A pendência permanece aberta.');
@@ -76,7 +84,9 @@ export function FinancialExceptionQueue() {
           <Btn
             variant="ghost"
             className="!px-3 !py-1.5 !text-[11px]"
-            onClick={() => void refreshFinancialExceptions()}
+            onClick={() => {
+              void refreshFinancialExceptions().catch(() => undefined);
+            }}
             disabled={financialExceptionsLoading}
           >
             {financialExceptionsLoading ? 'Atualizando…' : 'Atualizar'}
