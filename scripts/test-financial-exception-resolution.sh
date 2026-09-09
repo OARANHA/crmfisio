@@ -25,13 +25,19 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
 
-# Seed already-detected exceptions without exercising the #388 detection path.
-"${PSQL[@]}" -f tests/sql/financial_exception_resolution_fixture.sql
+# #388 is a historical slice with a deliberate "no resolution RPC yet" invariant.
+# Validate it before #389 exists. Never relax or run this verifier after #389.
+"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql
 
-# Additive #389 migration is replayed twice to prove safe reapplication.
+# #389 is additive. Apply it only after the complete #388 contract has passed.
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_exception_resolution.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_exception_resolution.sql
+
+# Seed already-detected exceptions without exercising the #388 detection path,
+# then execute the resolution cases on the post-#389 schema.
+"${PSQL[@]}" -f tests/sql/financial_exception_resolution_fixture.sql
 "${PSQL[@]}" -f tests/sql/financial_exception_resolution_cases.sql
+"${PSQL[@]}" -f tests/sql/financial_exception_resolution_waive_idempotency.sql
 
 # 15) True concurrency: transaction 1 resolves and deliberately retains the
 # exception row lock. Transaction 2 must wait, then return the same persisted
@@ -79,8 +85,8 @@ BEGIN
 END $$;
 SQL
 
-# Protect #388 itself as a dependency of #389, then validate #389.
-"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql
+# The #389 verifier reasserts every #388 invariant that remains valid after the
+# resolution boundary is intentionally introduced.
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260909_FINANCIAL_EXCEPTION_RESOLUTION.sql
 
 run_negative_control() {
