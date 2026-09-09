@@ -67,7 +67,12 @@ export function verifyAppointmentStatusMutation(
   return row;
 }
 
-export async function updateAppointmentStatusVerified(
+/**
+ * Low-level verified mutation primitive. Application consumers should use the
+ * canonical repository.updateAppointmentStatus() path so Agenda and clinical
+ * workflows cannot drift into different persistence semantics.
+ */
+export async function executeVerifiedAppointmentStatusMutation(
   appointmentId: string,
   status: AppointmentStatus,
 ): Promise<AppointmentStatusMutationRow> {
