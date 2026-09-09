@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '../lib/supabaseClient';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
+import { updateAppointmentStatusVerified } from '../lib/appointmentOperations';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { userName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
@@ -237,10 +238,14 @@ export function ClinicalWorkspace({ patient, initialSessionId = null }: { patien
     if (!canTransitionSession(session) || transitioningSessionId) return false;
     setTransitioningSessionId(session.id);
     try {
-      const { error } = await supabase.from('appointments').update({ status }).eq('id', session.id);
-      if (error) {
+      try {
+        await updateAppointmentStatusVerified(session.id, status);
+      } catch (error) {
         console.error('[MedicsPro] transição de atendimento:', error);
-        const message = error.code === '23505' ? 'Já existe outro atendimento em andamento para este profissional ou paciente.' : 'O atendimento não pôde mudar de status. Verifique as regras clínicas e tente novamente.';
+        const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+        const message = code === '23505'
+          ? 'Já existe outro atendimento em andamento para este profissional ou paciente.'
+          : 'O atendimento não pôde mudar de status. Verifique as regras clínicas e tente novamente.';
         toast(message, 'warn');
         return false;
       }
