@@ -51,10 +51,14 @@ REVOKE ALL ON public.appointment_financial_exception_dispositions
 GRANT SELECT ON public.appointment_financial_exception_dispositions
   TO authenticated, service_role;
 
--- #388 intentionally kept the detection queue read-only. Reassert that contract
--- here so this resolution slice cannot accidentally reintroduce generic mutation.
+-- Preserve #388 exactly: authenticated cannot mutate the detection queue;
+-- service_role may append detections but cannot resolve/update/delete them.
 REVOKE INSERT, UPDATE, DELETE ON public.appointment_financial_exceptions
-  FROM authenticated, service_role;
+  FROM authenticated;
+REVOKE UPDATE, DELETE ON public.appointment_financial_exceptions
+  FROM service_role;
+GRANT SELECT, INSERT ON public.appointment_financial_exceptions
+  TO service_role;
 
 CREATE OR REPLACE FUNCTION public.guard_financial_exception_disposition_immutability()
 RETURNS trigger
