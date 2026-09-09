@@ -6,6 +6,7 @@ import {
   hasOwnLinkedEncounterEvolution,
   longitudinalPatientContext,
   resolveClinicalEncounterWorkspace,
+  resolveEncounterClosingState,
   resolveEncounterProgress,
 } from './clinicalEncounterUx';
 
@@ -95,7 +96,7 @@ describe('Clinical Encounter UX V4 presentation model', () => {
     expect(() => buildEncounterEvolutionDraft({ patient, encounter: appointment(), professionalId: 'professional-b', text: 'inválido' })).toThrow('active_encounter_context_required');
   });
 
-  it('blocks finalization without an own linked evolution and releases it after linkage', () => {
+  it('keeps canFinalizeEncounter as the canonical UI guard', () => {
     const encounter = appointment();
     expect(hasOwnLinkedEncounterEvolution([], encounter.id, 'professional-a')).toBe(false);
     expect(canFinalizeEncounter({ encounter, professionalId: 'professional-a', canAttend: true, canWriteEvolution: true, hasLinkedEvolution: false })).toBe(false);
@@ -104,15 +105,108 @@ describe('Clinical Encounter UX V4 presentation model', () => {
     expect(canFinalizeEncounter({ encounter, professionalId: 'professional-a', canAttend: true, canWriteEvolution: true, hasLinkedEvolution: true })).toBe(true);
   });
 
+  it('reports missing_evolution when evolution is absent and permissions are allowed', () => {
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: false,
+      attendStatus: 'allowed',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: false,
+    });
+    expect(closing.key).toBe('missing_evolution');
+    expect(closing.progressDetail).toBe('Evolução pendente');
+    expect(closing.action).toBe('register_evolution');
+  });
+
+  it('reports ready when evolution exists and both clinical permissions are allowed', () => {
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'allowed',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: true,
+    });
+    expect(closing.key).toBe('ready');
+    expect(closing.progressDetail).toBe('Pronto para finalizar');
+  });
+
+  it('does not accuse a missing evolution when clinical.attend is denied after evolution exists', () => {
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'denied',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: false,
+    });
+    expect(closing.key).toBe('missing_attend_permission');
+    expect(closing.progressDetail).toContain('Evolução registrada');
+    expect(closing.noticeTitle).not.toContain('não registrada');
+  });
+
+  it('does not accuse a missing evolution when clinical.evolution.write is denied after evolution exists', () => {
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'allowed',
+      evolutionWriteStatus: 'denied',
+      canFinalize: false,
+    });
+    expect(closing.key).toBe('missing_evolution_write_permission');
+    expect(closing.progressDetail).toContain('Evolução registrada');
+    expect(closing.noticeDetail).toContain('não é tratada como ausente');
+  });
+
+  it('keeps capability loading and errors as access verification states instead of false evolution diagnoses', () => {
+    const loading = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'loading',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: false,
+    });
+    expect(loading.key).toBe('checking');
+    expect(loading.progressDetail).toBe('Validando requisitos clínicos');
+
+    const error = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'allowed',
+      evolutionWriteStatus: 'error',
+      canFinalize: false,
+    });
+    expect(error.key).toBe('verification_error');
+    expect(error.progressDetail).toContain('verificar o acesso');
+    expect(error.noticeTitle).not.toContain('não registrada');
+  });
+
+  it('uses the same derived closing presentation in the progress card model', () => {
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: true,
+      attendStatus: 'denied',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: false,
+    });
+    const progress = resolveEncounterProgress({
+      canApplyAssessment: true,
+      evolutionWriteStatus: 'allowed',
+      hasLinkedEvolution: true,
+      closing,
+    });
+    const closingProgress = progress.find((item) => item.key === 'closing');
+    expect(closingProgress?.state).toBe(closing.progressState);
+    expect(closingProgress?.detail).toBe(closing.progressDetail);
+  });
+
   it('keeps progress informative rather than a rigid wizard', () => {
-    const before = resolveEncounterProgress({ canApplyAssessment: true, canWriteEvolution: true, hasLinkedEvolution: false, canFinalize: false });
+    const closing = resolveEncounterClosingState({
+      hasLinkedEvolution: false,
+      attendStatus: 'allowed',
+      evolutionWriteStatus: 'allowed',
+      canFinalize: false,
+    });
+    const before = resolveEncounterProgress({
+      canApplyAssessment: true,
+      evolutionWriteStatus: 'allowed',
+      hasLinkedEvolution: false,
+      closing,
+    });
     expect(before.find((item) => item.key === 'assessment')?.state).toBe('optional');
     expect(before.find((item) => item.key === 'evolution')?.state).toBe('pending');
-    expect(before.find((item) => item.key === 'closing')?.state).toBe('blocked');
-
-    const after = resolveEncounterProgress({ canApplyAssessment: true, canWriteEvolution: true, hasLinkedEvolution: true, canFinalize: true });
-    expect(after.find((item) => item.key === 'evolution')?.state).toBe('complete');
-    expect(after.find((item) => item.key === 'closing')?.state).toBe('complete');
+    expect(before.find((item) => item.key === 'closing')?.state).toBe('pending');
   });
 
   it('never relabels the patient-level complaint as the complaint of this encounter', () => {
