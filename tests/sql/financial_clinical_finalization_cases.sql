@@ -5,6 +5,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000002';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 
 DO $$
 DECLARE
@@ -37,6 +39,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000002';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.appointment_financial_exceptions
@@ -56,6 +60,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000003';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT sessoes_usadas FROM public.patient_packages
@@ -75,6 +81,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000004';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 DECLARE v_count integer; v_amount integer; v_category text;
 BEGIN
@@ -93,6 +101,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000005';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT status FROM public.appointments
@@ -112,6 +122,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000006';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT status FROM public.appointments
@@ -133,6 +145,8 @@ SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 UPDATE public.appointments SET status = 'finalizado'
 WHERE id = '41000000-0000-0000-0000-000000000007';
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT sessoes_usadas FROM public.patient_packages
@@ -157,8 +171,6 @@ BEGIN
 END $$;
 
 \echo '8) unexpected package integrity corruption still fails closed'
--- Re-establish a valid reservation first; only then corrupt the package so the
--- finalization path, not the scheduling guard, proves technical failures raise.
 UPDATE public.appointments SET status = 'em_atendimento'
 WHERE id = '41000000-0000-0000-0000-000000000007';
 UPDATE public.patient_packages SET sessoes_usadas = 2, status = 'esgotado'
@@ -179,6 +191,8 @@ BEGIN
   END;
 END $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 DO $$
 BEGIN
   IF (SELECT status FROM public.appointments
@@ -271,6 +285,8 @@ BEGIN
   END;
 END $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 
 \echo '12) service role has controlled queue insert/update but no delete grant'
 INSERT INTO public.appointments(
@@ -306,6 +322,8 @@ BEGIN
   END;
 END $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', false);
+SELECT set_config('request.jwt.claim.sub', '', false);
 
 \echo '13) package balances never exceed totals after all scenarios'
 DO $$
