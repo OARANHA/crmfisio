@@ -20,11 +20,14 @@ const waiveResolution: FinancialExceptionResolution = {
   resolvedAt: '2026-09-09T09:01:00Z',
 };
 
+const currentProjection = () => true;
+
 describe('financial exception command/projection boundary', () => {
   it('keeps CHARGE successful when finance refresh fails after persisted RPC confirmation', async () => {
     const onPersisted = vi.fn();
     const result = await executeFinancialExceptionCommand('exception-charge', 'charge', null, {
       resolve: vi.fn().mockResolvedValue(chargeResolution),
+      isProjectionCurrent: currentProjection,
       onPersisted,
       refreshFinance: vi.fn().mockRejectedValue(new Error('payments projection unavailable')),
       refreshQueue: vi.fn().mockResolvedValue(undefined),
@@ -40,6 +43,7 @@ describe('financial exception command/projection boundary', () => {
   it('keeps CHARGE successful when queue refresh fails after persisted RPC confirmation', async () => {
     const result = await executeFinancialExceptionCommand('exception-charge', 'charge', null, {
       resolve: vi.fn().mockResolvedValue(chargeResolution),
+      isProjectionCurrent: currentProjection,
       onPersisted: vi.fn(),
       refreshFinance: vi.fn().mockResolvedValue(undefined),
       refreshQueue: vi.fn().mockRejectedValue(new Error('queue projection unavailable')),
@@ -53,6 +57,7 @@ describe('financial exception command/projection boundary', () => {
   it('keeps WAIVE successful when queue refresh fails and never says the pending item remains open', async () => {
     const result = await executeFinancialExceptionCommand('exception-waive', 'waived', 'Cortesia administrativa', {
       resolve: vi.fn().mockResolvedValue(waiveResolution),
+      isProjectionCurrent: currentProjection,
       onPersisted: vi.fn(),
       refreshFinance: vi.fn(),
       refreshQueue: vi.fn().mockRejectedValue(new Error('queue projection unavailable')),
@@ -72,6 +77,7 @@ describe('financial exception command/projection boundary', () => {
 
     await expect(executeFinancialExceptionCommand('exception-charge', 'charge', null, {
       resolve: vi.fn().mockRejectedValue(commandError),
+      isProjectionCurrent: currentProjection,
       onPersisted,
       refreshFinance,
       refreshQueue,
@@ -93,6 +99,7 @@ describe('financial exception command/projection boundary', () => {
 
     const pending = executeFinancialExceptionCommand('exception-charge', 'charge', null, {
       resolve: command,
+      isProjectionCurrent: currentProjection,
       onPersisted,
       refreshFinance,
       refreshQueue,
@@ -109,5 +116,35 @@ describe('financial exception command/projection boundary', () => {
     expect(onPersisted).toHaveBeenCalledWith(chargeResolution);
     expect(refreshFinance).toHaveBeenCalledOnce();
     expect(refreshQueue).toHaveBeenCalledOnce();
+  });
+
+  it('returns persisted success without projection or warning when the context epoch changed while the RPC was in flight', async () => {
+    let confirmPersisted!: (resolution: FinancialExceptionResolution) => void;
+    let current = true;
+    const onPersisted = vi.fn();
+    const refreshFinance = vi.fn().mockResolvedValue(undefined);
+    const refreshQueue = vi.fn().mockResolvedValue(undefined);
+
+    const pending = executeFinancialExceptionCommand('exception-charge', 'charge', null, {
+      resolve: vi.fn(() => new Promise<FinancialExceptionResolution>((resolve) => {
+        confirmPersisted = resolve;
+      })),
+      isProjectionCurrent: () => current,
+      onPersisted,
+      refreshFinance,
+      refreshQueue,
+    });
+
+    current = false;
+    confirmPersisted(chargeResolution);
+
+    await expect(pending).resolves.toEqual({
+      resolution: chargeResolution,
+      projection: { finance: 'skipped_stale', queue: 'skipped_stale' },
+      projectionWarning: null,
+    });
+    expect(onPersisted).not.toHaveBeenCalled();
+    expect(refreshFinance).not.toHaveBeenCalled();
+    expect(refreshQueue).not.toHaveBeenCalled();
   });
 });
