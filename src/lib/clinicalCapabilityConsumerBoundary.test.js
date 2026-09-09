@@ -8,6 +8,7 @@ const hook = source('../hooks/useClinicalCapability.ts');
 const modal = source('../components/AppointmentActionModal.tsx');
 const workspace = source('../components/ClinicalWorkspace.tsx');
 const dashboard = source('../pages/DashboardRoleAware.tsx');
+const presentation = source('./dashboardPresentation.ts');
 
 describe('clinical capability consumer boundary', () => {
   it('uses only the canonical RPC parameter name', () => {
@@ -35,9 +36,13 @@ describe('clinical capability consumer boundary', () => {
     expect(workspace).not.toContain('isPsychiatristIdentity');
     expect(modal).not.toContain('professionalType');
     expect(workspace).not.toContain('professionalType');
+
     expect(dashboard).toContain("useClinicalCapability('clinical.attend'");
-    expect(dashboard).toContain('if (!capabilityLoading && canAttend)');
-    expect(dashboard).toContain("nexusAllowed === true && isPsychiatristIdentity(identity)");
+    expect(dashboard).toContain('attendStatus: attendCapability.status');
+    expect(presentation).toContain("if (input.attendStatus === 'loading') return 'loading';");
+    expect(presentation).toContain("if (input.attendStatus !== 'allowed') return 'generic';");
+    expect(presentation).toContain("if (input.nexusStatus === 'allowed') return 'psychiatry';");
+    expect(dashboard).toContain('psychiatryRelevant: isPsychiatristIdentity(identity)');
   });
 
   it('shows a safe user-facing message for capability verification failures', () => {
