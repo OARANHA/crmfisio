@@ -1,3 +1,4 @@
+import type { AgendaStatusFilter } from '../../lib/clinicianDaily';
 import { fmtBRL } from '../../lib/types';
 
 type Summary = {
@@ -10,7 +11,14 @@ type Summary = {
   nominalValue: number;
 };
 
-export function AgendaV3Summary({ label, summary }: { label: string; summary: Summary }) {
+type Props = {
+  label: string;
+  summary: Summary;
+  activeFilter?: AgendaStatusFilter | null;
+  onFilterChange?: (filter: AgendaStatusFilter) => void;
+};
+
+export function AgendaV3Summary({ label, summary, activeFilter = null, onFilterChange }: Props) {
   const attendanceBase = summary.finished + summary.missed;
   const attendanceRate = attendanceBase > 0 ? Math.round((summary.finished / attendanceBase) * 100) : 100;
   const confirmationBase = summary.confirmed + summary.pending;
@@ -31,9 +39,9 @@ export function AgendaV3Summary({ label, summary }: { label: string; summary: Su
           </div>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line/55 pt-4">
-          <MetricMini label="Pendentes" value={summary.pending} tone="text-amber" />
-          <MetricMini label="Em atendimento" value={summary.inService} tone="text-aqua" />
-          <MetricMini label="Finalizados" value={summary.finished} tone="text-mint" />
+          <MetricMini label="Pendentes" value={summary.pending} tone="text-amber" filter="pending" active={activeFilter === 'pending'} onActivate={onFilterChange} />
+          <MetricMini label="Em atendimento" value={summary.inService} tone="text-aqua" filter="in_service" active={activeFilter === 'in_service'} onActivate={onFilterChange} />
+          <MetricMini label="Finalizados" value={summary.finished} tone="text-mint" filter="finished" active={activeFilter === 'finished'} onActivate={onFilterChange} />
         </div>
       </div>
 
@@ -52,8 +60,33 @@ export function AgendaV3Summary({ label, summary }: { label: string; summary: Su
   );
 }
 
-function MetricMini({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return <div><p className="text-[11px] text-fog">{label}</p><p className={`mt-1 font-display text-lg font-semibold ${tone}`}>{value}</p></div>;
+function MetricMini({
+  label,
+  value,
+  tone,
+  filter,
+  active,
+  onActivate,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+  filter: AgendaStatusFilter;
+  active: boolean;
+  onActivate?: (filter: AgendaStatusFilter) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-label={`Filtrar agenda por ${label.toLowerCase()}: ${value}`}
+      onClick={() => onActivate?.(filter)}
+      className={`rounded-xl px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/60 ${active ? 'bg-raise ring-1 ring-aqua/35' : 'hover:bg-raise/65'}`}
+    >
+      <p className="text-[11px] text-fog">{label}</p>
+      <p className={`mt-1 font-display text-lg font-semibold ${tone}`}>{value}</p>
+    </button>
+  );
 }
 
 function SignalCard({ label, value, sub, progress, warning = false }: { label: string; value: string; sub: string; progress: number; warning?: boolean }) {
