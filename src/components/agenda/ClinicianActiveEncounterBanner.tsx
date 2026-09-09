@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { activeEncounterStartedLabel } from '../../lib/clinicianDaily';
 import type { Appointment } from '../../lib/types';
 import { Btn } from '../../lib/ui';
@@ -13,7 +14,7 @@ export function ClinicianActiveEncounterBanner({
   now?: Date;
   onContinue: () => void;
 }) {
-  const todayIso = now.toISOString().slice(0, 10);
+  const todayIso = format(now, 'yyyy-MM-dd');
   return (
     <section aria-label="Atendimento em andamento" className="rounded-[18px] border border-aqua/35 bg-aqua/[0.055] px-4 py-3.5">
       <div className="flex flex-wrap items-center gap-3">
