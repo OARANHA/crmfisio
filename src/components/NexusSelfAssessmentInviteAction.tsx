@@ -24,10 +24,11 @@ type InviteResponse = {
 
 type Props = {
   patient: Patient;
+  appointmentId?: string | null;
   onInviteCreated?: () => void;
 };
 
-export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Props) {
+export function NexusSelfAssessmentInviteAction({ patient, appointmentId = null, onInviteCreated }: Props) {
   const { user } = useCurrentUserAccess();
   const userId = user?.id;
   const { toast } = useToast();
@@ -61,7 +62,7 @@ export function NexusSelfAssessmentInviteAction({ patient, onInviteCreated }: Pr
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke<InviteResponse>('nexus-self-assessment-invite', {
-        body: { patientId: patient.id, scaleKey, appointmentId: null, expiresHours: 48 },
+        body: { patientId: patient.id, scaleKey, appointmentId, expiresHours: 48 },
       });
       if (error) throw error;
       if (!data || data.error || !data.inviteId || !data.waLogId) throw new Error(data?.error || 'O servidor não confirmou o envio do convite.');
