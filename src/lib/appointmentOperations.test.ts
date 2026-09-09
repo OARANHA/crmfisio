@@ -32,10 +32,13 @@ describe('verifyAppointmentStatusMutation', () => {
 
   it('propagates RLS/permission failures', () => {
     const permissionError = { code: '42501', message: 'permission denied' };
-    expect(() => verifyAppointmentStatusMutation({
-      data: null,
-      error: permissionError,
-    }, 'appointment-a', 'finalizado')).toThrow(permissionError);
+    let caught: unknown;
+    try {
+      verifyAppointmentStatusMutation({ data: null, error: permissionError }, 'appointment-a', 'finalizado');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBe(permissionError);
   });
 
   it('rejects more than one returned row instead of guessing', () => {
