@@ -19,6 +19,39 @@ export function resolveOwnActiveEncounter(
   return matches.length === 1 ? matches[0] : null;
 }
 
+export function selectAssessmentDraftForContext<T extends {
+  patientId: string;
+  professionalId: string;
+  status: string;
+  appointmentId: string | null;
+}>(
+  history: readonly T[],
+  context: {
+    patientId: string;
+    professionalId: string | null | undefined;
+    activeAppointmentId: string | null | undefined;
+  },
+): T | null {
+  if (!context.professionalId) return null;
+
+  const ownDrafts = history.filter((item) =>
+    item.patientId === context.patientId
+    && item.professionalId === context.professionalId
+    && item.status === 'draft',
+  );
+
+  // During an active encounter, provenance is strict: only the draft born
+  // from that exact appointment may be resumed. Older drafts are never
+  // rebound to the new encounter.
+  if (context.activeAppointmentId) {
+    return ownDrafts.find((item) => item.appointmentId === context.activeAppointmentId) ?? null;
+  }
+
+  // Preserve the pre-encounter longitudinal behavior when no canonical
+  // encounter is active: resume the first own draft returned by history.
+  return ownDrafts[0] ?? null;
+}
+
 export function isPsychiatryContext(
   professionalType: string | null | undefined,
   specialty: string | null | undefined,
