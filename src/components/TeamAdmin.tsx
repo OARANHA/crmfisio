@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { resolveClinicId } from '../lib/repository';
 import { supabase } from '../lib/supabaseClient';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
+import { resolveAdminTeamFunctionError, safeAdminTeamServerMessage } from '../lib/adminTeamFunctionError';
 import {
   CLINICAL_CAPABILITIES,
   DEFAULT_CLINICAL_CAPABILITIES,
@@ -132,10 +133,10 @@ export function TeamAdmin() {
   const roleAllowsClinicalIdentity = ownerEditing || role === 'admin' || role === 'professional';
   const clinical = roleAllowsClinicalIdentity && hasClinicalIdentity;
 
-  const invoke = async (body: Record<string, unknown>) => {
+  const invoke = async (body: Record<string, unknown>, fallback: string) => {
     const { data, error } = await supabase.functions.invoke('admin-team', { body });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (error) throw new Error(await resolveAdminTeamFunctionError(error, fallback));
+    if (data?.error) throw new Error(safeAdminTeamServerMessage(data.error) ?? fallback);
     return data;
   };
 
@@ -173,10 +174,10 @@ export function TeamAdmin() {
         body.unit_ids = selectedUnits;
       }
       if (editingId) {
-        await invoke({ action: 'update', id: editingId, ...body });
+        await invoke({ action: 'update', id: editingId, ...body }, 'Não foi possível salvar o profissional.');
         toast('Cadastro, identidade profissional e atuação clínica atualizados.');
       } else {
-        await invoke({ action: 'create', email: email.trim().toLowerCase(), password, ...body, unit_ids: selectedUnits });
+        await invoke({ action: 'create', email: email.trim().toLowerCase(), password, ...body, unit_ids: selectedUnits }, 'Não foi possível criar o profissional.');
         toast('Usuário criado. A senha inicial deve ser trocada no primeiro acesso.');
       }
       await load(clinicId);
@@ -213,7 +214,7 @@ export function TeamAdmin() {
     if (!window.confirm(`${member.ativo ? 'Desativar' : 'Reativar'} ${member.nome}?`)) return;
     setBusy(true);
     try {
-      await invoke({ action: 'set_active', id: member.id, ativo: !member.ativo });
+      await invoke({ action: 'set_active', id: member.id, ativo: !member.ativo }, 'Não foi possível alterar o usuário.');
       await load(clinicId);
       toast(member.ativo ? 'Usuário desativado.' : 'Usuário reativado.');
     } catch (error) {
@@ -229,7 +230,7 @@ export function TeamAdmin() {
     if (next.length < 8) { toast('A senha deve ter ao menos 8 caracteres.', 'warn'); return; }
     setBusy(true);
     try {
-      await invoke({ action: 'reset_password', id: member.id, password: next });
+      await invoke({ action: 'reset_password', id: member.id, password: next }, 'Não foi possível redefinir a senha.');
       toast('Senha temporária atualizada. O usuário deverá trocá-la no primeiro acesso.');
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Não foi possível redefinir a senha.', 'warn');
