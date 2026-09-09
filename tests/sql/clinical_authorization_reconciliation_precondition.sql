@@ -60,3 +60,7 @@ BEGIN
     RAISE EXCEPTION 'precondition_failed_expected_legacy_authorization_not_present';
   END IF;
 END $$;
+
+-- Match the production event id default before applying the reconciliation migration.
+ALTER TABLE public.patient_journey_events
+  ALTER COLUMN id SET DEFAULT gen_random_uuid();
