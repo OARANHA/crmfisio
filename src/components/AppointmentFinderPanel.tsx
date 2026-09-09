@@ -48,8 +48,8 @@ export function AppointmentFinderPanel({ open, appointments, rooms, unidades, fi
 
   const slots = useMemo(() => {
     if (selfScoped && !selfProfessionalId) return [];
-    const professionalIds = selfScoped
-      ? [selfProfessionalId as string]
+    const professionalIds = selfScoped && selfProfessionalId
+      ? [selfProfessionalId]
       : fisios.map((item) => item.id);
     const effectiveSearch = search.professionalId === effectiveProfessionalId
       ? search
