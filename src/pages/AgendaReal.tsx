@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, addMonths, format, getDay, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,12 @@ import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appoi
 import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
+import {
+  clinicianEncounterPath,
+  filterAgendaAppointments,
+  summarizeAgendaPeriod,
+  type AgendaStatusFilter,
+} from '../lib/clinicianDaily';
 import { useInfrastructure } from '../lib/infrastructureContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { patientName } from '../lib/displayNames';
@@ -33,6 +39,12 @@ const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); re
 const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 type View = 'dia' | 'semana' | 'mes';
 
+const STATUS_FILTER_LABEL: Record<AgendaStatusFilter, string> = {
+  pending: 'Pendentes',
+  in_service: 'Em atendimento',
+  finished: 'Finalizados',
+};
+
 const compactWhatsapp = (state?: AppointmentWhatsappState) => {
   if (!state) return '';
   if (state.replyText) return 'WA respondido';
@@ -51,12 +63,14 @@ export function AgendaReal() {
   const { appointments, addAppointment, setAppointmentStatus, refreshAgenda } = useAgenda();
   const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
   const nav = useNavigate();
+  const listAnchorRef = useRef<HTMLDivElement | null>(null);
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<View>('semana');
   const [unitFilter, setUnitFilter] = useState('all');
   const [professionalFilter, setProfessionalFilter] = useState(user?.role === 'professional' ? user.id : 'all');
   const [roomFilter, setRoomFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AgendaStatusFilter | null>(null);
   const [finderOpen, setFinderOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -107,9 +121,10 @@ export function AgendaReal() {
   const labelSlots = useMemo(() => gridSlots.filter((minute) => minute % 60 === 0), [gridSlots]);
   const todayIso = format(new Date(), 'yyyy-MM-dd');
   const roomsForFilter = useMemo(() => rooms.filter((room) => unitFilter === 'all' || room.unidadeId === unitFilter), [rooms, unitFilter]);
-  const activeFilterCount = [unitFilter, roomFilter].filter((value) => value !== 'all').length
+  const operationalFilterCount = [unitFilter, roomFilter].filter((value) => value !== 'all').length
     + (user?.role !== 'professional' && professionalFilter !== 'all' ? 1 : 0)
     + (search.trim() ? 1 : 0);
+  const activeFilterCount = operationalFilterCount + (statusFilter ? 1 : 0);
   const periodLabel = view === 'mes'
     ? format(anchor, "MMMM 'de' yyyy", { locale: ptBR })
     : view === 'dia'
@@ -152,15 +167,11 @@ export function AgendaReal() {
     const monthPrefix = format(anchor, 'yyyy-MM');
     return visibleAppointments.filter((appointment) => appointment.data.startsWith(monthPrefix));
   }, [visibleAppointments, view, anchor, week]);
-  const periodSummary = useMemo(() => ({
-    total: periodAppointments.filter((a) => a.status !== 'cancelado').length,
-    confirmed: periodAppointments.filter((a) => a.status === 'confirmado').length,
-    inService: periodAppointments.filter((a) => a.status === 'em_atendimento').length,
-    finished: periodAppointments.filter((a) => a.status === 'finalizado').length,
-    pending: periodAppointments.filter((a) => a.status === 'agendado').length,
-    missed: periodAppointments.filter((a) => a.status === 'faltou').length,
-    nominalValue: periodAppointments.filter((a) => a.status !== 'cancelado' && a.status !== 'faltou').reduce((sum, a) => sum + a.valor, 0),
-  }), [periodAppointments]);
+  const periodSummary = useMemo(() => summarizeAgendaPeriod(periodAppointments), [periodAppointments]);
+  const filteredAppointments = useMemo(
+    () => filterAgendaAppointments(visibleAppointments, statusFilter),
+    [visibleAppointments, statusFilter],
+  );
   const periodSummaryLabel = view === 'dia' ? 'Atendimentos no dia' : view === 'semana' ? 'Atendimentos na semana' : 'Atendimentos no mês';
 
   const monthCells = useMemo(() => {
@@ -179,6 +190,11 @@ export function AgendaReal() {
   const unitLabel = (roomId: string) => {
     const room = rooms.find((item) => item.id === roomId);
     return unidades.find((unit) => unit.id === room?.unidadeId)?.nome ?? '';
+  };
+
+  const activateStatusFilter = (filter: AgendaStatusFilter) => {
+    setStatusFilter(filter);
+    window.requestAnimationFrame(() => listAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
   const manageStatus = async (status: AppointmentStatus) => {
@@ -259,7 +275,7 @@ export function AgendaReal() {
 
   const renderDayColumn = (date: Date) => {
     const iso = format(date, 'yyyy-MM-dd');
-    const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso);
+    const dayAppointments = filteredAppointments.filter((appointment) => appointment.data === iso);
     const isToday = iso === todayIso;
     const nowMinute = now.getHours() * 60 + now.getMinutes();
     const showNow = isToday && nowMinute >= DAY_START && nowMinute <= DAY_END;
@@ -333,14 +349,14 @@ export function AgendaReal() {
 
       <AppointmentFinderPanel open={finderOpen} appointments={appointments} rooms={rooms} unidades={unidades} fisios={professionals} defaultFisioId={professionalFilter} defaultUnitId={unitFilter} onClose={() => setFinderOpen(false)} onChoose={(slot) => { setAnchor(new Date(`${slot.dia}T12:00:00`)); setView('dia'); setFinderOpen(false); setCreating({ dia: slot.dia, hora: slot.hora, fisioId: slot.fisioId, roomId: slot.roomId }); }} />
 
-      <Reveal delay={40}><AgendaV3Summary label={periodSummaryLabel} summary={periodSummary} /></Reveal>
+      <Reveal delay={40}><AgendaV3Summary label={periodSummaryLabel} summary={periodSummary} activeFilter={statusFilter} onFilterChange={activateStatusFilter} /></Reveal>
 
       <Reveal delay={60}>
         <Card className="!rounded-[22px] !border-line/70 !p-3.5 sm:!p-4">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="min-w-[240px] flex-1"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar paciente, telefone, profissional ou sala" className="!bg-deep/55" /></div>
-            <Btn variant="ghost" onClick={() => setFiltersOpen((value) => !value)}>Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''} <span aria-hidden>{filtersOpen ? '↑' : '↓'}</span></Btn>
-            {activeFilterCount > 0 && <button className="rounded-lg px-2.5 py-2 text-[12px] font-semibold text-fog hover:bg-raise/60 hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setProfessionalFilter(user?.role === 'professional' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar</button>}
+            <Btn variant="ghost" onClick={() => setFiltersOpen((value) => !value)}>Filtros{operationalFilterCount > 0 ? ` · ${operationalFilterCount}` : ''} <span aria-hidden>{filtersOpen ? '↑' : '↓'}</span></Btn>
+            {operationalFilterCount > 0 && <button className="rounded-lg px-2.5 py-2 text-[12px] font-semibold text-fog hover:bg-raise/60 hover:text-paper" onClick={() => { setSearch(''); setUnitFilter('all'); setProfessionalFilter(user?.role === 'professional' ? user.id : 'all'); setRoomFilter('all'); }}>Limpar filtros</button>}
           </div>
           {filtersOpen && <div className="mt-3 grid gap-2.5 border-t border-line/60 pt-3.5 sm:grid-cols-3">
             <Select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">Todas as unidades</option>{unidades.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</Select>
@@ -351,21 +367,32 @@ export function AgendaReal() {
       </Reveal>
 
       {!loadingInfra && rooms.length === 0 && <div className="rounded-2xl border border-amber/40 bg-amber/[0.05] p-4 text-[13px] text-amber">A agenda ainda não possui sala/recurso real. Um administrador deve cadastrar a estrutura em Configurações → Estrutura da clínica.</div>}
-      <Reveal delay={80}><div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line/60 bg-panel/55 px-4 py-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="flex items-center gap-1.5 text-[12px] text-fog"><span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
-      {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
 
-      <Reveal delay={120}>{view === 'mes' ? (
-        <Card className="overflow-hidden !rounded-[22px]"><div className="grid grid-cols-7 border-b border-line bg-deep/35">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="border-l border-line/55 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-fog first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
-          if (!date) return <div key={`empty-${index}`} className="min-h-[112px] border-l border-t border-line/35 bg-deep/20" />;
-          const iso = format(date, 'yyyy-MM-dd'); const dayAppointments = visibleAppointments.filter((appointment) => appointment.data === iso); const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado'); const isToday = iso === todayIso;
-          return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[112px] border-l border-t border-line/35 p-3 text-left transition hover:bg-raise/45 ${isToday ? 'bg-mint/[0.065]' : ''}`}><div className="flex items-center justify-between"><span className={`font-display text-lg font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{isToday && <span className="h-2 w-2 rounded-full bg-mint" />}</div>{active.length > 0 && <div className="mt-3 space-y-1.5"><span className="inline-flex rounded-full border border-mint/25 bg-mint/[0.06] px-2 py-0.5 text-[11px] font-semibold text-mint">{active.length} atendimento{active.length > 1 ? 's' : ''}</span><p className="text-[11px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmados</p></div>}</button>;
-        })}</div></Card>
-      ) : (
-        <Card className="overflow-x-auto !rounded-[22px]"><div className={`flex ${view === 'semana' ? 'min-w-[980px]' : 'min-w-[430px]'}`}><div className="w-16 shrink-0 bg-deep/25"><div className="sticky top-0 z-20 h-[62px] border-b border-line/65 bg-panel/95" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2.5 -translate-y-1/2 text-[11px] font-medium text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
-      )}</Reveal>
+      <div ref={listAnchorRef} className="scroll-mt-24 space-y-3">
+        {statusFilter && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-aqua/25 bg-aqua/[0.045] px-4 py-3" role="status">
+            <span className="text-[12px] text-fog">Filtro de status ativo:</span>
+            <span className={`rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${statusFilter === 'pending' ? 'border-amber/30 text-amber' : statusFilter === 'in_service' ? 'border-aqua/30 text-aqua' : 'border-mint/30 text-mint'}`}>{STATUS_FILTER_LABEL[statusFilter]}</span>
+            <button type="button" onClick={() => setStatusFilter(null)} className="ml-auto rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-fog transition-colors hover:bg-raise hover:text-paper">Limpar filtro</button>
+          </div>
+        )}
+
+        <Reveal delay={80}><div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line/60 bg-panel/55 px-4 py-3">{Object.entries(STATUS_META).map(([key, meta]) => <span key={key} className="flex items-center gap-1.5 text-[12px] text-fog"><span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />{meta.label}</span>)}</div></Reveal>
+        {!loadingInfra && <WaitlistPanel unidades={unidades} rooms={rooms} onRecovered={reloadAgenda} />}
+
+        <Reveal delay={120}>{view === 'mes' ? (
+          <Card className="overflow-hidden !rounded-[22px]"><div className="grid grid-cols-7 border-b border-line bg-deep/35">{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => <div key={label} className="border-l border-line/55 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-fog first:border-l-0">{label}</div>)}</div><div className="grid grid-cols-7">{monthCells.map((date, index) => {
+            if (!date) return <div key={`empty-${index}`} className="min-h-[112px] border-l border-t border-line/35 bg-deep/20" />;
+            const iso = format(date, 'yyyy-MM-dd'); const dayAppointments = filteredAppointments.filter((appointment) => appointment.data === iso); const active = dayAppointments.filter((appointment) => appointment.status !== 'cancelado'); const isToday = iso === todayIso;
+            return <button key={iso} onClick={() => { setAnchor(date); setView('dia'); }} className={`min-h-[112px] border-l border-t border-line/35 p-3 text-left transition hover:bg-raise/45 ${isToday ? 'bg-mint/[0.065]' : ''}`}><div className="flex items-center justify-between"><span className={`font-display text-lg font-bold ${isToday ? 'text-mint' : ''}`}>{format(date, 'dd')}</span>{isToday && <span className="h-2 w-2 rounded-full bg-mint" />}</div>{active.length > 0 && <div className="mt-3 space-y-1.5"><span className="inline-flex rounded-full border border-mint/25 bg-mint/[0.06] px-2 py-0.5 text-[11px] font-semibold text-mint">{active.length} atendimento{active.length > 1 ? 's' : ''}</span><p className="text-[11px] text-fog">{active.filter((a) => a.status === 'confirmado').length} confirmados</p></div>}</button>;
+          })}</div></Card>
+        ) : (
+          <Card className="overflow-x-auto !rounded-[22px]"><div className={`flex ${view === 'semana' ? 'min-w-[980px]' : 'min-w-[430px]'}`}><div className="w-16 shrink-0 bg-deep/25"><div className="sticky top-0 z-20 h-[62px] border-b border-line/65 bg-panel/95" /><div className="relative" style={{ height: (DAY_END - DAY_START) * PPM }}>{labelSlots.map((minute) => <span key={minute} className="absolute right-2.5 -translate-y-1/2 text-[11px] font-medium text-fog" style={{ top: (minute - DAY_START) * PPM }}>{toHHMM(minute)}</span>)}</div></div>{(view === 'semana' ? week : [anchor]).map(renderDayColumn)}</div></Card>
+        )}</Reveal>
+      </div>
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={saveAppointment} />
-      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={(status) => void manageStatus(status)} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(`/pacientes/${selected.pacienteId}`)} />
+      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={(status) => void manageStatus(status)} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(selected.status === 'em_atendimento' && professionalIdOf(selected) === user?.id ? clinicianEncounterPath(selected) : `/pacientes/${selected.pacienteId}`)} />
       <AppointmentCancelModal appointment={cancelling} onClose={() => setCancelling(null)} onConfirm={confirmCancellation} busy={operationBusy} />
       <AppointmentRescheduleModal appointment={rescheduling} preset={reschedulePreset} rooms={rooms} unidades={unidades} onClose={() => { setRescheduling(null); setReschedulePreset(null); }} onConfirm={confirmReschedule} busy={operationBusy} />
     </div>
