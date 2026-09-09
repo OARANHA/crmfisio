@@ -10,7 +10,8 @@ const consentMigration = source('../../supabase-migrations/20260901_consent_acce
 
 describe('patient consent collection boundary', () => {
   it('keeps consent acceptance on its dedicated server-side RPC', () => {
-    expect(repository).toContain("rpc('accept_patient_consent', { p_consent_id: id })");
+    expect(repository).toContain("rpc('accept_patient_consent', {");
+    expect(repository).toContain('p_consent_id: id');
     expect(consentMigration).toContain('accept_patient_consent(p_consent_id uuid)');
     expect(consentMigration).toContain('accept_patient_consent_not_allowed');
     expect(consentMigration).toContain("'recep'");
