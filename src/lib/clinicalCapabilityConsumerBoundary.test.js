@@ -7,6 +7,7 @@ const source = (relative) => readFileSync(fileURLToPath(new URL(relative, import
 const hook = source('../hooks/useClinicalCapability.ts');
 const modal = source('../components/AppointmentActionModal.tsx');
 const workspace = source('../components/ClinicalWorkspace.tsx');
+const dashboard = source('../pages/DashboardRoleAware.tsx');
 
 describe('clinical capability consumer boundary', () => {
   it('uses only the canonical RPC parameter name', () => {
@@ -28,11 +29,14 @@ describe('clinical capability consumer boundary', () => {
     expect(workspace).not.toContain('canManageClinicalDocuments || isClinicManager');
   });
 
-  it('does not use professional type or specialty as a capability bypass', () => {
+  it('keeps professional type and specialty as UX context, never a MedicsPro capability bypass', () => {
     expect(modal).not.toContain('isPsychiatristIdentity');
     expect(workspace).not.toContain('isPsychiatristIdentity');
     expect(modal).not.toContain('professionalType');
     expect(workspace).not.toContain('professionalType');
+    expect(dashboard).toContain("useClinicalCapability('clinical.attend'");
+    expect(dashboard).toContain('if (!capabilityLoading && canAttend)');
+    expect(dashboard).toContain("nexusAllowed === true && isPsychiatristIdentity(identity)");
   });
 
   it('shows a safe user-facing message for capability verification failures', () => {
