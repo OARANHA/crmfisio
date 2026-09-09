@@ -15,7 +15,7 @@ type Props = {
   label: string;
   summary: Summary;
   activeFilter?: AgendaStatusFilter | null;
-  onFilterChange?: (filter: AgendaStatusFilter | null) => void;
+  onFilterChange?: (filter: AgendaStatusFilter) => void;
 };
 
 export function AgendaV3Summary({ label, summary, activeFilter = null, onFilterChange }: Props) {
@@ -73,14 +73,14 @@ function MetricMini({
   tone: string;
   filter: AgendaStatusFilter;
   active: boolean;
-  onActivate?: (filter: AgendaStatusFilter | null) => void;
+  onActivate?: (filter: AgendaStatusFilter) => void;
 }) {
   return (
     <button
       type="button"
       aria-pressed={active}
       aria-label={`Filtrar agenda por ${label.toLowerCase()}: ${value}`}
-      onClick={() => onActivate?.(active ? null : filter)}
+      onClick={() => onActivate?.(filter)}
       className={`rounded-xl px-2 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aqua/60 ${active ? 'bg-raise ring-1 ring-aqua/35' : 'hover:bg-raise/65'}`}
     >
       <p className="text-[11px] text-fog">{label}</p>
