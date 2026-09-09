@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAgenda } from '../lib/agendaContext';
-import { rankAssessmentTemplatesForContext, resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
+import {
+  rankAssessmentTemplatesForContext,
+  resolveOwnActiveEncounter,
+  selectAssessmentDraftForContext,
+} from '../lib/activeClinicalEncounter';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import type { Patient } from '../lib/types';
@@ -37,6 +41,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   const [schema, setSchema] = useState<AssessmentTemplateSchema | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [bodyPoints, setBodyPoints] = useState<AssessmentBodyPoint[]>([]);
+  const [editorContextKey, setEditorContextKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showOtherTemplates, setShowOtherTemplates] = useState(false);
@@ -48,6 +53,11 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     () => resolveOwnActiveEncounter(appointments, patient.id, userId),
     [appointments, patient.id, userId],
   );
+  const activeAppointmentId = activeAppointment?.id ?? null;
+  const contextKey = `${patient.id}:${userId ?? 'anonymous'}:${activeAppointmentId ?? 'longitudinal'}`;
+  const contextKeyRef = useRef(contextKey);
+  contextKeyRef.current = contextKey;
+
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
   const contextualTemplates = useMemo(
     () => rankAssessmentTemplatesForContext(templates, {
@@ -56,70 +66,112 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     }),
     [identity?.professionalType, identity?.specialty, templates],
   );
+  const contextReady = editorContextKey === contextKey;
+  const visibleDraft = contextReady ? draft : null;
+  const visibleSchema = contextReady ? schema : null;
+  const visibleDraftAppointment = activeAppointment && visibleDraft?.appointmentId === activeAppointment.id
+    ? activeAppointment
+    : null;
 
-  useEffect(() => { setShowOtherTemplates(false); }, [patient.id, userId, identity?.specialty]);
-
-  const openDraft = useCallback(async (assessment: ClinicalAssessment) => {
-    const versions = await listPublishedTemplateVersions(assessment.templateId);
-    const exact = versions.find((item) => item.id === assessment.templateVersionId);
-    if (!exact) throw new Error('A versão usada por este rascunho não está disponível.');
-    const points = await listAssessmentBodyPoints(assessment.id);
-    setDraft(assessment);
-    setSchema(exact.schema);
-    setAnswers(assessment.answers);
-    setBodyPoints(points);
-  }, []);
-
-  const load = useCallback(async () => {
-    if (!clinicalRead) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [available, history] = await Promise.all([
-        listAvailableAssessmentTemplates(),
-        listPatientClinicalAssessments(patient.id),
-      ]);
-      setTemplates(available.filter((template) => template.status === 'active'));
-      setAssessments(history);
-      if (clinicalWrite && userId) {
-        const ownDraft = history.find((item) => item.status === 'draft' && item.professionalId === userId) ?? null;
-        if (ownDraft) await openDraft(ownDraft);
-      }
-    } catch (error) {
-      console.error('[MedicsPro] assessment runner:', error);
-      toast('Não foi possível carregar o novo motor de avaliações.', 'warn');
-    } finally {
-      setLoading(false);
-    }
-  }, [clinicalRead, clinicalWrite, openDraft, patient.id, toast, userId]);
+  useEffect(() => { setShowOtherTemplates(false); }, [contextKey, identity?.specialty]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+
+    // A context switch must never expose the previous editor while the new
+    // patient/professional/encounter is resolving.
+    setDraft(null);
+    setSchema(null);
+    setAnswers({});
+    setBodyPoints([]);
+    setEditorContextKey(null);
+
+    if (!clinicalRead) {
+      setLoading(false);
+      setEditorContextKey(contextKey);
+      return () => { cancelled = true; };
+    }
+
+    setLoading(true);
+    void Promise.all([
+      listAvailableAssessmentTemplates(),
+      listPatientClinicalAssessments(patient.id),
+    ]).then(async ([available, history]) => {
+      if (cancelled || contextKeyRef.current !== contextKey) return;
+
+      setTemplates(available.filter((template) => template.status === 'active'));
+      setAssessments(history);
+
+      const ownDraft = clinicalWrite
+        ? selectAssessmentDraftForContext(history, {
+            patientId: patient.id,
+            professionalId: userId,
+            activeAppointmentId,
+          })
+        : null;
+
+      if (!ownDraft) {
+        setEditorContextKey(contextKey);
+        return;
+      }
+
+      const [versions, points] = await Promise.all([
+        listPublishedTemplateVersions(ownDraft.templateId),
+        listAssessmentBodyPoints(ownDraft.id),
+      ]);
+      if (cancelled || contextKeyRef.current !== contextKey) return;
+
+      const exact = versions.find((item) => item.id === ownDraft.templateVersionId);
+      if (!exact) throw new Error('A versão usada por este rascunho não está disponível.');
+
+      setDraft(ownDraft);
+      setSchema(exact.schema);
+      setAnswers(ownDraft.answers);
+      setBodyPoints(points);
+      setEditorContextKey(contextKey);
+    }).catch((error) => {
+      if (cancelled || contextKeyRef.current !== contextKey) return;
+      console.error('[MedicsPro] assessment runner:', error);
+      setDraft(null);
+      setSchema(null);
+      setAnswers({});
+      setBodyPoints([]);
+      setEditorContextKey(contextKey);
+      toast('Não foi possível carregar o novo motor de avaliações.', 'warn');
+    }).finally(() => {
+      if (!cancelled && contextKeyRef.current === contextKey) setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [activeAppointmentId, clinicalRead, clinicalWrite, contextKey, patient.id, toast, userId]);
 
   const startAssessment = async (template: AssessmentTemplate) => {
     if (!user || !clinicalWrite) return;
+    const startContextKey = contextKey;
+    const appointmentId = activeAppointmentId;
     setBusy(true);
     try {
       const versions = await listPublishedTemplateVersions(template.id);
+      if (contextKeyRef.current !== startContextKey) return;
       const latest = versions[0];
       if (!latest) throw new Error('Este modelo ainda não possui versão publicada.');
       const created = await createClinicalAssessmentDraft({
         patientId: patient.id,
         professionalId: user.id,
-        appointmentId: activeAppointment?.id ?? null,
+        appointmentId,
         templateId: template.id,
         templateVersionId: latest.id,
       });
+      if (contextKeyRef.current !== startContextKey) return;
       setAssessments((current) => [created, ...current]);
       setDraft(created);
       setSchema(latest.schema);
       setAnswers({});
       setBodyPoints([]);
+      setEditorContextKey(startContextKey);
       toast('Avaliação iniciada como rascunho.');
     } catch (error) {
+      if (contextKeyRef.current !== startContextKey) return;
       console.error('[MedicsPro] iniciar avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível iniciar a avaliação.', 'warn');
     } finally {
@@ -128,14 +180,17 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   };
 
   const saveDraft = async () => {
-    if (!draft) return;
+    if (!draft || editorContextKey !== contextKey) return;
+    const saveContextKey = contextKey;
     setBusy(true);
     try {
       const saved = await saveClinicalAssessmentDraft(draft.id, answers);
+      if (contextKeyRef.current !== saveContextKey) return;
       setDraft(saved);
       setAssessments((current) => current.map((item) => item.id === saved.id ? saved : item));
       toast('Rascunho salvo.');
     } catch (error) {
+      if (contextKeyRef.current !== saveContextKey) return;
       console.error('[MedicsPro] salvar avaliação:', error);
       toast('Não foi possível salvar o rascunho.', 'warn');
     } finally {
@@ -144,7 +199,8 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
   };
 
   const finalize = async () => {
-    if (!draft || !schema) return;
+    if (!draft || !schema || editorContextKey !== contextKey) return;
+    const finalizeContextKey = contextKey;
     const missing = requiredMissing(schema, answers, bodyPoints);
     if (missing.length) {
       toast(`Preencha os campos obrigatórios: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`, 'warn');
@@ -153,14 +209,18 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     setBusy(true);
     try {
       await saveClinicalAssessmentDraft(draft.id, answers);
+      if (contextKeyRef.current !== finalizeContextKey) return;
       const finalized = await finalizeClinicalAssessment(draft.id);
+      if (contextKeyRef.current !== finalizeContextKey) return;
       setAssessments((current) => current.map((item) => item.id === finalized.id ? finalized : item));
       setDraft(null);
       setSchema(null);
       setAnswers({});
       setBodyPoints([]);
+      setEditorContextKey(finalizeContextKey);
       toast('Avaliação finalizada e registrada no prontuário.');
     } catch (error) {
+      if (contextKeyRef.current !== finalizeContextKey) return;
       console.error('[MedicsPro] finalizar avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível finalizar a avaliação.', 'warn');
     } finally {
@@ -192,11 +252,11 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
     <Card>
       <CardHead title="Avaliação atual" sub="preenchimento clínico em foco, com rascunho seguro e finalização versionada" />
       <div className="p-5 space-y-4">
-        {loading ? (
+        {loading || !contextReady ? (
           <p className="font-mono text-[11px] text-fog">Carregando avaliação…</p>
         ) : (
           <>
-            {clinicalWrite && !draft && (
+            {clinicalWrite && !visibleDraft && (
               <div>
                 <p className="font-display font-semibold text-[13.5px]">Escolha um modelo</p>
                 {contextualTemplates.recommended.length > 0 ? (
@@ -222,19 +282,19 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
               </div>
             )}
 
-            {draft && schema && (
+            {visibleDraft && visibleSchema && (
               <div className="border border-mint/30 bg-deep rounded-xl p-4 sm:p-5 space-y-5">
                 <div className="flex flex-wrap items-start gap-2">
                   <div>
-                    <p className="font-display font-semibold text-[15px]">{templateById.get(draft.templateId)?.name || 'Avaliação clínica'}</p>
-                    <p className="font-mono text-[10px] text-mint mt-1">rascunho em andamento{activeAppointment ? ` · atendimento ${activeAppointment.inicio}` : ''}</p>
+                    <p className="font-display font-semibold text-[15px]">{templateById.get(visibleDraft.templateId)?.name || 'Avaliação clínica'}</p>
+                    <p className="font-mono text-[10px] text-mint mt-1">rascunho em andamento{visibleDraftAppointment ? ` · atendimento ${visibleDraftAppointment.inicio}` : ''}</p>
                   </div>
                   <div className="ml-auto flex gap-2">
                     <Btn variant="ghost" onClick={() => void saveDraft()} disabled={busy}>Salvar rascunho</Btn>
                     <Btn onClick={() => void finalize()} disabled={busy}>Finalizar avaliação</Btn>
                   </div>
                 </div>
-                {schema.sections.map((section) => (
+                {visibleSchema.sections.map((section) => (
                   <section key={section.key} className="space-y-3 border-t border-line pt-4 first:border-t-0 first:pt-0">
                     <div>
                       <h4 className="font-display font-semibold text-[14px]">{section.title}</h4>
@@ -249,7 +309,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
                           onChange={(value) => setAnswers((current) => ({ ...current, [component.key]: value }))}
                           bodyMap={component.type === 'body_map' ? (
                             <BodyMapV2
-                              assessmentId={draft.id}
+                              assessmentId={visibleDraft.id}
                               componentKey={component.key}
                               points={bodyPoints.filter((point) => point.componentKey === component.key)}
                               onChange={(points) => setBodyPoints((current) => [
