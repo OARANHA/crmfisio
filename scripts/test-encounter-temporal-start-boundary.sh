@@ -27,7 +27,7 @@ for pattern, message in [
     (r'(?i)(?:CREATE|DROP)\s+POLICY[\s\S]{0,300}?ON\s+public\.nexus_', 'Nexus policy mutation'),
     (r'(?i)ALTER\s+TABLE\s+public\.nexus_', 'Nexus table alteration'),
     (r'(?i)(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.nexus_', 'Nexus data mutation'),
-    (r'(?i)clinical_instrument_base_authorized\s*\(', 'base instrument authorization redesign'),
+    (r'(?i)CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.clinical_instrument_base_authorized\s*\(', 'base instrument authorization redesign'),
     (r'(?i)clinical_instrument_catalog', 'instrument catalog redesign'),
     (r'(?i)\bcurrent_date\b', 'timezone-blind current_date use'),
     (r'(?i)enfermagem|enfermeir|COREN', 'unapproved nursing expansion'),
