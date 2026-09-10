@@ -10,6 +10,7 @@ export type ClinicalCapabilityKey =
   | 'clinical.timeline.read'
   | 'clinical.evolution.write'
   | 'clinical.assessment.apply'
+  | 'clinical.instrument.apply'
   | 'clinical.body_map'
   | 'clinical.documents';
 
@@ -29,15 +30,23 @@ export const CLINICAL_CAPABILITIES: ReadonlyArray<{
   { key: 'clinical.timeline.read', label: 'Consultar prontuário', description: 'Consultar a linha do tempo clínica conforme o vínculo assistencial.' },
   { key: 'clinical.evolution.write', label: 'Registrar evoluções', description: 'Criar evolução clínica vinculada ao próprio atendimento.' },
   { key: 'clinical.assessment.apply', label: 'Aplicar avaliações', description: 'Preencher e finalizar avaliações clínicas estruturadas.' },
+  { key: 'clinical.instrument.apply', label: 'Aplicar instrumentos clínicos', description: 'Aplicar instrumentos habilitados pela clínica quando o contexto assistencial também autorizar.' },
   { key: 'clinical.body_map', label: 'Usar mapa corporal', description: 'Registrar achados corporais quando fizer sentido para a profissão.' },
   { key: 'clinical.documents', label: 'Operar documentos clínicos', description: 'Trabalhar com documentos clínicos autorizados.' },
 ];
 
+// #399 is deliberately opt-in for every profession. Keeping it out of this base
+// list prevents a new profession, specialty selection or existing default profile
+// from receiving instrument authority without an explicit admin grant.
+const DEFAULT_BASE_CLINICAL_CAPABILITIES = CLINICAL_CAPABILITIES.filter(
+  (item) => item.key !== 'clinical.instrument.apply',
+);
+
 export const DEFAULT_CLINICAL_CAPABILITIES: Record<ProfessionalType, ClinicalCapabilityKey[]> = {
-  fisioterapeuta: CLINICAL_CAPABILITIES.map((item) => item.key),
-  medico: CLINICAL_CAPABILITIES.filter((item) => item.key !== 'clinical.body_map').map((item) => item.key),
-  psicologo: CLINICAL_CAPABILITIES.filter((item) => item.key !== 'clinical.body_map').map((item) => item.key),
-  quiropraxista: CLINICAL_CAPABILITIES.map((item) => item.key),
+  fisioterapeuta: DEFAULT_BASE_CLINICAL_CAPABILITIES.map((item) => item.key),
+  medico: DEFAULT_BASE_CLINICAL_CAPABILITIES.filter((item) => item.key !== 'clinical.body_map').map((item) => item.key),
+  psicologo: DEFAULT_BASE_CLINICAL_CAPABILITIES.filter((item) => item.key !== 'clinical.body_map').map((item) => item.key),
+  quiropraxista: DEFAULT_BASE_CLINICAL_CAPABILITIES.map((item) => item.key),
 };
 
 export const PROFESSIONAL_META: Record<ProfessionalType, {
