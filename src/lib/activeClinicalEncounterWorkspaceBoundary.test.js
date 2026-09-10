@@ -5,6 +5,9 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 const workspaceV3 = read('../components/ClinicalWorkspaceV3.tsx');
 const encounterWorkspace = read('../components/ClinicalEncounterWorkspaceV4.tsx');
+const encounterEditor = read('../components/ClinicalEncounterRecordEditor.tsx');
+const encounterRecord = read('./clinicalEncounterRecord.ts');
+const encounterMigration = read('../../supabase-migrations/20260910_clinical_encounter_record_foundation.sql');
 const encounterUx = read('./clinicalEncounterUx.ts');
 const workspace = read('../components/ClinicalWorkspace.tsx');
 const assessment = read('../components/ClinicalAssessmentRunner.tsx');
@@ -18,15 +21,25 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(workspaceV3).toContain('resolveClinicalEncounterWorkspace(appointments, patient.id, user?.id, initialSessionId)');
     expect(encounterUx).toContain('resolveOwnActiveEncounter(appointments, patientId, professionalId)');
     expect(workspace).toContain('resolveOwnActiveEncounter(appointments, patient.id, user?.id)');
+    expect(encounterWorkspace).toContain('resolveOwnActiveEncounter(appointments, patient.id, user?.id)');
     expect(workspace).not.toContain("sessions.find((s) => s.status === 'em_atendimento')");
   });
 
-  it('auto-binds evolution to the canonical encounter and exposes no arbitrary session selector in v4', () => {
-    expect(encounterWorkspace).toContain('buildEncounterEvolutionDraft({');
-    expect(encounterWorkspace).toContain('encounter: canonicalEncounter');
+  it('binds the Encounter Record editor and its save/finalize RPCs to the canonical encounter with no arbitrary v4 session selector', () => {
+    expect(encounterWorkspace).toContain('<ClinicalEncounterRecordEditor');
+    expect(encounterWorkspace).toContain('encounter={canonicalEncounter}');
     expect(encounterWorkspace).not.toContain('setSessionId');
-    expect(workspace).toContain('setSessionId(activeSession.id)');
-    expect(workspace).toContain("activeSession?.id !== session.id");
+    expect(encounterEditor).toContain('saveClinicalEncounterRecord(encounter.id, record?.revision ?? 0, content)');
+    expect(encounterEditor).toContain('finalizeClinicalEncounterRecord(encounter.id, record.revision)');
+    expect(encounterRecord).toContain('p_appointment_id: appointmentId');
+  });
+
+  it('materializes the final Evolution server-side onto the exact Encounter appointment', () => {
+    expect(encounterMigration).toContain('v_record.appointment_id, v_text');
+    expect(encounterMigration).toContain('session_id, texto');
+    expect(encounterMigration).toContain('v_record.professional_id');
+    expect(encounterMigration).toContain("SET status = 'finalized'");
+    expect(encounterMigration).toContain("SET status = 'finalizado'");
   });
 
   it('uses the same canonical appointment for new assessments', () => {
@@ -40,7 +53,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(assessment).toContain('patientId: patient.id');
     expect(assessment).toContain('professionalId: userId');
     expect(assessment).toContain('activeAppointmentId,');
-    expect(assessment).toContain("setEditorContextKey(null)");
+    expect(assessment).toContain('setEditorContextKey(null)');
     expect(assessment).toContain('contextKeyRef.current !== contextKey');
   });
 
@@ -80,10 +93,23 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(selfAssessment).toContain('body: { patientId: patient.id, scaleKey, appointmentId, expiresHours: 48 }');
   });
 
-  it('isolates Nexus allow state by user, patient and encounter', () => {
-    expect(encounterWorkspace).toContain('userId={user?.id}');
+  it('isolates Nexus allow state by user, patient and canonical encounter after the guarded user check', () => {
+    const userGuard = encounterWorkspace.indexOf('!isCurrentEncounter || !canonicalEncounter || !user');
+    const toolsRender = encounterWorkspace.indexOf('<ActiveEncounterClinicalTools');
+    expect(userGuard).toBeGreaterThan(-1);
+    expect(toolsRender).toBeGreaterThan(userGuard);
+    expect(encounterWorkspace).toContain('userId={user.id}');
     expect(tools).toContain('nexusClinicalToolContextKey({ userId, patientId: patient.id, encounterId: encounter.id })');
     expect(tools).toContain("state.key === key ? state : emptyToolState(key, 'loading')");
+  });
+
+  it('clears Encounter Record state whenever patient, user or canonical encounter context changes', () => {
+    expect(encounterEditor).toContain('const contextKey = `${patient.id}:${userId}:${encounter.id}`');
+    expect(encounterEditor).toContain('setRecord(null)');
+    expect(encounterEditor).toContain('setContent(emptyContent())');
+    expect(encounterEditor).toContain("setSaveState('idle')");
+    expect(encounterEditor).toContain('if (contextRef.current !== requestKey) return;');
+    expect(encounterEditor).toContain('}, [contextKey, encounter.id]);');
   });
 
   it('preserves explicit C-04 readiness and C-05 navigation', () => {
@@ -92,7 +118,7 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(toolRegistry).toContain("routeSuffix: '/evolution'");
   });
 
-  it('resets the legacy encounter-scoped evolution draft context when patient or user changes', () => {
+  it('also preserves cleanup of the legacy encounter-scoped evolution draft context', () => {
     expect(workspace).toContain("setSessionId('')");
     expect(workspace).toContain("setEvolutionText('')");
     expect(workspace).toContain('[patient.id, user?.id]');

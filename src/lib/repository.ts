@@ -416,7 +416,6 @@ export async function insertEvolution(clinicId: string, evolution: Omit<Evolutio
     session_id: evolution.sessionId ?? null,
     texto: evolution.texto,
     anexos: evolution.anexos,
-    created_at: evolution.data ? `${evolution.data}T12:00:00.000Z` : undefined,
   }).select('*').single();
   if (error || !data) throw error ?? new Error('Falha ao salvar evolução');
   return mapEvolution(data);

@@ -5,7 +5,6 @@ import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
 import { useAgenda } from '../lib/agendaContext';
 import {
-  buildEncounterEvolutionDraft,
   canFinalizeEncounter,
   encounterWorkspaceNavigation,
   hasOwnLinkedEncounterEvolution,
@@ -21,10 +20,11 @@ import { usePackages } from '../lib/packageContext';
 import { professionalIdOf } from '../lib/professionalReference';
 import type { ProfessionalIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Patient } from '../lib/types';
-import { Btn, Chip, Textarea } from '../lib/ui';
+import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
+import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
 export function ClinicalEncounterWorkspaceV4({
@@ -40,15 +40,13 @@ export function ClinicalEncounterWorkspaceV4({
 }) {
   const { user } = useCurrentUserAccess();
   const { appointments, refreshAgenda } = useAgenda();
-  const { evolutions, consents, addEvolution } = useClinical();
+  const { evolutions, consents, refreshClinical } = useClinical();
   const { refreshFinance } = useFinance();
   const { refreshPackages } = usePackages();
   const { toast } = useToast();
   const attendCapability = useClinicalCapability('clinical.attend', user?.id);
   const evolutionCapability = useClinicalCapability('clinical.evolution.write', user?.id);
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
-  const [evolutionText, setEvolutionText] = useState('');
-  const [savingEvolution, setSavingEvolution] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const evolutionRef = useRef<HTMLElement | null>(null);
 
@@ -84,45 +82,20 @@ export function ClinicalEncounterWorkspaceV4({
     && professionalIdOf(evolution) === user?.id
   ));
 
-  if (!isCurrentEncounter || !canonicalEncounter) {
+  if (!isCurrentEncounter || !canonicalEncounter || !user) {
     return <>{historicalWorkspace}</>;
   }
 
-  const registerEvolution = async () => {
-    if (!user || !evolutionCapability.allowed || savingEvolution || hasLinkedEvolution) return;
-    let draft;
-    try {
-      draft = buildEncounterEvolutionDraft({
-        patient,
-        encounter: canonicalEncounter,
-        professionalId: user.id,
-        text: evolutionText,
-      });
-    } catch {
-      return;
-    }
-
-    setSavingEvolution(true);
-    try {
-      await addEvolution(draft);
-      setEvolutionText('');
-      toast('Evolução vinculada ao atendimento.');
-    } catch (error) {
-      console.error('[MedicsPro] evolução do encounter:', error);
-      toast('Não foi possível registrar a evolução deste atendimento.', 'warn');
-    } finally {
-      setSavingEvolution(false);
-    }
-  };
-
-  const finishEncounter = async () => {
+  // Compatibility path only: appointments that already had a canonical
+  // Evolution before #394 continue to use the existing verified finalization.
+  const finishLegacyEncounter = async () => {
     if (!canFinalize || finishing) return;
     setFinishing(true);
     try {
       try {
         await updateAppointmentStatusVerified(canonicalEncounter.id, 'finalizado');
       } catch (error) {
-        console.error('[MedicsPro] finalizar encounter:', error);
+        console.error('[MedicsPro] finalizar atendimento legado:', error);
         toast('Não foi possível finalizar o atendimento. Verifique os requisitos clínicos e tente novamente.', 'warn');
         return;
       }
@@ -141,7 +114,20 @@ export function ClinicalEncounterWorkspaceV4({
     }
   };
 
-  const scrollToEvolution = () => evolutionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const afterStructuredFinalization = async () => {
+    toast('Registro concluído e atendimento finalizado.');
+    const projections = await Promise.allSettled([
+      refreshClinical(),
+      refreshAgenda(),
+      refreshFinance(),
+      refreshPackages(),
+    ]);
+    if (projections.some((result) => result.status === 'rejected')) {
+      toast('O atendimento foi finalizado, mas algumas listas não puderam ser atualizadas agora.', 'warn');
+    }
+  };
+
+  const scrollToRecord = () => evolutionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const closingStyle = closing.tone === 'ready'
     ? 'border-mint/30 bg-mint/[0.045]'
     : closing.tone === 'checking'
@@ -157,6 +143,16 @@ export function ClinicalEncounterWorkspaceV4({
         ? 'text-amber'
         : 'text-pulse';
 
+  const legacyEvolution = (
+    <div className="rounded-2xl border border-mint/30 bg-mint/[0.045] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip className="border-mint/35 text-mint">Registrada no prontuário ✓</Chip>
+        <span className="font-mono text-[10.5px] text-fog">consulta {canonicalEncounter.inicio.slice(0, 5)} · registro do profissional atual</span>
+      </div>
+      {currentEvolution?.texto && <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-paper/90">{currentEvolution.texto}</p>}
+    </div>
+  );
+
   return (
     <section data-clinical-encounter-mode="active" data-clinical-encounter-version="4.1" className="space-y-4">
       <div className="sticky top-3 z-20 space-y-2 rounded-[24px] bg-base/90 pb-2 backdrop-blur-xl">
@@ -171,9 +167,9 @@ export function ClinicalEncounterWorkspaceV4({
           </nav>
           <div className="flex flex-wrap items-center gap-1.5" aria-label="Estado clínico da consulta">
             <Chip className={hasLinkedEvolution ? 'border-mint/35 text-mint' : 'border-amber/35 text-amber'}>
-              {hasLinkedEvolution ? 'Evolução registrada ✓' : 'Evolução pendente'}
+              {hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro em elaboração'}
             </Chip>
-            <ClosingChip closing={closing} />
+            {hasLinkedEvolution && <ClosingChip closing={closing} />}
           </div>
         </div>
       </div>
@@ -197,30 +193,31 @@ export function ClinicalEncounterWorkspaceV4({
           </EncounterSection>
 
           <section ref={evolutionRef} className="scroll-mt-36">
-            <EncounterSection id="encounter-evolution" eyebrow="Evolução" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro da consulta'} detail="Registro obrigatório para encerrar o atendimento.">
+            <EncounterSection id="encounter-evolution" eyebrow="Registro clínico" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro da consulta'} detail={hasLinkedEvolution ? 'Evolução já vinculada a este atendimento.' : 'Registre a consulta uma única vez e conclua quando estiver pronto.'}>
               {hasLinkedEvolution ? (
-                <div className="rounded-2xl border border-mint/30 bg-mint/[0.045] p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Chip className="border-mint/35 text-mint">Registrada no prontuário ✓</Chip>
-                    <span className="font-mono text-[10.5px] text-fog">consulta {canonicalEncounter.inicio.slice(0, 5)} · registro do profissional atual</span>
-                  </div>
-                  {currentEvolution?.texto && <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-paper/90">{currentEvolution.texto}</p>}
-                </div>
-              ) : evolutionCapability.loading ? (
-                <NeutralState>Verificando acesso para registrar a evolução…</NeutralState>
-              ) : evolutionCapability.error ? (
-                <BlockedState title="Não foi possível verificar seu acesso">Tente novamente antes de encerrar o atendimento.</BlockedState>
-              ) : evolutionCapability.allowed ? (
-                <div className="rounded-2xl border border-amber/25 bg-amber/[0.035] p-4">
-                  <p className="text-[11.5px] leading-relaxed text-fog">A evolução ainda não foi registrada. Após o registro, o encerramento poderá ser liberado.</p>
-                  <Textarea className="mt-3" rows={7} value={evolutionText} onChange={(event) => setEvolutionText(event.target.value)} placeholder="Achados relevantes, evolução do quadro, conduta realizada, orientações e plano de continuidade…" />
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-[10.5px] text-fog">{savingEvolution ? 'Registrando no prontuário…' : 'Registre a evolução desta consulta antes de encerrar o atendimento.'}</span>
-                    <Btn disabled={savingEvolution || !evolutionText.trim()} onClick={() => void registerEvolution()}>{savingEvolution ? 'Registrando…' : 'Registrar evolução'}</Btn>
-                  </div>
-                </div>
+                <ClinicalEncounterRecordEditor
+                  patient={patient}
+                  encounter={canonicalEncounter}
+                  userId={user.id}
+                  hasLinkedEvolution
+                  legacyFallback={legacyEvolution}
+                  onFinalized={afterStructuredFinalization}
+                />
+              ) : attendCapability.loading || evolutionCapability.loading ? (
+                <NeutralState>Verificando acesso ao registro da consulta…</NeutralState>
+              ) : attendCapability.error || evolutionCapability.error ? (
+                <BlockedState title="Não foi possível verificar seu acesso">Tente novamente antes de registrar ou concluir o atendimento.</BlockedState>
+              ) : attendCapability.allowed && evolutionCapability.allowed ? (
+                <ClinicalEncounterRecordEditor
+                  patient={patient}
+                  encounter={canonicalEncounter}
+                  userId={user.id}
+                  hasLinkedEvolution={false}
+                  legacyFallback={legacyEvolution}
+                  onFinalized={afterStructuredFinalization}
+                />
               ) : (
-                <BlockedState title="Evolução indisponível">Seu acesso atual não permite registrar a evolução necessária para encerrar este atendimento.</BlockedState>
+                <BlockedState title="Registro clínico indisponível">Seu acesso atual não permite registrar e concluir este atendimento.</BlockedState>
               )}
             </EncounterSection>
           </section>
@@ -238,29 +235,35 @@ export function ClinicalEncounterWorkspaceV4({
           </EncounterSection>
 
           <EncounterSection id="encounter-tools" eyebrow="Ferramentas clínicas" title="Recursos disponíveis para este atendimento" detail="Use os recursos disponíveis conforme a necessidade clínica.">
-            <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user?.id} />
+            <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user.id} />
           </EncounterSection>
 
           <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Continuidade do cuidado" detail="Registre ou consulte informações relevantes para a continuidade do cuidado.">
             <NexusRecordIncorporationPanel patient={patient} />
           </EncounterSection>
 
-          <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={closing.sectionTitle} detail={closing.sectionDetail}>
-            <div className={`rounded-2xl border p-4 ${closingStyle}`}>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-[220px] flex-1">
-                  <p className={`font-display text-[15px] font-semibold ${closingTitleStyle}`}>{closing.noticeTitle}</p>
-                  <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{closing.noticeDetail}</p>
+          <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={hasLinkedEvolution ? closing.sectionTitle : 'Concluir registro da consulta'} detail={hasLinkedEvolution ? closing.sectionDetail : 'A conclusão é feita a partir do registro acima, sem digitar uma segunda evolução.'}>
+            {hasLinkedEvolution ? (
+              <div className={`rounded-2xl border p-4 ${closingStyle}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="min-w-[220px] flex-1">
+                    <p className={`font-display text-[15px] font-semibold ${closingTitleStyle}`}>{closing.noticeTitle}</p>
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{closing.noticeDetail}</p>
+                  </div>
+                  <Btn disabled={!canFinalize || finishing} onClick={() => void finishLegacyEncounter()}>{finishing ? 'Finalizando…' : 'Finalizar atendimento'}</Btn>
                 </div>
-                {closing.action === 'register_evolution' && <Btn variant="subtle" onClick={scrollToEvolution}>Registrar evolução</Btn>}
-                <Btn disabled={!canFinalize || finishing} onClick={() => void finishEncounter()}>{finishing ? 'Finalizando…' : 'Finalizar atendimento'}</Btn>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-2xl border border-line/70 bg-deep/30 p-4">
+                <p className="text-[12px] leading-relaxed text-fog">Salve o registro da consulta e use <span className="font-semibold text-paper">Revisar e concluir</span>. O conteúdo será transformado na evolução oficial e o atendimento será encerrado na mesma confirmação.</p>
+                <Btn className="mt-3" variant="subtle" onClick={scrollToRecord}>Ir para o registro da consulta</Btn>
+              </div>
+            )}
           </EncounterSection>
         </main>
 
         <aside aria-label="Contexto persistente da consulta" className="space-y-3 xl:sticky xl:top-36">
-          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} savingEvolution={savingEvolution} onRegisterEvolution={scrollToEvolution} />
+          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={scrollToRecord} />
           <div className="rounded-[20px] border border-line/70 bg-panel p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
             <p className="mt-2 font-display text-[17px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
@@ -322,30 +325,26 @@ function EncounterSection({ id, eyebrow, title, detail, children }: { id: string
 function ConsultationStateCard({
   closing,
   hasLinkedEvolution,
-  savingEvolution,
   onRegisterEvolution,
 }: {
   closing: EncounterClosingPresentation;
   hasLinkedEvolution: boolean;
-  savingEvolution: boolean;
   onRegisterEvolution: () => void;
 }) {
-  const persistence = savingEvolution
-    ? { label: 'Registrando evolução…', className: 'border-aqua/30 text-aqua' }
-    : hasLinkedEvolution
-      ? { label: 'Evolução confirmada ✓', className: 'border-mint/30 text-mint' }
-      : { label: 'Evolução pendente', className: 'border-amber/30 text-amber' };
+  const persistence = hasLinkedEvolution
+    ? { label: 'Evolução confirmada ✓', className: 'border-mint/30 text-mint' }
+    : { label: 'Registro em elaboração', className: 'border-amber/30 text-amber' };
 
   return (
     <div className="rounded-[20px] border border-line/70 bg-panel p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Estado da consulta</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Chip className={persistence.className}>{persistence.label}</Chip>
-        <ClosingChip closing={closing} />
+        {hasLinkedEvolution && <ClosingChip closing={closing} />}
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-fog">Acompanhe o registro da evolução e os requisitos para encerrar o atendimento.</p>
-      {closing.action === 'register_evolution' && <Btn className="mt-3 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para evolução</Btn>}
-      <a href="#encounter-closing" className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver requisitos de encerramento ↓</a>
+      <p className="mt-3 text-[11px] leading-relaxed text-fog">{hasLinkedEvolution ? 'A evolução está vinculada a este atendimento.' : 'Registre a consulta e conclua quando o conteúdo estiver pronto.'}</p>
+      {!hasLinkedEvolution && <Btn className="mt-3 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para o registro</Btn>}
+      <a href="#encounter-closing" className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver encerramento ↓</a>
     </div>
   );
 }
