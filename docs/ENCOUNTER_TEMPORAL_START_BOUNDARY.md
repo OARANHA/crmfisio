@@ -24,7 +24,7 @@ A #400 não adiciona comparação com `inicio`/`fim`: começar minutos ou horas 
 
 Entrar em `em_atendimento` continua sendo ato clínico; owner/admin não recebem bypass temporal.
 
-## Timezone escolhido
+## Timezone e abstração operacional
 
 `clinics` não possui hoje timezone canônico por tenant. O projeto, porém, já possui convenção operacional explícita para appointment `data`/`hora`: `supabase-migrations/20260901_fix_message_selection_timezone.sql` documenta que esses campos são componentes locais e usa `timezone('America/Sao_Paulo', now())` como horário operacional da clínica.
 
@@ -32,13 +32,24 @@ A #400 reutiliza essa convenção existente através do helper interno:
 
 `current_clinic_operational_date()`
 
-que retorna:
+A implementação **introduzida pela própria #400** retorna:
 
 ```sql
 timezone('America/Sao_Paulo', now())::date
 ```
 
-A slice não cria configuração de timezone por clínica nem usa `current_date` dependente do timezone da sessão.
+Essa é a convenção/fallback operacional vigente da plataforma nesta slice. **Não representa timezone configurável por clínica.** Antes de expansão para clínicas fora desse fuso, timezone por tenant é follow-up obrigatório. O helper `current_clinic_operational_date()` é deliberadamente a abstração preparada para que essa evolução ocorra sem reescrever cada boundary consumidor.
+
+A #400 não cria configuração de timezone por clínica nem usa `current_date` dependente do timezone da sessão.
+
+### Migration/harness versus historical production verifier
+
+Há duas provas diferentes e intencionais:
+
+- **migration + harness #400**: provam exatamente a implementação que a #400 introduz hoje, incluindo `timezone('America/Sao_Paulo', now())::date` e ausência de `current_date`;
+- **historical production verifier #400**: prova o contrato instalado da abstração (`date`, `STABLE`, `SECURITY DEFINER`, `search_path` seguro, sem EXECUTE direto para browser) e prova que os guards temporais e o helper #399 dependem de `current_clinic_operational_date()`.
+
+O verifier histórico **não fingerprinta o corpo do helper nem exige literalmente `America/Sao_Paulo`, `timezone(` ou ausência textual de `current_date`**. Isso evita false-red quando uma migration futura substituir legitimamente o fallback atual por timezone explícito por clínica mantendo ou fortalecendo o mesmo contrato.
 
 ## Boundary PostgreSQL
 
@@ -82,6 +93,26 @@ appointments.data <= current_clinic_operational_date()
 Assim, um registro legado, corrompido ou criado por operação interna que permaneça fisicamente `em_atendimento` com data futura retorna `false` para **Apply in Encounter**, mesmo antes de o dado ser reparado.
 
 A #400 não altera `clinical_instrument_base_authorized`, `clinical_instrument_catalog`, PHQ-9/GAD-7, `nexus.*`, C-01…C-06, entrega remota nem persistência de resultados.
+
+## Regressão #399 sobre a stack efetiva
+
+O workflow `Clinical Instrument Encounter Authorization` não se limita a disparar quando a migration #400 muda. O builder #399, em sua execução normal, agora compõe explicitamente:
+
+```text
+baseline Nexus/C-06/C-02
+→ migration #399 (replay)
+→ fixture temporal mínima
+→ migration #400
+→ assert de que current_clinic_operational_date() existe
+→ assert de que can_apply_clinical_instrument_in_encounter() é a versão pós-#400
+→ matriz #399 original: 38 casos
+→ 4 negative controls Nexus-only
+→ verifier #399 read-only
+```
+
+Os 38+4 casos não foram relaxados nem duplicados em uma versão especial. São os mesmos arquivos SQL #399 executados **depois** de a #400 substituir o helper efetivo.
+
+O builder #399 possui `--pre-400` somente para ser reutilizado pelo harness dedicado #400. Assim, o harness #400 preserva sua sequência histórica de introdução da migration e continua provando replay + 12 casos temporais sem já nascer com #400 instalada.
 
 ## Known invalid state em produção
 
@@ -148,7 +179,7 @@ O gate dedicado PostgreSQL 16 cobre:
 11. outro profissional: `false`;
 12. data passada: sem mudança de semântica.
 
-A migration é aplicada duas vezes no mesmo banco descartável para provar replay-safety.
+A migration é aplicada duas vezes no mesmo banco descartável para provar replay-safety. Nesse harness, a implementação introduzida pela migration continua sendo verificada literalmente como `timezone('America/Sao_Paulo', now())::date`.
 
 O production verifier é read-only:
 
@@ -159,7 +190,7 @@ SET TRANSACTION READ ONLY;
 ROLLBACK;
 ```
 
-Ele valida helper de data operacional, trigger function, ambos os triggers e o defense-in-depth #399 sem exigir reparação de dados históricos.
+Ele valida helper de data operacional, trigger function, ambos os triggers e o defense-in-depth #399 sem exigir reparação de dados históricos e sem congelar a futura implementação interna do helper de data operacional.
 
 ## Rollout futuro
 
