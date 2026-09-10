@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { Appointment, Evolution, Patient } from './types';
 import {
   buildEncounterEvolutionDraft,
+  buildEncounterScopedNexusPath,
   canFinalizeEncounter,
+  encounterWorkspaceNavigation,
   hasOwnLinkedEncounterEvolution,
   longitudinalPatientContext,
   resolveClinicalEncounterWorkspace,
@@ -215,5 +217,25 @@ describe('Clinical Encounter UX V4 presentation model', () => {
     expect(context.complaintLabel).toBe('Queixa principal registrada no cadastro');
     expect(context.complaint).toBe(patient.queixaPrincipal);
     expect(context.complaintLabel.toLowerCase()).not.toContain('desta consulta');
+  });
+
+  it('keeps workbench navigation free-form and limited to real canonical surfaces', () => {
+    expect(encounterWorkspaceNavigation.map((item) => item.id)).toEqual([
+      'encounter-context',
+      'encounter-assessment',
+      'encounter-evolution',
+      'encounter-history',
+      'encounter-closing',
+    ]);
+    const labels = encounterWorkspaceNavigation.map((item) => item.label.toLowerCase()).join(' ');
+    expect(labels).not.toContain('prescrição');
+    expect(labels).not.toContain('exame');
+    expect(labels).not.toContain('atestado');
+  });
+
+  it('preserves the exact appointment when opening an available Nexus tool from the encounter', () => {
+    const path = buildEncounterScopedNexusPath(patient.id, 'session-a', '/eem');
+    expect(path).toBe('/pacientes/patient-a/nexus/eem?session=session-a');
+    expect(path).toContain(`session=${appointment().id}`);
   });
 });
