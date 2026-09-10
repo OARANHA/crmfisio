@@ -151,7 +151,7 @@ describe('Clinical Encounter UX V4 presentation model', () => {
     });
     expect(closing.key).toBe('missing_evolution_write_permission');
     expect(closing.progressDetail).toContain('Evolução registrada');
-    expect(closing.noticeDetail).toContain('não é tratada como ausente');
+    expect(closing.noticeDetail).toContain('A evolução está registrada');
   });
 
   it('keeps capability loading and errors as access verification states instead of false evolution diagnoses', () => {
@@ -219,18 +219,21 @@ describe('Clinical Encounter UX V4 presentation model', () => {
     expect(context.complaintLabel.toLowerCase()).not.toContain('desta consulta');
   });
 
-  it('keeps workbench navigation free-form and limited to real canonical surfaces', () => {
+  it('keeps workbench navigation free-form, evolution-first and limited to real surfaces', () => {
     expect(encounterWorkspaceNavigation.map((item) => item.id)).toEqual([
       'encounter-context',
-      'encounter-assessment',
       'encounter-evolution',
-      'encounter-history',
+      'encounter-assessment',
+      'encounter-tools',
+      'encounter-continuity',
       'encounter-closing',
     ]);
     const labels = encounterWorkspaceNavigation.map((item) => item.label.toLowerCase()).join(' ');
     expect(labels).not.toContain('prescrição');
     expect(labels).not.toContain('exame');
     expect(labels).not.toContain('atestado');
+    expect(encounterWorkspaceNavigation.findIndex((item) => item.id === 'encounter-evolution'))
+      .toBeLessThan(encounterWorkspaceNavigation.findIndex((item) => item.id === 'encounter-assessment'));
   });
 
   it('preserves the exact appointment when opening an available Nexus tool from the encounter', () => {
