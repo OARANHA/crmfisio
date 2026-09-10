@@ -106,7 +106,7 @@ Antes de ampliar o piloto:
 
 ## NEXT PRODUCT SLICES
 
-### 1. Encounter UX / physician ergonomics
+### 1. Encounter UX / clinical-professional ergonomics
 
 Aprimorar o ambiente de atendimento com evidência de profissionais reais, sem trocar o lifecycle já fechado.
 
