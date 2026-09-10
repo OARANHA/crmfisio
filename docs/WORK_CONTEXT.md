@@ -41,6 +41,8 @@ Parceiro/repasse é relação econômica futura, não role/autorização.
 - #394 — Encounter Clinical Record Foundation;
 - #395 — production-safe verifier;
 - #396 — Consultório / Gestão Privacy Shell;
+- #399 — Clinical Instrument Authorization Foundation, rollout de produção concluído;
+- #400 — Encounter Temporal Start Boundary, rollout/verifier/smoke de produção concluídos;
 - Nexus C-01–C-06.
 
 Não descrever essas foundations como backlog a recriar sem evidência real de regressão.
@@ -64,19 +66,54 @@ Após revisão/confirmacão humana:
 
 Não existe segunda Evolution universal obrigatória no fluxo novo. Finalized Encounter Record é histórico. Correction/addendum auditável ainda é futuro. Não criar backfill fictício.
 
-## Produção #394
-
-Em 2026-09-10:
+## Produção clínica conhecida em 2026-09-10
 
 - migration #394 aplicada em produção;
 - production-safe verifier passou: `VERIFY #394 PRODUCTION OK`;
+- migration #399 aplicada em produção;
+- verifier #399 read-only passou;
+- `admin-team` e frontend foram alinhados ao mesmo `main` para `clinical.instrument.apply`;
+- smoke #399 com Dr. Médico Nexus provou fail-closed sem composição completa, ALLOW somente no próprio Encounter com setting + capability e rollback sem resíduos;
+- migration #400 aplicada em produção;
+- verifier #400 read-only passou;
+- smoke #400 reproduziu o bug real de início futuro e confirmou `appointment_future_encounter_start_forbidden`;
+- o mesmo smoke provou que um future-active legado não autoriza Apply-in-Encounter e terminou com rollback limpo;
 - Clinical Foundation passou;
 - Clinical Authorization passou;
 - Financial Exception Resolution #389 passou.
 
-O smoke de draft comprovou persistência, refresh/navegação e revision; antes da finalização havia 1 record, 0 Evolutions, 0 payments e 0 financial exceptions.
+O smoke de draft #394 comprovou persistência, refresh/navegação e revision; antes da finalização havia 1 record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
 A prova read-only pós-finalização desse mesmo smoke não deve ser declarada concluída sem evidência posterior registrada.
+
+### Known future-active histórico
+
+O appointment `de857836-baa0-476f-bd7b-d6f52df33007`, `data=2026-09-23`, permanece fisicamente `em_atendimento` porque #400 não saneia histórico automaticamente.
+
+A perícia anterior não encontrou Encounter Record, Evolution, package usage ou payment vinculados. O smoke #400 usou essa row apenas dentro de transação e fez `ROLLBACK`; portanto o repair real ainda é pendente e deve ser separado/auditável.
+
+Novas entradas futuras em `em_atendimento` por ator normal são bloqueadas pelo PostgreSQL. `can_apply_clinical_instrument_in_encounter()` também falha fechado para future-active físico.
+
+`current_clinic_operational_date()` usa atualmente `America/Sao_Paulo` como fallback operacional; timezone por tenant é follow-up antes de expansão para outros fusos.
+
+## Instrumentos clínicos
+
+A foundation #399 está em produção e mantém a separação:
+
+```text
+ENGINE != EXPOSURE != AUTHORIZATION != RELEVANCE
+```
+
+Estado:
+
+- `clinical.instrument.apply` existe e não possui auto-grant por profissão/especialidade;
+- PHQ-9/GAD-7 são expostos por catálogo neutro controlado e reutilizam engine/versionamento/scoring Nexus;
+- clinic setting e capability são condições separadas;
+- Apply-in-Encounter exige profissional atribuído + Encounter ativo temporalmente válido;
+- `nexus.*` continua separado/fail-closed;
+- nenhuma administração assistida, nova persistência multiprofissional, UI PHQ/GAD ou entrega remota foi implementada.
+
+Próxima slice deste eixo: **Clinician-Assisted Administration**, não outra foundation de autorização.
 
 ## Financeiro
 
@@ -125,18 +162,22 @@ Boundary médico-only/fail-closed:
 
 Especialidade informa relevância, não autorização. Não liberar por role.
 
+O médico piloto usado nos smokes de instrumento não recebeu `nexus.*` implicitamente; #399 não deve ser usada para contornar o boundary médico avançado.
+
 Prescrição é workflow/documento MedicsPro; suporte de decisão medicamentosa pode pertencer ao domínio Nexus quando priorizado.
 
 ## Assessment
 
 Assessment Engine já possui foundation estruturada. Avaliações padrão, modelos próprios e componentes como body map devem continuar no mesmo engine/versionamento/autoria, não virar prontuários paralelos por profissão.
 
+PHQ-9/GAD-7 não devem ser duplicados no Assessment Engine apenas para cruzar domínios de autorização.
+
 ## Próxima sequência recomendada
 
-0. fechar smokes/observabilidade pendentes #394/#389/#396;
+0. reparar de forma auditável o future-active histórico e fechar smokes/observabilidade pendentes #394/#389/#396;
 1. Encounter UX / physician ergonomics;
 2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
+3. Clinician-Assisted Administration → Encounter Instrument UX;
 4. Prescription V1;
 5. demais documentos médicos conforme piloto;
 6. Finance Configuration: solo/team, categorias, parceiro %/fixo com history/effective dates;
