@@ -3,7 +3,7 @@
 > **Este arquivo é um snapshot de continuidade. AGENTS.md contém as regras operacionais. Código/schema atuais prevalecem quando o snapshot envelhecer.**
 
 **Data do snapshot:** 2026-09-10  
-**Main no início desta sincronização:** `ff1caef777483f84b79d5a70438351d07259b852`
+**Base auditada da #399:** `2385cf1bc1cf9b7ee4f60578413baa37d798a728`
 
 ## Produto e arquitetura em poucas linhas
 
@@ -59,7 +59,7 @@ Regra institucional: **não portar o velho MedicsPro; absorver o que ele entendi
 
 ## Decisão canônica — instrumentos clínicos
 
-A arquitetura de instrumentos passa a registrar explicitamente:
+A arquitetura de instrumentos registra explicitamente:
 
 ```text
 ENGINE != AUTHORIZATION != RELEVANCE
@@ -81,12 +81,12 @@ CAPABILITY
 → autorização efetiva
 
 CONTEXTO DO ENCOUNTER
-→ prioridade/apresentação
+→ priority/apresentação
 ```
 
 Nenhuma camada concede silenciosamente outra.
 
-Profissão/especialidade podem tornar um instrumento muito relevante sem conceder autoridade para aplicá-lo. Contextos potencialmente pertinentes para PHQ-9/GAD-7 incluem, entre outros, Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental e Enfermagem em APS/Saúde da Família, sempre dependendo do protocolo/contexto e da autorização clínica real.
+Profissão/especialidade podem tornar um instrumento muito relevante sem conceder autoridade para aplicá-lo. Contextos potencialmente pertinentes para PHQ-9/GAD-7 incluem, entre outros, Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental e Enfermagem em APS/Saúde da Família, sempre dependendo do protocolo/contexto e da autorização clínica real. Enfermagem ainda não foi adicionada ao catálogo de identidades profissionais do runtime nesta slice.
 
 ### Nexus médico avançado
 
@@ -97,33 +97,49 @@ Preservar sem flexibilização:
 - o significado atual de `nexus.eem`;
 - entitlement/identidade/boundaries Nexus onde já são exigidos.
 
-A futura multiprofissionalidade de instrumentos não deve ser resolvida concedendo `nexus.*` a profissionais que apenas precisem administrar um instrumento.
+A multiprofissionalidade de instrumentos não é resolvida concedendo `nexus.*` a profissionais que apenas precisem administrar um instrumento.
 
-### Instrumentos clínicos
+### Instrumentos clínicos — foundation #399
 
-PHQ-9/GAD-7 não precisam depender conceitualmente de o profissional ser usuário do produto Nexus médico avançado.
+**Repository state:** a Clinical Instrument Authorization Foundation foi implementada no PR #399.
 
-Enquanto a futura arquitetura de fachada/persistência não for implementada:
+Ela entrega:
 
-- preservar definição, versão e scoring validados existentes;
-- não duplicar PHQ-9/GAD-7 como segunda implementação no Assessment Engine;
-- manter Assessment Engine como referência multiprofissional para avaliações estruturadas;
-- manter autorização efetiva separada de relevância/apresentação.
+- capability explícita `clinical.instrument.apply`, sem auto-grant por profissão/especialidade;
+- catálogo neutro `clinical_instrument_catalog`, separado do registry Nexus, com exposição explícita somente de `phq9` e `gad7` nesta slice;
+- vínculo técnico do catálogo neutro com os contratos versionados da engine Nexus, sem duplicar definição, perguntas, validação ou scoring;
+- configuração institucional `clinic_clinical_instrument_settings`, default `false`;
+- boundary server-side `can_apply_clinical_instrument_in_encounter(...)`, restrito ao próprio `appointments.professional_id` e status `em_atendimento`;
+- owner/admin sem bypass de ato clínico;
+- helper base não executável pelo browser.
 
-Nenhuma nova capability foi criada por esta sincronização documental. Em particular, `clinical.instrument.apply` **não é capability implementada/canônica no runtime atual**.
+Membership em `nexus_result_contracts` não equivale a exposição multiprofissional. Uma escala Nexus nova só entra na superfície neutra se for explicitamente adicionada ao catálogo clínico controlado.
 
-## Instrument Delivery — direção futura
+PHQ-9/GAD-7 continuam usando definição, versão, validação e scoring da engine canônica Nexus. `clinical.assessment.apply` continua distinto de `clinical.instrument.apply`.
 
-A sequência futura documentada, ainda totalmente não implementada, é:
+**Production state:** a migration `20260910_clinical_instrument_encounter_authorization.sql` da #399 **ainda não foi aplicada em produção**.
+
+Portanto, neste momento:
+
+- repository state = foundation implementada;
+- production state = rollout pendente;
+- nenhuma administração de PHQ-9/GAD-7 foi implementada ainda;
+- nenhum novo resultado multiprofissional é persistido;
+- nenhuma entrega remota/`Enviar ao paciente` foi implementada;
+- nenhuma UI PHQ/GAD foi implementada.
+
+## Instrument Delivery — sequência
+
+Estado após eventual merge da #399:
 
 ```text
-1. Clinical Instrument Authorization Foundation
-2. Clinician-Assisted Administration
-3. Encounter Instrument UX
-4. Consultório V5 integration/polish
+[x] Clinical Instrument Authorization Foundation (#399)
+[ ] Clinician-Assisted Administration
+[ ] Encounter Instrument UX
+[ ] Consultório V5 integration/polish
 ```
 
-O contrato de UX futuro para instrumentos como PHQ-9/GAD-7 é:
+O contrato de UX futuro para instrumentos como PHQ-9/GAD-7 continua sendo:
 
 ```text
 PHQ-9
@@ -135,7 +151,7 @@ GAD-7
 
 `Aplicar agora` representa administração presencial/assistida durante a consulta, sem depender de celular ou WhatsApp. `Enviar ao paciente` representa administração remota/self-assessment.
 
-O modo de aplicação não muda a identidade/versionamento do instrumento e deve reutilizar o mesmo scoring validado. A provenance futura deve distinguir o modo de administração, conceitualmente `patient_self` e `clinician_assisted`, preservando autoria do ato profissional e `appointment_id` quando houver Encounter.
+A #399 implementa somente a autorização foundation para o primeiro boundary contextual; ela não executa a administração. O modo de aplicação não muda a identidade/versionamento do instrumento e deve reutilizar o mesmo scoring validado. A provenance futura deve distinguir o modo de administração, conceitualmente `patient_self` e `clinician_assisted`, preservando autoria do ato profissional e `appointment_id` quando houver Encounter.
 
 ## PHQ-9 — requisito futuro de segurança
 
@@ -148,7 +164,7 @@ Resposta positiva ao item 9 deve:
 - não gerar diagnóstico automático;
 - não gerar conduta/prescrição automática.
 
-Esse requisito é documental/futuro neste snapshot; não representa implementação já existente de UX.
+Esse requisito permanece futuro; não representa implementação já existente de UX/administração.
 
 ## Consultório V5 — direção de UX
 
@@ -167,7 +183,7 @@ um Encounter
 
 A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou arquitetura legada.
 
-## Marcos recentemente fechados
+## Marcos recentemente fechados / implementados no repositório
 
 - #390 — Clinician Daily Home.
 - #391 — Agenda Role-Aware V4.
@@ -176,6 +192,7 @@ A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar
 - #394 — Encounter Clinical Record Foundation.
 - #395 — Production-safe verifier read-only para #394.
 - #396 — Consultório / Gestão Privacy Shell.
+- #399 — Clinical Instrument Authorization Foundation implementada no repositório; rollout de migration ainda pendente.
 - Nexus C-01–C-06 hardening.
 - #388 — separação finalização clínica × falha esperada de cobertura.
 - #389 — resolução explícita de exceção financeira.
@@ -189,6 +206,11 @@ A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar
 - Clinical Foundation passou.
 - Clinical Authorization passou.
 - Financial Exception Resolution #389 passou no ambiente verificado.
+
+### Rollout pendente
+
+- `20260910_clinical_instrument_encounter_authorization.sql` (#399) está implementada e verificada no repositório/CI, mas **não foi aplicada em produção**.
+- não declarar `clinical.instrument.apply`, `clinical_instrument_catalog`, `clinic_clinical_instrument_settings` ou o boundary #399 como disponíveis no schema de produção antes do rollout explícito.
 
 ### Não reaplicar por causa deste snapshot
 
@@ -218,6 +240,7 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 - smoke real das ações #389 `CHARGE` e `WAIVE`, se ainda não registrado;
 - atualizar/versionar a assertion obsoleta do verifier #388;
 - smoke visual/uso real de #396 e Encounter com profissionais reais;
+- rollout da migration #399 após aprovação/merge explícitos;
 - observabilidade suficiente para ampliar piloto com segurança.
 
 ## Decisões canônicas que não devem regredir
@@ -232,15 +255,16 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 8. Nexus médico avançado mantém C-01–C-06 e `nexus.*` fail-closed; não é liberado por role/especialidade isolados.
 9. Instrumentos clínicos podem ser multiprofissionais sem que isso conceda Nexus ou converta relevância em autorização.
 10. `ENGINE != AUTHORIZATION != RELEVANCE`.
-11. Histórico finalizado não é reaberto/reescrito silenciosamente.
-12. Foundations fechadas não devem ser reabertas sem evidência real.
+11. Nexus engine registry membership não equivale a multiprofessional clinical exposure.
+12. Histórico finalizado não é reaberto/reescrito silenciosamente.
+13. Foundations fechadas não devem ser reabertas sem evidência real.
 
 ## Próximos passos recomendados
 
 1. fechar as evidências operacionais curtas #394/#389/#396;
 2. pilotar e polir ergonomia do Encounter com profissionais reais;
 3. construir **Cobertura deste atendimento** sem expor Financeiro global;
-4. evoluir instrumentos na ordem: Clinical Instrument Authorization Foundation → Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish;
+4. evoluir instrumentos a partir da foundation #399: Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish;
 5. entregar Prescription V1;
 6. priorizar demais documentos médicos conforme piloto;
 7. evoluir Finance Configuration para solo/equipe, categorias e parceiro %/fixo com histórico/effective dates;
@@ -256,6 +280,7 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 - [`BETA_READINESS.md`](BETA_READINESS.md) — gates de beta.
 - [`CLINICAL_ENCOUNTER_RECORD.md`](CLINICAL_ENCOUNTER_RECORD.md) — contrato do Encounter Record.
 - [`PRESENTATION_CONTEXT.md`](PRESENTATION_CONTEXT.md) — Consultório/Gestão.
+- [`CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`](CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md) — foundation #399 e rollout pendente.
 - [`CLINICAL_PILOT_ACCEPTANCE.md`](CLINICAL_PILOT_ACCEPTANCE.md) — aceite clínico.
 - [`FINANCIAL_PILOT_ACCEPTANCE.md`](FINANCIAL_PILOT_ACCEPTANCE.md) — aceite financeiro.
 - [`BETA_ROLLOUT_ORDER.md`](BETA_ROLLOUT_ORDER.md) — ordem operacional.
