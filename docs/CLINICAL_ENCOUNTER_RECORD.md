@@ -231,9 +231,11 @@ A saved valid draft offers `Revisar e concluir`. Review may show the determinist
 
 ## PostgreSQL 16 verification evidence
 
-The implementation head immediately before this documentation-only finalization passed the full isolated PostgreSQL 16 gate with **34/34 behavior cases** and the final structural verifier.
+The implementation head immediately before the #394 documentation-only finalization passed the full isolated PostgreSQL 16 gate with **34/34 behavior cases** and the behavioral structural verifier.
 
-Verified invariants include:
+`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` is intentionally a **behavior/harness verifier**. It validates the state produced by the isolated 34-case suite, including `public._clinical_encounter_394_results`, and therefore must not be run directly as the post-migration production verifier.
+
+Verified behavior invariants include:
 
 - one Encounter Record per appointment and immutable server-derived linkage;
 - tenant/professional/inactive-profile/capability denial;
@@ -254,27 +256,31 @@ Verified invariants include:
 - repeated successful finalize/double-click idempotency (case 33);
 - direct browser mutation of finalized Encounter Record denied (case 34).
 
-The migration is replayed twice in the harness. The verifier requires exactly one `trg_00_lock_linked_evolution_encounter` and one `trg_guard_clinical_encounter_record_integrity`, preventing replay-created trigger duplication.
+The migration is replayed twice in the behavior harness. The verifier requires exactly one `trg_00_lock_linked_evolution_encounter` and one `trg_guard_clinical_encounter_record_integrity`, preventing replay-created trigger duplication.
 
-The harness temporarily grants only the reduced-fixture access needed to inspect Evolution rows and call the pure materializer oracle. Both temporary grants are revoked before the concurrency and final verifier stages. The verifier explicitly rejects leaked `authenticated EXECUTE` on `materialize_clinical_encounter_evolution(...)`. These harness grants are not part of the production migration.
+The behavior harness temporarily grants only the reduced-fixture access needed to inspect Evolution rows and call the pure materializer oracle. Both temporary grants are revoked before the concurrency and final verifier stages. The behavioral verifier explicitly rejects leaked `authenticated EXECUTE` on `materialize_clinical_encounter_evolution(...)`. These harness grants are not part of the production migration.
 
-After this documentation commit, **all CI workflows must pass again on the resulting final PR head before the PR may be marked Ready for Review**. The final head SHA and complete workflow evidence belong in the PR evidence because embedding the final SHA in this tracked file would itself create a new SHA.
+### Production-safe rollout verifier (#395)
 
-## Future production runbook — document only, do not execute in #394
+`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` is the direct post-migration verifier for a real database. It begins a transaction, sets it `READ ONLY`, performs catalog/schema/function/ACL/trigger inspection only, and always ends with `ROLLBACK` when successful. It neither invokes mutating Encounter RPCs nor requires behavior fixtures, synthetic clinical IDs, temporary grants or `public._clinical_encounter_394_results`.
 
-1. Merge only after all frontend, PostgreSQL 16, clinical authorization/foundation, financial finalization and Nexus gates are green.
+The dedicated CI gate applies the #394 migration to an isolated PostgreSQL 16 schema containing zero application rows and then runs only this production verifier. The gate also proves before and after verification that the behavior result ledger is absent and no application rows were created.
+
+## Future production runbook — document only, do not execute in #394/#395
+
+1. Merge only after all frontend, PostgreSQL 16, clinical authorization/foundation, financial finalization, production-safe verifier and Nexus gates are green.
 2. Back up/confirm database restore posture and verify the deployed application is compatible with the migration.
 3. Apply the additive #394 migration once using `psql -v ON_ERROR_STOP=1` under the normal MedicsPro migration procedure.
-4. Run the #394 PostgreSQL verifier against the deployed schema.
+4. Immediately run `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` against the deployed schema. Do **not** use `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` directly in production; that file belongs to the isolated 34-case behavior harness.
 5. Re-run the existing Clinical Foundation, Clinical Authorization and Financial/Clinical Finalization verification scripts.
 6. Deploy the compatible frontend only after database verification succeeds.
 7. Smoke-test: new structured draft/save/finalize, legacy Evolution compatibility, stale revision conflict, expected package-coverage exception and an unauthorized access case.
 8. Do not backfill historical Evolutions into Encounter Records.
 
-#394 itself performs none of these production steps.
+#394 and #395 themselves perform none of these production steps.
 
 ## Deliberately deferred
 
 #394 does not implement a structured problem list, diagnosis coding engine, prescriptions, exams, certificates, reports, referrals, attachments, generic autosave, AI-generated charting, new finance, Nexus lifecycle changes or broad redesign.
 
-Future #395 should be chosen only after this foundation is verified in the pilot. The most natural next slice is an auditable correction/addendum path for finalized encounter records, unless pilot evidence shows that a real document workflow (prescription or certificate) has higher immediate value.
+A later post-rollout clinical slice should be chosen from pilot evidence. An auditable correction/addendum path for finalized encounter records remains a natural candidate unless a real document workflow (prescription or certificate) has higher immediate value.
