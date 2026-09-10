@@ -58,11 +58,15 @@ RESET ROLE;
 DO $$
 DECLARE
   v_definition text := lower(pg_get_functiondef('public.assert_clinical_encounter_actor(uuid)'::regprocedure));
+  v_executable text;
 BEGIN
-  IF position('professional_id' IN v_definition) = 0 THEN
+  -- pg_get_functiondef retains comments. Strip line comments before proving that
+  -- the executable authorization body never references the compatibility alias.
+  v_executable := regexp_replace(v_definition, '--[^' || chr(10) || ']*', '', 'g');
+  IF position('professional_id' IN v_executable) = 0 THEN
     RAISE EXCEPTION 'canonical_professional_id_check_missing';
   END IF;
-  IF position('fisio_id' IN v_definition) > 0 THEN
+  IF position('fisio_id' IN v_executable) > 0 THEN
     RAISE EXCEPTION 'compatibility_fisio_id_became_authorization_authority';
   END IF;
   PERFORM public._clinical_encounter_394_pass(30, 'professional_id is the sole appointment identity authority');
