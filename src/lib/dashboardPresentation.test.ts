@@ -5,6 +5,7 @@ const base = {
   authLoading: false,
   userPresent: true,
   role: 'professional' as const,
+  presentationContext: 'clinical' as const,
   attendStatus: 'allowed' as const,
   identityLoading: false,
   psychiatryRelevant: false,
@@ -22,6 +23,13 @@ describe('dashboard semantic resolution', () => {
 
   it('sends a resolved clinical professional to the clinician Home', () => {
     expect(resolveDashboardPresentation(base)).toBe('clinician');
+  });
+
+  it('uses the clinician dashboard for clinical owner/admin and management dashboard otherwise', () => {
+    for (const role of ['owner', 'admin'] as const) {
+      expect(resolveDashboardPresentation({ ...base, role, presentationContext: 'clinical' })).toBe('clinician');
+      expect(resolveDashboardPresentation({ ...base, role, presentationContext: 'management' })).toBe('generic');
+    }
   });
 
   it('waits for Nexus authorization before choosing the psychiatry presentation', () => {
