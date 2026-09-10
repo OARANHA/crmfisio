@@ -194,13 +194,13 @@ BEGIN
   IF v_actor.id IS NULL OR public.current_clinic_id() IS DISTINCT FROM v_actor.clinic_id THEN
     RAISE EXCEPTION 'clinical_encounter_active_profile_required' USING ERRCODE = '42501';
   END IF;
-  IF NOT public.current_user_has_valid_clinical_identity() THEN
+  IF public.current_user_has_valid_clinical_identity() IS NOT TRUE THEN
     RAISE EXCEPTION 'clinical_encounter_valid_identity_required' USING ERRCODE = '42501';
   END IF;
-  IF NOT public.current_user_has_clinical_capability('clinical.attend') THEN
+  IF public.current_user_has_clinical_capability('clinical.attend') IS NOT TRUE THEN
     RAISE EXCEPTION 'clinical_encounter_attend_capability_required' USING ERRCODE = '42501';
   END IF;
-  IF NOT public.current_user_has_clinical_capability('clinical.evolution.write') THEN
+  IF public.current_user_has_clinical_capability('clinical.evolution.write') IS NOT TRUE THEN
     RAISE EXCEPTION 'clinical_encounter_evolution_capability_required' USING ERRCODE = '42501';
   END IF;
 
@@ -209,10 +209,11 @@ BEGIN
   WHERE a.id = p_appointment_id
   FOR UPDATE;
 
+  -- professional_id is the canonical clinical identity. fisio_id is a physical
+  -- compatibility alias and is deliberately not an authorization predicate here.
   IF v_appointment.id IS NULL
      OR v_appointment.clinic_id IS DISTINCT FROM v_actor.clinic_id
-     OR v_appointment.professional_id IS DISTINCT FROM v_actor.id
-     OR v_appointment.fisio_id IS DISTINCT FROM v_actor.id THEN
+     OR v_appointment.professional_id IS DISTINCT FROM v_actor.id THEN
     RAISE EXCEPTION 'clinical_encounter_own_appointment_required' USING ERRCODE = '42501';
   END IF;
 
@@ -406,12 +407,13 @@ BEGIN
     RAISE EXCEPTION 'clinical_encounter_content_required' USING ERRCODE = '23514';
   END IF;
 
+  -- created_at deliberately uses the physiotherapy_evolutions DEFAULT NOW().
+  -- Appointment.data/inicio/fim remain the authoritative clinical session time.
   INSERT INTO public.physiotherapy_evolutions (
-    id, clinic_id, patient_id, professional_id, session_id, texto, created_at
+    id, clinic_id, patient_id, professional_id, session_id, texto
   ) VALUES (
     gen_random_uuid(), v_record.clinic_id, v_record.patient_id, v_record.professional_id,
-    v_record.appointment_id, v_text,
-    (v_appointment.data::timestamp + interval '12 hours') AT TIME ZONE 'UTC'
+    v_record.appointment_id, v_text
   ) RETURNING * INTO v_evolution;
 
   UPDATE public.clinical_encounter_records
@@ -442,6 +444,6 @@ COMMENT ON TABLE public.clinical_encounter_records IS
 COMMENT ON FUNCTION public.save_clinical_encounter_record(uuid,integer,text,text,text,text,text,text) IS
   'RPC-only optimistic save for the exact current professional own active appointment.';
 COMMENT ON FUNCTION public.finalize_clinical_encounter_record(uuid,integer) IS
-  'Transactional explicit finalization: materializes Evolution first, freezes encounter record, then finalizes appointment through existing clinical/financial guards.';
+  'Transactional explicit finalization: materializes Evolution with real creation timestamp, freezes encounter record, then finalizes appointment through existing clinical/financial guards.';
 
 COMMIT;
