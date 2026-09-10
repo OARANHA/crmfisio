@@ -1,0 +1,50 @@
+name: Encounter Temporal Start Boundary
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/encounter-temporal-start-boundary.yml'
+      - 'supabase-migrations/20260910_encounter_temporal_start_boundary.sql'
+      - 'supabase-verifiers/VERIFY_20260910_ENCOUNTER_TEMPORAL_START_BOUNDARY.sql'
+      - 'scripts/build-encounter-temporal-start-sql-test.py'
+      - 'scripts/test-encounter-temporal-start-boundary.sh'
+      - 'tests/sql/encounter_temporal_start_boundary_cases.sql'
+      - 'docs/ENCOUNTER_TEMPORAL_START_BOUNDARY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-start:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: encounter_temporal_start_boundary_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated PostgreSQL 16 test database
+        env:
+          PGDATABASE: postgres
+        run: createdb encounter_temporal_start_boundary_test
+      - name: Run Encounter Temporal Start PostgreSQL 16 gate
+        run: bash scripts/test-encounter-temporal-start-boundary.sh
