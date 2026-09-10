@@ -15,7 +15,7 @@ Separar conceitos que não podem ser confundidos:
 
 Profissão não concede acesso administrativo. Papel operacional não concede autoria clínica. PresentationContext não concede nenhum dos dois.
 
-## Papel operacional canônico
+## Papel operacional na clínica — canônico
 
 Papéis atuais:
 
@@ -27,7 +27,7 @@ Papéis atuais:
 
 `platform_admin` pertence a domínio separado da clínica.
 
-`fisio` é compatibilidade histórica onde ainda existir fisicamente; não é role canônica para novos consumidores.
+`fisio` é legado de compatibilidade e permanece apenas onde ainda existir fisicamente; não é role canônica para novos consumidores.
 
 `parceiro`, `sócio` e repasse/compensação são relações econômicas futuras, não roles.
 
