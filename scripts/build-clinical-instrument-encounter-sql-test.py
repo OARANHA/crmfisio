@@ -131,3 +131,4 @@ migration = migrations / "20260910_clinical_instrument_encounter_authorization.s
 print(migration.read_text())
 print(migration.read_text())
 print((root / "tests/sql/clinical_instrument_encounter_authorization_cases.sql").read_text())
+print((root / "tests/sql/clinical_instrument_exposure_negative_cases.sql").read_text())
