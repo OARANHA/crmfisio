@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import { useCurrentUserAccess } from './currentUserAccess';
@@ -12,11 +11,11 @@ import {
   type PresentationContext,
 } from './presentationContext';
 
-type IdentityEligibilityStatus = 'loading' | 'allowed' | 'denied' | 'error';
+type ClinicalEligibilityStatus = 'loading' | 'allowed' | 'denied' | 'error';
 
-type IdentityResolution = {
+type ClinicalEligibilityResolution = {
   key: string;
-  status: IdentityEligibilityStatus;
+  status: ClinicalEligibilityStatus;
 };
 
 type PresentationContextValue = {
@@ -28,43 +27,54 @@ type PresentationContextValue = {
 
 const PresentationContextContext = createContext<PresentationContextValue | null>(null);
 
-function useValidClinicalIdentity(userId: string | null): IdentityEligibilityStatus {
-  const key = userId ?? '';
-  const [resolution, setResolution] = useState<IdentityResolution>({
+function useScopedClinicalManagerEligibility(
+  userId: string | null,
+  clinicId: string | null,
+): ClinicalEligibilityStatus {
+  const key = userId && clinicId ? `${userId}:${clinicId}` : '';
+  const [resolution, setResolution] = useState<ClinicalEligibilityResolution>({
     key,
-    status: userId ? 'loading' : 'denied',
+    status: key ? 'loading' : 'denied',
   });
-  const status: IdentityEligibilityStatus = resolution.key === key
+  const status: ClinicalEligibilityStatus = resolution.key === key
     ? resolution.status
-    : userId ? 'loading' : 'denied';
+    : key ? 'loading' : 'denied';
 
   useEffect(() => {
     let active = true;
     const requestKey = key;
 
-    if (!userId) {
+    if (!userId || !clinicId) {
       setResolution({ key: requestKey, status: 'denied' });
       return () => { active = false; };
     }
 
     setResolution({ key: requestKey, status: 'loading' });
-    void (supabase as any).rpc('current_user_has_valid_clinical_identity')
-      .then(({ data, error }: { data: unknown; error: unknown }) => {
+    const db = supabase as any;
+    void Promise.all([
+      db.rpc('current_user_has_valid_clinical_identity'),
+      db.rpc('current_user_has_clinical_capability', { p_capability: 'clinical.attend' }),
+    ])
+      .then(([
+        identityResult,
+        capabilityResult,
+      ]: Array<{ data: unknown; error: unknown }>) => {
         if (!active) return;
-        if (error) {
-          console.error('[MedicsPro] identidade clínica para apresentação:', error);
+        if (identityResult.error || capabilityResult.error) {
+          console.error('[MedicsPro] elegibilidade clínica para apresentação:', identityResult.error || capabilityResult.error);
           setResolution({ key: requestKey, status: 'error' });
           return;
         }
-        setResolution({ key: requestKey, status: data === true ? 'allowed' : 'denied' });
+        const allowed = identityResult.data === true && capabilityResult.data === true;
+        setResolution({ key: requestKey, status: allowed ? 'allowed' : 'denied' });
       })
       .catch((error: unknown) => {
-        console.error('[MedicsPro] identidade clínica para apresentação:', error);
+        console.error('[MedicsPro] elegibilidade clínica para apresentação:', error);
         if (active) setResolution({ key: requestKey, status: 'error' });
       });
 
     return () => { active = false; };
-  }, [key, userId]);
+  }, [clinicId, key, userId]);
 
   return status;
 }
@@ -72,12 +82,13 @@ function useValidClinicalIdentity(userId: string | null): IdentityEligibilitySta
 export function PresentationContextProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
   const { user } = useCurrentUserAccess();
-  const isClinicalManager = user?.role === 'owner' || user?.role === 'admin';
-  const eligibilityUserId = isClinicalManager ? user?.id ?? null : null;
-  const identityStatus = useValidClinicalIdentity(eligibilityUserId);
-  const attendCapability = useClinicalCapability('clinical.attend', eligibilityUserId);
   const userId = user?.id ?? null;
   const clinicId = profile?.clinic_id ?? null;
+  const isClinicalManager = user?.role === 'owner' || user?.role === 'admin';
+  const eligibilityStatus = useScopedClinicalManagerEligibility(
+    isClinicalManager ? userId : null,
+    isClinicalManager ? clinicId : null,
+  );
   const scopeKey = presentationContextStorageKey(userId, clinicId);
   const storage = typeof window === 'undefined' ? null : window.localStorage;
   const [selection, setSelection] = useState<{
@@ -87,9 +98,9 @@ export function PresentationContextProvider({ children }: { children: ReactNode 
 
   const facts = useMemo(() => ({
     role: user?.role,
-    hasValidClinicalIdentity: identityStatus === 'allowed',
-    canAttendClinically: attendCapability.allowed,
-  }), [attendCapability.allowed, identityStatus, user?.role]);
+    hasValidClinicalIdentity: eligibilityStatus === 'allowed',
+    canAttendClinically: eligibilityStatus === 'allowed',
+  }), [eligibilityStatus, user?.role]);
 
   const availableContexts = useMemo(
     () => resolveAvailablePresentationContexts(facts),
@@ -101,8 +112,7 @@ export function PresentationContextProvider({ children }: { children: ReactNode 
     : readStoredPresentationContext(storage, userId, clinicId);
 
   const context = resolvePresentationContext(facts, storedContext);
-  const resolving = Boolean(isClinicalManager)
-    && (identityStatus === 'loading' || attendCapability.loading);
+  const resolving = Boolean(isClinicalManager) && eligibilityStatus === 'loading';
 
   const setContext = useCallback((next: PresentationContext) => {
     if (!availableContexts.includes(next)) return;
