@@ -72,6 +72,18 @@ Never create a parallel implementation until you have proved there is no appropr
 
 When a task changes a canonical product decision, update affected documentation in the same change when practical.
 
+### Repository hierarchy for clinical product work
+
+Use these repositories with distinct authority:
+
+- **`OARANHA/crmfisio`** — canonical MedicsPro product/runtime and the only implementation destination. Its current schema, Supabase/RLS, authorization, capabilities, lifecycle, providers and tests prevail.
+- **`OARANHA/nexus`** — upstream/laboratory for specialized clinical intelligence and evidence. Absorb selectively into the canonical Nexus engine; never treat it as a second product runtime.
+- **`OARANHA/medicspro`** — mandatory historical product/UX/workflow reference for mature flows already mapped in `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` or with a clear historical equivalent. It is a source of product learning, not architecture.
+
+For any significant clinical UX/workflow change, if the domain appears in `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` or has a mature equivalent in the historical repository, compare **legacy experience × current canonical implementation explicitly before creating or redesigning the flow**. Classify what should be preserved, evolved, redesigned or rejected.
+
+That comparison never authorizes copying Vue/Pinia/Mongo/Express contracts, old tenancy, old authorization, plan hardcodes, checkout coupling or other historical architecture. Current canonical security, authorization, schema and runtime behavior always win.
+
 ---
 
 ## 3. Current stack and validation commands
