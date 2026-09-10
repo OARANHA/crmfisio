@@ -116,7 +116,7 @@ O builder #399 possui `--pre-400` somente para ser reutilizado pelo harness dedi
 
 ## Known invalid state em produção
 
-O appointment conhecido abaixo **não é corrigido pela migration #400**:
+O appointment conhecido abaixo **não foi corrigido pela migration #400 nem pelo smoke**:
 
 ```text
 appointment_id = de857836-baa0-476f-bd7b-d6f52df33007
@@ -126,7 +126,7 @@ status         = em_atendimento
 
 O production verifier #400 valida somente o contrato instalado. Ele deliberadamente não consulta nem exige ausência de rows históricas futuras já em `em_atendimento`, portanto esse estado conhecido não transforma o verifier histórico em falso vermelho.
 
-A reparação desse appointment deve ocorrer depois do rollout em uma operação separada, explícita e auditável, após confirmar o estado funcional esperado e preservar histórico/auditoria. A #400 não executa `UPDATE` corretivo de dados existentes.
+O smoke de produção usou essa mesma row como controle forense dentro de uma transação e terminou em `ROLLBACK`, restaurando exatamente o baseline. A reparação do appointment continua sendo operação separada, explícita e auditável. A #400 não executa `UPDATE` corretivo de dados existentes.
 
 ## Auditoria de superfícies que tratam `em_atendimento` como Encounter ativo
 
@@ -192,16 +192,68 @@ ROLLBACK;
 
 Ele valida helper de data operacional, trigger function, ambos os triggers e o defense-in-depth #399 sem exigir reparação de dados históricos e sem congelar a futura implementação interna do helper de data operacional.
 
-## Rollout futuro
+## Rollout de produção — concluído em 2026-09-10
 
-Somente após revisão e merge explícitos:
+Sequência executada:
 
 ```text
-merge
+merge #400
 → migration #400
 → verifier read-only #400
-→ smoke de início no mesmo dia + bloqueio de data futura
-→ reparação separada/auditável do known invalid state, se aprovada
+→ smoke real do bug + defense-in-depth #399
 ```
 
-A migration e a reparação do dado real são operações distintas. Este PR não toca produção.
+Evidência observada da migration:
+
+```text
+BEGIN
+...
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+...
+COMMIT
+```
+
+Evidência observada do verifier:
+
+```text
+VERIFY #400 — Encounter Temporal Start Boundary
+...
+VERIFY #400 OK — temporal abstraction/guards intact; helper implementation may evolve; historical rows not scanned
+ROLLBACK
+```
+
+O smoke de produção reutilizou o appointment histórico conhecido dentro de uma única transação e comprovou:
+
+```text
+baseline future-active conhecido                     → confirmado
+ator real com identidade + clinical.attend           → confirmado
+PHQ-9 temporariamente enabled + capability temporária
+future-active físico para Apply-in-Encounter          → DENY
+row temporariamente revertida para agendado
+mesmo profissional tentando iniciar data futura       → bloqueado
+erro esperado                                         → appointment_future_encounter_start_forbidden
+ROLLBACK                                               → baseline restaurado
+clinical.instrument.apply residual                    → 0
+PHQ-9 setting residual                                → 0
+```
+
+Marcador final observado:
+
+```text
+SMOKE #400 PASSED — BUG REAL BLOQUEADO + ROLLBACK LIMPO
+```
+
+### Estado pós-rollout
+
+```text
+#400 migration em produção     ✅
+#400 verifier read-only        ✅
+#400 smoke real                ✅
+#399 temporal defense          ✅ comprovada em produção
+appointment histórico repair   ⏳ pendente e separado
+```
+
+Não há frontend nem Edge Function próprios da #400 para deploy. A reparação do dado real continua fora da migration e requer operação auditável separada.
