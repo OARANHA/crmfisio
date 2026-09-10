@@ -7,143 +7,189 @@ O frontend MedicsPro é publicado em container Docker e operado pelo **Portainer
 - App: `https://app.medicspro.com.br`
 - Supabase self-hosted: `https://supabase.medicspro.com.br`
 - Supabase Studio: `https://studio.medicspro.com.br`
-- Repositório: `OARANHA/crmfisio`
+- Repositório canônico: `OARANHA/crmfisio`
 - Branch potencialmente produtiva: `main`
-- O stack Portainer atual acompanha o GitHub em ciclos curtos, aproximadamente a cada 5 minutos.
 
 > **Regra crítica:** trate qualquer merge em `main` como potencial deploy. Não use `main` para experimentação.
+
+O estado de continuidade atualizado fica em `docs/CURRENT_STATE.md` e `docs/BETA_READINESS.md`.
 
 ## Arquitetura de deploy
 
 ### Aplicação
 
-- React + TypeScript + Vite.
-- Build em Docker.
-- Container servido por Nginx.
-- Stack gerenciado no Portainer.
+- React + TypeScript + Vite;
+- build Docker;
+- container servido por Nginx;
+- stack operado via Portainer.
 
 ### Backend / dados
 
-- Supabase self-hosted em stack própria.
-- PostgreSQL, Auth, PostgREST, Edge Functions e demais serviços separados da aplicação frontend.
-- Migrations do MedicsPro ficam versionadas em `supabase-migrations/`.
-- Edge Functions relevantes ficam versionadas no repositório e precisam ser implantadas na stack Supabase de forma controlada.
+- Supabase self-hosted em stack própria;
+- PostgreSQL, Auth, PostgREST e Edge Functions separados do frontend;
+- migrations versionadas em `supabase-migrations/`;
+- verifiers de rollout/contrato em `supabase-verifiers/` e scripts históricos onde ainda existirem;
+- Edge Functions versionadas no repositório e implantadas de forma controlada.
 
 ## Variáveis de ambiente do frontend
 
-O frontend precisa, no mínimo, de:
+No mínimo:
 
 ```text
 VITE_SUPABASE_URL=https://supabase.medicspro.com.br
 VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-Nunca colocar `service_role` no frontend ou no repositório.
+Nunca colocar `service_role` no frontend, bundle ou repositório.
 
-## Regra de compatibilidade para deploy automático
+## Compatibilidade de rollout
 
-Como o Portainer pode atualizar a aplicação poucos minutos após um merge em `main`:
+Como o frontend pode ser atualizado pouco depois de um merge:
 
-1. mudanças de frontend em `main` devem estar prontas para produção;
-2. migrations incompatíveis não podem depender de um frontend ainda não publicado;
-3. preferir rollout backward-compatible: banco primeiro quando seguro, aplicação depois;
-4. mudanças de banco devem ser versionadas, idempotentes quando possível e acompanhadas de verifier;
-5. Edge Functions devem ser implantadas com paridade de versão quando a mudança depender delas;
-6. mudanças documentais também podem provocar rebuild/redeploy dependendo da configuração atual do stack.
+1. todo merge de código em `main` precisa estar deploy-safe;
+2. migration incompatível não pode depender de frontend ainda não publicado;
+3. preferir mudanças aditivas/backward-compatible e ordem explícita banco → verifier → app quando apropriado;
+4. migrations devem ser versionadas e acompanhadas de verifier coerente com o ambiente;
+5. Edge Functions precisam de paridade de versão quando o fluxo depender delas;
+6. documentação pode acionar rebuild dependendo da configuração do stack, mas não deve alterar comportamento do produto.
 
-## Fluxo recomendado para mudanças
+## Fluxo recomendado
 
-1. Criar branch a partir de `main`.
-2. Implementar a menor alteração coerente.
-3. Rodar o gate local/CI aplicável:
+1. criar branch a partir do SHA conhecido de `main`;
+2. implementar a menor slice coerente;
+3. rodar os gates aplicáveis;
+4. abrir PR;
+5. revisar frontend, banco, Edge Functions, RLS/RPC, compatibilidade e rollback;
+6. obter autorização explícita para mudanças de produção quando necessário;
+7. aplicar banco/Edge Functions na ordem aprovada;
+8. rodar verifier correto;
+9. fazer merge/deploy somente quando a composição estiver segura;
+10. observar app/logs e executar o smoke realmente necessário.
+
+Validação comum de frontend:
 
 ```bash
 npm ci
 npm test
 npm run typecheck
+npm run lint
 npm run build
 ```
 
-4. Abrir PR para `main`.
-5. Revisar efeitos em banco, Edge Functions, RLS/RPCs e compatibilidade de deploy.
-6. Aplicar migrations/Edge Functions em ordem segura quando necessário.
-7. Fazer merge apenas quando a revisão estiver deploy-safe.
-8. Acompanhar atualização do Portainer e validar app/logs.
-
-## Rollout coordenado — Clinical Authorization Reconciliation (#387)
-
-O PR #386 já mergeado alterou `supabase/functions/admin-team/index.ts`, mas aquela versão ainda não foi implantada em produção. Se o #387 for aprovado para produção, tratar o rollout como uma sequência coordenada; não aplicar etapas isoladas fora dessa ordem sem nova revisão.
-
-1. merge do PR #387;
-2. aplicar `supabase-migrations/20260909_clinical_authorization_reconciliation.sql`;
-3. executar `supabase-verifiers/VERIFY_20260909_CLINICAL_AUTHORIZATION_RECONCILIATION.sql` em produção;
-4. redeploy da Edge Function `admin-team` com a versão pós-#386;
-5. redeploy do frontend contendo #386 + #387;
-6. executar smoke test real.
-
-Smoke test mínimo após o rollout:
-
-- editar **Dr. Médico Nexus Teste / Psiquiatria**;
-- iniciar atendimento;
-- avançar **avaliação → tratamento**;
-- registrar evolução;
-- finalizar atendimento;
-- confirmar `status = finalizado` no banco;
-- confirmar o Patient Journey persistido;
-- confirmar ausência de falso toast de sucesso quando uma mutation de status não persistir.
-
-Esta seção documenta somente a ordem futura. Nenhuma dessas etapas deve ser executada sem autorização explícita de produção.
-
 ## Migrations no Supabase self-hosted
 
-Não tratar `supabase-schema.sql` como mecanismo de atualização contínua de produção. Para mudanças incrementais, usar as migrations versionadas em `supabase-migrations/`.
+Não tratar `supabase-schema.sql` como mecanismo contínuo de atualização de produção.
 
 Boas práticas:
 
-- inspecionar o schema real antes de aplicar alterações;
-- fazer backup antes de migrations de risco;
-- preferir migration pinada a commit/hash quando executada manualmente;
-- executar verifier após a migration;
-- preservar compatibilidade com a aplicação já publicada;
-- não executar comandos destrutivos sem plano explícito de recuperação.
+- inspecionar schema/migration history real antes de aplicar;
+- não reaplicar migration já instalada porque um documento antigo a chama de futura;
+- fazer backup/confirmar restore posture conforme risco;
+- usar migration pinada a commit/hash quando a execução for manual;
+- executar com parada em erro;
+- rodar verifier apropriado imediatamente após mudança;
+- preservar compatibilidade com frontend/runtime;
+- não executar DDL/DML destrutivo sem plano explícito de recuperação.
+
+### #394 — Encounter Clinical Record
+
+Estado confirmado em **2026-09-10**:
+
+- `supabase-migrations/20260910_clinical_encounter_record_foundation.sql` **já foi aplicada em produção**;
+- o verifier production-safe passou com `VERIFY #394 PRODUCTION OK`;
+- Clinical Foundation passou;
+- Clinical Authorization passou;
+- Financial Exception Resolution #389 passou.
+
+**Não reaplicar a migration #394.**
+
+Existem dois verifiers com papéis diferentes:
+
+- `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` — behavior verifier do harness/CI, depende dos casos 1–34 e não deve ser executado diretamente em produção;
+- `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` — verifier read-only para inspeção do schema instalado em banco real.
+
+O smoke de draft observou persistência, refresh/navegação e revision. Antes da finalização o cenário tinha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
+
+A documentação atual **não declara** como concluída a inspeção read-only pós-finalização desse mesmo smoke sem evidência posterior. Registrar essa leitura quando executada.
+
+### #388 / #389 — atenção ao verifier histórico
+
+#388 definiu a separação entre finalização clínica e falhas esperadas de cobertura. #389 criou a resolução explícita de `appointment_financial_exception`.
+
+O verifier antigo #388 possui uma assertion histórica esperando ausência da RPC que #389 adicionou depois. Essa assertion é obsoleta para o schema atual e deve ser atualizada/versionada antes de reutilização contra produção.
+
+Não enfraquecer as demais invariantes de #388 para corrigir essa dívida do verifier.
+
+## Finalização clínica × cobertura
+
+Não usar runbooks antigos que esperam `package_exhausted`/`package_expired` bloquear a conclusão clínica.
+
+Contrato atual:
+
+- `package_exhausted`, `package_expired`, `package_not_eligible` → `appointment_financial_exception`;
+- finalização clínica válida pode permanecer concluída;
+- sem consumo gratuito silencioso;
+- falha financeira inesperada de integridade permanece fail-closed.
+
+Resolução #389:
+
+- owner/admin: `CHARGE|WAIVE`;
+- financeiro: `CHARGE`;
+- recep/professional: sem resolução.
+
+Smoke real CHARGE/WAIVE permanece pendente se não houver evidência posterior registrada.
+
+## Consultório / Gestão (#396)
+
+`PresentationContext` é frontend presentation/privacy state. Não requer migration e não altera role, RLS, capabilities, entitlements, JWT, tenant ou `canView`.
+
+Após frontend que contenha #396, o smoke deve verificar:
+
+- professional Consultório-only;
+- owner/admin elegível alternando Consultório/Gestão;
+- owner/admin não clínico, recep e financeiro Gestão-only;
+- URL administrativa protegida pelos guards reais;
+- nenhum chrome administrativo durante resolução fail-closed;
+- preferência isolada por `user_id + clinic_id`.
+
+Autoentrada automática no Consultório não faz parte do rollout atual.
 
 ## Provisionamento de clínicas e usuários
 
 Não inserir identidades diretamente em `auth.users`.
 
-- Bootstrap e regras de Platform Admin: documentação em `docs/`.
-- Nova clínica + primeiro owner: Edge Function `provision-clinic`.
-- Usuários adicionais: Edge Function `admin-team` por owner/admin autenticado.
-- `platform_admin` é domínio separado e não implica acesso aos dados clínicos/financeiros das clínicas.
-- Credenciais `service_role` permanecem server-side.
-
-## Estado de readiness
-
-Consultar:
-
-- `docs/BETA_READINESS.md`
-- `docs/FINANCIAL_PILOT_ACCEPTANCE.md`
-- `PRODUCT_ROADMAP.md`
-- `AGENTS.md`
-
-Em 2026-09-05 o núcleo financeiro está GREEN para piloto controlado; o próximo gate é Configurações / Entitlements / governança por clínica.
+- nova clínica + primeiro owner: fluxo server-side canônico de provisionamento;
+- usuários adicionais: fluxo `admin-team` autorizado;
+- `platform_admin` é domínio separado e não implica acesso aos dados clínicos/financeiros das clínicas;
+- credenciais `service_role` permanecem server-side.
 
 ## Validação pós-deploy
 
-Após atualização da aplicação:
+Após atualização de comportamento:
 
-1. abrir `https://app.medicspro.com.br`;
-2. validar login;
-3. validar que o tenant e papel corretos foram carregados;
-4. validar navegação/entitlements do usuário;
-5. fazer smoke do fluxo alterado;
-6. conferir erros no console e logs do container;
-7. em mudanças financeiras ou de autorização, rodar os verificadores canônicos correspondentes.
+1. abrir a aplicação;
+2. validar login e tenant corretos;
+3. validar role/identidade/entitlements esperados;
+4. executar somente o smoke do fluxo alterado e dependências críticas;
+5. conferir console e logs relevantes;
+6. em mudança de banco/autorização/financeiro, rodar o verifier canônico apropriado;
+7. registrar o que foi **realmente observado**.
 
 ## Segurança
 
-- RLS é boundary de segurança; menu escondido não é autorização.
-- Não expor secrets em commits, logs ou comandos compartilhados.
-- Usar tokens/senhas apenas em variáveis temporárias e limpá-las após uso.
-- Dados clínicos e financeiros devem permanecer isolados por clínica.
-- Ações sensíveis devem ser server-side, auditáveis e deny-by-default.
+- RLS/server authorization são boundaries; menu escondido ou PresentationContext não são autorização;
+- não expor secrets em commits, logs ou comandos compartilhados;
+- usar tokens/senhas somente em variáveis seguras/temporárias;
+- dados clínicos e financeiros permanecem isolados por clínica;
+- ações sensíveis são server-side, auditáveis e deny-by-default.
+
+## Documentos relacionados
+
+- `AGENTS.md`
+- `docs/CURRENT_STATE.md`
+- `docs/BETA_READINESS.md`
+- `docs/BETA_ROLLOUT_ORDER.md`
+- `docs/CLINICAL_ENCOUNTER_RECORD.md`
+- `docs/CLINICAL_PILOT_ACCEPTANCE.md`
+- `docs/FINANCIAL_PILOT_ACCEPTANCE.md`
+- `PRODUCT_ROADMAP.md`
