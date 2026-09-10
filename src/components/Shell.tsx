@@ -6,6 +6,8 @@ import { useInfrastructure } from '../lib/infrastructureContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useFinance } from '../lib/financeContext';
 import { useClinical } from '../lib/clinicalContext';
+import { isNavigationPresentationSafe } from '../lib/presentationContext';
+import { usePresentationContext } from '../lib/presentationContextContext';
 import { ROLE_META, type ModuleKey } from '../lib/types';
 import { PulseMark } from './Ecg';
 import {
@@ -125,12 +127,131 @@ function Toasts() {
   );
 }
 
+function PresentationModeControl({ compact = false }: { compact?: boolean }) {
+  const { context, availableContexts, setContext } = usePresentationContext();
+  const canSwitch = availableContexts.length > 1;
+
+  if (!canSwitch) {
+    if (context !== 'clinical') return null;
+    return compact ? (
+      <span className="grid h-10 w-10 place-items-center rounded-xl border border-mint/25 bg-mint/10 text-mint" title="Modo Consultório" aria-label="Modo Consultório">
+        <IconShield className="h-4.5 w-4.5" />
+      </span>
+    ) : (
+      <div className="flex items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.065] px-3 py-2 text-[12px] font-semibold text-mint">
+        <IconShield className="h-4 w-4" />
+        <span>Modo Consultório</span>
+      </div>
+    );
+  }
+
+  if (compact) {
+    const next = context === 'clinical' ? 'management' : 'clinical';
+    return (
+      <button
+        type="button"
+        onClick={() => setContext(next)}
+        className="grid h-10 w-10 place-items-center rounded-xl border border-mint/25 bg-mint/[0.065] text-mint transition-colors hover:bg-mint/10"
+        title={context === 'clinical' ? 'Modo Consultório — mudar para Gestão' : 'Modo Gestão — mudar para Consultório'}
+        aria-label={context === 'clinical' ? 'Mudar para Modo Gestão' : 'Mudar para Modo Consultório'}
+      >
+        <IconShield className="h-4.5 w-4.5" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-line/70 bg-panel/55 p-1" aria-label="Contexto de apresentação">
+      <div className="grid grid-cols-2 gap-1">
+        <button
+          type="button"
+          onClick={() => setContext('clinical')}
+          aria-pressed={context === 'clinical'}
+          className={`min-h-8 rounded-lg px-2.5 text-[11.5px] font-semibold transition-colors ${context === 'clinical' ? 'bg-mint/12 text-mint' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}
+        >
+          Consultório
+        </button>
+        <button
+          type="button"
+          onClick={() => setContext('management')}
+          aria-pressed={context === 'management'}
+          className={`min-h-8 rounded-lg px-2.5 text-[11.5px] font-semibold transition-colors ${context === 'management' ? 'bg-mint/12 text-mint' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}
+        >
+          Gestão
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PresentationHeaderControl() {
+  const { context, availableContexts, setContext } = usePresentationContext();
+  const canSwitch = availableContexts.length > 1;
+
+  if (context === 'clinical') {
+    return (
+      <div className="flex items-center gap-2" aria-label="Modo Consultório">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.065] px-2.5 text-[12px] font-semibold text-mint sm:px-3">
+          <IconShield className="h-4 w-4" />
+          <span className="hidden sm:inline">Modo Consultório</span>
+        </span>
+        {canSwitch && (
+          <button
+            type="button"
+            onClick={() => setContext('management')}
+            className="hidden min-h-9 items-center rounded-xl border border-line/75 bg-panel px-3 text-[12px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper lg:inline-flex"
+          >
+            Sair do Modo Consultório
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!canSwitch) {
+    return (
+      <div className="hidden items-center gap-2 text-[14px] font-medium text-fog sm:flex">
+        <IconShield className="h-4 w-4 text-mint" />
+        <span>Ambiente protegido</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setContext('clinical')}
+      className="hidden min-h-9 items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.055] px-3 text-[12px] font-semibold text-mint transition-colors hover:bg-mint/10 lg:inline-flex"
+    >
+      <IconShield className="h-4 w-4" />
+      Entrar no Modo Consultório
+    </button>
+  );
+}
+
+function PresentationResolvingState() {
+  return (
+    <div className="app-surface min-h-screen grid place-items-center px-5" aria-label="Preparando contexto da clínica" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 rounded-2xl border border-line/70 bg-panel/80 px-5 py-4 shadow-sm">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-mint/20 bg-mint/[0.065]">
+          <PulseMark className="h-5 w-6" />
+        </span>
+        <div>
+          <p className="font-display text-[13.5px] font-semibold text-paper">Preparando seu ambiente</p>
+          <p className="mt-0.5 text-[12px] text-fog">Validando o contexto da clínica…</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Shell() {
   const { user: effectiveUser, canView } = useCurrentUserAccess();
   const { transactions } = useFinance();
   const { consents } = useClinical();
   const { unidades, unidadeSel, setUnidadeSel } = useInfrastructure();
   const { signOut, loading } = useAuth();
+  const { context: presentationContext, availableContexts, resolving: presentationResolving } = usePresentationContext();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
@@ -184,17 +305,23 @@ export function Shell() {
   };
 
   if (!effectiveUser || loading) return <Login theme={theme} onToggleTheme={toggleTheme} />;
+  if (presentationResolving) return <PresentationResolvingState />;
 
   const items = NAV.filter((n) =>
     (canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'))
     && (!n.nexus || nexusVisible)
-    && isModuleVisibleByEntitlement(n.key, entitlementVisibility),
+    && isModuleVisibleByEntitlement(n.key, entitlementVisibility)
+    && isNavigationPresentationSafe(n.to, presentationContext),
   );
-  const pendencias = transactions.filter((t) => t.status === 'atrasado').length + consents.filter((c) => !c.assinado).length;
+  const consentPendencies = consents.filter((c) => !c.assinado).length;
+  const pendencias = presentationContext === 'clinical'
+    ? consentPendencies
+    : transactions.filter((t) => t.status === 'atrasado').length + consentPendencies;
   const rm = ROLE_META[effectiveUser.role];
   const professionalLabel = identity
     ? professionalIdentityLabel(identity)
     : (rm?.label || 'Carregando...');
+  const showPresentationControl = presentationContext === 'clinical' || availableContexts.length > 1;
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -206,22 +333,25 @@ export function Shell() {
 
   const navList = (compact = false) => (
     <nav className="flex flex-col gap-1.5 px-3.5">
-      {items.map((n) => (
-        <NavLink
-          key={n.key + n.to}
-          to={n.to}
-          onClick={() => setMobileOpen(false)}
-          title={compact ? n.label : undefined}
-          className={({ isActive }) =>
-            `flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl py-2.5 font-display font-semibold text-[15.5px] leading-5 transition-colors ${
-              isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
-            }`
-          }
-        >
-          <n.Icon className="w-5.5 h-5.5 shrink-0" />
-          <span className={compact ? 'sr-only' : ''}>{n.label}</span>
-        </NavLink>
-      ))}
+      {items.map((n) => {
+        const label = presentationContext === 'clinical' && n.key === 'dashboard' ? 'Meu dia' : n.label;
+        return (
+          <NavLink
+            key={n.key + n.to}
+            to={n.to}
+            onClick={() => setMobileOpen(false)}
+            title={compact ? label : undefined}
+            className={({ isActive }) =>
+              `flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl py-2.5 font-display font-semibold text-[15.5px] leading-5 transition-colors ${
+                isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
+              }`
+            }
+          >
+            <n.Icon className="w-5.5 h-5.5 shrink-0" />
+            <span className={compact ? 'sr-only' : ''}>{label}</span>
+          </NavLink>
+        );
+      })}
     </nav>
   );
 
@@ -235,6 +365,7 @@ export function Shell() {
         <button onClick={toggleCollapsed} className="absolute -right-3 top-[86px] grid h-7 w-7 place-items-center rounded-full border border-line/70 bg-panel text-fog shadow-sm hover:text-paper hover:bg-raise" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
           {collapsed ? <IconChevronR className="h-3.5 w-3.5" /> : <IconChevronL className="h-3.5 w-3.5" />}
         </button>
+        {showPresentationControl && <div className={collapsed ? 'px-5 pt-5' : 'px-4 pt-4'}><PresentationModeControl compact={collapsed} /></div>}
         <div className="py-5.5 flex-1 overflow-y-auto">{navList(collapsed)}</div>
         <div className="border-t border-line/60 p-4.5">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
@@ -258,6 +389,7 @@ export function Shell() {
               <div className="flex items-center gap-2.5"><PulseMark className="w-6 h-5" /><span className="font-display font-bold text-[16px]">MEDICSPRO<span className="text-pulse">.</span></span></div>
               <button onClick={() => setMobileOpen(false)} className="text-fog"><IconX className="w-5 h-5" /></button>
             </div>
+            {showPresentationControl && <div className="px-4 pt-4"><PresentationModeControl /></div>}
             <div className="py-4 flex-1 overflow-y-auto">{navList()}</div>
             <div className="border-t border-line p-4"><button onClick={handleLogout} className="w-full flex items-center gap-2 text-fog hover:text-pulse transition-colors text-[14px]"><IconLogout className="w-4 h-4" /> Encerrar sessão — {effectiveUser.nome}</button></div>
           </aside>
@@ -267,7 +399,7 @@ export function Shell() {
       <div className={`${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[268px]'} relative transition-[padding] duration-200`}>
         <header className="sticky top-0 z-30 h-[68px] border-b border-line/60 bg-ink/88 backdrop-blur-xl flex items-center gap-3 px-4 md:px-7">
           <button className="lg:hidden text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
-          <div className="hidden sm:flex items-center gap-2 text-[14px] font-medium text-fog"><IconShield className="w-4 h-4 text-mint" /><span>Ambiente protegido</span></div>
+          <PresentationHeaderControl />
           <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!w-auto !min-h-10 !py-2 !text-[14px] ml-1" title="Filtrar por unidade">
             <option value="all">Todas as unidades</option>
             {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}

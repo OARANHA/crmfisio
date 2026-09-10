@@ -1,3 +1,4 @@
+import type { PresentationContext } from './presentationContext';
 import type { Role } from './types';
 
 type CapabilityStatus = 'loading' | 'allowed' | 'denied' | 'error';
@@ -8,6 +9,7 @@ export function resolveDashboardPresentation(input: {
   authLoading: boolean;
   userPresent: boolean;
   role: Role | null | undefined;
+  presentationContext?: PresentationContext;
   attendStatus: CapabilityStatus;
   identityLoading: boolean;
   psychiatryRelevant: boolean;
@@ -15,6 +17,13 @@ export function resolveDashboardPresentation(input: {
 }): DashboardPresentation {
   if (input.authLoading || !input.userPresent) return 'loading';
   if (input.role === 'recep') return 'reception';
+
+  if (
+    input.presentationContext === 'management'
+    && (input.role === 'owner' || input.role === 'admin')
+  ) {
+    return 'generic';
+  }
 
   // Only roles that can independently hold clinical identity/capability need
   // the clinical-home resolution boundary. Other roles stay operational.
