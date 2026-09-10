@@ -39,6 +39,15 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 # Original boundary migration is replayed twice to prove safe reapplication.
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
+
+# Install the #394 Encounter Record foundation before the existing #388 behavior
+# cases. This means package_exhausted/package_expired/package_not_eligible and
+# unexpected integrity checks below execute against the final PR composition,
+# without rewriting any #388/#389 business function.
+"${PSQL[@]}" -f tests/sql/clinical_encounter_record_financial_composition_fixture.sql
+"${PSQL[@]}" -f supabase-migrations/20260910_clinical_encounter_record_foundation.sql
+"${PSQL[@]}" -f supabase-migrations/20260910_clinical_encounter_record_foundation.sql
+
 "${PSQL[@]}" -f tests/sql/financial_clinical_finalization_cases.sql
 
 # Tenant isolation and historical-validity regressions: foreign package metadata
