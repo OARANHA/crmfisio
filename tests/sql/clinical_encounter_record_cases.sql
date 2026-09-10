@@ -226,13 +226,13 @@ END $$;
 \echo '23) legacy Evolution is preserved and not duplicated'
 DO $$ BEGIN
   BEGIN
-    PERFORM public.save_clinical_encounter_record('40000000-0000-0000-0000-000000000001',0,'não criar','','','','','');
+    PERFORM public.save_clinical_encounter_record('43000000-0000-0000-0000-000000000014',0,'não criar','','','','','');
     RAISE EXCEPTION 'legacy_evolution_received_encounter_record';
   EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
   END;
-  UPDATE public.appointments SET status='finalizado' WHERE id='40000000-0000-0000-0000-000000000001';
-  IF (SELECT count(*) FROM public.physiotherapy_evolutions WHERE session_id='40000000-0000-0000-0000-000000000001' AND deleted_at IS NULL) <> 1 THEN RAISE EXCEPTION 'legacy_evolution_duplicated'; END IF;
-  IF EXISTS (SELECT 1 FROM public.clinical_encounter_records WHERE appointment_id='40000000-0000-0000-0000-000000000001') THEN RAISE EXCEPTION 'legacy_record_backfilled'; END IF;
+  UPDATE public.appointments SET status='finalizado' WHERE id='43000000-0000-0000-0000-000000000014';
+  IF (SELECT count(*) FROM public.physiotherapy_evolutions WHERE session_id='43000000-0000-0000-0000-000000000014' AND deleted_at IS NULL) <> 1 THEN RAISE EXCEPTION 'legacy_evolution_duplicated'; END IF;
+  IF EXISTS (SELECT 1 FROM public.clinical_encounter_records WHERE appointment_id='43000000-0000-0000-0000-000000000014') THEN RAISE EXCEPTION 'legacy_record_backfilled'; END IF;
   PERFORM public._clinical_encounter_394_pass(23, 'legacy evolution compatibility');
 END $$;
 
