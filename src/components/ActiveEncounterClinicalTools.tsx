@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
+import { buildEncounterScopedNexusPath } from '../lib/clinicalEncounterUx';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
 import { listPatientNexusRecordIncorporations } from '../lib/nexusRecordIncorporation';
 import {
@@ -129,7 +130,9 @@ export function ActiveEncounterClinicalTools({
 
   // Availability comes from entitlement + server-side C-06 capability resolution.
   // Specialty only changes presentation level/order in the pure registry resolver.
-  if (tools.length === 0) return null;
+  if (tools.length === 0) {
+    return <p className="rounded-xl border border-line/65 bg-deep/30 px-4 py-3 text-[11.5px] leading-relaxed text-fog">Nenhuma ferramenta adicional disponível para este atendimento.</p>;
+  }
 
   const hasContextualHighlight = tools.some((tool) => tool.level === 'relevant');
   const canUseScales = tools.some((tool) => tool.id === 'mental-health-screening');
@@ -140,13 +143,13 @@ export function ActiveEncounterClinicalTools({
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Ferramentas clínicas</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-fog">Nexus disponível para este atendimento conforme entitlement, capabilities e vínculo assistencial já validados pelos boundaries clínicos.</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-fog">Recursos Nexus disponíveis para este atendimento.</p>
           </div>
           <Chip className="border-aqua/30 text-aqua">{hasContextualHighlight ? 'Em destaque para este contexto' : 'Disponível'}</Chip>
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {tools.map((tool) => <ClinicalTool key={tool.id} tool={tool} patientId={patient.id} />)}
+          {tools.map((tool) => <ClinicalTool key={tool.id} tool={tool} patientId={patient.id} appointmentId={encounter.id} />)}
         </div>
 
         {(lifecycle.pendingReview > 0 || lifecycle.pendingSignature > 0 || lifecycle.readyToIncorporate > 0) && <div className="mt-3 flex flex-wrap gap-2">
@@ -161,7 +164,7 @@ export function ActiveEncounterClinicalTools({
   );
 }
 
-function ClinicalTool({ tool, patientId }: { tool: ResolvedNexusClinicalTool; patientId: string }) {
+function ClinicalTool({ tool, patientId, appointmentId }: { tool: ResolvedNexusClinicalTool; patientId: string; appointmentId: string }) {
   const content = <>
     <span className="block font-display text-[12.5px] font-semibold text-paper">{tool.title}</span>
     <span className="mt-1 block text-[10.5px] text-fog">{tool.detail}</span>
@@ -172,5 +175,5 @@ function ClinicalTool({ tool, patientId }: { tool: ResolvedNexusClinicalTool; pa
     return <div className="rounded-xl border border-line/75 bg-panel px-3.5 py-3">{content}</div>;
   }
 
-  return <Link to={`/pacientes/${patientId}/nexus${tool.routeSuffix}`} className="rounded-xl border border-line/75 bg-panel px-3.5 py-3 transition-colors hover:border-aqua/35 hover:bg-raise/40">{content}</Link>;
+  return <Link to={buildEncounterScopedNexusPath(patientId, appointmentId, tool.routeSuffix)} className="rounded-xl border border-line/75 bg-panel px-3.5 py-3 transition-colors hover:border-aqua/35 hover:bg-raise/40">{content}</Link>;
 }

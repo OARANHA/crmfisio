@@ -206,7 +206,7 @@ Não importar:
 
 O reaproveitamento correto é de fluxo, experiência, regra de domínio e conceito — reconstruídos na arquitetura atual.
 
-## 7. Assessment Engine e Prontuário V3
+## 7. Assessment Engine e prontuário clínico atual
 
 O Assessment Engine já é direção estratégica do produto:
 
@@ -219,28 +219,27 @@ Categorias:
 
 Body map é componente clínico estruturado, não imagem decorativa.
 
-O Prontuário V3 deve nascer multiprofissional e longitudinal. Evitar criar prontuários paralelos por profissão.
+O prontuário é multiprofissional e longitudinal. Evitar criar prontuários paralelos por profissão.
 
-Modelo de produto desejado:
+Modelo de produto:
 
 `Paciente -> Atendimento -> registros de diferentes profissões -> mesma timeline clínica`
 
 A especialidade/profissão altera capacidades, templates e ferramentas disponíveis; não cria outro sistema.
 
-Para Medicina, o produto poderá expor progressivamente recursos como:
+Após #390–#392, a fundação clínica não deve mais ser descrita como um futuro “Prontuário V3”: o runtime já possui resolução fail-closed do active encounter do próprio profissional, Agenda clínica role-aware, handoff por `?session=`, Assessment Engine contextual, evolução vinculada à sessão exata e finalização clínica verificada separada do financeiro. O Human Consultation Workspace V4 é o ponto atual a evoluir, não um fluxo paralelo a recriar.
 
-- anamnese;
-- exame físico;
-- hipóteses/diagnóstico;
-- conduta;
+Continuam como gaps de domínio que exigem slices próprias quando priorizados:
+
+- motivo/HDA/achados/hipótese/plano encounter-scoped;
 - prescrição;
 - solicitação de exames;
-- laudos;
+- resultados/laudos;
 - atestados;
 - encaminhamentos;
-- documentos.
+- anexos clínicos com contrato próprio.
 
-O Nexus deve aparecer contextualmente nesses fluxos quando houver benefício clínico real.
+O Nexus deve aparecer contextualmente nesses fluxos quando houver benefício clínico real, sempre preservando entitlement, capability, identidade, vínculo assistencial e lifecycle.
 
 ## 8. Entitlements, módulos e configuração
 
@@ -295,13 +294,11 @@ Objetivo: **beta controlado com profissionais reais**, não expansão indefinida
 
 Ordem recomendada de execução:
 
-1. **Prontuário Clínico V3**
-   - Evoluções;
-   - Avaliações;
-   - Timeline clínica;
-   - Body map;
-   - fluxo `abrir paciente -> atender -> registrar -> finalizar`;
-   - nascer multiprofissional.
+1. **Fechar a experiência de consulta/prontuário para piloto**
+   - evoluir o Human Consultation Workspace sem reabrir arquitetura já resolvida;
+   - reduzir carga cognitiva e preservar paciente/sessão/autoria em toda navegação;
+   - manter avaliações opcionais, evolução da sessão exata e encerramento verificado;
+   - modelar novos dados encounter-scoped somente em slice estrutural explícita, com migration/verifier próprios.
 
 2. **Fechar `professional_id`**
    - eliminar consumers residuais `fisioId/fisio_id`;
@@ -374,7 +371,7 @@ Antes de qualquer alteração significativa:
 - trabalhar em branch dedicada;
 - `main` é potencialmente deployável;
 - abrir PR revisável;
-- rodar `npm ci`, `npm test`, `npm run typecheck`, `npm run build` quando aplicável;
+- rodar `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` quando aplicável;
 - não reportar conclusão ampla sem CI/checks verdes.
 
 ### Banco / servidor
@@ -394,30 +391,13 @@ Antes de qualquer alteração significativa:
 - entitlement nunca substitui autorização de dados;
 - Nexus permanece sujeito à política médica/entitlement/capability canônica até decisão documentada em contrário.
 
-## 13. Primeira missão recomendada no Work
+## 13. Mapas diferenciais já existentes
 
-Antes de implementar medicamentos ou ampliar Medicina, produzir uma auditoria diferencial profunda:
+`docs/NEXUS_GAP_MAP.md` e `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` já registram, respectivamente, a reconciliação do upstream Nexus e a referência histórica MedicsPro. Não repetir essas auditorias do zero em cada missão.
 
-`OARANHA/nexus` **vs** Nexus já integrado em `OARANHA/crmfisio`.
+Em mudanças significativas de UX/workflow clínico, quando o domínio estiver mapeado no histórico, comparar explicitamente a experiência madura do legado com a implementação real atual **antes** de redesenhar. A comparação decide o que preservar, evoluir, redesenhar ou rejeitar; nunca autoriza importar arquitetura, segurança ou contratos antigos.
 
-Entregável esperado:
-
-`docs/NEXUS_GAP_MAP.md`
-
-Para cada domínio, registrar:
-
-- estado atual no `crmfisio`;
-- fonte equivalente no `nexus`;
-- gaps reais;
-- risco clínico/técnico;
-- dependências;
-- prioridade 80/20;
-- decisão: portar / redesenhar / adiar / descartar;
-- testes necessários;
-- migrations necessárias, se houver;
-- ordem de PRs proposta.
-
-**Não implementar a absorção em massa no mesmo passo da auditoria.** Primeiro obter o mapa diferencial correto; depois executar slices pequenas e rastreáveis.
+Para qualquer nova slice, atualizar o mapa relevante quando o estado canônico tiver mudado materialmente e manter as dependências/gaps que continuam verdadeiros.
 
 ---
 

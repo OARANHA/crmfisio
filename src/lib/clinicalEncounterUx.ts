@@ -40,6 +40,37 @@ export type EncounterClosingPresentation = {
   action: 'register_evolution' | null;
 };
 
+export type EncounterWorkspaceNavigationItem = {
+  id:
+    | 'encounter-context'
+    | 'encounter-evolution'
+    | 'encounter-assessment'
+    | 'encounter-tools'
+    | 'encounter-continuity'
+    | 'encounter-closing';
+  label: string;
+};
+
+// Navigation contains only real surfaces in the canonical encounter workspace.
+// Capability-gated tools never become fake actions merely for visual parity.
+export const encounterWorkspaceNavigation: readonly EncounterWorkspaceNavigationItem[] = [
+  { id: 'encounter-context', label: 'Contexto' },
+  { id: 'encounter-evolution', label: 'Evolução' },
+  { id: 'encounter-assessment', label: 'Avaliação clínica' },
+  { id: 'encounter-tools', label: 'Ferramentas clínicas' },
+  { id: 'encounter-continuity', label: 'Conduta' },
+  { id: 'encounter-closing', label: 'Encerramento' },
+];
+
+export function buildEncounterScopedNexusPath(
+  patientId: string,
+  appointmentId: string,
+  routeSuffix: string,
+): string {
+  const suffix = routeSuffix.startsWith('/') ? routeSuffix : `/${routeSuffix}`;
+  return `/pacientes/${encodeURIComponent(patientId)}/nexus${suffix}?session=${encodeURIComponent(appointmentId)}`;
+}
+
 export function resolveClinicalEncounterWorkspace(
   appointments: readonly Appointment[],
   patientId: string | null | undefined,
@@ -146,7 +177,7 @@ export function resolveEncounterClosingState({
       sectionTitle: 'Validando requisitos clínicos',
       sectionDetail: 'Estamos verificando seu acesso antes de liberar o encerramento.',
       noticeTitle: 'Validando requisitos clínicos',
-      noticeDetail: 'Aguarde a verificação das permissões clínicas necessárias para encerrar este atendimento.',
+      noticeDetail: 'Aguarde a verificação necessária para encerrar este atendimento.',
       tone: 'checking',
       action: null,
     };
@@ -158,9 +189,9 @@ export function resolveEncounterClosingState({
       progressState: 'blocked',
       progressDetail: 'Não foi possível verificar o acesso',
       sectionTitle: 'Verificação de acesso necessária',
-      sectionDetail: 'Não foi possível confirmar todos os requisitos clínicos de autorização para o encerramento.',
-      noticeTitle: 'Não foi possível verificar os requisitos clínicos',
-      noticeDetail: 'O encerramento permanece indisponível até que a verificação de acesso seja concluída. Nenhum diagnóstico sobre ausência de evolução é inferido neste estado.',
+      sectionDetail: 'Não foi possível confirmar seu acesso para concluir este atendimento.',
+      noticeTitle: 'Não foi possível verificar o acesso',
+      noticeDetail: 'Tente novamente antes de encerrar o atendimento.',
       tone: 'blocked',
       action: null,
     };
@@ -173,9 +204,9 @@ export function resolveEncounterClosingState({
         progressState: 'blocked',
         progressDetail: 'Evolução necessária · acesso insuficiente',
         sectionTitle: 'Evolução necessária, sem permissão para registrar',
-        sectionDetail: 'A evolução desta sessão é obrigatória, mas seu acesso atual não permite registrá-la.',
+        sectionDetail: 'A evolução desta consulta é obrigatória, mas seu acesso atual não permite registrá-la.',
         noticeTitle: 'Evolução necessária, mas indisponível para seu acesso',
-        noticeDetail: 'Este atendimento não pode ser encerrado até existir uma evolução vinculada à sessão e a autorização clínica necessária estiver válida.',
+        noticeDetail: 'O atendimento só pode ser encerrado após o registro da evolução desta consulta.',
         tone: 'blocked',
         action: null,
       };
@@ -186,9 +217,9 @@ export function resolveEncounterClosingState({
       progressState: 'pending',
       progressDetail: 'Evolução pendente',
       sectionTitle: 'Evolução pendente',
-      sectionDetail: 'Registre uma evolução vinculada a esta sessão para liberar o encerramento.',
+      sectionDetail: 'Registre a evolução desta consulta para liberar o encerramento.',
       noticeTitle: 'Evolução ainda não registrada',
-      noticeDetail: 'O banco também exige uma evolução desta sessão antes da finalização; a interface antecipa essa regra.',
+      noticeDetail: 'O atendimento só pode ser encerrado após o registro da evolução desta consulta.',
       tone: 'pending',
       action: 'register_evolution',
     };
@@ -201,8 +232,8 @@ export function resolveEncounterClosingState({
       progressDetail: 'Evolução registrada · encerramento sem acesso',
       sectionTitle: 'Evolução registrada; encerramento indisponível',
       sectionDetail: 'Seu acesso clínico atual não permite finalizar este atendimento.',
-      noticeTitle: 'Evolução registrada, mas falta autorização para finalizar',
-      noticeDetail: 'O registro clínico está presente e preservado. A finalização continua bloqueada porque a permissão para conduzir e encerrar o atendimento não está ativa.',
+      noticeTitle: 'Evolução registrada, mas o encerramento está indisponível',
+      noticeDetail: 'A evolução está registrada, mas seu acesso atual não permite concluir este atendimento.',
       tone: 'blocked',
       action: null,
     };
@@ -212,11 +243,11 @@ export function resolveEncounterClosingState({
     return {
       key: 'missing_evolution_write_permission',
       progressState: 'blocked',
-      progressDetail: 'Evolução registrada · requisito de autorização pendente',
-      sectionTitle: 'Evolução registrada; requisito clínico não satisfeito',
-      sectionDetail: 'A evolução existe, mas a autorização clínica exigida para autoria e encerramento não está ativa no seu acesso atual.',
-      noticeTitle: 'Evolução registrada, mas a autorização clínica está incompleta',
-      noticeDetail: 'O PostgreSQL exige também a permissão clínica de evolução no momento da finalização. A evolução registrada não é tratada como ausente.',
+      progressDetail: 'Evolução registrada · acesso incompleto',
+      sectionTitle: 'Evolução registrada; encerramento indisponível',
+      sectionDetail: 'A evolução existe, mas seu acesso atual não permite concluir este atendimento.',
+      noticeTitle: 'Evolução registrada, mas o encerramento está indisponível',
+      noticeDetail: 'A evolução está registrada, mas seu acesso atual não permite concluir este atendimento.',
       tone: 'blocked',
       action: null,
     };
@@ -228,9 +259,9 @@ export function resolveEncounterClosingState({
       progressState: 'complete',
       progressDetail: 'Pronto para finalizar',
       sectionTitle: 'Pronto para finalizar',
-      sectionDetail: 'Os requisitos clínicos visíveis foram satisfeitos. A transição continua validada pelo PostgreSQL.',
-      noticeTitle: 'Evolução vinculada · encerramento liberado',
-      noticeDetail: 'Finalizar mantém as proteções clínicas e a separação do ciclo financeiro.',
+      sectionDetail: 'A evolução obrigatória foi registrada e o atendimento pode ser encerrado.',
+      noticeTitle: 'Evolução registrada · encerramento liberado',
+      noticeDetail: 'Finalize quando o registro desta consulta estiver completo.',
       tone: 'ready',
       action: null,
     };
@@ -243,9 +274,9 @@ export function resolveEncounterClosingState({
     progressState: 'blocked',
     progressDetail: 'Revalidar requisitos clínicos',
     sectionTitle: 'Revalidação clínica necessária',
-    sectionDetail: 'O estado atual não pôde ser confirmado como elegível para encerramento.',
+    sectionDetail: 'O estado atual do atendimento precisa ser atualizado antes do encerramento.',
     noticeTitle: 'Encerramento ainda não confirmado',
-    noticeDetail: 'A interface não liberará a ação enquanto o guard canônico de finalização não confirmar todos os requisitos.',
+    noticeDetail: 'Atualize a página ou tente novamente em instantes.',
     tone: 'blocked',
     action: null,
   };

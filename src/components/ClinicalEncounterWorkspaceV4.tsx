@@ -7,11 +7,11 @@ import { useAgenda } from '../lib/agendaContext';
 import {
   buildEncounterEvolutionDraft,
   canFinalizeEncounter,
+  encounterWorkspaceNavigation,
   hasOwnLinkedEncounterEvolution,
   longitudinalPatientContext,
   resolveEncounterClosingState,
-  resolveEncounterProgress,
-  type EncounterProgressItem,
+  type EncounterClosingPresentation,
 } from '../lib/clinicalEncounterUx';
 import { useClinical } from '../lib/clinicalContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -77,14 +77,8 @@ export function ClinicalEncounterWorkspaceV4({
     evolutionWriteStatus: evolutionCapability.status,
     canFinalize,
   });
-  const progress = resolveEncounterProgress({
-    canApplyAssessment: assessmentCapability.allowed,
-    evolutionWriteStatus: evolutionCapability.status,
-    hasLinkedEvolution,
-    closing,
-  });
   const patientContext = longitudinalPatientContext(patient);
-  const patientConsents = consents.filter((consent) => consent.pacienteId === patient.id);
+  const signedConsentCount = consents.filter((consent) => consent.pacienteId === patient.id && consent.assinado).length;
   const currentEvolution = evolutions.find((evolution) => (
     evolution.sessionId === encounter.id
     && professionalIdOf(evolution) === user?.id
@@ -164,89 +158,126 @@ export function ClinicalEncounterWorkspaceV4({
         : 'text-pulse';
 
   return (
-    <section data-clinical-encounter-mode="active" className="space-y-4">
-      <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
-
-      <nav aria-label="Estado do atendimento" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        {progress.map((item) => <ProgressCard key={item.key} item={item} />)}
-      </nav>
-
-      <EncounterSection id="encounter-context" step="1" eyebrow="Contexto" title="Entenda o ponto de partida" detail="Informações do paciente ajudam a orientar a consulta, mas continuam pertencendo ao prontuário longitudinal.">
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="rounded-2xl border border-line/70 bg-deep/35 p-4">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">{patientContext.eyebrow}</p>
-            <p className="mt-3 text-[11px] font-semibold text-fog">{patientContext.complaintLabel}</p>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-paper/90">{patientContext.complaint}</p>
-          </div>
-          <div className="rounded-2xl border border-line/70 bg-deep/35 p-4">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">Prontuário longitudinal</p>
-            <p className="mt-3 text-[11px] font-semibold text-fog">{patientContext.cidLabel}</p>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-paper/90">{patientContext.cid}</p>
-            <p className="mt-3 text-[11px] text-fog">{patientConsents.filter((item) => item.assinado).length} consentimento(s) assinado(s) · documentos permanecem no histórico abaixo.</p>
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="4.1" className="space-y-4">
+      <div className="sticky top-3 z-20 space-y-2 rounded-[24px] bg-base/90 pb-2 backdrop-blur-xl">
+        <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/70 bg-panel/95 px-3 py-2 shadow-sm">
+          <nav aria-label="Navegação da consulta" className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+            {encounterWorkspaceNavigation.map((item) => (
+              <a key={item.id} href={`#${item.id}`} className="rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold text-fog transition-colors hover:bg-raise/60 hover:text-paper">
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Estado clínico da consulta">
+            <Chip className={hasLinkedEvolution ? 'border-mint/35 text-mint' : 'border-amber/35 text-amber'}>
+              {hasLinkedEvolution ? 'Evolução registrada ✓' : 'Evolução pendente'}
+            </Chip>
+            <ClosingChip closing={closing} />
           </div>
         </div>
-      </EncounterSection>
+      </div>
 
-      <EncounterSection id="encounter-assessment" step="2" eyebrow="Avaliação clínica" title="Avalie quando fizer sentido" detail="A avaliação estruturada é opcional nesta consulta e respeita a capability clínica do profissional.">
-        {assessmentCapability.loading ? (
-          <NeutralState>Validando acesso às avaliações clínicas…</NeutralState>
-        ) : assessmentCapability.allowed ? (
-          <ClinicalAssessmentRunner patient={patient} />
-        ) : (
-          <NeutralState>A aplicação de avaliações estruturadas não está liberada para este perfil. O histórico permanece disponível no prontuário longitudinal.</NeutralState>
-        )}
-      </EncounterSection>
-
-      <EncounterSection id="encounter-tools" step="3" eyebrow="Instrumentos" title="Use ferramentas clínicas contextuais" detail="Ferramentas aparecem apenas quando os boundaries clínicos e de produto permitem. Especialidade organiza relevância; não concede acesso.">
-        <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user?.id} />
-        <p className="rounded-xl border border-line/60 bg-deep/25 px-4 py-3 text-[11.5px] leading-relaxed text-fog">Nenhum instrumento é obrigatório para encerrar este atendimento. Use apenas os recursos pertinentes ao julgamento clínico.</p>
-      </EncounterSection>
-
-      <section ref={evolutionRef} id="encounter-evolution" className="scroll-mt-6">
-        <EncounterSection step="4" eyebrow="Evolução" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registre o que aconteceu nesta consulta'} detail="A evolução é o registro encounter-scoped obrigatório para liberar a finalização e fica vinculada exatamente a esta sessão.">
-          {hasLinkedEvolution ? (
-            <div className="rounded-2xl border border-mint/30 bg-mint/[0.045] p-4">
-              <div className="flex flex-wrap items-center gap-2"><Chip className="border-mint/35 text-mint">Evolução ✓</Chip><span className="font-mono text-[10.5px] text-fog">sessão {canonicalEncounter.inicio.slice(0, 5)} · autoria atual</span></div>
-              {currentEvolution?.texto && <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-paper/90">{currentEvolution.texto}</p>}
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="min-w-0 space-y-4">
+          <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">{patientContext.eyebrow}</p>
+                <p className="mt-3 text-[11px] font-semibold text-fog">{patientContext.complaintLabel}</p>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-paper/90">{patientContext.complaint}</p>
+              </div>
+              <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">Prontuário longitudinal</p>
+                <p className="mt-3 text-[11px] font-semibold text-fog">{patientContext.cidLabel}</p>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-paper/90">{patientContext.cid}</p>
+                <p className="mt-3 text-[11px] text-fog">{signedConsentCount} consentimento(s) assinado(s) · documentos e registros anteriores permanecem no histórico.</p>
+              </div>
             </div>
-          ) : evolutionCapability.loading ? (
-            <NeutralState>Validando permissão para registrar evolução…</NeutralState>
-          ) : evolutionCapability.error ? (
-            <BlockedState title="Não foi possível verificar seu acesso">A permissão para registrar evolução não pôde ser confirmada agora. O sistema não assume ausência de autorização enquanto essa verificação está com erro.</BlockedState>
-          ) : evolutionCapability.allowed ? (
-            <div className="rounded-2xl border border-amber/25 bg-amber/[0.035] p-4">
-              <p className="text-[11.5px] leading-relaxed text-fog">Este texto será salvo no prontuário com <span className="font-semibold text-paper">session_id = {canonicalEncounter.id.slice(0, 8)}…</span>. Não há seletor de outra sessão durante um atendimento ativo.</p>
-              <Textarea className="mt-3" rows={7} value={evolutionText} onChange={(event) => setEvolutionText(event.target.value)} placeholder="Achados relevantes, evolução do quadro, conduta realizada, orientações e plano de continuidade…" />
-              <div className="mt-3 flex justify-end"><Btn disabled={savingEvolution || !evolutionText.trim()} onClick={() => void registerEvolution()}>{savingEvolution ? 'Registrando…' : 'Registrar evolução'}</Btn></div>
-            </div>
-          ) : (
-            <BlockedState title="Evolução indisponível">Seu acesso atual não permite registrar a evolução necessária para encerrar este atendimento.</BlockedState>
-          )}
-        </EncounterSection>
-      </section>
+          </EncounterSection>
 
-      <EncounterSection id="encounter-continuity" step="5" eyebrow="Conduta / continuidade" title="Consolide o que deve seguir no prontuário" detail="Resultados Nexus só entram no registro oficial por incorporação explícita, preservando revisão, assinatura, origem e versão.">
-        <NexusRecordIncorporationPanel patient={patient} />
-        <NeutralState>Motivo desta consulta, HDA, hipótese e plano encounter-scoped ainda não possuem modelo próprio nesta versão. Esta tela não grava esses dados em campos longitudinais para simular contexto da consulta.</NeutralState>
-      </EncounterSection>
+          <section ref={evolutionRef} className="scroll-mt-36">
+            <EncounterSection id="encounter-evolution" eyebrow="Evolução" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro da consulta'} detail="Registro obrigatório para encerrar o atendimento.">
+              {hasLinkedEvolution ? (
+                <div className="rounded-2xl border border-mint/30 bg-mint/[0.045] p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip className="border-mint/35 text-mint">Registrada no prontuário ✓</Chip>
+                    <span className="font-mono text-[10.5px] text-fog">consulta {canonicalEncounter.inicio.slice(0, 5)} · registro do profissional atual</span>
+                  </div>
+                  {currentEvolution?.texto && <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-paper/90">{currentEvolution.texto}</p>}
+                </div>
+              ) : evolutionCapability.loading ? (
+                <NeutralState>Verificando acesso para registrar a evolução…</NeutralState>
+              ) : evolutionCapability.error ? (
+                <BlockedState title="Não foi possível verificar seu acesso">Tente novamente antes de encerrar o atendimento.</BlockedState>
+              ) : evolutionCapability.allowed ? (
+                <div className="rounded-2xl border border-amber/25 bg-amber/[0.035] p-4">
+                  <p className="text-[11.5px] leading-relaxed text-fog">A evolução ainda não foi registrada. Após o registro, o encerramento poderá ser liberado.</p>
+                  <Textarea className="mt-3" rows={7} value={evolutionText} onChange={(event) => setEvolutionText(event.target.value)} placeholder="Achados relevantes, evolução do quadro, conduta realizada, orientações e plano de continuidade…" />
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-[10.5px] text-fog">{savingEvolution ? 'Registrando no prontuário…' : 'Registre a evolução desta consulta antes de encerrar o atendimento.'}</span>
+                    <Btn disabled={savingEvolution || !evolutionText.trim()} onClick={() => void registerEvolution()}>{savingEvolution ? 'Registrando…' : 'Registrar evolução'}</Btn>
+                  </div>
+                </div>
+              ) : (
+                <BlockedState title="Evolução indisponível">Seu acesso atual não permite registrar a evolução necessária para encerrar este atendimento.</BlockedState>
+              )}
+            </EncounterSection>
+          </section>
 
-      <EncounterSection id="encounter-closing" step="6" eyebrow="Encerramento" title={closing.sectionTitle} detail={closing.sectionDetail}>
-        <div className={`rounded-2xl border p-4 ${closingStyle}`}>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-[220px] flex-1">
-              <p className={`font-display text-[15px] font-semibold ${closingTitleStyle}`}>{closing.noticeTitle}</p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{closing.noticeDetail}</p>
+          <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Avaliação estruturada" detail="Avaliação estruturada opcional para esta consulta.">
+            {assessmentCapability.loading ? (
+              <NeutralState>Carregando avaliações clínicas…</NeutralState>
+            ) : assessmentCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso às avaliações">Tente novamente em instantes ou atualize a página.</BlockedState>
+            ) : assessmentCapability.allowed ? (
+              <ClinicalAssessmentRunner patient={patient} presentation="encounter" />
+            ) : (
+              <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
+            )}
+          </EncounterSection>
+
+          <EncounterSection id="encounter-tools" eyebrow="Ferramentas clínicas" title="Recursos disponíveis para este atendimento" detail="Use os recursos disponíveis conforme a necessidade clínica.">
+            <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user?.id} />
+          </EncounterSection>
+
+          <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Continuidade do cuidado" detail="Registre ou consulte informações relevantes para a continuidade do cuidado.">
+            <NexusRecordIncorporationPanel patient={patient} />
+          </EncounterSection>
+
+          <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={closing.sectionTitle} detail={closing.sectionDetail}>
+            <div className={`rounded-2xl border p-4 ${closingStyle}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-[220px] flex-1">
+                  <p className={`font-display text-[15px] font-semibold ${closingTitleStyle}`}>{closing.noticeTitle}</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{closing.noticeDetail}</p>
+                </div>
+                {closing.action === 'register_evolution' && <Btn variant="subtle" onClick={scrollToEvolution}>Registrar evolução</Btn>}
+                <Btn disabled={!canFinalize || finishing} onClick={() => void finishEncounter()}>{finishing ? 'Finalizando…' : 'Finalizar atendimento'}</Btn>
+              </div>
             </div>
-            {closing.action === 'register_evolution' && <Btn variant="subtle" onClick={scrollToEvolution}>Registrar evolução</Btn>}
-            <Btn disabled={!canFinalize || finishing} onClick={() => void finishEncounter()}>{finishing ? 'Finalizando…' : 'Finalizar atendimento'}</Btn>
+          </EncounterSection>
+        </main>
+
+        <aside aria-label="Contexto persistente da consulta" className="space-y-3 xl:sticky xl:top-36">
+          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} savingEvolution={savingEvolution} onRegisterEvolution={scrollToEvolution} />
+          <div className="rounded-[20px] border border-line/70 bg-panel p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
+            <p className="mt-2 font-display text-[17px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
+            <p className="mt-1 text-[11px] text-fog">{canonicalEncounter.tipo} · {canonicalEncounter.inicio.slice(0, 5)}–{canonicalEncounter.fim.slice(0, 5)}</p>
+            <dl className="mt-4 space-y-3 text-[11px]">
+              <div><dt className="text-fog">CID-10 longitudinal</dt><dd className="mt-0.5 font-medium text-paper/90">{patientContext.cid}</dd></div>
+              <div><dt className="text-fog">Consentimentos assinados</dt><dd className="mt-0.5 font-medium text-paper/90">{signedConsentCount}</dd></div>
+            </dl>
+            <a href="#encounter-history" className="mt-4 inline-flex text-[11px] font-semibold text-aqua hover:underline">Abrir prontuário longitudinal ↓</a>
           </div>
-        </div>
-      </EncounterSection>
+        </aside>
+      </div>
 
-      <details className="rounded-[22px] border border-line/70 bg-panel">
+      <details id="encounter-history" className="scroll-mt-36 rounded-[22px] border border-line/70 bg-panel">
         <summary className="cursor-pointer list-none px-5 py-4">
           <div className="flex items-center justify-between gap-4">
-            <div><p className="font-display text-[14px] font-semibold text-paper">Prontuário longitudinal e histórico</p><p className="mt-1 text-[11.5px] text-fog">Resumo do paciente, avaliações anteriores, evoluções, atendimentos e documentos continuam disponíveis sem competir com a consulta atual.</p></div>
+            <div><p className="font-display text-[14px] font-semibold text-paper">Prontuário longitudinal e histórico</p><p className="mt-1 text-[11.5px] text-fog">Resumo do paciente, avaliações anteriores, evoluções, atendimentos e documentos continuam disponíveis como referência secundária, sem substituir a consulta atual.</p></div>
             <span className="text-fog" aria-hidden>⌄</span>
           </div>
         </summary>
@@ -259,49 +290,75 @@ export function ClinicalEncounterWorkspaceV4({
 export function EncounterHero({ patient, encounter, identity }: { patient: Patient; encounter: Appointment; identity: ProfessionalIdentity | null }) {
   const when = encounterTemporalLabel(encounter);
   return (
-    <header className="overflow-hidden rounded-[26px] border border-aqua/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-aqua)_9%,var(--color-panel)),var(--color-panel)_58%,color-mix(in_srgb,var(--color-mint)_5%,var(--color-panel)))] shadow-[0_20px_52px_rgba(0,0,0,0.055)]">
-      <div className="flex flex-wrap items-start gap-4 px-5 py-5 lg:px-6">
+    <header className="overflow-hidden rounded-[22px] border border-aqua/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-aqua)_9%,var(--color-panel)),var(--color-panel)_58%,color-mix(in_srgb,var(--color-mint)_5%,var(--color-panel)))] shadow-[0_16px_40px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 lg:px-5">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-aqua/35 bg-aqua/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Atendimento em andamento</span><span className="font-mono text-[10.5px] text-fog">{when}</span></div>
-          <h1 className="mt-3 font-display text-[28px] font-bold tracking-tight text-paper">{patient.preferredName || patient.nome}</h1>
-          <p className="mt-1 text-[13px] text-fog">{encounter.tipo} · {encounter.inicio.slice(0, 5)}–{encounter.fim.slice(0, 5)}</p>
-          <p className="mt-3 max-w-2xl text-[12.5px] leading-relaxed text-fog">Você está dentro desta consulta. Avalie, use instrumentos quando úteis, registre a evolução e encerre quando o atendimento estiver documentado.</p>
+          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-aqua/35 bg-aqua/[0.08] px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-aqua">Consulta em andamento</span><span className="font-mono text-[10.5px] text-fog">{when}</span></div>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 className="font-display text-[22px] font-bold tracking-tight text-paper">{patient.preferredName || patient.nome}</h1><p className="text-[11.5px] text-fog">{encounter.tipo} · {encounter.inicio.slice(0, 5)}–{encounter.fim.slice(0, 5)}</p></div>
         </div>
-        <div className="rounded-2xl border border-line/70 bg-deep/40 px-4 py-3 text-right">
-          <p className="text-[10px] uppercase tracking-[0.1em] text-fog">Identidade clínica</p>
-          <p className="mt-1.5 text-[12.5px] font-semibold text-paper">{identity?.professionalType || 'Profissional clínico'}</p>
-          {identity?.specialty && <p className="mt-1 text-[10.5px] text-fog">{identity.specialty}</p>}
+        <div className="rounded-xl border border-line/70 bg-deep/35 px-3 py-2 text-right">
+          <p className="text-[9px] uppercase tracking-[0.1em] text-fog">Identidade clínica</p>
+          <p className="mt-1 text-[11.5px] font-semibold text-paper">{identity?.professionalType || 'Profissional clínico'}</p>
+          {identity?.specialty && <p className="mt-0.5 text-[9.5px] text-fog">{identity.specialty}</p>}
         </div>
       </div>
     </header>
   );
 }
 
-function EncounterSection({ id, step, eyebrow, title, detail, children }: { id?: string; step: string; eyebrow: string; title: string; detail: string; children: ReactNode }) {
+function EncounterSection({ id, eyebrow, title, detail, children }: { id: string; eyebrow: string; title: string; detail: string; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-6 rounded-[22px] border border-line/70 bg-panel p-4 sm:p-5">
-      <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line/80 bg-deep text-[11px] font-bold text-fog">{step}</span>
-        <div><p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">{eyebrow}</p><h2 className="mt-1 font-display text-[18px] font-semibold text-paper">{title}</h2><p className="mt-1 text-[11.5px] leading-relaxed text-fog">{detail}</p></div>
+    <section id={id} className="scroll-mt-36 rounded-[22px] border border-line/70 bg-panel p-4 sm:p-5">
+      <div className="mb-4">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">{eyebrow}</p>
+        <h2 className="mt-1 font-display text-[18px] font-semibold text-paper">{title}</h2>
+        <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{detail}</p>
       </div>
       <div className="space-y-3">{children}</div>
     </section>
   );
 }
 
-function ProgressCard({ item }: { item: EncounterProgressItem }) {
-  const style = item.state === 'complete'
-    ? 'border-mint/30 bg-mint/[0.045] text-mint'
-    : item.state === 'pending'
-      ? 'border-amber/30 bg-amber/[0.04] text-amber'
-      : item.state === 'blocked'
-        ? 'border-pulse/25 bg-pulse/[0.035] text-pulse'
-        : item.state === 'checking'
-          ? 'border-aqua/25 bg-aqua/[0.035] text-aqua'
-          : item.state === 'optional'
-            ? 'border-aqua/25 bg-aqua/[0.035] text-aqua'
-            : 'border-line/70 bg-panel text-paper';
-  return <div className={`rounded-2xl border px-3.5 py-3 ${style}`}><p className="text-[11.5px] font-semibold">{item.label}</p><p className="mt-1 text-[10px] text-fog">{item.detail}</p></div>;
+function ConsultationStateCard({
+  closing,
+  hasLinkedEvolution,
+  savingEvolution,
+  onRegisterEvolution,
+}: {
+  closing: EncounterClosingPresentation;
+  hasLinkedEvolution: boolean;
+  savingEvolution: boolean;
+  onRegisterEvolution: () => void;
+}) {
+  const persistence = savingEvolution
+    ? { label: 'Registrando evolução…', className: 'border-aqua/30 text-aqua' }
+    : hasLinkedEvolution
+      ? { label: 'Evolução confirmada ✓', className: 'border-mint/30 text-mint' }
+      : { label: 'Evolução pendente', className: 'border-amber/30 text-amber' };
+
+  return (
+    <div className="rounded-[20px] border border-line/70 bg-panel p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Estado da consulta</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Chip className={persistence.className}>{persistence.label}</Chip>
+        <ClosingChip closing={closing} />
+      </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-fog">Acompanhe o registro da evolução e os requisitos para encerrar o atendimento.</p>
+      {closing.action === 'register_evolution' && <Btn className="mt-3 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para evolução</Btn>}
+      <a href="#encounter-closing" className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver requisitos de encerramento ↓</a>
+    </div>
+  );
+}
+
+function ClosingChip({ closing }: { closing: EncounterClosingPresentation }) {
+  const className = closing.tone === 'ready'
+    ? 'border-mint/35 text-mint'
+    : closing.tone === 'pending'
+      ? 'border-amber/35 text-amber'
+      : closing.tone === 'checking'
+        ? 'border-aqua/35 text-aqua'
+        : 'border-pulse/35 text-pulse';
+  return <Chip className={className}>{closing.progressDetail}</Chip>;
 }
 
 function NeutralState({ children }: { children: ReactNode }) {
