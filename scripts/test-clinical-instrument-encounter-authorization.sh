@@ -36,6 +36,7 @@ for pattern, message in [
 
 required = [
     "'clinical.instrument.apply'",
+    'clinical_instrument_catalog',
     'clinic_clinical_instrument_settings',
     'clinical_instrument_base_authorized',
     'can_apply_clinical_instrument_in_encounter',
@@ -57,8 +58,29 @@ encounter = re.search(
     sql,
     re.I,
 )
-if not base or not encounter:
-    raise SystemExit('#399 static safety failed: authorization helper extraction')
+setting_validator = re.search(
+    r'CREATE OR REPLACE FUNCTION public\.validate_clinic_clinical_instrument_setting\([\s\S]*?\$\$;',
+    sql,
+    re.I,
+)
+setting_rpc = re.search(
+    r'CREATE OR REPLACE FUNCTION public\.set_clinic_clinical_instrument_enabled\([\s\S]*?\$\$;',
+    sql,
+    re.I,
+)
+if not base or not encounter or not setting_validator or not setting_rpc:
+    raise SystemExit('#399 static safety failed: authorization/config helper extraction')
+
+for name, fn in [
+    ('base authorization', base),
+    ('settings validator', setting_validator),
+    ('settings RPC', setting_rpc),
+]:
+    if 'nexus_result_contracts' in fn.group():
+        raise SystemExit(f'#399 static safety failed: {name} uses Nexus registry as exposure authority')
+    if 'clinical_instrument_catalog' not in fn.group():
+        raise SystemExit(f'#399 static safety failed: {name} bypasses neutral instrument catalog')
+
 if 'can_access_patient_clinical_record' in base.group() or 'can_access_patient_clinical_record' in encounter.group():
     raise SystemExit('#399 static safety failed: read boundary used as act authority')
 if 'fisio_id' in encounter.group():
@@ -73,11 +95,19 @@ if not re.search(
 ):
     raise SystemExit('#399 static safety failed: internal base helper browser ACL')
 
-print('#399 static safety: Nexus protected surface untouched; no generic browser act authority')
+catalog_seed = re.findall(
+    r"\('(?:phq9|gad7)'\s*,\s*'nexus'\s*,\s*'scales'",
+    sql,
+    re.I,
+)
+if len(catalog_seed) != 2 or 'nexus_only_scale' in sql:
+    raise SystemExit('#399 static safety failed: neutral catalog seed is not explicitly PHQ-9/GAD-7 only')
+
+print('#399 static safety: neutral exposure catalog separated from Nexus registry; protected surface untouched')
 PY
 
 python3 scripts/build-clinical-instrument-encounter-sql-test.py > "$GENERATED"
 "${PSQL[@]}" -f "$GENERATED"
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260910_CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.sql
 
-echo "#399 PostgreSQL 16: 38 behavior cases + read-only verifier passed"
+echo "#399 PostgreSQL 16: 38 approved behavior cases + 4 Nexus-only exposure negative controls + read-only verifier passed"
