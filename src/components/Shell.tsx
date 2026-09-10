@@ -184,6 +184,67 @@ function PresentationModeControl({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function PresentationHeaderControl() {
+  const { context, availableContexts, setContext } = usePresentationContext();
+  const canSwitch = availableContexts.length > 1;
+
+  if (context === 'clinical') {
+    return (
+      <div className="flex items-center gap-2" aria-label="Modo Consultório">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.065] px-2.5 text-[12px] font-semibold text-mint sm:px-3">
+          <IconShield className="h-4 w-4" />
+          <span className="hidden sm:inline">Modo Consultório</span>
+        </span>
+        {canSwitch && (
+          <button
+            type="button"
+            onClick={() => setContext('management')}
+            className="hidden min-h-9 items-center rounded-xl border border-line/75 bg-panel px-3 text-[12px] font-semibold text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper lg:inline-flex"
+          >
+            Sair do Modo Consultório
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!canSwitch) {
+    return (
+      <div className="hidden items-center gap-2 text-[14px] font-medium text-fog sm:flex">
+        <IconShield className="h-4 w-4 text-mint" />
+        <span>Ambiente protegido</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setContext('clinical')}
+      className="hidden min-h-9 items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.055] px-3 text-[12px] font-semibold text-mint transition-colors hover:bg-mint/10 lg:inline-flex"
+    >
+      <IconShield className="h-4 w-4" />
+      Entrar no Modo Consultório
+    </button>
+  );
+}
+
+function PresentationResolvingState() {
+  return (
+    <div className="app-surface min-h-screen grid place-items-center px-5" aria-label="Preparando contexto da clínica" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 rounded-2xl border border-line/70 bg-panel/80 px-5 py-4 shadow-sm">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-mint/20 bg-mint/[0.065]">
+          <PulseMark className="h-5 w-6" />
+        </span>
+        <div>
+          <p className="font-display text-[13.5px] font-semibold text-paper">Preparando seu ambiente</p>
+          <p className="mt-0.5 text-[12px] text-fog">Validando o contexto da clínica…</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Shell() {
   const { user: effectiveUser, canView } = useCurrentUserAccess();
   const { transactions } = useFinance();
@@ -244,7 +305,7 @@ export function Shell() {
   };
 
   if (!effectiveUser || loading) return <Login theme={theme} onToggleTheme={toggleTheme} />;
-  if (presentationResolving) return <div className="app-surface min-h-screen" aria-label="Preparando contexto da clínica" />;
+  if (presentationResolving) return <PresentationResolvingState />;
 
   const items = NAV.filter((n) =>
     (canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'))
@@ -338,7 +399,7 @@ export function Shell() {
       <div className={`${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[268px]'} relative transition-[padding] duration-200`}>
         <header className="sticky top-0 z-30 h-[68px] border-b border-line/60 bg-ink/88 backdrop-blur-xl flex items-center gap-3 px-4 md:px-7">
           <button className="lg:hidden text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
-          <div className="hidden sm:flex items-center gap-2 text-[14px] font-medium text-fog"><IconShield className="w-4 h-4 text-mint" /><span>{presentationContext === 'clinical' ? 'Modo Consultório' : 'Ambiente protegido'}</span></div>
+          <PresentationHeaderControl />
           <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!w-auto !min-h-10 !py-2 !text-[14px] ml-1" title="Filtrar por unidade">
             <option value="all">Todas as unidades</option>
             {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
