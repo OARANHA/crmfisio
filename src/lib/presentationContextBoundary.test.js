@@ -89,11 +89,11 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(providerSource).not.toContain('accessFor(');
   });
 
-  it('preserves canonical active/historical encounter boundaries', () => {
+  it('preserves the canonical active encounter resolver used by current clinical flows', () => {
     expect(activeEncounterSource).toContain('export function resolveOwnActiveEncounter');
     expect(activeEncounterSource).toContain("appointment.status === 'em_atendimento'");
-    expect(activeEncounterSource).toContain('export function historicalEncounterIsReadOnly');
-    expect(activeEncounterSource).toContain('return true;');
+    expect(activeEncounterSource).toContain('professionalIdOf(appointment) === professionalId');
+    expect(activeEncounterSource).toContain('return matches.length === 1 ? matches[0] : null;');
   });
 
   it('does not replace or bypass the #394 Encounter Record workflow', () => {
