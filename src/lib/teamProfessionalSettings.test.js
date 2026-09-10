@@ -14,13 +14,15 @@ describe('multiprofessional team settings', () => {
     expect(team).toContain('Também atua clinicamente');
   });
 
-  it('models the initial professional catalog without making psychiatry a profession', () => {
+  it('models the initial professional catalog without making psychiatry or nursing a profession', () => {
     expect(identity).toContain("'fisioterapeuta'");
     expect(identity).toContain("'medico'");
     expect(identity).toContain("'psicologo'");
     expect(identity).toContain("'quiropraxista'");
     expect(identity).toContain("specialtyPlaceholder: 'Ex.: Psiquiatria'");
     expect(identity).not.toContain("ProfessionalType = 'psiquiatra'");
+    expect(identity).not.toMatch(/ProfessionalType[^\n]*enfermeir/i);
+    expect(identity).not.toContain('COREN');
   });
 
   it('keeps clinical capability grants explicit and server-controlled', () => {
@@ -29,15 +31,22 @@ describe('multiprofessional team settings', () => {
       'clinical.timeline.read',
       'clinical.evolution.write',
       'clinical.assessment.apply',
+      'clinical.instrument.apply',
       'clinical.body_map',
       'clinical.documents',
     ]) {
       expect(identity).toContain(capability);
       expect(edge).toContain(capability);
     }
+    expect(identity).toContain("label: 'Aplicar instrumentos clínicos'");
     expect(edge).toContain(".from('professional_capabilities')");
     expect(edge).toContain("onConflict: 'professional_id,capability_key'");
     expect(edge).not.toContain("onConflict: 'clinic_id,professional_id,capability_key'");
+  });
+
+  it('keeps clinical.instrument.apply explicitly off in every profession default', () => {
+    expect(identity).toContain("(item) => item.key !== 'clinical.instrument.apply'");
+    expect(identity).toContain('DEFAULT_BASE_CLINICAL_CAPABILITIES');
   });
 
   it('lets the owner receive clinical identity without changing owner role', () => {

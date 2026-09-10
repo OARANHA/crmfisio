@@ -11,6 +11,7 @@ on:
       - 'src/lib/clinicalEncounterPersistenceBoundary.test.js'
       - 'src/lib/repository.ts'
       - 'supabase-migrations/20260910_clinical_encounter_record_foundation.sql'
+      - 'supabase-migrations/20260910_clinical_instrument_encounter_authorization.sql'
       - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql'
       - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql'
       - 'tests/sql/clinical_encounter_record_*.sql'

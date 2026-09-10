@@ -36,6 +36,7 @@ const managedClinicalCapabilities = [
   'clinical.timeline.read',
   'clinical.evolution.write',
   'clinical.assessment.apply',
+  'clinical.instrument.apply',
   'clinical.body_map',
   'clinical.documents',
 ] as const;

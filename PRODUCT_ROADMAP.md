@@ -24,6 +24,12 @@ ENGINE != AUTHORIZATION != RELEVANCE
 
 A engine implementa o instrumento; capability/boundaries definem autorização; profissão, especialidade, protocolo/configuração e contexto do Encounter orientam disponibilidade/relevância/apresentação. Nenhuma dessas camadas concede silenciosamente outra.
 
+Para exposição multiprofissional, preservar adicionalmente:
+
+```text
+Nexus engine registry membership != multiprofessional clinical exposure
+```
+
 ---
 
 ## FOUNDATION DONE
@@ -45,7 +51,7 @@ Estas foundations não devem ser reabertas sem evidência concreta de regressão
 - o **Nexus médico avançado** mantém os boundaries C-01–C-06 atuais e `nexus.*` fail-closed;
 - entitlement + capability + identidade médica válida + relação assistencial + autorização server-side continuam sendo exigências onde o boundary Nexus atual as define;
 - especialidade informa relevância, não concede autorização;
-- o fato de PHQ-9/GAD-7 hoje reutilizarem implementação/scoring do subsistema Nexus não transforma esses instrumentos em atos universalmente médico-only;
+- o fato de PHQ-9/GAD-7 reutilizarem implementação/scoring do subsistema Nexus não transforma esses instrumentos em atos universalmente médico-only;
 - não flexibilizar C-06 nem alterar o significado atual de `nexus.eem` para resolver multiprofissionalidade.
 
 ### Fluxo clínico #390–#396
@@ -60,11 +66,29 @@ Estas foundations não devem ser reabertas sem evidência concreta de regressão
 
 O Encounter Record é a unidade editável do novo atendimento. O profissional registra motivo/demandas, HDA/história atual, achados/exame, avaliação clínica/problemas, plano/conduta e observações uma única vez. Após confirmação humana, o registro gera determinísticamente a Evolution oficial e o appointment é finalizado.
 
+### Clinical Instrument Authorization Foundation (#399)
+
+Implementada no repositório, com rollout de migration ainda pendente em produção.
+
+A foundation entrega:
+
+- `clinical.instrument.apply` como capability neutra explícita e sem auto-grant;
+- `clinical_instrument_catalog` como allowlist multiprofissional controlada, inicialmente somente `phq9` e `gad7`;
+- referência técnica dos itens do catálogo aos contratos versionados da engine Nexus, sem duplicar perguntas, validação ou scoring;
+- `clinic_clinical_instrument_settings` com default conservador `false`;
+- `can_apply_clinical_instrument_in_encounter(...)` como primeiro boundary contextual, exigindo `appointments.professional_id = auth.uid()` e status `em_atendimento`;
+- owner/admin sujeitos às mesmas boundaries clínicas, sem bypass;
+- helper base não executável pelo browser.
+
+Uma futura escala presente em `nexus_result_contracts` não é automaticamente exposta no catálogo clínico neutro.
+
+A #399 **não** implementa administração assistida, persistência multiprofissional nova, UI PHQ/GAD nem entrega remota.
+
 ### Assessment Engine
 
 A foundation de Assessment permanece multiprofissional e reutilizável para avaliações estruturadas. Ela serve como referência arquitetural de templates/versionamento/autoria/lifecycle, mas **não deve receber uma segunda implementação de PHQ-9/GAD-7 apenas para contornar o boundary Nexus atual**.
 
-Preservar catálogo/versão/scoring validados existentes de PHQ-9/GAD-7 enquanto a futura arquitetura de fachada/persistência for decidida.
+Preservar definição/versão/scoring validados existentes de PHQ-9/GAD-7 na engine canônica. O catálogo neutro #399 aponta para essa engine em vez de duplicá-la.
 
 ### Finalização clínica × financeiro
 
@@ -92,6 +116,7 @@ Antes de ampliar o piloto:
 - registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
 - atualizar/versionar o verifier antigo #388 cuja assertion sobre ausência da RPC #389 ficou obsoleta;
 - fazer smoke visual/uso real do Consultório/Gestão #396;
+- aplicar/verificar a migration #399 em produção somente após aprovação/merge explícitos;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
 
 ### Validação UX
@@ -128,36 +153,39 @@ Mostrar somente o necessário ao atendimento atual, como particular/pacote e est
 
 Instrumentos como PHQ-9/GAD-7 são potencialmente multiprofissionais conforme finalidade clínica, protocolo/configuração e contexto. Exemplos de contextos relevantes incluem Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental, Enfermagem em APS/Saúde da Família e outros profissionais quando houver indicação/protocolo apropriado.
 
-Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**.
+Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**. Enfermagem ainda não foi adicionada à identidade profissional suportada pelo runtime nesta slice.
 
-A sequência futura deste eixo é canônica e permanece totalmente **não implementada**:
+Estado canônico deste eixo:
 
 ```text
-1. Clinical Instrument Authorization Foundation
-2. Clinician-Assisted Administration
-3. Encounter Instrument UX
-4. Consultório V5 integration/polish
+[x] Clinical Instrument Authorization Foundation (#399)
+[ ] Clinician-Assisted Administration
+[ ] Encounter Instrument UX
+[ ] Consultório V5 integration/polish
 ```
 
-#### 3.1 Clinical Instrument Authorization Foundation
+A foundation #399 está implementada no repositório, mas sua migration ainda não foi aplicada em produção. Nenhuma administração de PHQ/GAD, persistência multiprofissional nova ou entrega remota foi implementada.
 
-Criar futuramente uma autoridade clínica neutra para aplicação de instrumentos, separada do namespace `nexus.*`.
+#### 3.1 Clinical Instrument Authorization Foundation — entregue no repositório
 
-Requisitos de arquitetura:
+A autoridade clínica neutra e o primeiro boundary contextual foram implementados separadamente do namespace `nexus.*`.
 
-- não flexibilizar C-01…C-06;
-- não conceder `nexus.*` apenas para aplicação de PHQ-9/GAD-7;
-- manter profissão/especialidade como identidade/relevância, nunca grant;
-- tratar protocolo/configuração da clínica como disponibilidade institucional;
-- manter capability como autorização efetiva;
-- manter contexto do Encounter como prioridade/apresentação;
-- considerar entitlement comercial separadamente da autorização clínica.
+Contrato preservado:
 
-Esta etapa de roadmap **não cria `clinical.instrument.apply` nem altera a capability matrix atual**.
+- C-01…C-06 intactos;
+- nenhum `nexus.*` concedido apenas para aplicação de PHQ-9/GAD-7;
+- profissão/especialidade continuam identidade/relevância, nunca grant;
+- `clinical_instrument_catalog` controla exposição multiprofissional explícita e não infere exposição do registry Nexus;
+- configuração da clínica controla disponibilidade institucional via `clinic_clinical_instrument_settings`;
+- `clinical.instrument.apply` controla autorização base;
+- Apply in Encounter exige profissional atribuído + `em_atendimento`;
+- entitlement comercial continua conceito separado da autorização clínica.
+
+A engine Nexus permanece a fonte técnica de definição/versionamento/scoring de PHQ-9/GAD-7. O catálogo neutro referencia esses contratos; não os reimplementa.
 
 #### 3.2 Clinician-Assisted Administration
 
-Permitir futuramente a administração presencial do mesmo instrumento durante o atendimento, sem depender de celular/WhatsApp.
+Próxima slice deste eixo: permitir a administração presencial do mesmo instrumento durante o atendimento, sem depender de celular/WhatsApp.
 
 Contrato de produto esperado:
 
@@ -168,11 +196,12 @@ Contrato de produto esperado:
 - mesmo scoring validado do self-assessment;
 - provenance diferenciada, conceitualmente `patient_self` ou `clinician_assisted`;
 - autoria do ato profissional preservada;
-- resultado não equivale a diagnóstico automático.
+- resultado não equivale a diagnóstico automático;
+- nenhuma flexibilização da persistência doctor-only Nexus apenas para obter multiprofissionalidade; se necessário, persistência clínica neutra será uma slice própria.
 
 #### 3.3 Encounter Instrument UX
 
-Expor no atendimento o mesmo instrumento por dois caminhos:
+Depois da operação canônica existir, expor no atendimento o instrumento com UX adequada. A direção continua:
 
 ```text
 PHQ-9
@@ -181,6 +210,8 @@ PHQ-9
 GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
+
+`Enviar ao paciente` ainda não possui boundary nesta roadmap slice implementada e não deve herdar automaticamente o requisito de appointment ativo do Apply in Encounter.
 
 O modo de aplicação não muda identidade, versão nem scoring do instrumento. A UI deve diferenciar autorização de relevância e não deve duplicar PHQ-9/GAD-7 dentro do Assessment Engine.
 
