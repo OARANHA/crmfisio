@@ -1,6 +1,6 @@
 # Clinical Encounter Record
 
-Status: canonical foundation for Mission #394. This document records the pre-implementation audit, domain contract, rollout and future production runbook. The implementation must preserve every existing clinical and financial boundary cited below.
+Status: canonical foundation for Mission #394, validated in PostgreSQL 16 before merge. This document records the pre-implementation audit, domain contract, implementation invariants, verification evidence, rollout constraints and future production runbook. The implementation must preserve every existing clinical and financial boundary cited below.
 
 ## Purpose
 
@@ -130,11 +130,13 @@ A draft can be created or changed only when all current conditions are true:
 
 - authenticated actor has an active profile in the active clinic;
 - current clinical identity is valid;
-- actor owns the appointment as the exact professional;
+- actor owns the appointment as the exact professional through `appointments.professional_id`;
 - appointment belongs to the same clinic and patient and is `em_atendimento`;
 - `clinical.attend` is allowed;
 - `clinical.evolution.write` is allowed;
 - no canonical legacy Evolution already exists for that appointment before a new record is created.
+
+The #394 authorization boundary is fail-closed: boolean authorization helpers are accepted only when they return `TRUE`; `NULL` never authorizes. `fisio_id` remains a compatibility field elsewhere in the platform but is not an authorization authority for #394.
 
 Draft writes are RPC-only for the browser. Authenticated direct INSERT/UPDATE/DELETE is not part of the contract.
 
@@ -174,13 +176,15 @@ Observações
 <additional_notes>
 ```
 
-Empty sections are omitted. No LLM participates in canonical materialization. The resulting Evolution preserves the existing exact clinic, patient, professional, session/appointment, date, text and authorship contract.
+Empty sections are omitted. No LLM participates in canonical materialization. The resulting Evolution preserves the existing exact clinic, patient, professional and session/appointment linkage.
+
+`physiotherapy_evolutions.created_at` represents the real database creation time and uses the table default (`now()`); it is not fabricated from the appointment date or a synthetic UTC hour. Clinical session temporality remains on `Appointment.data`, `Appointment.inicio` and `Appointment.fim`.
 
 ## Idempotency and encounter-level serialization
 
-Finalization must be safe for double-click/retry. A completed logical finalization returns the already-finalized record instead of creating a second Evolution or repeating the appointment transition.
+Finalization is safe for double-click/retry. A completed logical finalization returns the already-finalized record instead of creating a second Evolution or repeating the appointment transition.
 
-#394 also serializes encounter-record commands and linked Evolution insertion at the appointment level so that a concurrent legacy insertion cannot silently race the new transaction. The implementation must fail closed when two competing sources of truth are detected.
+#394 serializes Encounter Record commands and linked Evolution insertion at the appointment level using a shared advisory lock. A concurrent legacy Evolution insertion is allowed to finish first; the #394 finalizer then observes the competing source, fails explicitly with `clinical_encounter_evolution_conflict`, preserves the draft/appointment, and can be retried safely after the conflict is resolved. No deadlock and no duplicate active Evolution are accepted.
 
 ## Compatibility with existing Evolutions
 
@@ -190,11 +194,13 @@ Rollout does not fabricate Encounter Records for old Evolutions and performs no 
 - Active appointment with no Evolution: the Encounter Record can become the source of the final clinical act.
 - Draft Encounter Record followed by an external/legacy Evolution for the same session: fail closed as a recoverable conflict; do not choose a winner and do not duplicate either artifact.
 
+The PostgreSQL 16 compatibility fixture uses a #394-owned legacy appointment (`43000000-0000-0000-0000-000000000014`) at `05:30–06:00`, with one pre-existing Evolution created while the appointment is still `em_atendimento` and no Encounter Record. Case 23 proves that a new Encounter Record is refused, the existing legacy finalization path still finalizes the appointment, exactly one Evolution remains and no Encounter Record is backfilled. This avoids depending on or mutating the reused #388 appointment fixture.
+
 ## Reading and RLS
 
 The Encounter Record does not invent a new clinical-read philosophy. Tenant isolation is mandatory and SELECT aligns with the existing patient clinical-record access helper used by clinical timeline/Evolution reading. RLS is defense-in-depth; commercial plan/entitlement does not grant clinical authority.
 
-The verifier must cover author, authorized clinical reader, unauthorized other professional, other tenant, anonymous actor, inactive profile and non-clinical administrative actor under the existing boundaries.
+The verifier covers author, unauthorized other professional, other tenant, anonymous actor, inactive profile and non-clinical administrative actor under the existing boundaries. Direct browser writes to `clinical_encounter_records` remain denied.
 
 ## Relationship with Assessment
 
@@ -211,6 +217,10 @@ Encounter Record finalization performs no checkout, payment, receivable or finan
 - expected package-coverage failures create the current financial exception and do not roll back clinical finalization;
 - unexpected financial integrity errors propagate and roll back the entire transaction.
 
+The #394 PostgreSQL matrix proves `package_exhausted` end to end: the appointment and Encounter Record remain finalized, one Evolution survives and the financial exception is recorded. The existing Financial Clinical Finalization gate remains responsible for the complete expected coverage taxonomy, including `package_expired` and `package_not_eligible`.
+
+An injected unexpected financial-integrity exception proves full atomic rollback: Appointment remains `em_atendimento`, Encounter Record remains `draft`, and the newly materialized Evolution does not survive.
+
 ## Minimal UX contract
 
 For an own active appointment without a legacy Evolution, the universal Evolution textarea is replaced by one consultation record with flexible fields for reason, history, findings, assessment, plan and optional notes. The clinician may fill them in any order and may leave irrelevant sections empty.
@@ -218,6 +228,37 @@ For an own active appointment without a legacy Evolution, the universal Evolutio
 Persistence states are truthful: `Não salvo`, `Salvando...`, `Rascunho salvo`, `Conflito de versão`, or `Erro ao salvar`. No generic autosave is introduced.
 
 A saved valid draft offers `Revisar e concluir`. Review may show the deterministic final text but does not create a second editable Evolution field. Human confirmation makes clear that the record becomes definitive, the official Evolution is generated and the appointment is finalized.
+
+## PostgreSQL 16 verification evidence
+
+The implementation head immediately before this documentation-only finalization passed the full isolated PostgreSQL 16 gate with **34/34 behavior cases** and the final structural verifier.
+
+Verified invariants include:
+
+- one Encounter Record per appointment and immutable server-derived linkage;
+- tenant/professional/inactive-profile/capability denial;
+- stale revision rejection without overwrite;
+- finalized record immutability and browser hard-delete denial;
+- deterministic materialization with empty sections omitted and no invented content;
+- exact generated Evolution clinic/patient/professional/session linkage;
+- Evolution present before appointment reaches `finalizado`;
+- idempotent double finalize/retry;
+- dedicated legacy Evolution compatibility (case 23);
+- competing Evolution fail-closed behavior (case 24);
+- expected package exhaustion preserving clinical finalization plus financial exception (case 25);
+- unexpected financial integrity error rolling back Appointment + Encounter Record + Evolution (cases 26 and 32);
+- tenant/RLS/anonymous/non-clinical read isolation and finalized-history readability (cases 27–28);
+- fail-closed `NULL` identity/capability helpers (case 29);
+- `professional_id` as the sole #394 appointment identity authority (case 30);
+- real Evolution creation timestamp separated from appointment clinical time (case 31);
+- repeated successful finalize/double-click idempotency (case 33);
+- direct browser mutation of finalized Encounter Record denied (case 34).
+
+The migration is replayed twice in the harness. The verifier requires exactly one `trg_00_lock_linked_evolution_encounter` and one `trg_guard_clinical_encounter_record_integrity`, preventing replay-created trigger duplication.
+
+The harness temporarily grants only the reduced-fixture access needed to inspect Evolution rows and call the pure materializer oracle. Both temporary grants are revoked before the concurrency and final verifier stages. The verifier explicitly rejects leaked `authenticated EXECUTE` on `materialize_clinical_encounter_evolution(...)`. These harness grants are not part of the production migration.
+
+After this documentation commit, **all CI workflows must pass again on the resulting final PR head before the PR may be marked Ready for Review**. The final head SHA and complete workflow evidence belong in the PR evidence because embedding the final SHA in this tracked file would itself create a new SHA.
 
 ## Future production runbook — document only, do not execute in #394
 
