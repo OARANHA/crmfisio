@@ -1,369 +1,153 @@
 # MedicsPro — Assessment Engine
 
+**Status em 2026-09-10:** foundation estruturada já entregue e integrada ao fluxo clínico. Este documento orienta evolução da engine; não é backlog para recriar uma segunda plataforma de avaliações.
+
 ## Objective
 
-Build a reusable clinical assessment platform that supports MedicsPro-provided templates and clinic/professional-created templates without fragmenting the clinical record into specialty-specific screens.
+Manter uma plataforma reutilizável de avaliações clínicas que suporte modelos fornecidos pelo MedicsPro e modelos de clínica/profissional sem fragmentar o prontuário em telas independentes por especialidade.
 
-The engine must improve clinician speed, longitudinal comparison, clinical traceability and future extensibility while preserving tenant isolation, authorship and history.
-
-This document is architectural guidance. It does not authorize destructive migration of existing clinical data.
-
----
+A engine deve melhorar velocidade, comparação longitudinal e rastreabilidade, preservando tenant isolation, autoria, versionamento e histórico.
 
 ## Product model
 
-The canonical product concepts are:
+Conceitos canônicos:
 
-1. **Avaliações padrão** — curated templates provided by MedicsPro.
-2. **Minhas avaliações** — templates created by a clinic or, where permitted, a professional.
-3. **Avaliação preenchida** — a clinical record created from a specific template version for a patient.
-4. **Componentes clínicos** — reusable structured controls such as text, number, scale, choice, upload and body map.
-5. **Histórico longitudinal** — patient timeline where assessments, evolutions and related clinical events can be compared over time.
+1. **Avaliações padrão** — templates curados/providos pelo MedicsPro.
+2. **Minhas avaliações** — templates criados/duplicados pela clínica ou, quando autorizado, profissional.
+3. **Avaliação preenchida** — registro clínico ligado a uma versão específica de template.
+4. **Componentes clínicos** — controles reutilizáveis como texto, escala, escolha, medida, attachment reference e body map.
+5. **Histórico longitudinal** — leitura histórica de avaliações/evoluções/eventos clínicos autorizados.
 
-A standard template may be duplicated into a clinic-owned copy and customized. The original standard template is never silently modified by a tenant.
+Uma clínica pode duplicar um modelo padrão e personalizar a cópia. Não mutar silenciosamente o template canônico da plataforma.
 
----
+## Current canonical state
 
-## Current state and migration constraint
+A foundation atual já possui:
 
-The existing clinical workspace currently persists assessments in `physiotherapy_evaluations` with a fixed shape composed of `anamnese`, `objetivos` and `plano_terapeutico`.
+- templates de assessment;
+- versões imutáveis/publicadas;
+- assessments com lifecycle draft/finalized;
+- autoria/contexto de clínica, paciente, profissional e appointment quando aplicável;
+- Assessment Runner contextual ao Encounter;
+- histórico de avaliações;
+- componentes estruturados, incluindo body map;
+- boundaries server-side e testes de autorização/lifecycle.
 
-That table remains a valid legacy/canonical clinical source until an explicit migration path is implemented and verified.
+Portanto:
 
-Do not create a second patient assessment UI that ignores the existing `ClinicalWorkspace`. The new engine should progressively replace the fixed assessment tab behind the same clinical workflow.
+- não criar outra “anamnese engine” paralela;
+- não voltar a `ClinicalWorkspace` como única arquitetura atual;
+- não tratar a existência de campos físicos `physiotherapy_*` como restrição a fisioterapia;
+- não migrar/destruir históricos apenas por nomenclatura legada.
 
-The transition must be additive first:
+## Relationship with Encounter Record
 
-1. introduce assessment templates and versioned assessment records;
-2. keep existing physiotherapy assessments readable;
-3. optionally map legacy records into a read-only legacy renderer or controlled migration;
-4. only deprecate the old write path after production verification;
-5. never silently discard or rewrite historical clinical records.
+Assessment e Encounter Record são artefatos complementares.
 
----
+O Encounter Record é a unidade editável da consulta atual e registra, uma única vez, motivo/demandas, HDA, achados/exame, avaliação/problemas, plano/conduta e observações.
 
-## Canonical data model direction
+Assessment é **opcional e estruturado**, usado quando um instrumento/modelo agrega valor clínico.
 
-Prefer a small number of stable relational tables with structured JSON only where schema flexibility is genuinely useful.
+Não copiar automaticamente todas as respostas de Assessment para o Encounter Record. Se houver futura ação de incorporar achado, ela deve ser explícita, auditável e sem duplicação.
 
-### `assessment_templates`
+## Template/version invariants
 
-Represents the identity of a reusable assessment model.
+- template publicado usado historicamente não muda o significado do registro antigo;
+- final assessment preserva a versão aplicada;
+- edição gera versão nova quando necessário;
+- tenant não modifica template platform-owned diretamente;
+- histórico não depende do template atual continuar igual.
 
-Minimum conceptual fields:
+## Componentes clínicos
 
-- `id`;
-- `clinic_id` nullable only for MedicsPro-owned standard templates;
-- `owner_type`: `platform` or `clinic`;
-- `name`;
-- `description`;
-- `specialty` or applicability metadata;
-- `status`: draft/active/archived;
-- `created_by`;
-- `created_at`;
-- `updated_at`.
-
-A clinic must never be able to mutate a platform-owned template.
-
-### `assessment_template_versions`
-
-Published assessments must point to an immutable template version so later template edits do not change the meaning of historical records.
-
-Conceptual fields:
-
-- `id`;
-- `template_id`;
-- `version`;
-- `schema` JSONB containing ordered sections/components and validation metadata;
-- `published_at`;
-- `published_by`.
-
-Once used by a finalized assessment, a version is immutable.
-
-### `clinical_assessments`
-
-Represents one assessment performed for one patient.
-
-Conceptual fields:
-
-- `id`;
-- `clinic_id`;
-- `patient_id`;
-- `professional_id`;
-- `appointment_id` nullable;
-- `template_id`;
-- `template_version_id`;
-- `status`: draft/finalized/amended;
-- `answers` JSONB;
-- `started_at`;
-- `finalized_at`;
-- `created_at`;
-- `updated_at`.
-
-Finalized records must preserve authorship, timestamp and template version.
-
-Corrections after finalization should use an amendment mechanism rather than destructive editing.
-
-### `assessment_body_points`
-
-Body-map observations deserve structured storage rather than being embedded only as pixels or free text.
-
-Conceptual fields:
-
-- `id`;
-- `clinic_id`;
-- `assessment_id`;
-- `component_key`;
-- `view`: front/back/left/right;
-- normalized `x` and `y` coordinates;
-- optional anatomical region;
-- laterality when applicable;
-- intensity, normally 0–10 when representing pain;
-- symptom/type;
-- note;
-- created_at.
-
-Normalized coordinates must be independent of the rendered image size.
-
----
-
-## Component schema
-
-The first useful version should support only components that cover most clinical forms:
+A engine deve continuar favorecendo poucos componentes estáveis que cobrem a maior parte dos formulários:
 
 - heading/section;
-- short text;
-- long text;
-- integer/decimal number;
-- scale, including configurable 0–10 EVA/NRS;
-- single choice;
-- multiple choice;
-- yes/no;
-- date;
+- texto curto/longo;
+- número/medida;
+- escala;
+- escolha simples/múltipla;
+- sim/não/checkbox;
+- data;
 - body map;
 - attachment reference;
-- informational text.
+- texto informativo.
 
-Avoid a generic low-code platform in V1. Complexity must pay rent.
+Evitar transformar a engine em low-code genérico sem necessidade clínica.
 
-Each component needs at minimum a stable key, label, type, required flag, help text where useful and validation/configuration appropriate to its type.
+## Body map
 
----
+Body map é dado clínico estruturado, não uma imagem decorativa.
 
-## Body map V1
+Quando aplicável, preservar:
 
-The body map is a first-class clinical component.
+- view/lado corporal;
+- coordenadas normalizadas/região;
+- lateralidade;
+- intensidade;
+- tipo de sintoma;
+- nota;
+- autor;
+- timestamp;
+- assessment/contexto associado.
 
-V1 interaction:
+A evolução futura de maior valor é comparação longitudinal, mantendo ausência como ausência e não inventando valores intermediários.
 
-1. clinician chooses front, back, left or right view;
-2. clicks/taps a body location;
-3. a compact editor opens;
-4. clinician can record intensity 0–10, symptom/type and note;
-5. the point is saved in normalized coordinates;
-6. points remain visible on the assessment;
-7. points can be edited or removed while the assessment is a draft.
+## Authorization and ownership
 
-V1 must be usable with mouse and touch.
+Assessment segue as mesmas disciplinas gerais do runtime:
 
-Do not infer diagnoses from body-map points.
+- tenant isolation;
+- identidade profissional válida quando o ato exigir;
+- capability/autorização server-side;
+- autoria preservada;
+- browser visibility não é security boundary;
+- entitlement comercial não concede autoridade clínica.
 
-### Longitudinal comparison
+`professional_id` é a referência clínica canônica. `fisio_id` não deve ganhar novos consumidores de autorização.
 
-The data model must allow future comparison of the same assessment/component over time, including changes in pain intensity and location.
+## Draft / finalized
 
-This comparison is product differentiation, but it is not required to block V1 rollout.
+- draft pode ser editável conforme autorização e contexto;
+- finalized é histórico e não deve ser sobrescrito silenciosamente;
+- correção posterior exige amendment/version semantics quando implementada;
+- estados de UI devem refletir persistência real, nunca apenas idle local.
 
----
+## Instrument Delivery — próxima evolução específica
 
-## UX direction
+Para instrumentos como PHQ-9/GAD-7, a próxima slice recomendada não é outra engine. É um **Instrument Delivery** unificado sobre contratos existentes, com dois caminhos claros:
 
-The clinician should never feel as if they are configuring a database schema while treating a patient.
+- **Aplicar agora**;
+- **Enviar ao paciente**.
 
-### During an appointment
+O resultado precisa retornar ao contexto clínico com autoria, versão, provenance e lifecycle apropriados.
 
-The assessment experience should live inside the clinical workspace / atendimento em andamento context.
+No caso Nexus, preservar também o boundary médico-only/fail-closed. Instrument Delivery não pode virar atalho de autorização.
 
-Recommended structure:
+## Historical data
 
-- patient and appointment context remains visible;
-- quick access to last assessment and last evolution;
-- selector for **Avaliações padrão** and **Minhas avaliações**;
-- recently/frequently used templates surfaced first;
-- assessment opens inline or in a focused workspace, not as a disconnected CRUD screen;
-- autosave draft where safe;
-- explicit finalization action;
-- clear feedback that the finalized assessment entered the medical record.
+Não fazer backfill fictício ou reinterpretação silenciosa de registros clínicos antigos.
 
-### Template administration
+Tabelas/formatos históricos continuam legíveis conforme os contracts existentes até haver uma migration explícita, segura e verificada. Renomear fisicamente tabelas não é requisito para evoluir a UX.
 
-Template creation belongs in clinical/settings administration, not mixed into the patient record.
+## Product principles
 
-The builder should use sections and ordered fields, with preview and duplication, but V1 should not become a full drag-and-drop low-code product unless real users prove that need.
+- um único prontuário longitudinal multiprofissional;
+- especialidade compõe conteúdo/ferramentas, não cria outro sistema;
+- modelos padrão + modelos próprios usam a mesma engine;
+- histórico e autoria valem mais que flexibilidade de formulário sem governança;
+- UI profissional usa linguagem clínica, não nomes internos de capability/entitlement;
+- não criar botão/fluxo de assessment sem backend/lifecycle real.
 
----
+## Deliberately deferred
 
-## Permissions
+A foundation atual não significa que todo conteúdo clínico esteja pronto. Continuam evoluções separadas:
 
-UI visibility is not authorization.
+- curadoria adicional de templates por especialidade;
+- Instrument Delivery unificado;
+- melhoria longitudinal/comparações;
+- novos componentes somente quando necessários;
+- correction/amendment quando o domínio exigir;
+- integração explícita de achados no Encounter, se justificada.
 
-Initial policy direction:
-
-- `fisio`: read permitted clinical records and create/finalize assessments within authorized clinic scope;
-- `owner`/`admin`: may manage clinic assessment templates where product policy allows, but administrative role alone must not imply authorship/signature of clinical acts;
-- `recep`: no access to clinical assessment contents;
-- `financeiro`: no access to clinical assessment contents;
-- `platform_admin`: no implicit tenant clinical-data access.
-
-Exact RLS and RPC rules must be implemented and tested server-side before the engine is considered production ready.
-
-Platform standard-template management must be a separate platform operation from tenant clinical-data access.
-
----
-
-## RLS / integrity requirements
-
-Treat any cross-clinic access as P0.
-
-Before production use, enforce at minimum:
-
-- tenant isolation on template ownership where applicable;
-- patient and professional belong to the same authorized clinic as the assessment;
-- platform templates are readable to entitled tenants but not tenant-mutable;
-- clinic templates cannot be read or changed by another tenant;
-- finalized assessments cannot be silently overwritten;
-- assessment versions referenced by historical records cannot be deleted destructively;
-- body points inherit the assessment tenant and cannot be attached cross-tenant;
-- authorization cannot depend only on frontend role checks.
-
-Prefer server-side functions/constraints for integrity rules that span multiple tables.
-
----
-
-## SaaS entitlement
-
-Availability of the assessment engine and premium components should eventually be controlled separately from clinic RBAC.
-
-Conceptually:
-
-`platform entitlement -> clinic feature configuration -> user role/permission`
-
-Examples:
-
-- a plan may include standard assessments but not custom template building;
-- a premium plan may enable custom templates, body-map comparison or advanced reports;
-- the clinic owner may disable a feature available in the plan;
-- individual users still require an authorized clinical role.
-
-Do not encode plan names directly into clinical components.
-
----
-
-## V1 — 80/20 delivery
-
-The first production-usable slice should be deliberately small:
-
-1. list **Avaliações padrão**;
-2. list **Minhas avaliações**;
-3. create/rename/archive a clinic template;
-4. duplicate a standard template into a clinic template;
-5. builder with the core component types;
-6. fill an assessment from the patient clinical workspace;
-7. draft save;
-8. finalization with professional/timestamp/version;
-9. body map with points + 0–10 intensity + note;
-10. show finalized assessments in patient clinical history.
-
-Do not block the pilot on advanced scoring formulas, AI, complex branching logic or specialty marketplaces.
-
----
-
-## V1 acceptance criteria
-
-A V1 is not complete merely because the screens render.
-
-Minimum acceptance criteria:
-
-- Clinic A cannot read or mutate Clinic B templates or assessments.
-- Reception and finance roles cannot read clinical assessment payloads.
-- A standard MedicsPro template cannot be modified by a tenant.
-- Duplicating a standard template produces an independent clinic-owned template.
-- A historical finalized assessment keeps the exact template version used at finalization.
-- A professional can create a draft, leave the screen, return and continue without data loss.
-- Finalization records professional identity and timestamp.
-- A finalized record cannot be silently edited.
-- Body points survive responsive layout changes because coordinates are normalized.
-- Existing `physiotherapy_evaluations` remain readable during transition.
-- The common flow can be completed comfortably between appointments.
-
----
-
-## Future opportunities after pilot evidence
-
-Only after the core flow is proven with clinicians:
-
-- compare current vs previous assessment;
-- visual trend of pain intensity/regions;
-- validated clinical scales with scoring rules;
-- specialty template packs;
-- clinic template sharing/import-export with safeguards;
-- structured outcome reports;
-- voice-assisted draft capture;
-- AI summarization and completeness assistance with human review;
-- patient pre-assessment forms with explicit consent and clinician validation.
-
-AI must never silently finalize or alter clinical records.
-
----
-
-## Implementation sequence
-
-Recommended sequence:
-
-### Phase A — foundation
-
-- define migration and RLS for templates, immutable versions and assessments;
-- add domain types/services;
-- add tests for tenant and role boundaries;
-- keep legacy assessment path intact.
-
-### Phase B — standard/custom templates
-
-- minimal template administration;
-- standard vs clinic ownership;
-- duplication and publishing/versioning.
-
-### Phase C — clinical use
-
-- integrate template picker into `ClinicalWorkspace`;
-- render core components;
-- draft/finalize workflow;
-- patient history.
-
-### Phase D — body map
-
-- reusable body-map component;
-- structured body-point persistence;
-- responsive/touch validation.
-
-### Phase E — legacy transition
-
-- controlled display/migration strategy for `physiotherapy_evaluations`;
-- remove legacy write path only after verified parity and rollback planning.
-
----
-
-## Competitive principle
-
-The objective is not to reproduce legacy clinic software menus.
-
-MedicsPro should combine:
-
-- fast clinical documentation;
-- structured longitudinal data;
-- strong privacy and tenant isolation;
-- flexible templates without low-code complexity;
-- a premium, modern interaction model;
-- operational integration with agenda, treatment continuity and finance where clinically appropriate.
-
-The benchmark is not feature count. The benchmark is whether clinicians can document better and faster while clinic operators gain a safer and more coherent system.
+Esses itens evoluem a engine existente; não reabrem sua fundação.
