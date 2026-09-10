@@ -28,10 +28,15 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
 
+# The 410... appointments belong only to the reused #388 schema fixture in this
+# harness; #394 does not assert their dates. Move those synthetic rows away from
+# the #394 test day before enabling agenda-conflict enforcement. The dedicated
+# Financial Clinical Finalization workflow still runs its original fixture intact.
+"${PSQL[@]}" -c "UPDATE public.appointments SET data = current_date - 30 WHERE id::text LIKE '41000000-%'"
+
 # #394 fixture supplies isolated appointments. Load it before the agenda-conflict
-# trigger so test data is not rejected merely because the reduced #388 fixture
-# already occupies overlapping synthetic clock slots. The real conflict trigger
-# is installed immediately afterwards and remains active for every behavior case.
+# trigger so setup data itself is not rejected; the real trigger is installed
+# immediately afterwards and remains active for every behavior case.
 "${PSQL[@]}" -f tests/sql/clinical_encounter_record_fixture.sql
 "${PSQL[@]}" -f supabase-migrations/20260901_appointment_conflicts.sql
 
