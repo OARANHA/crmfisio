@@ -27,11 +27,13 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
-"${PSQL[@]}" -f supabase-migrations/20260901_appointment_conflicts.sql
 
-# #394 fixture restores production-shape fields omitted by reduced fixtures and
-# supplies isolated appointments for the 34 behavior cases.
+# #394 fixture supplies isolated appointments. Load it before the agenda-conflict
+# trigger so test data is not rejected merely because the reduced #388 fixture
+# already occupies overlapping synthetic clock slots. The real conflict trigger
+# is installed immediately afterwards and remains active for every behavior case.
 "${PSQL[@]}" -f tests/sql/clinical_encounter_record_fixture.sql
+"${PSQL[@]}" -f supabase-migrations/20260901_appointment_conflicts.sql
 
 # Replay twice: table/index IF NOT EXISTS + policy/trigger rebuild + CREATE OR
 # REPLACE functions must remain installation-safe and must not duplicate triggers.
