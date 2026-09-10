@@ -24,29 +24,37 @@ As foundations abaixo estão incorporadas ao estado canônico e não devem ser �
 - Encounter Clinical Record (#394);
 - production-safe verifier (#395);
 - Consultório / Gestão Privacy Shell (#396);
+- Clinical Instrument Authorization Foundation (#399), com rollout de produção e smoke concluídos;
+- Encounter Temporal Start Boundary (#400), com migration/verifier/smoke concluídos;
 - finalização clínica × coverage exception (#388/#389).
 
 ## 0. Fechar evidências operacionais curtas
 
 Antes de ampliar piloto:
 
-1. registrar a inspeção read-only pós-finalização do smoke #394, se ainda não houver evidência posterior;
-2. executar/documentar smoke real `CHARGE` e `WAIVE` do #389, se pendente;
-3. atualizar/versionar o verifier antigo #388 cuja assertion de ausência da RPC #389 ficou obsoleta;
-4. executar smoke visual/uso real do privacy shell #396;
-5. confirmar observabilidade suficiente para diagnosticar falhas de beta.
+1. reparar de forma separada e auditável o appointment future-active histórico `de857836-baa0-476f-bd7b-d6f52df33007`;
+2. registrar a inspeção read-only pós-finalização do smoke #394, se ainda não houver evidência posterior;
+3. executar/documentar smoke real `CHARGE` e `WAIVE` do #389, se pendente;
+4. atualizar/versionar o verifier antigo #388 cuja assertion de ausência da RPC #389 ficou obsoleta;
+5. executar smoke visual/uso real do privacy shell #396;
+6. confirmar observabilidade suficiente para diagnosticar falhas de beta.
 
-### Estado conhecido do #394
+### Estado conhecido de produção
 
-- migration `20260910_clinical_encounter_record_foundation.sql` aplicada em produção em 2026-09-10;
-- verifier production-safe passou com `VERIFY #394 PRODUCTION OK`;
+- migration `20260910_clinical_encounter_record_foundation.sql` (#394) aplicada em produção em 2026-09-10;
+- verifier production-safe #394 passou com `VERIFY #394 PRODUCTION OK`;
+- migration `20260910_clinical_instrument_encounter_authorization.sql` (#399) aplicada; verifier read-only, `admin-team`, frontend e smoke médico alinhados/validados;
+- migration `20260910_encounter_temporal_start_boundary.sql` (#400) aplicada; verifier read-only e smoke real do bug passaram;
+- o future-active histórico permanece fisicamente presente porque #400 não faz saneamento retroativo, mas o smoke provou que ele não autoriza Apply-in-Encounter e que uma nova tentativa futura é bloqueada;
 - Clinical Foundation passou;
 - Clinical Authorization passou;
 - Financial Exception Resolution #389 passou.
 
-**Não reaplicar a migration #394.**
+**Não reaplicar as migrations #394, #399 ou #400.**
 
-Para inspeção do schema instalado, usar `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql`. O arquivo `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` pertence ao harness comportamental de 34 casos e não é verifier direto de produção.
+Para inspeção do schema #394 instalado, usar `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql`. O arquivo `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` pertence ao harness comportamental de 34 casos e não é verifier direto de produção.
+
+O verifier #400 é read-only e valida contrato/guards; ele não deve ser usado como ferramenta de busca ou reparação de rows históricas.
 
 ## 1. Pilotar o ciclo clínico atual
 
@@ -58,6 +66,8 @@ Validar:
 
 - appointment/paciente/profissional corretos;
 - `professional_id` canônico;
+- appointment futuro não consegue entrar em `em_atendimento` por ator normal;
+- same-day continua permitido pelas demais boundaries clínicas;
 - draft persistente e revision/conflito;
 - ausência de segunda Evolution universal;
 - histórico finalizado read-only;
@@ -103,13 +113,29 @@ Resolução:
 
 Falhas financeiras inesperadas de integridade permanecem fail-closed e devem interromper o rollout.
 
-## 4. Próximas slices de produto no piloto
+## 4. Instrumentos clínicos — estado após #399/#400
+
+A foundation de autorização já está em produção. Não reaplicar #399/#400 para começar a próxima slice.
+
+Estado:
+
+```text
+[x] Clinical Instrument Authorization Foundation (#399)
+[x] Encounter temporal defense (#400)
+[ ] Clinician-Assisted Administration
+[ ] Encounter Instrument UX
+[ ] boundary remoto / Enviar ao paciente
+```
+
+`clinical.instrument.apply` não é `nexus.scales`; profissão/especialidade não fazem auto-grant. O próximo trabalho deve reutilizar a engine/versionamento/scoring existentes e criar a menor operação de administração assistida segura, sem relaxar C-01–C-06.
+
+## 5. Próximas slices de produto no piloto
 
 Depois das evidências curtas acima:
 
 1. Encounter UX / physician ergonomics;
 2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
+3. Clinician-Assisted Administration → Encounter Instrument UX;
 4. Prescription V1;
 5. demais documentos médicos conforme evidência;
 6. Finance Configuration (solo/equipe, categorias, parceiro %/fixo com histórico/effective dates);
@@ -118,7 +144,9 @@ Depois das evidências curtas acima:
 
 Cada slice precisa de PR, CI e rollout próprios quando alterar comportamento/schema.
 
-## 5. Critério para ampliar o beta
+Timezone por tenant é follow-up obrigatório antes de expansão para clínicas fora do fuso operacional atual. `current_clinic_operational_date()` deve permanecer a abstração server-side dessa evolução.
+
+## 6. Critério para ampliar o beta
 
 Ampliar apenas quando:
 
@@ -134,6 +162,7 @@ Parar imediatamente diante de:
 
 - cross-tenant leak;
 - capability/identity bypass;
+- início de Encounter futuro por ator normal;
 - histórico clínico mutável indevidamente;
 - duplicate Evolution/financial side effect;
 - perda de finalização ou cobrança por erro inesperado;
