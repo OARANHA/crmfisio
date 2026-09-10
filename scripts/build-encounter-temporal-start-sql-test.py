@@ -1,10 +1,9 @@
 """Emit the disposable PostgreSQL 16 #400 Encounter Temporal Start suite.
 
 The established #399 builder supplies the effective Nexus/clinical authorization
-baseline and neutral instrument foundation. #400 then adds only the appointment
-columns required by the current appointment guards, installs the effective
-appointment mutation/status functions from the canonical authorization migration,
-adds temporal fixtures, replays #400 twice, and runs the new behavior matrix.
+baseline and neutral instrument foundation. It is invoked explicitly in pre-#400
+mode so this dedicated harness still proves the implementation introduced by #400,
+its migration replay, and the 12 temporal cases in the intended sequence.
 """
 from pathlib import Path
 import re
@@ -15,7 +14,11 @@ root = Path(__file__).resolve().parents[1]
 migrations = root / "supabase-migrations"
 
 baseline = subprocess.run(
-    [sys.executable, str(root / "scripts/build-clinical-instrument-encounter-sql-test.py")],
+    [
+        sys.executable,
+        str(root / "scripts/build-clinical-instrument-encounter-sql-test.py"),
+        "--pre-400",
+    ],
     check=True,
     capture_output=True,
     text=True,
