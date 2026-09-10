@@ -6,11 +6,25 @@ identity/capability helpers without changing any Nexus helper, adds only the
 appointment status field required by the contextual act probe, introduces one
 synthetic Nexus-only scale before #399, snapshots Nexus guards/contracts, applies
 the #399 migration twice, and runs the new cases.
+
+By default this builder then installs #400 before executing the #399 38+4 matrix,
+so the #399 workflow proves its authorization contract against the effective
+post-#400 helper stack. The --pre-400 mode exists only for the dedicated #400
+harness, which must retain its own migration-introduction/replay sequencing.
 """
 from pathlib import Path
+import argparse
 import re
 import subprocess
 import sys
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--pre-400",
+    action="store_true",
+    help="Keep the #399 suite on the pre-#400 stack for the dedicated #400 harness baseline.",
+)
+args = parser.parse_args()
 
 root = Path(__file__).resolve().parents[1]
 migrations = root / "supabase-migrations"
@@ -32,6 +46,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS especialidade text;
 """)
 
+
 def effective_function(name: str) -> str:
     pattern = rf"CREATE OR REPLACE FUNCTION public\.{name}\([\s\S]*?\$\$;"
     matches: list[tuple[Path, str]] = []
@@ -46,6 +61,7 @@ def effective_function(name: str) -> str:
     path, sql = matches[-1]
     print(f"-- Effective #399 prerequisite helper: {path.name}")
     return sql
+
 
 print(effective_function("current_user_has_valid_clinical_identity"))
 print(
@@ -130,5 +146,58 @@ FROM public.nexus_result_contracts;
 migration = migrations / "20260910_clinical_instrument_encounter_authorization.sql"
 print(migration.read_text())
 print(migration.read_text())
+
+if not args.pre_400:
+    # Effective-stack regression: install #400 after #399 and only then execute
+    # the unchanged #399 38+4 matrix. This proves the helper actually replaced by
+    # #400 still satisfies every #399 authorization/exposure invariant.
+    print(r"""
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT nullif(current_setting('request.jwt.claim.role', true), '')
+$$;
+
+ALTER TABLE public.appointments
+  ADD COLUMN IF NOT EXISTS data date;
+
+-- The reduced #399 fixture predates appointment.data. Normalize only disposable
+-- fixture rows to today's current platform convention before #400 is installed.
+UPDATE public.appointments
+SET data = timezone('America/Sao_Paulo', now())::date
+WHERE data IS NULL;
+
+GRANT SELECT, INSERT, UPDATE ON public.appointments TO authenticated;
+""")
+    temporal = migrations / "20260910_encounter_temporal_start_boundary.sql"
+    print(temporal.read_text())
+    print(r"""
+DO $$
+DECLARE
+  v_src text;
+BEGIN
+  IF to_regprocedure('public.current_clinic_operational_date()') IS NULL THEN
+    RAISE EXCEPTION 'ci399_effective_stack_400_operational_date_missing';
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.can_apply_clinical_instrument_in_encounter(uuid,text)'::regprocedure
+  ) INTO v_src;
+
+  IF position('current_clinic_operational_date()' in v_src)=0 THEN
+    RAISE EXCEPTION 'ci399_effective_stack_400_helper_not_installed';
+  END IF;
+END;
+$$;
+
+\echo 'CI399_EFFECTIVE_STACK_POST_400_READY — running unchanged 38 + 4 matrix after #400 installation'
+""")
+else:
+    print(r"""
+\echo 'CI399_PRE_400_BASELINE_READY — dedicated #400 harness retains migration-introduction sequencing'
+""")
+
 print((root / "tests/sql/clinical_instrument_encounter_authorization_cases.sql").read_text())
 print((root / "tests/sql/clinical_instrument_exposure_negative_cases.sql").read_text())
