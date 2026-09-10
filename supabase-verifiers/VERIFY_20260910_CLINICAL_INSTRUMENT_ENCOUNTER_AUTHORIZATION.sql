@@ -73,8 +73,9 @@ BEGIN
     RAISE EXCEPTION 'ci399_neutral_catalog_engine_fkey_missing';
   END IF;
 
-  IF (SELECT count(*) FROM public.clinical_instrument_catalog WHERE active IS TRUE) <> 2
-     OR NOT EXISTS (
+  -- Historical #399 verification intentionally requires its canonical PHQ-9/GAD-7
+  -- mappings without capping future explicitly cataloged instruments.
+  IF NOT EXISTS (
        SELECT 1 FROM public.clinical_instrument_catalog
        WHERE instrument_key='phq9'
          AND engine_source='nexus'
