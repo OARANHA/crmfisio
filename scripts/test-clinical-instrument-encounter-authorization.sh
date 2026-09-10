@@ -110,4 +110,4 @@ python3 scripts/build-clinical-instrument-encounter-sql-test.py > "$GENERATED"
 "${PSQL[@]}" -f "$GENERATED"
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260910_CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.sql
 
-echo "#399 PostgreSQL 16: 38 approved behavior cases + 4 Nexus-only exposure negative controls + read-only verifier passed"
+echo "#399 PostgreSQL 16 effective stack (#399 -> #400): 38 approved behavior cases + 4 Nexus-only exposure negative controls executed after #400 installation + read-only verifier passed"
