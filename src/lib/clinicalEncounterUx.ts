@@ -40,6 +40,32 @@ export type EncounterClosingPresentation = {
   action: 'register_evolution' | null;
 };
 
+export type EncounterWorkspaceNavigationItem = {
+  id: 'encounter-context' | 'encounter-assessment' | 'encounter-evolution' | 'encounter-history' | 'encounter-closing';
+  label: string;
+};
+
+// Navigation contains only surfaces that are always real in the canonical
+// encounter workspace. Capability-gated tools intentionally do not become a
+// top-level navigation promise: if no real tool is available, no dead action
+// is rendered merely for legacy parity.
+export const encounterWorkspaceNavigation: readonly EncounterWorkspaceNavigationItem[] = [
+  { id: 'encounter-context', label: 'Contexto' },
+  { id: 'encounter-assessment', label: 'Avaliação' },
+  { id: 'encounter-evolution', label: 'Evolução' },
+  { id: 'encounter-history', label: 'Histórico' },
+  { id: 'encounter-closing', label: 'Encerramento' },
+];
+
+export function buildEncounterScopedNexusPath(
+  patientId: string,
+  appointmentId: string,
+  routeSuffix: string,
+): string {
+  const suffix = routeSuffix.startsWith('/') ? routeSuffix : `/${routeSuffix}`;
+  return `/pacientes/${encodeURIComponent(patientId)}/nexus${suffix}?session=${encodeURIComponent(appointmentId)}`;
+}
+
 export function resolveClinicalEncounterWorkspace(
   appointments: readonly Appointment[],
   patientId: string | null | undefined,
