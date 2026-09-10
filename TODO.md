@@ -38,9 +38,32 @@ Referências: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), [`PRODUCT_ROADMA
 - [ ] Melhorar leitura longitudinal e comparação de registros sem tornar histórico editável.
 - [ ] Implementar autoentrada no Modo Consultório somente quando existir um ponto canônico único após iniciar/continuar o próprio Encounter; não inferir por rota/query ou mera existência de appointment ativo.
 
-## P1 — Instrumentos e documentos clínicos
+## P1 — Instrumentos clínicos multiprofissionais
 
-- [ ] Unificar Instrument Delivery para instrumentos como PHQ-9/GAD-7 com dois fluxos explícitos: **Aplicar agora** e **Enviar ao paciente**.
+Decisão canônica para este eixo:
+
+```text
+ENGINE != AUTHORIZATION != RELEVANCE
+```
+
+PHQ-9/GAD-7 e instrumentos semelhantes podem ser multiprofissionais conforme finalidade clínica, protocolo/configuração e contexto. Profissão/especialidade podem informar relevância, ordenação e sugestão; nunca fazem auto-grant. `nexus.*` continua fail-closed e não deve ser concedido apenas para permitir aplicação de instrumento.
+
+Sequência futura obrigatória — **nenhum item abaixo está implementado**:
+
+1. [ ] **Clinical Instrument Authorization Foundation** — definir autoridade clínica neutra para aplicação de instrumentos, separada do namespace `nexus.*`, sem alterar C-01…C-06 e sem criar/grantar capability nesta etapa documental.
+2. [ ] **Clinician-Assisted Administration** — suportar administração presencial/assistida do mesmo instrumento/versionamento/scoring usado no self-assessment, com provenance explícita e `appointment_id` quando houver Encounter.
+3. [ ] **Encounter Instrument UX** — oferecer **Aplicar agora** + **Enviar ao paciente** dentro do atendimento, com estados de autorização/relevância distintos e sem criar segunda implementação de PHQ-9/GAD-7 no Assessment Engine.
+4. [ ] **Consultório V5 integration/polish** — integrar Instrumentos ao futuro Clinical Cockpit e absorver ergonomia do MedicsPro histórico sem portar arquitetura/autorização/autosave/checkout legados.
+
+Requisitos associados ainda futuros:
+
+- [ ] Resolver disponibilidade/relevância de instrumento separadamente da autorização efetiva, considerando profissão, especialidade, protocolo/configuração da clínica e contexto do Encounter.
+- [ ] Preservar catálogo/versão/scoring validados existentes de PHQ-9/GAD-7 enquanto a fachada/persistência futura for decidida; não duplicar os instrumentos como segunda implementação no Assessment Engine.
+- [ ] Diferenciar provenance de administração pelo menos entre `patient_self` e `clinician_assisted`, sem representar falsamente o profissional como respondente quando apenas administrou/registrou respostas do paciente.
+- [ ] Garantir que resposta positiva ao item 9 do PHQ-9 permaneça visível e gere destaque para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
+
+## P1 — Documentos clínicos
+
 - [ ] Prescription V1 com contrato server-side, autoria, versão, assinatura/emitente e histórico compatíveis com o piloto.
 - [ ] Priorizar demais documentos médicos somente conforme evidência de uso do piloto: atestado/declaração, solicitação de exame, relatório/laudo e outros documentos permitidos.
 - [ ] Evoluir anexos/documentos clínicos sem criar botões fictícios antes do contrato canônico existir.
@@ -68,7 +91,7 @@ Referências: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), [`PRODUCT_ROADMA
 - [ ] Limpar consumidores residuais de `fisio_id`/nomenclaturas legadas onde houver alternativa segura; `professional_id` continua canônico.
 - [ ] Resolver o issue tri-state capability/configuration onde estado desconhecido possa ser confundido com desabilitado/habilitado.
 - [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos.
-- [ ] Não liberar Nexus por role, especialidade isolada ou PresentationContext.
+- [ ] Não liberar Nexus por role, especialidade isolada, PresentationContext ou simples relevância de instrumento.
 
 ## P1 — UX pilot / onboarding
 
@@ -113,6 +136,16 @@ Não tratar como TODO implícito sem evidência de necessidade:
 - usar PresentationContext como autorização;
 - religar checkout à conclusão clínica;
 - abrir novas foundations já fechadas apenas para “refatorar”.
+
+Nesta sincronização documental, explicitamente **não fazer**:
+
+- criar `clinical.instrument.apply` ou qualquer nova capability;
+- alterar capability matrix;
+- conceder `nexus.*` a qualquer usuário/piloto;
+- alterar banco, migrations, RPCs, RLS ou produção;
+- implementar PHQ-9/GAD-7 ou Clinician-Assisted Administration;
+- implementar Consultório V5;
+- alterar CI/workflows.
 
 ## Regra de release
 
