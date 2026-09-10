@@ -1,10 +1,12 @@
 -- MedicsPro #399 — multiprofessional clinical instrument authorization foundation
--- Adds an explicit clinical capability, tenant instrument enablement and the first
--- contextual act boundary: apply a configured instrument in the actor's active encounter.
+-- Adds an explicit clinical capability, a neutral clinical-instrument exposure
+-- catalog, tenant instrument enablement and the first contextual act boundary:
+-- apply a configured instrument in the actor's active Encounter.
 --
 -- This migration does NOT change Nexus RLS/capabilities/result persistence and does
--- not define remote/self-assessment delivery. PHQ-9/GAD-7 contract identity remains
--- sourced from the existing Nexus trusted result contract registry.
+-- not define remote/self-assessment delivery. Nexus remains the technical engine for
+-- PHQ-9/GAD-7 identity/version/scoring, but Nexus registry membership never implies
+-- multiprofessional clinical exposure.
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -29,8 +31,9 @@ BEGIN
     RAISE EXCEPTION 'clinical_instrument_399_helper_prerequisite_missing';
   END IF;
 
-  -- Reuse the exact trusted PHQ-9/GAD-7 identities already owned by Nexus.
-  -- Do not synthesize another rule/version registry in this slice.
+  -- The neutral catalog will explicitly reference these canonical engine contracts.
+  -- Their existence proves technical engine provenance only; it does not grant
+  -- multiprofessional exposure by itself.
   IF NOT EXISTS (
     SELECT 1
     FROM public.nexus_result_contracts
@@ -79,6 +82,83 @@ ON CONFLICT (capability_key) DO NOTHING;
 -- No professional_capabilities rows are inserted here. Missing row is an explicit
 -- fail-closed default and profession/specialty never auto-grants this capability.
 
+-- Neutral exposure catalog. This table answers only: which engine-backed instruments
+-- are explicitly approved for the multiprofessional clinical surface? It does not
+-- duplicate questions, validation, scoring or Nexus authorization.
+CREATE TABLE IF NOT EXISTS public.clinical_instrument_catalog (
+  instrument_key text PRIMARY KEY,
+  engine_source text NOT NULL,
+  engine_module_key text NOT NULL,
+  engine_tool_key text NOT NULL,
+  engine_rule_key text NOT NULL,
+  engine_rule_version text NOT NULL,
+  active boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT clinical_instrument_catalog_key_shape CHECK (
+    instrument_key = lower(btrim(instrument_key))
+    AND instrument_key <> ''
+  ),
+  CONSTRAINT clinical_instrument_catalog_engine_source CHECK (
+    engine_source = 'nexus'
+  ),
+  CONSTRAINT clinical_instrument_catalog_engine_contract_fkey
+    FOREIGN KEY (engine_module_key, engine_tool_key, engine_rule_key, engine_rule_version)
+    REFERENCES public.nexus_result_contracts(module_key, tool_key, rule_key, rule_version)
+    ON UPDATE RESTRICT ON DELETE RESTRICT
+);
+
+COMMENT ON TABLE public.clinical_instrument_catalog IS
+  'Neutral allowlist for instruments explicitly approved for multiprofessional clinical exposure. Engine linkage does not imply authorization or relevance.';
+
+ALTER TABLE public.clinical_instrument_catalog ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.clinical_instrument_catalog FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.clinical_instrument_catalog TO service_role;
+
+-- Fail closed if a prior/local copy already claimed one of the #399 keys with a
+-- different engine mapping. Extra future catalog rows are deliberately not rejected.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.clinical_instrument_catalog c
+    WHERE c.instrument_key = 'phq9'
+      AND (
+        c.engine_source IS DISTINCT FROM 'nexus'
+        OR c.engine_module_key IS DISTINCT FROM 'scales'
+        OR c.engine_tool_key IS DISTINCT FROM 'phq9'
+        OR c.engine_rule_key IS DISTINCT FROM 'nexus.phq9'
+        OR c.engine_rule_version IS DISTINCT FROM 'nexus-2026-09-03'
+      )
+  ) OR EXISTS (
+    SELECT 1
+    FROM public.clinical_instrument_catalog c
+    WHERE c.instrument_key = 'gad7'
+      AND (
+        c.engine_source IS DISTINCT FROM 'nexus'
+        OR c.engine_module_key IS DISTINCT FROM 'scales'
+        OR c.engine_tool_key IS DISTINCT FROM 'gad7'
+        OR c.engine_rule_key IS DISTINCT FROM 'nexus.gad7'
+        OR c.engine_rule_version IS DISTINCT FROM 'nexus-2026-09-03'
+      )
+  ) THEN
+    RAISE EXCEPTION 'clinical_instrument_399_catalog_mapping_conflict';
+  END IF;
+END;
+$$;
+
+INSERT INTO public.clinical_instrument_catalog(
+  instrument_key,
+  engine_source,
+  engine_module_key,
+  engine_tool_key,
+  engine_rule_key,
+  engine_rule_version,
+  active
+) VALUES
+  ('phq9', 'nexus', 'scales', 'phq9', 'nexus.phq9', 'nexus-2026-09-03', true),
+  ('gad7', 'nexus', 'scales', 'gad7', 'nexus.gad7', 'nexus-2026-09-03', true)
+ON CONFLICT (instrument_key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS public.clinic_clinical_instrument_settings (
   clinic_id uuid NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
   instrument_key text NOT NULL,
@@ -95,7 +175,36 @@ CREATE TABLE IF NOT EXISTS public.clinic_clinical_instrument_settings (
 );
 
 COMMENT ON TABLE public.clinic_clinical_instrument_settings IS
-  'Tenant-scoped enablement for clinical instruments. Missing rows and enabled=false both deny authorization.';
+  'Tenant-scoped enablement for neutral clinical instruments. Missing rows and enabled=false both deny authorization.';
+
+-- Support safe replay even if a local environment previously ran the draft #399
+-- before the neutral catalog blocker was corrected.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.clinic_clinical_instrument_settings s
+    LEFT JOIN public.clinical_instrument_catalog c
+      ON c.instrument_key = s.instrument_key
+    WHERE c.instrument_key IS NULL
+  ) THEN
+    RAISE EXCEPTION 'clinical_instrument_399_existing_setting_not_in_catalog';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.clinic_clinical_instrument_settings'::regclass
+      AND conname = 'clinic_clinical_instrument_settings_catalog_fkey'
+  ) THEN
+    ALTER TABLE public.clinic_clinical_instrument_settings
+      ADD CONSTRAINT clinic_clinical_instrument_settings_catalog_fkey
+      FOREIGN KEY (instrument_key)
+      REFERENCES public.clinical_instrument_catalog(instrument_key)
+      ON UPDATE RESTRICT ON DELETE RESTRICT;
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_clinic_clinical_instrument_enabled
   ON public.clinic_clinical_instrument_settings(clinic_id, instrument_key)
@@ -114,14 +223,11 @@ BEGIN
     RAISE EXCEPTION 'clinical_instrument_invalid_key' USING ERRCODE = '22023';
   END IF;
 
-  -- In #399 the instruments eligible for this neutral authorization foundation
-  -- are the already-canonical Nexus scale contracts. Only identity/version
-  -- provenance is reused; Nexus authorization is deliberately not reused.
   IF NOT EXISTS (
     SELECT 1
-    FROM public.nexus_result_contracts c
-    WHERE c.module_key = 'scales'
-      AND c.tool_key = NEW.instrument_key
+    FROM public.clinical_instrument_catalog c
+    WHERE c.instrument_key = NEW.instrument_key
+      AND c.active IS TRUE
   ) THEN
     RAISE EXCEPTION 'clinical_instrument_unknown' USING ERRCODE = '22023';
   END IF;
@@ -207,9 +313,9 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1
-    FROM public.nexus_result_contracts c
-    WHERE c.module_key = 'scales'
-      AND c.tool_key = v_key
+    FROM public.clinical_instrument_catalog c
+    WHERE c.instrument_key = v_key
+      AND c.active IS TRUE
   ) THEN
     RAISE EXCEPTION 'clinical_instrument_unknown' USING ERRCODE = '22023';
   END IF;
@@ -234,7 +340,7 @@ GRANT EXECUTE ON FUNCTION public.set_clinic_clinical_instrument_enabled(text, bo
   TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.set_clinic_clinical_instrument_enabled(text, boolean) IS
-  'Tenant-derived owner/admin configuration for a canonical clinical instrument. No clinic_id is accepted from the browser.';
+  'Tenant-derived owner/admin configuration for an explicitly exposed neutral clinical instrument. No clinic_id is accepted from the browser.';
 
 -- Internal base authorization. It is intentionally NOT executable by authenticated
 -- clients because it is not an act boundary and must never be treated as generic
@@ -270,15 +376,12 @@ BEGIN
       ON s.clinic_id = p.clinic_id
      AND s.instrument_key = v_key
      AND s.enabled IS TRUE
+    JOIN public.clinical_instrument_catalog c
+      ON c.instrument_key = s.instrument_key
+     AND c.active IS TRUE
     WHERE p.id = p_patient_id
       AND p.clinic_id = v_clinic
       AND p.deleted_at IS NULL
-      AND EXISTS (
-        SELECT 1
-        FROM public.nexus_result_contracts c
-        WHERE c.module_key = 'scales'
-          AND c.tool_key = s.instrument_key
-      )
   );
 END;
 $$;
@@ -289,7 +392,7 @@ GRANT EXECUTE ON FUNCTION public.clinical_instrument_base_authorized(uuid, text)
   TO service_role;
 
 COMMENT ON FUNCTION public.clinical_instrument_base_authorized(uuid, text) IS
-  'Internal #399 base authorization only: active clinical identity + explicit clinical.instrument.apply + same tenant patient + clinic instrument enabled. Not a generic act authorization endpoint.';
+  'Internal #399 base authorization only: active clinical identity + explicit clinical.instrument.apply + same-tenant patient + neutral catalog exposure + clinic instrument enabled. Not a generic act authorization endpoint.';
 
 CREATE OR REPLACE FUNCTION public.can_apply_clinical_instrument_in_encounter(
   p_appointment_id uuid,
