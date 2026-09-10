@@ -1,4 +1,8 @@
 -- #394 fixture extension loaded after the canonical #387/#388/#389 stack.
+-- The reduced #387 fixture omits Evolution.created_at; restore the production
+-- column/default so #394 proves real record-creation timestamps.
+ALTER TABLE public.physiotherapy_evolutions
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
 
 CREATE OR REPLACE FUNCTION public.can_access_patient_clinical_record(p_patient_id uuid)
 RETURNS boolean
@@ -15,7 +19,7 @@ BEGIN
   IF v_uid IS NULL OR v_clinic IS NULL OR v_role IS NULL OR p_patient_id IS NULL THEN RETURN false; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.patients p WHERE p.id = p_patient_id AND p.clinic_id = v_clinic AND p.deleted_at IS NULL) THEN RETURN false; END IF;
   IF v_role IN ('owner','admin') THEN RETURN true; END IF;
-  IF v_role <> 'professional' OR NOT public.current_user_has_valid_clinical_identity() THEN RETURN false; END IF;
+  IF v_role <> 'professional' OR public.current_user_has_valid_clinical_identity() IS NOT TRUE THEN RETURN false; END IF;
   RETURN EXISTS (
     SELECT 1 FROM public.appointments a
     WHERE a.clinic_id = v_clinic AND a.paciente_id = p_patient_id AND a.professional_id = v_uid
@@ -77,5 +81,7 @@ INSERT INTO public.appointments(id, clinic_id, paciente_id, professional_id, fis
   ('43000000-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000009','10000000-0000-0000-0000-000000000009',current_date,'11:00','11:30','em_atendimento','Consulta',0,NULL),
   ('43000000-0000-0000-0000-000000000008','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'11:30','12:00','em_atendimento','Consulta',0,NULL),
   ('43000000-0000-0000-0000-000000000009','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'12:00','12:30','em_atendimento','Consulta',0,NULL),
-  ('43000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'12:30','13:00','em_atendimento','Consulta',0,NULL)
+  ('43000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'12:30','13:00','em_atendimento','Consulta',0,NULL),
+  ('43000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date - 10,'14:00','14:30','em_atendimento','Consulta antiga',0,NULL),
+  ('43000000-0000-0000-0000-000000000013','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'14:30','15:00','em_atendimento','Concorrência',0,NULL)
 ON CONFLICT (id) DO NOTHING;
