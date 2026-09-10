@@ -3,8 +3,9 @@
 The established C-02 builder supplies the real C-01/C-06/C-02 Nexus security
 baseline and behavior harness. #399 then installs the effective generic clinical
 identity/capability helpers without changing any Nexus helper, adds only the
-appointment status field required by the contextual act probe, snapshots Nexus
-guards/contracts, applies the #399 migration twice, and runs the new cases.
+appointment status field required by the contextual act probe, introduces one
+synthetic Nexus-only scale before #399, snapshots Nexus guards/contracts, applies
+the #399 migration twice, and runs the new cases.
 """
 from pathlib import Path
 import re
@@ -87,10 +88,21 @@ INSERT INTO public.appointments(
   ('00000000-0000-0000-0000-000000000510','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000301','00000000-0000-0000-0000-000000000102','00000000-0000-0000-0000-000000000102','em_atendimento'),
   ('00000000-0000-0000-0000-000000000511','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000302','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000101','em_atendimento'),
   ('00000000-0000-0000-0000-000000000512','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000301','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000101','finalizado');
+
+-- Negative control for blocker review: this is a valid Nexus scale contract, but
+-- it is intentionally absent from the neutral clinical_instrument_catalog that
+-- #399 is about to install. Nexus engine membership must not imply exposure.
+INSERT INTO public.nexus_result_contracts(
+  module_key, tool_key, rule_key, rule_version, required_capability
+) VALUES (
+  'scales', 'nexus_only_scale', 'nexus.nexus_only_scale',
+  'nexus-only-2026-09-10', 'nexus.scales'
+);
 """)
 
-# Snapshot the protected Nexus surface before #399. The cases prove the migration
-# leaves these policies/helpers/contracts byte-for-byte/data-for-data unchanged.
+# Snapshot the protected Nexus surface after the synthetic Nexus-only contract is
+# part of the disposable baseline. #399 must not mutate any Nexus policy/helper or
+# contract row, including that extra scale.
 print("""
 CREATE TEMP TABLE ci399_nexus_policy_snapshot AS
 SELECT tablename, policyname, permissive, roles, cmd, qual, with_check
