@@ -196,7 +196,7 @@ O verifier instalado é read-only:
 
 `supabase-verifiers/VERIFY_20260910_CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.sql`
 
-Ele valida shape, RLS, ACLs, foreign keys, catálogo neutro, funções e composição das boundaries sem criar fixtures ou alterar dados.
+Ele valida shape, RLS, ACLs, foreign keys, catálogo neutro, funções e composição das boundaries sem criar fixtures ou alterar dados. Como verifier histórico da #399, exige os mappings canônicos ativos de PHQ-9/GAD-7, mas não limita o catálogo a exatamente dois itens; futuras expansões explícitas podem coexistir sem transformar este verifier em falso vermelho.
 
 ## Rollout
 
@@ -209,6 +209,23 @@ Gate local/CI isolado:
 `bash scripts/test-clinical-instrument-encounter-authorization.sh`
 
 A migration é aditiva e desenhada para replay seguro. Ela falha fechado se os contratos canônicos PHQ-9/GAD-7 esperados, helpers clínicos de fundação ou mappings pré-existentes incompatíveis não estiverem presentes.
+
+O rollout de produção deve ser coordenado nesta ordem:
+
+```text
+merge
+→ migration #399
+→ verifier read-only #399
+→ deploy admin-team
+→ frontend do mesmo main
+→ smoke
+```
+
+A migration deve estar aplicada e o verifier read-only deve passar antes de considerar o contrato server-side disponível. Depois disso, `admin-team` e o frontend devem vir do mesmo `main`, evitando drift entre capability/configuração exposta na UI e a autoridade instalada no backend.
+
+Se o deploy automático do frontend aparecer antes dessa sequência estar completa, a funcionalidade deve continuar indisponível/fail-closed e **não deve ser usada** até que migration #399, verifier read-only e `admin-team` estejam alinhados. A presença antecipada de frontend não é evidência de rollout concluído nem autoriza contornar a ordem acima.
+
+O smoke é a última etapa e deve validar o fluxo já instalado/alinhado; não substitui migration, verifier ou deploy coordenado da Edge Function.
 
 **Estado do repositório:** foundation implementada no PR #399.
 
