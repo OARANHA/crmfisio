@@ -495,7 +495,7 @@ The major foundations through #396 are closed unless evidence shows a real regre
 Current sequence:
 
 0. close short operational evidence gaps for #394/#389/#396 and observability;
-1. improve Encounter/physician ergonomics from real-pilot evidence;
+1. improve Encounter/clinical-professional ergonomics from real-pilot evidence;
 2. add **Cobertura deste atendimento** without exposing global finance in Consultório;
 3. evolve clinical instruments in this order: **Clinical Instrument Authorization Foundation → Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish**;
 4. build Prescription V1;
