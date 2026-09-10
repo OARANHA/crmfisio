@@ -71,7 +71,7 @@ INSERT INTO public.patients(id, clinic_id, funil_stage, status) VALUES
   ('33000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000002','tratamento','ativo')
 ON CONFLICT (id) DO NOTHING;
 
--- Current-date #394 appointments use the isolated 00:00–05:30 synthetic window;
+-- Current-date #394 appointments use the isolated 00:00–06:00 synthetic window;
 -- the reused #388 fixture occupies 09:00–15:30. This keeps the real agenda
 -- conflict trigger active during all behavior cases without fixture collisions.
 INSERT INTO public.appointments(id, clinic_id, paciente_id, professional_id, fisio_id, data, inicio, fim, status, tipo, valor, pacote_id) VALUES
@@ -86,5 +86,21 @@ INSERT INTO public.appointments(id, clinic_id, paciente_id, professional_id, fis
   ('43000000-0000-0000-0000-000000000009','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'04:00','04:30','em_atendimento','Consulta',0,NULL),
   ('43000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'04:30','05:00','em_atendimento','Consulta',0,NULL),
   ('43000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date - 10,'14:00','14:30','em_atendimento','Consulta antiga',0,NULL),
-  ('43000000-0000-0000-0000-000000000013','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'05:00','05:30','em_atendimento','Concorrência',0,NULL)
+  ('43000000-0000-0000-0000-000000000013','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'05:00','05:30','em_atendimento','Concorrência',0,NULL),
+  ('43000000-0000-0000-0000-000000000014','00000000-0000-0000-0000-000000000001','33000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',current_date,'05:30','06:00','em_atendimento','Legacy Evolution #394',0,NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Dedicated legacy compatibility fixture for case 23. This Evolution is created
+-- through the pre-#394 legacy path while the appointment is still in progress.
+-- No clinical_encounter_record exists for this appointment at fixture time.
+INSERT INTO public.physiotherapy_evolutions(
+  id, clinic_id, patient_id, professional_id, session_id, texto
+) VALUES (
+  '53000000-0000-0000-0000-000000000014',
+  '00000000-0000-0000-0000-000000000001',
+  '33000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  '43000000-0000-0000-0000-000000000014',
+  'Evolution legada dedicada ao #394'
+)
 ON CONFLICT (id) DO NOTHING;
