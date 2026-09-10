@@ -130,7 +130,9 @@ export function ActiveEncounterClinicalTools({
 
   // Availability comes from entitlement + server-side C-06 capability resolution.
   // Specialty only changes presentation level/order in the pure registry resolver.
-  if (tools.length === 0) return null;
+  if (tools.length === 0) {
+    return <p className="rounded-xl border border-line/65 bg-deep/30 px-4 py-3 text-[11.5px] leading-relaxed text-fog">Nenhuma ferramenta adicional disponível para este atendimento.</p>;
+  }
 
   const hasContextualHighlight = tools.some((tool) => tool.level === 'relevant');
   const canUseScales = tools.some((tool) => tool.id === 'mental-health-screening');
@@ -141,7 +143,7 @@ export function ActiveEncounterClinicalTools({
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Ferramentas clínicas</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-fog">Nexus disponível para este atendimento conforme entitlement, capabilities e vínculo assistencial já validados pelos boundaries clínicos.</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-fog">Recursos Nexus disponíveis para este atendimento.</p>
           </div>
           <Chip className="border-aqua/30 text-aqua">{hasContextualHighlight ? 'Em destaque para este contexto' : 'Disponível'}</Chip>
         </div>
