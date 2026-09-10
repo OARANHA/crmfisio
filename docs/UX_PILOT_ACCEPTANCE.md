@@ -4,61 +4,78 @@ Roteiro curto para validar as superfícies de maior frequência antes de marcar 
 
 ## Objetivo
 
-Validar uso real, hierarquia visual e responsividade sem reabrir regras core já estabilizadas.
+Validar uso real, hierarquia visual, privacidade de apresentação e responsividade sem reabrir foundations já estabilizadas.
 
-O teste deve priorizar fricção operacional, não gosto estético isolado.
+O teste deve priorizar fricção operacional, clareza e segurança, não gosto estético isolado.
 
 ## Telas prioritárias
 
-1. Agenda (`/agenda`)
-2. Pacientes (`/pacientes`)
-3. Atendimento / prontuário (`/pacientes/:id`, preferencialmente com sessão em andamento)
-4. Financeiro (`/financeiro`)
+1. Meu dia / Dashboard clínico (`/dashboard` em Consultório)
+2. Agenda (`/agenda`)
+3. Pacientes (`/pacientes`)
+4. Atendimento / Encounter (`/pacientes/:id` com appointment em andamento)
+5. Gestão/Financeiro para atores autorizados (`/financeiro` em Gestão)
 
 ## Evidência mínima
 
-Para a primeira passagem, registrar screenshots reais das quatro telas em desktop após o deploy atual.
+Registrar uso/screenshot real das superfícies principais no frontend efetivamente implantado.
 
-Se não houver bloqueador visual importante, repetir os pontos críticos em:
+Repetir os pontos críticos em:
 
-- tema claro;
-- largura mobile (~390 px);
-- modal/drawer principal de cada fluxo quando aplicável.
+- tema claro e escuro;
+- largura mobile (~390 px) para Agenda/Encounter e privacy shell;
+- loading/empty/error/success;
+- drawer/modal principal quando aplicável.
+
+Não marcar UX como validada se a evidência for apenas de componente isolado ou CI.
 
 ## Critérios transversais
 
-Cada tela deve passar nos itens abaixo:
-
 - ação principal evidente sem competir com ações secundárias;
-- título, contexto e estado atual legíveis em menos de alguns segundos;
-- nenhum texto essencial truncado sem alternativa de acesso;
-- nenhum overflow horizontal da página inteira; tabelas podem ter scroll próprio quando necessário;
-- botões e controles com área de clique confortável;
-- loading, vazio, erro e sucesso distinguíveis;
-- dark/light preservam a mesma hierarquia;
-- conteúdo clínico não aparece em superfície operacional só para preencher espaço;
-- informação financeira não é apresentada como receita/caixa quando representa apenas valor nominal ou pipeline;
-- ações proibidas pelo papel não aparecem como convite clicável para depois falhar no backend.
+- contexto de paciente/appointment/profissional claro durante atendimento;
+- nenhum texto essencial truncado sem alternativa;
+- sem overflow horizontal que impeça operação;
+- áreas de clique confortáveis;
+- loading, vazio, erro, conflito e sucesso distinguíveis;
+- dark/light preservam hierarquia;
+- conteúdo clínico não aparece em superfície operacional para preencher espaço;
+- informação financeira não é apresentada como caixa/receita quando representa pipeline ou valor nominal;
+- ação proibida por role/capability não aparece como convite enganoso;
+- PresentationContext nunca substitui autorização real.
 
-## 1. Agenda
+## 1. Meu dia / Consultório
 
 ### Cenário
 
-Abrir semana atual com pelo menos algumas sessões em estados diferentes.
+Entrar como professional e como owner/admin clinicamente elegível.
 
 ### Aceitação
 
-- `Nova sessão` é a ação primária mais clara;
-- alternância dia/semana/mês e navegação de período são compreensíveis;
-- filtros não dominam a tela quando fechados;
-- sessão mostra horário, paciente e sala sem poluição excessiva;
-- status/WhatsApp não tornam o card ilegível;
-- drag-and-drop não parece disponível para papéis que não podem operar;
-- fisioterapeuta não recebe ação clínica sobre sessão de colega;
-- sessão em atendimento direciona para continuação no prontuário;
-- resumo do período não é confundido com caixa financeiro.
+- professional entra no contexto clínico disponível e não recebe ação para Gestão;
+- owner/admin elegível consegue identificar e alternar Consultório/Gestão conscientemente;
+- owner/admin não clínico não recebe opção Consultório;
+- recep/financeiro não recebem controle clínico;
+- Meu dia destaca agenda/atendimento/pendências clínicas sem Financeiro global;
+- resolução de elegibilidade não pisca dashboard/chrome administrativo antes de confirmar o contexto;
+- autoentrada automática após iniciar atendimento **não é expectativa atual**.
 
-## 2. Pacientes
+## 2. Agenda
+
+### Cenário
+
+Abrir período com appointments em estados diferentes e, quando permitido, iniciar/continuar o próprio atendimento.
+
+### Aceitação
+
+- criação/agendamento tem ação primária clara para o ator autorizado;
+- alternância de período e filtros são compreensíveis;
+- appointment mostra horário, paciente e contexto sem poluição excessiva;
+- outro profissional não recebe comando clínico indevido sobre sessão alheia;
+- appointment `em_atendimento` conduz naturalmente ao Encounter;
+- resumo de agenda não é confundido com caixa financeiro;
+- mobile continua operável sem esconder a ação principal.
+
+## 3. Pacientes
 
 ### Cenário
 
@@ -66,47 +83,65 @@ Abrir diretório com múltiplos pacientes e usar busca.
 
 ### Aceitação
 
-- busca por nome/telefone/e-mail/CPF é clara;
-- diretório permanece operacional: identificação, contato, convênio, jornada, última visita e status;
-- queixa principal/CID não aparecem como colunas clinic-wide;
-- `Novo paciente` tem hierarquia adequada;
-- clique na linha deixa claro que abre o paciente;
-- tabela permanece utilizável em notebook e não causa overflow da página;
-- estado sem resultados orienta ajuste de filtros/busca.
+- busca operacional é clara;
+- diretório não vira vazamento de prontuário: identificação/contato/jornada podem aparecer conforme autorização, mas conteúdo clínico detalhado fica no contexto apropriado;
+- `Novo paciente` possui hierarquia adequada para quem pode cadastrar;
+- clique/ação deixa claro que abre o paciente correto;
+- tabela/lista funciona em notebook/mobile conforme o desenho previsto;
+- estado sem resultados orienta sem inventar dados.
 
-## 3. Atendimento / prontuário
+## 4. Atendimento / Encounter
 
 ### Cenário
 
-Abrir um paciente com relação assistencial e, idealmente, sessão `em_atendimento`.
+Abrir um paciente com relação assistencial e appointment próprio `em_atendimento`.
 
 ### Aceitação
 
-- identidade do paciente e contexto da sessão aparecem antes dos formulários;
-- tabs têm hierarquia clara e não parecem uma segunda navegação global;
-- sessão em andamento leva naturalmente para Evoluções;
-- avaliação, evolução, sessões e documentos são distinguíveis;
-- ação de finalizar só aparece/funciona no contexto correto;
-- falta de evolução explica por que a finalização está bloqueada;
-- leitura por owner/admin não sugere autoria clínica;
-- conteúdo bloqueado por relação assistencial não aparece parcialmente de modo confuso.
+- paciente, appointment, horário e profissional aparecem antes do registro clínico;
+- Encounter Record é percebido como o único registro editável principal da consulta;
+- seções motivo/demandas, HDA, achados/exame, avaliação/problemas, plano/conduta e observações são compreensíveis sem parecer wizard rígido;
+- draft salvo mostra estado real de persistência/revision;
+- refresh/navegação não perde conteúdo já confirmado;
+- Assessment estruturada aparece como opcional, não como segundo prontuário;
+- o profissional não é obrigado a preencher uma segunda Evolution universal;
+- `Revisar e concluir` deixa claro o efeito definitivo;
+- após confirmação humana, o comportamento esperado é Encounter Record finalizado + Evolution oficial determinística + appointment finalizado;
+- correção/addendum de finalizado não deve aparecer como edição silenciosa enquanto essa feature não existir;
+- conteúdo histórico permanece read-only;
+- actor sem relação/autorização não recebe conteúdo clínico parcial enganoso.
 
-## 4. Financeiro
+## 5. Financeiro e privacy boundary
 
-### Cenário
+### Cenário A — Gestão autorizada
 
-Abrir contas a receber e Pacotes com dados reais ou representativos.
+Abrir Financeiro como owner/admin/financeiro que realmente possua autorização/entitlement.
 
 ### Aceitação
 
 - recebido, a receber, a pagar e saldo são visualmente distinguíveis;
-- usuário read-only entende que está consultando e não operando caixa;
-- `Baixar` deixa claro que significa liquidação real;
+- `Baixar` comunica liquidação real;
 - lançamento pago não sugere edição silenciosa;
-- Pacotes parecem um fluxo próprio, não um lançamento financeiro genérico;
-- renovação/risco de pacote não é confundido com churn clínico;
-- exceções pré-pagas não ficam escondidas atrás de ação genérica de cancelar;
-- valores, status e método permanecem legíveis sem excesso de monospace.
+- pacotes/exceções possuem contexto e status claros;
+- resolução #389 respeita autorização: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`.
+
+### Cenário B — Consultório
+
+Com Consultório ativo, tentar `/financeiro`, `/crm`, `/relatorios` e `/config` conforme o ator.
+
+### Aceitação
+
+- superfícies administrativas não aparecem silenciosamente dentro do contexto clínico;
+- guards reais continuam decidindo autorização;
+- owner/admin elegível já autorizado recebe privacy boundary e opção explícita de sair do Consultório;
+- professional clinical-only nunca recebe botão de Gestão;
+- finance cards zerados não aparecem como falso estado por causa do privacy shell.
+
+## Semântica financeira a observar
+
+Não esperar “pacote esgotado/vencido bloqueia finalização clínica”.
+
+Após #388, `package_exhausted`, `package_expired` e `package_not_eligible` devem gerar exceção financeira explícita sem apagar uma finalização clínica válida e sem consumo gratuito silencioso.
 
 ## Severidade de achados
 
@@ -117,20 +152,23 @@ Bloqueia piloto ou pode causar operação errada:
 - ação principal invisível/ambígua;
 - botão que convida ação proibida;
 - conteúdo sensível em superfície errada;
-- modal impossível de usar;
-- overflow que impede operação;
-- status financeiro/clínico apresentado com significado errado.
+- modal/drawer impossível de operar;
+- overflow que impede tarefa;
+- estado financeiro/clínico apresentado com significado incorreto;
+- PresentationContext aparentando conceder autorização.
 
 ### P1
 
-Não bloqueia, mas gera atrito frequente:
+Atrito frequente sem quebra estrutural:
 
 - hierarquia ruim;
 - densidade excessiva;
-- filtros difíceis de encontrar;
+- contexto clínico fácil de perder;
+- filtros difíceis;
 - texto pouco legível;
-- estado vazio sem orientação;
-- mobile desconfortável.
+- loading/empty sem orientação;
+- mobile desconfortável;
+- troca Consultório/Gestão pouco clara para owner/admin elegível.
 
 ### P2
 
@@ -139,14 +177,17 @@ Polimento:
 - microcopy;
 - espaçamento fino;
 - animação;
-- detalhes de iconografia.
+- iconografia.
 
 ## Regra de fechamento
 
-`UX / design system` só deve virar GREEN quando:
+`UX / design system` só vira GREEN quando:
 
-1. nenhuma das quatro telas tiver P0 visual/operacional aberto;
-2. os principais P1 encontrados na passagem real tiverem correção ou decisão explícita de aceite;
+1. não houver P0 visual/operacional aberto nas jornadas prioritárias;
+2. principais P1 observados tiverem correção ou aceite explícito;
 3. dark/light não apresentarem regressão funcional;
-4. pelo menos Agenda e Atendimento forem verificadas em mobile;
-5. o piloto real conseguir completar o fluxo diário sem depender de explicação externa para ações básicas.
+4. Agenda e Encounter forem verificados em mobile;
+5. privacy shell for observado com professional e owner/admin elegível;
+6. profissional real conseguir completar Agenda → Encounter → revisão/conclusão sem depender de explicação externa para ações básicas.
+
+Foundation técnica GREEN não substitui essa evidência de uso real.
