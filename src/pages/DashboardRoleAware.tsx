@@ -9,11 +9,13 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { resolveDashboardPresentation } from '../lib/dashboardPresentation';
 import { hasProfessionalCapability } from '../lib/nexusClinical';
 import { isPsychiatristIdentity } from '../lib/professionalIdentity';
+import { usePresentationContext } from '../lib/presentationContextContext';
 import { Dashboard } from './Dashboard';
 
 export function DashboardRoleAware() {
   const { loading: authLoading } = useAuth();
   const { user } = useCurrentUserAccess();
+  const { context: presentationContext } = usePresentationContext();
   const { identity, loading: identityLoading } = useProfessionalIdentity(user?.id);
   const attendCapability = useClinicalCapability('clinical.attend', user?.id);
   const [nexusAllowed, setNexusAllowed] = useState<boolean | null>(null);
@@ -42,6 +44,7 @@ export function DashboardRoleAware() {
     authLoading,
     userPresent: Boolean(user),
     role: user?.role,
+    presentationContext,
     attendStatus: attendCapability.status,
     identityLoading,
     psychiatryRelevant: isPsychiatristIdentity(identity),
