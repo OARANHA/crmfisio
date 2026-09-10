@@ -3,7 +3,7 @@
 > **Este arquivo é um snapshot de continuidade. AGENTS.md contém as regras operacionais. Código/schema atuais prevalecem quando o snapshot envelhecer.**
 
 **Data do snapshot:** 2026-09-10  
-**Main no início desta sincronização:** `477cc0016235a2e440889a919854b08aa38e1d94`
+**Main no início desta sincronização:** `ff1caef777483f84b79d5a70438351d07259b852`
 
 ## Produto e arquitetura em poucas linhas
 
@@ -45,7 +45,9 @@ A finalização clínica não depende de sucesso de cobertura esperada.
 
 Professional é Consultório-only; owner/admin só alternam com identidade clínica válida + `clinical.attend`; recep/financeiro são Gestão-only.
 
-Nexus é engine clínica especializada dentro do runtime MedicsPro e permanece médico-only/fail-closed.
+O **Nexus médico avançado** permanece protegido pelos boundaries atuais C-01–C-06; `nexus.*` continua fail-closed. Isso não deve ser confundido com uma regra universal que transforme todo instrumento clínico atualmente implementado no subsistema Nexus em ato exclusivamente médico.
+
+Instrumentos clínicos como PHQ-9/GAD-7 são potencialmente multiprofissionais conforme finalidade clínica, protocolo/configuração e contexto, mas profissão/especialidade nunca fazem auto-grant.
 
 `OARANHA/crmfisio` é o runtime/produto canônico.
 
@@ -54,6 +56,116 @@ Nexus é engine clínica especializada dentro do runtime MedicsPro e permanece m
 `OARANHA/medicspro` é referência histórica obrigatória de UX/workflow, nunca fonte de arquitetura/autorização atual.
 
 Regra institucional: **não portar o velho MedicsPro; absorver o que ele entendia bem sobre o profissional.**
+
+## Decisão canônica — instrumentos clínicos
+
+A arquitetura de instrumentos passa a registrar explicitamente:
+
+```text
+ENGINE != AUTHORIZATION != RELEVANCE
+```
+
+Separações obrigatórias:
+
+```text
+PROFISSÃO
+→ identidade e requisitos profissionais
+
+ESPECIALIDADE
+→ relevância, ordenação e sugestão
+
+PROTOCOLO / CONFIGURAÇÃO DA CLÍNICA
+→ disponibilidade institucional
+
+CAPABILITY
+→ autorização efetiva
+
+CONTEXTO DO ENCOUNTER
+→ prioridade/apresentação
+```
+
+Nenhuma camada concede silenciosamente outra.
+
+Profissão/especialidade podem tornar um instrumento muito relevante sem conceder autoridade para aplicá-lo. Contextos potencialmente pertinentes para PHQ-9/GAD-7 incluem, entre outros, Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental e Enfermagem em APS/Saúde da Família, sempre dependendo do protocolo/contexto e da autorização clínica real.
+
+### Nexus médico avançado
+
+Preservar sem flexibilização:
+
+- C-01–C-06;
+- `nexus.*` fail-closed;
+- o significado atual de `nexus.eem`;
+- entitlement/identidade/boundaries Nexus onde já são exigidos.
+
+A futura multiprofissionalidade de instrumentos não deve ser resolvida concedendo `nexus.*` a profissionais que apenas precisem administrar um instrumento.
+
+### Instrumentos clínicos
+
+PHQ-9/GAD-7 não precisam depender conceitualmente de o profissional ser usuário do produto Nexus médico avançado.
+
+Enquanto a futura arquitetura de fachada/persistência não for implementada:
+
+- preservar definição, versão e scoring validados existentes;
+- não duplicar PHQ-9/GAD-7 como segunda implementação no Assessment Engine;
+- manter Assessment Engine como referência multiprofissional para avaliações estruturadas;
+- manter autorização efetiva separada de relevância/apresentação.
+
+Nenhuma nova capability foi criada por esta sincronização documental. Em particular, `clinical.instrument.apply` **não é capability implementada/canônica no runtime atual**.
+
+## Instrument Delivery — direção futura
+
+A sequência futura documentada, ainda totalmente não implementada, é:
+
+```text
+1. Clinical Instrument Authorization Foundation
+2. Clinician-Assisted Administration
+3. Encounter Instrument UX
+4. Consultório V5 integration/polish
+```
+
+O contrato de UX futuro para instrumentos como PHQ-9/GAD-7 é:
+
+```text
+PHQ-9
+[Aplicar agora] [Enviar ao paciente]
+
+GAD-7
+[Aplicar agora] [Enviar ao paciente]
+```
+
+`Aplicar agora` representa administração presencial/assistida durante a consulta, sem depender de celular ou WhatsApp. `Enviar ao paciente` representa administração remota/self-assessment.
+
+O modo de aplicação não muda a identidade/versionamento do instrumento e deve reutilizar o mesmo scoring validado. A provenance futura deve distinguir o modo de administração, conceitualmente `patient_self` e `clinician_assisted`, preservando autoria do ato profissional e `appointment_id` quando houver Encounter.
+
+## PHQ-9 — requisito futuro de segurança
+
+Resposta positiva ao item 9 deve:
+
+- permanecer visível;
+- gerar destaque para necessidade de avaliação clínica;
+- preservar a resposta original;
+- não equivaler isoladamente a diagnóstico;
+- não gerar diagnóstico automático;
+- não gerar conduta/prescrição automática.
+
+Esse requisito é documental/futuro neste snapshot; não representa implementação já existente de UX.
+
+## Consultório V5 — direção de UX
+
+A direção futura, ainda não implementada, é um Clinical Cockpit organizado em torno de um único Encounter:
+
+```text
+um Encounter
+├─ Registro
+├─ Avaliações
+├─ Instrumentos
+├─ Prescrição
+├─ Exames
+├─ Documentos
+└─ Nexus
+```
+
+A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou arquitetura legada.
 
 ## Marcos recentemente fechados
 
@@ -117,16 +229,18 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 5. Parceiro/repasse ≠ role.
 6. Consultório é privacy/presentation shell.
 7. `professional_id` é a referência clínica canônica.
-8. Nexus não é um segundo runtime e não é liberado por role/especialidade isolados.
-9. Histórico finalizado não é reaberto/reescrito silenciosamente.
-10. Foundations fechadas não devem ser reabertas sem evidência real.
+8. Nexus médico avançado mantém C-01–C-06 e `nexus.*` fail-closed; não é liberado por role/especialidade isolados.
+9. Instrumentos clínicos podem ser multiprofissionais sem que isso conceda Nexus ou converta relevância em autorização.
+10. `ENGINE != AUTHORIZATION != RELEVANCE`.
+11. Histórico finalizado não é reaberto/reescrito silenciosamente.
+12. Foundations fechadas não devem ser reabertas sem evidência real.
 
 ## Próximos passos recomendados
 
 1. fechar as evidências operacionais curtas #394/#389/#396;
 2. pilotar e polir ergonomia do Encounter com profissionais reais;
 3. construir **Cobertura deste atendimento** sem expor Financeiro global;
-4. unificar Instrument Delivery para `Aplicar agora` + `Enviar ao paciente`;
+4. evoluir instrumentos na ordem: Clinical Instrument Authorization Foundation → Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish;
 5. entregar Prescription V1;
 6. priorizar demais documentos médicos conforme piloto;
 7. evoluir Finance Configuration para solo/equipe, categorias e parceiro %/fixo com histórico/effective dates;
@@ -137,6 +251,8 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 - [`../AGENTS.md`](../AGENTS.md) — autoridade operacional.
 - [`../PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) — sequência estratégica.
 - [`../TODO.md`](../TODO.md) — trabalho aberto.
+- [`MULTIPROFESSIONAL_DOMAIN_MODEL.md`](MULTIPROFESSIONAL_DOMAIN_MODEL.md) — separações de role/profissão/especialidade/capability e instrumentos multiprofissionais.
+- [`ASSESSMENT_ENGINE.md`](ASSESSMENT_ENGINE.md) — engine de avaliações e relação com Instrument Delivery.
 - [`BETA_READINESS.md`](BETA_READINESS.md) — gates de beta.
 - [`CLINICAL_ENCOUNTER_RECORD.md`](CLINICAL_ENCOUNTER_RECORD.md) — contrato do Encounter Record.
 - [`PRESENTATION_CONTEXT.md`](PRESENTATION_CONTEXT.md) — Consultório/Gestão.
