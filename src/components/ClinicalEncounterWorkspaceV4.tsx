@@ -180,7 +180,7 @@ export function ClinicalEncounterWorkspaceV4({
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 space-y-4">
-          <EncounterSection id="encounter-context" eyebrow="Contexto clínico" title="Ponto de partida" detail="Referências longitudinais ficam visíveis sem serem confundidas com dados desta consulta.">
+          <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">
                 <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">{patientContext.eyebrow}</p>
@@ -196,40 +196,26 @@ export function ClinicalEncounterWorkspaceV4({
             </div>
           </EncounterSection>
 
-          <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Avalie quando fizer sentido" detail="A avaliação estruturada continua opcional e usa o Assessment Engine canônico, com draft, versão, autoria e sessão quando aplicável.">
-            {assessmentCapability.loading ? (
-              <NeutralState>Validando acesso às avaliações clínicas…</NeutralState>
-            ) : assessmentCapability.error ? (
-              <BlockedState title="Não foi possível verificar o acesso às avaliações">A interface não presume autorização enquanto a capability clínica está com erro de verificação.</BlockedState>
-            ) : assessmentCapability.allowed ? (
-              <ClinicalAssessmentRunner patient={patient} />
-            ) : (
-              <NeutralState>A aplicação de avaliações estruturadas não está liberada para este perfil. O histórico permanece disponível no prontuário longitudinal.</NeutralState>
-            )}
-          </EncounterSection>
-
-          <EncounterSection id="encounter-tools" eyebrow="Ferramentas da consulta" title="Instrumentos quando realmente disponíveis" detail="Ferramentas contextuais aparecem apenas quando entitlement, capabilities e demais boundaries clínicos permitem. Especialidade organiza relevância; nunca cria autorização.">
-            <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user?.id} />
-            <NeutralState>Não há atalhos de prescrição, exames, laudos, atestados ou outros módulos sem workflow canônico real. Ausência de ferramenta não produz botão morto.</NeutralState>
-          </EncounterSection>
-
           <section ref={evolutionRef} className="scroll-mt-36">
-            <EncounterSection id="encounter-evolution" eyebrow="Evolução" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registre o que aconteceu nesta consulta'} detail="Este é o registro encounter-scoped obrigatório para liberar a finalização e fica vinculado exatamente a esta sessão.">
+            <EncounterSection id="encounter-evolution" eyebrow="Evolução" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro da consulta'} detail="Registro obrigatório para encerrar o atendimento.">
               {hasLinkedEvolution ? (
                 <div className="rounded-2xl border border-mint/30 bg-mint/[0.045] p-4">
-                  <div className="flex flex-wrap items-center gap-2"><Chip className="border-mint/35 text-mint">Persistência confirmada ✓</Chip><span className="font-mono text-[10.5px] text-fog">sessão {canonicalEncounter.inicio.slice(0, 5)} · autoria atual</span></div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip className="border-mint/35 text-mint">Registrada no prontuário ✓</Chip>
+                    <span className="font-mono text-[10.5px] text-fog">consulta {canonicalEncounter.inicio.slice(0, 5)} · registro do profissional atual</span>
+                  </div>
                   {currentEvolution?.texto && <p className="mt-3 whitespace-pre-wrap text-[13px] leading-relaxed text-paper/90">{currentEvolution.texto}</p>}
                 </div>
               ) : evolutionCapability.loading ? (
-                <NeutralState>Validando permissão para registrar evolução…</NeutralState>
+                <NeutralState>Verificando acesso para registrar a evolução…</NeutralState>
               ) : evolutionCapability.error ? (
-                <BlockedState title="Não foi possível verificar seu acesso">A permissão para registrar evolução não pôde ser confirmada agora. O sistema não assume ausência de autorização enquanto essa verificação está com erro.</BlockedState>
+                <BlockedState title="Não foi possível verificar seu acesso">Tente novamente antes de encerrar o atendimento.</BlockedState>
               ) : evolutionCapability.allowed ? (
                 <div className="rounded-2xl border border-amber/25 bg-amber/[0.035] p-4">
-                  <p className="text-[11.5px] leading-relaxed text-fog">O estado permanece <span className="font-semibold text-amber">pendente</span> até a persistência ser confirmada. O registro será vinculado a <span className="font-semibold text-paper">session_id = {canonicalEncounter.id.slice(0, 8)}…</span>, sem seletor de outra sessão.</p>
+                  <p className="text-[11.5px] leading-relaxed text-fog">A evolução ainda não foi registrada. Após o registro, o encerramento poderá ser liberado.</p>
                   <Textarea className="mt-3" rows={7} value={evolutionText} onChange={(event) => setEvolutionText(event.target.value)} placeholder="Achados relevantes, evolução do quadro, conduta realizada, orientações e plano de continuidade…" />
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-[10.5px] text-fog">{savingEvolution ? 'Registrando no prontuário…' : 'Nada é informado como salvo antes da confirmação.'}</span>
+                    <span className="text-[10.5px] text-fog">{savingEvolution ? 'Registrando no prontuário…' : 'Registre a evolução desta consulta antes de encerrar o atendimento.'}</span>
                     <Btn disabled={savingEvolution || !evolutionText.trim()} onClick={() => void registerEvolution()}>{savingEvolution ? 'Registrando…' : 'Registrar evolução'}</Btn>
                   </div>
                 </div>
@@ -239,9 +225,24 @@ export function ClinicalEncounterWorkspaceV4({
             </EncounterSection>
           </section>
 
-          <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Consolide somente o que tem contrato clínico" detail="Resultados Nexus entram no registro oficial apenas por incorporação explícita, preservando revisão, assinatura, origem e versão.">
+          <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Avaliação estruturada" detail="Avaliação estruturada opcional para esta consulta.">
+            {assessmentCapability.loading ? (
+              <NeutralState>Carregando avaliações clínicas…</NeutralState>
+            ) : assessmentCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso às avaliações">Tente novamente em instantes ou atualize a página.</BlockedState>
+            ) : assessmentCapability.allowed ? (
+              <ClinicalAssessmentRunner patient={patient} presentation="encounter" />
+            ) : (
+              <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
+            )}
+          </EncounterSection>
+
+          <EncounterSection id="encounter-tools" eyebrow="Ferramentas clínicas" title="Recursos disponíveis para este atendimento" detail="Use os recursos disponíveis conforme a necessidade clínica.">
+            <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user?.id} />
+          </EncounterSection>
+
+          <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Continuidade do cuidado" detail="Registre ou consulte informações relevantes para a continuidade do cuidado.">
             <NexusRecordIncorporationPanel patient={patient} />
-            <NeutralState>Motivo desta consulta, HDA, achados livres, hipótese e plano encounter-scoped ainda não possuem modelo próprio. O V4.1 não grava esses dados em campos longitudinais para simular maturidade.</NeutralState>
           </EncounterSection>
 
           <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={closing.sectionTitle} detail={closing.sectionDetail}>
@@ -270,7 +271,6 @@ export function ClinicalEncounterWorkspaceV4({
             </dl>
             <a href="#encounter-history" className="mt-4 inline-flex text-[11px] font-semibold text-aqua hover:underline">Abrir prontuário longitudinal ↓</a>
           </div>
-          <NeutralState>O horário exibido vem da sessão canônica. O V4.1 não inventa cronômetro de duração sem um marco confiável de início clínico.</NeutralState>
         </aside>
       </div>
 
@@ -343,7 +343,7 @@ function ConsultationStateCard({
         <Chip className={persistence.className}>{persistence.label}</Chip>
         <ClosingChip closing={closing} />
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-fog">{closing.progressDetail}. A interface informa apenas estados confirmados pelos dados e capabilities atuais.</p>
+      <p className="mt-3 text-[11px] leading-relaxed text-fog">Acompanhe o registro da evolução e os requisitos para encerrar o atendimento.</p>
       {closing.action === 'register_evolution' && <Btn className="mt-3 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para evolução</Btn>}
       <a href="#encounter-closing" className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver requisitos de encerramento ↓</a>
     </div>
