@@ -138,6 +138,13 @@ BEGIN
      OR has_table_privilege('anon', 'public.clinical_encounter_records', 'DELETE') THEN
     RAISE EXCEPTION 'clinical_encounter_anon_privilege_detected';
   END IF;
+  IF has_function_privilege(
+       'authenticated',
+       'public.materialize_clinical_encounter_evolution(text,text,text,text,text,text)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'clinical_encounter_internal_materializer_execute_grant_leaked';
+  END IF;
 END $$;
 
 DO $$
