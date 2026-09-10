@@ -92,7 +92,9 @@ BEFORE UPDATE OF status ON public.appointments
 FOR EACH ROW EXECUTE FUNCTION public.guard_appointment_status_transition();
 
 -- Test-only clinical.attend setup. These grants are disposable fixtures and are
--- never part of the #400 migration.
+-- never part of the #400 migration. The reduced C-06 fixture intentionally has
+-- no production uniqueness constraint on professional_capabilities, so this
+-- disposable one-shot setup uses a plain INSERT rather than ON CONFLICT.
 INSERT INTO public.capability_catalog(capability_key, domain, description, clinical, active)
 VALUES ('clinical.attend','clinical','Synthetic #400 clinical attend',true,true)
 ON CONFLICT (capability_key) DO UPDATE
@@ -103,8 +105,7 @@ VALUES
  ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000103','clinical.attend',true),
  ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000104','clinical.attend',true),
  ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000105','clinical.attend',true),
- ('00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000201','clinical.attend',true)
-ON CONFLICT (clinic_id, professional_id, capability_key) DO UPDATE SET granted=true;
+ ('00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000201','clinical.attend',true);
 
 -- PHQ-9 is explicitly enabled only for the disposable clinic so the #399
 -- defense-in-depth assertions can reach the Encounter temporal predicate.
