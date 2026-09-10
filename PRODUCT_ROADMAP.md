@@ -68,7 +68,7 @@ O Encounter Record é a unidade editável do novo atendimento. O profissional re
 
 ### Clinical Instrument Authorization Foundation (#399)
 
-Implementada no repositório, com rollout de migration ainda pendente em produção.
+Implementada no repositório **e alinhada em produção em 2026-09-10**.
 
 A foundation entrega:
 
@@ -76,13 +76,49 @@ A foundation entrega:
 - `clinical_instrument_catalog` como allowlist multiprofissional controlada, inicialmente somente `phq9` e `gad7`;
 - referência técnica dos itens do catálogo aos contratos versionados da engine Nexus, sem duplicar perguntas, validação ou scoring;
 - `clinic_clinical_instrument_settings` com default conservador `false`;
-- `can_apply_clinical_instrument_in_encounter(...)` como primeiro boundary contextual, exigindo `appointments.professional_id = auth.uid()` e status `em_atendimento`;
+- `can_apply_clinical_instrument_in_encounter(...)` como primeiro boundary contextual, exigindo `appointments.professional_id = auth.uid()`, Encounter ativo e demais requisitos de autorização base;
 - owner/admin sujeitos às mesmas boundaries clínicas, sem bypass;
 - helper base não executável pelo browser.
 
 Uma futura escala presente em `nexus_result_contracts` não é automaticamente exposta no catálogo clínico neutro.
 
+Rollout observado em produção:
+
+- migration #399 aplicada;
+- verifier read-only passou;
+- `admin-team` alinhado ao `main` e smoke de auth/CORS passou;
+- frontend confirmado com `clinical.instrument.apply`;
+- smoke controlado com médico piloto comprovou DENY sem configuração/capability, ALLOW apenas com composição correta no próprio Encounter e zero resíduos após rollback.
+
 A #399 **não** implementa administração assistida, persistência multiprofissional nova, UI PHQ/GAD nem entrega remota.
+
+### Encounter Temporal Start Boundary (#400)
+
+Implementada, mergeada e instalada em produção em 2026-09-10.
+
+Contrato:
+
+```text
+appointments.data > current_clinic_operational_date()
++ ator normal tentando entrar em em_atendimento
+→ DENY
+```
+
+A #400 protege tanto `INSERT` já nascendo em `em_atendimento` quanto `UPDATE` que entra nesse status, preserva same-day/past semantics e o bypass controlado de manutenção.
+
+Também endurece #399: future-active legado fisicamente existente retorna `false` em `can_apply_clinical_instrument_in_encounter(...)`.
+
+O rollout de produção comprovou:
+
+- migration #400 aplicada com `COMMIT`;
+- verifier read-only #400 passou;
+- smoke reproduziu o defeito forense real e recebeu `appointment_future_encounter_start_forbidden`;
+- future-active legado permaneceu `DENY` para Apply-in-Encounter;
+- rollback restaurou o estado e deixou zero resíduos temporários.
+
+`current_clinic_operational_date()` usa `America/Sao_Paulo` como fallback operacional atual. Timezone configurável por tenant continua follow-up obrigatório antes de expansão geográfica para outros fusos.
+
+O appointment histórico `de857836-baa0-476f-bd7b-d6f52df33007` ainda precisa de reparação separada e auditável; a migration #400 não reescreve dados históricos.
 
 ### Assessment Engine
 
@@ -108,15 +144,16 @@ Parceiro/repasse não é autorização.
 
 Fundação técnica pronta não equivale a UX validada por profissionais externos.
 
-### 0. Fechar smoke e observabilidade pendentes
+### 0. Fechar smoke, repair e observabilidade pendentes
 
 Antes de ampliar o piloto:
 
+- reparar de forma separada e auditável o appointment histórico future-active `de857836-baa0-476f-bd7b-d6f52df33007`;
 - registrar a comprovação read-only pós-finalização do smoke real #394, se não houver evidência posterior no repositório;
 - registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
 - atualizar/versionar o verifier antigo #388 cuja assertion sobre ausência da RPC #389 ficou obsoleta;
 - fazer smoke visual/uso real do Consultório/Gestão #396;
-- aplicar/verificar a migration #399 em produção somente após aprovação/merge explícitos;
+- acompanhar superfícies legadas que ainda possam aceitar um estado historical future-active fora do defense-in-depth #399;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
 
 ### Validação UX
@@ -126,6 +163,12 @@ Antes de ampliar o piloto:
 - validar desktop/mobile e light/dark nos fluxos principais;
 - tratar loading/empty/error/success como parte do produto;
 - registrar fricções observadas, não apenas preferências subjetivas.
+
+### Timezone operacional
+
+- `America/Sao_Paulo` permanece fallback atual da data operacional de clínica;
+- evoluir para timezone explícito por tenant antes de expansão para clínicas em outros fusos;
+- preservar `current_clinic_operational_date()` como abstração server-side e evitar semânticas temporais divergentes no browser.
 
 ---
 
@@ -158,15 +201,15 @@ Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**. 
 Estado canônico deste eixo:
 
 ```text
-[x] Clinical Instrument Authorization Foundation (#399)
+[x] Clinical Instrument Authorization Foundation (#399) — repository + produção
 [ ] Clinician-Assisted Administration
 [ ] Encounter Instrument UX
 [ ] Consultório V5 integration/polish
 ```
 
-A foundation #399 está implementada no repositório, mas sua migration ainda não foi aplicada em produção. Nenhuma administração de PHQ/GAD, persistência multiprofissional nova ou entrega remota foi implementada.
+A foundation #399 está alinhada em produção e, após #400, o Apply-in-Encounter também falha fechado para future-active legado. Nenhuma administração de PHQ/GAD, persistência multiprofissional nova ou entrega remota foi implementada.
 
-#### 3.1 Clinical Instrument Authorization Foundation — entregue no repositório
+#### 3.1 Clinical Instrument Authorization Foundation — entregue e validada em produção
 
 A autoridade clínica neutra e o primeiro boundary contextual foram implementados separadamente do namespace `nexus.*`.
 
@@ -178,7 +221,7 @@ Contrato preservado:
 - `clinical_instrument_catalog` controla exposição multiprofissional explícita e não infere exposição do registry Nexus;
 - configuração da clínica controla disponibilidade institucional via `clinic_clinical_instrument_settings`;
 - `clinical.instrument.apply` controla autorização base;
-- Apply in Encounter exige profissional atribuído + `em_atendimento`;
+- Apply in Encounter exige profissional atribuído + Encounter ativo temporalmente válido;
 - entitlement comercial continua conceito separado da autorização clínica.
 
 A engine Nexus permanece a fonte técnica de definição/versionamento/scoring de PHQ-9/GAD-7. O catálogo neutro referencia esses contratos; não os reimplementa.
