@@ -76,9 +76,17 @@ Além da base, ele exige:
 - appointment no estado clínico canônico `em_atendimento`;
 - paciente derivado do próprio appointment.
 
+Após a #400, o mesmo helper também exige:
+
+```text
+appointments.data <= current_clinic_operational_date()
+```
+
+Assim, um appointment legado/corrompido fisicamente `em_atendimento` com data futura não se torna autoridade de Apply-in-Encounter. Essa defesa temporal não altera a base authorization nem transforma active Encounter em requisito universal para futuros modos de Instrument Delivery.
+
 O browser não informa `clinic_id`, `patient_id` nem `professional_id` como autoridade. Esses valores são derivados do contexto autenticado e do appointment.
 
-`agendado`, `confirmado` e `finalizado` não representam Encounter ativo para **Apply now** no workflow atual e, portanto, falham fechado.
+`agendado`, `confirmado` e `finalizado` não representam Encounter ativo para **Apply now** no workflow atual e, portanto, falham fechado. Future-dated `em_atendimento` também falha fechado após #400.
 
 ## Owner/admin e fronteira entre leitura e ato
 
@@ -89,7 +97,7 @@ Owner/admin só podem obter `true` no boundary de Encounter quando, independente
 - possuem identidade clínica válida;
 - receberam `clinical.instrument.apply` explicitamente;
 - são o `appointments.professional_id` do atendimento;
-- o atendimento está `em_atendimento`;
+- o atendimento está `em_atendimento` e temporalmente válido para Apply-in-Encounter;
 - o instrumento está explicitamente no catálogo neutro e habilitado pela clínica;
 - todas as demais condições de tenant/paciente estão satisfeitas.
 
@@ -151,7 +159,7 @@ Permanecem invariantes:
 - C-05 continua sendo a projeção longitudinal comparável;
 - C-06 continua exigindo identidade médica + entitlement + grant explícito para capabilities `nexus.*`.
 
-Nenhuma policy Nexus, helper C-06, tabela de resultado Nexus ou grant `nexus.*` é ampliado pela #399.
+Nenhuma policy Nexus, helper C-06, tabela de resultado Nexus ou grant `nexus.*` é ampliado pela #399 ou pela defesa temporal #400.
 
 Um fisioterapeuta com `clinical.instrument.apply`, por exemplo, pode satisfazer o boundary neutro de Apply in Encounter para um instrumento explicitamente catalogado/habilitado, mas continua sem `nexus.access`, `nexus.scales` ou `nexus.eem` se não satisfizer separadamente o contrato Nexus — e C-06 impede que uma identidade não médica adquira essa autoridade.
 
@@ -192,43 +200,56 @@ O blocker de exposição adiciona mais 4 negative controls com `nexus_only_scale
 3. owner/admin não conseguem habilitá-la institucionalmente;
 4. um ator com `clinical.instrument.apply` não consegue obter Apply-in-Encounter para ela.
 
+Após #400, o workflow #399 monta a **effective stack #399 → #400** antes de rodar a mesma matriz 38+4, comprovando que a substituição do helper pela #400 não enfraqueceu o contrato anterior.
+
 O verifier instalado é read-only:
 
 `supabase-verifiers/VERIFY_20260910_CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.sql`
 
 Ele valida shape, RLS, ACLs, foreign keys, catálogo neutro, funções e composição das boundaries sem criar fixtures ou alterar dados. Como verifier histórico da #399, exige os mappings canônicos ativos de PHQ-9/GAD-7, mas não limita o catálogo a exatamente dois itens; futuras expansões explícitas podem coexistir sem transformar este verifier em falso vermelho.
 
-## Rollout
+## Rollout de produção — concluído em 2026-09-10
 
 Migration:
 
 `supabase-migrations/20260910_clinical_instrument_encounter_authorization.sql`
 
-Gate local/CI isolado:
+Gate local/CI:
 
 `bash scripts/test-clinical-instrument-encounter-authorization.sh`
 
 A migration é aditiva e desenhada para replay seguro. Ela falha fechado se os contratos canônicos PHQ-9/GAD-7 esperados, helpers clínicos de fundação ou mappings pré-existentes incompatíveis não estiverem presentes.
 
-O rollout de produção deve ser coordenado nesta ordem:
+A sequência coordenada foi executada:
 
 ```text
-merge
+merge #399
 → migration #399
 → verifier read-only #399
 → deploy admin-team
 → frontend do mesmo main
-→ smoke
+→ smoke controlado
 ```
 
-A migration deve estar aplicada e o verifier read-only deve passar antes de considerar o contrato server-side disponível. Depois disso, `admin-team` e o frontend devem vir do mesmo `main`, evitando drift entre capability/configuração exposta na UI e a autoridade instalada no backend.
+Evidência observada:
 
-Se o deploy automático do frontend aparecer antes dessa sequência estar completa, a funcionalidade deve continuar indisponível/fail-closed e **não deve ser usada** até que migration #399, verifier read-only e `admin-team` estejam alinhados. A presença antecipada de frontend não é evidência de rollout concluído nem autoriza contornar a ordem acima.
+- migration aplicada com `COMMIT`;
+- verifier read-only terminou com `VERIFY #399 OK` + `ROLLBACK`;
+- `admin-team` instalado com a allowlist contendo `clinical.instrument.apply`, container de Edge Functions saudável, OPTIONS 200/CORS correto e POST sem sessão retornando 401 `Sessão ausente`;
+- frontend de produção confirmado contendo `clinical.instrument.apply`;
+- smoke com Dr. Médico Nexus comprovou:
+  - baseline sem setting/capability = DENY;
+  - PHQ-9 habilitado sem capability = DENY;
+  - PHQ-9 habilitado + grant explícito + próprio Encounter = ALLOW;
+  - GAD-7 desabilitado = DENY;
+  - cross-tenant = DENY;
+  - zero `nexus.*` criado;
+- o smoke terminou em `ROLLBACK` e o pós-check confirmou zero rows residuais de `clinical.instrument.apply`, PHQ9/GAD7 settings e `nexus.*`.
 
-O smoke é a última etapa e deve validar o fluxo já instalado/alinhado; não substitui migration, verifier ou deploy coordenado da Edge Function.
+Depois, a #400 foi instalada e adicionou a defesa temporal ao helper público. Smoke real em produção confirmou que o future-active histórico continua `DENY` mesmo quando setting/capability são concedidos temporariamente dentro da transação.
 
-**Estado do repositório:** foundation implementada no PR #399.
+**Estado do repositório:** foundation #399 mergeada e coberta pela effective stack #399→#400.
 
-**Estado de produção:** migration #399 ainda não aplicada.
+**Estado de produção:** rollout #399 concluído e temporalmente endurecido por #400.
 
-Aplicação em produção só deve ser considerada após revisão, merge explícito e gates requeridos verdes.
+Isso não deve ser confundido com administração de instrumento entregue: Clinician-Assisted Administration, persistência multiprofissional nova, Encounter Instrument UX e `Enviar ao paciente` continuam futuras.
