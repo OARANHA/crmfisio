@@ -12,9 +12,12 @@ on:
       - 'src/lib/repository.ts'
       - 'supabase-migrations/20260910_clinical_encounter_record_foundation.sql'
       - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql'
+      - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql'
       - 'tests/sql/clinical_encounter_record_*.sql'
       - 'scripts/test-clinical-encounter-record-foundation.sh'
+      - 'scripts/test-clinical-encounter-record-production-verifier.sh'
       - '.github/workflows/clinical-encounter-record-foundation.yml'
+      - '.github/workflows/clinical-encounter-record-production-verifier.yml'
   workflow_dispatch:
 
 jobs:
