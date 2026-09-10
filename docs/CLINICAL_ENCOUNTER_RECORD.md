@@ -1,91 +1,18 @@
 # Clinical Encounter Record
 
-Status: canonical foundation for Mission #394, validated in PostgreSQL 16 before merge. This document records the pre-implementation audit, domain contract, implementation invariants, verification evidence, rollout constraints and future production runbook. The implementation must preserve every existing clinical and financial boundary cited below.
+**Status em 2026-09-10:** foundation canônica entregue em #394, verifier production-safe entregue em #395 e migration #394 aplicada em produção. Este documento registra o contrato que não deve regredir e separa evidência técnica de smoke operacional ainda pendente.
 
 ## Purpose
 
-A clinician records the consultation once. During the encounter, `clinical_encounter_records` is the mutable working draft. After explicit human confirmation, PostgreSQL deterministically materializes that draft into the existing canonical `physiotherapy_evolutions` artifact and finalizes the appointment in one transaction.
+O profissional registra a consulta uma única vez. Durante o atendimento, `clinical_encounter_records` é o working draft mutável do appointment atual. Após revisão e confirmação humana explícita, PostgreSQL materializa deterministicamente esse conteúdo na Evolution oficial existente e finaliza o appointment na mesma transação clínica.
 
-The Encounter Record is not a second finalized chart, a specialty-specific chart, a SOAP engine, or a replacement for Evolution. `physiotherapy_evolutions` remains the canonical finalized clinical artifact used by the longitudinal history and by the current appointment-finalization boundary.
-
-## Pre-implementation audit on main@84d7307e528a126dcc19aee839972c6f4ffbb09a
-
-The following contracts were confirmed before SQL implementation.
-
-### A. Exact Evolution required before finalization
-
-Yes. The current `require_evolution_before_finalize()` boundary requires an Evolution for the same clinic, patient, appointment/session and professional who owns the appointment. The UI guard in `canFinalizeEncounter()` is only a presentation guard; PostgreSQL remains authoritative.
-
-### B. Evolution creation requires an active encounter
-
-Yes. Current Evolution session linkage validates the linked appointment while it is `em_atendimento` and validates the clinic, patient and professional relationship. Therefore the #394 transaction must create the Evolution before changing the appointment to `finalizado`.
-
-### C. Evolution provenance is immutable
-
-Yes. Current self-authorship and session-linkage guards prevent reassignment of clinic, patient, professional, session/appointment and encounter date provenance. #394 must use those existing triggers rather than bypassing them.
-
-### D. Clinical capabilities remain mandatory
-
-Yes. `clinical.attend` and `clinical.evolution.write` are required by the current clinical authorization/finalization boundary and remain required for saving/finalizing an Encounter Record. Commercial entitlement never substitutes clinical authorization.
-
-### E. Expected package-coverage failures remain clinically non-blocking
-
-Yes. The financial finalization boundary handles `package_exhausted`, `package_expired` and `package_not_eligible` as expected coverage failures, records `appointment_financial_exception`, and permits the clinical appointment transition to remain finalized.
-
-### F. Unexpected financial integrity failures remain fail-closed
-
-Yes. Unexpected financial/ledger integrity failures are not swallowed by the current boundary. The #394 finalization RPC must not add a catch-all handler around the appointment status update; an unexpected exception must abort the whole transaction, including the generated Evolution and Encounter Record finalization.
-
-## Current application boundaries audited
-
-The #394 design was checked against:
-
-- `ClinicalEncounterWorkspaceV4.tsx`
-- `ClinicalWorkspaceV3.tsx`
-- `ClinicalWorkspace.tsx`
-- `clinicalEncounterUx.ts`
-- clinical context/provider and `physiotherapy_evolutions`
-- `repository.ts`
-- `appointmentOperations.ts`
-- `activeClinicalEncounter.ts`
-- `professionalReference.ts`
-- Evolution session linkage and self-authorship migrations
-- require-Evolution-before-finalize migration
-- multiprofessional clinical foundation
-- Clinical Foundation Reconciliation
-- Clinical Authorization Reconciliation
-- appointment status transitions
-- Financial/Clinical Finalization Boundary and financial finalization atomicity
-
-No conflict requiring relaxation of #387/#388/#389 was found. The safe ordering is: validate and lock → materialize Evolution while the appointment is still `em_atendimento` → freeze/link the Encounter Record → update appointment to `finalizado` → let all existing clinical/financial triggers execute → commit.
-
-## Historical product comparison
-
-`OARANHA/medicspro` was reopened only for the directly relevant historical flows identified by `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`.
-
-Useful experience retained:
-
-- `InProgressAppointmentView.vue` keeps the clinician inside a dedicated encounter workspace with the patient persistently contextualized.
-- The legacy Record is appointment-oriented and is treated as the central consultation work area.
-- `AnamneseFormTab.vue` demonstrates that structured clinical history can live inside the encounter without forcing every field into the patient master record.
-- `SaveStatusIndicator.vue` demonstrates the product value of explicit persistence feedback.
-- Patient history remains reachable from the encounter instead of replacing the active consultation.
-
-Historical behavior explicitly rejected:
-
-- Vue/Pinia/Mongo/API architecture and historical authorization model.
-- Debounced generic autosave from `InProgressAppointmentView.vue`.
-- The legacy save indicator's idle state displaying `Salvo`, which can claim persistence without a server confirmation.
-- Mutable broad Record update APIs without the current self-authorship/tenant boundaries.
-- Reassociation of authorship or encounter provenance.
-- Legacy finish flow that saves and then opens checkout; clinical finalization must remain independent from checkout.
-- Future-tool buttons or tabs without a real canonical backend contract.
+Encounter Record não é um segundo prontuário final, não é SOAP obrigatório e não substitui o histórico de Evolution. A Evolution continua sendo o artefato oficial longitudinal materializado após confirmação.
 
 ## Domain model
 
-One canonical Encounter Record exists at most per appointment.
+Existe no máximo um Encounter Record canônico por appointment.
 
-Conceptual fields:
+Campos principais:
 
 - `id`
 - `clinic_id`
@@ -98,63 +25,64 @@ Conceptual fields:
 - `assessment`
 - `plan`
 - `additional_notes`
-- `status` (`draft` or `finalized`)
+- `status` (`draft` / `finalized`)
 - `revision`
 - `evolution_id`
 - `created_at`
 - `updated_at`
 - `finalized_at`
 
-The linkage fields are server-derived and immutable. The browser supplies the appointment and editable clinical text, never a trusted tenant or professional identity.
+Vínculos de clínica, appointment, paciente e profissional são derivados/validados server-side. `professional_id` é a referência clínica canônica; `fisio_id` não é autoridade de autorização do #394.
 
-### Clinical semantics
+### Semântica clínica
 
-- `reason`: motivo / demandas da consulta
-- `history`: história atual / HDA
-- `findings`: achados / exame
-- `assessment`: avaliação clínica / problemas
-- `plan`: plano / conduta
-- `additional_notes`: observações complementares opcionais
+- `reason` — motivo / demandas;
+- `history` — história atual / HDA;
+- `findings` — achados / exame;
+- `assessment` — avaliação clínica / problemas;
+- `plan` — plano / conduta;
+- `additional_notes` — observações opcionais.
 
-Individual fields are optional. Finalization requires only that deterministic materialization produce non-empty clinical text. No diagnosis inference, AI summary, `Não informado`, `N/A`, or generated content is permitted.
+Campos vazios podem ser omitidos. A materialização final não inventa diagnóstico, resumo por IA, `N/A`, `Não informado` ou placeholders.
 
-## Longitudinal versus encounter data
-
-Patient fields remain longitudinal. Encounter Record fields describe only the current appointment. In particular, `patient.queixaPrincipal` must never be relabeled or overwritten as the reason for the current consultation, and encounter HDA/findings/assessment/plan must never be persisted into longitudinal patient fields as a shortcut.
-
-## Lifecycle
+## Lifecycle canônico
 
 ### Draft
 
-A draft can be created or changed only when all current conditions are true:
+Um draft só pode ser criado/alterado quando o ator autenticado satisfaz as boundaries clínicas existentes, incluindo:
 
-- authenticated actor has an active profile in the active clinic;
-- current clinical identity is valid;
-- actor owns the appointment as the exact professional through `appointments.professional_id`;
-- appointment belongs to the same clinic and patient and is `em_atendimento`;
-- `clinical.attend` is allowed;
-- `clinical.evolution.write` is allowed;
-- no canonical legacy Evolution already exists for that appointment before a new record is created.
+- perfil ativo na clínica atual;
+- identidade clínica válida;
+- appointment próprio via `appointments.professional_id`;
+- appointment correto ainda `em_atendimento`;
+- `clinical.attend` permitido;
+- `clinical.evolution.write` permitido;
+- ausência de Evolution canônica legada preexistente para um novo Record.
 
-The #394 authorization boundary is fail-closed: boolean authorization helpers are accepted only when they return `TRUE`; `NULL` never authorizes. `fisio_id` remains a compatibility field elsewhere in the platform but is not an authorization authority for #394.
+A autorização é fail-closed: helpers booleanos precisam retornar `TRUE`; `NULL` não autoriza.
 
-Draft writes are RPC-only for the browser. Authenticated direct INSERT/UPDATE/DELETE is not part of the contract.
+Writes de browser são RPC-only. INSERT/UPDATE/DELETE direto por `authenticated` não faz parte do contrato.
 
 ### Optimistic concurrency
 
-`revision` is an integer version. Each save includes `expected_revision`. A save succeeds only when the expected value equals the current server value. A stale tab receives an explicit conflict and cannot overwrite a newer version.
+`revision` é a versão do draft. Cada save informa `expected_revision`; stale revision é recusada e não sobrescreve trabalho mais novo.
 
-Example: A and B open revision 2; B saves revision 3; A tries expected revision 2; A is rejected and B remains unchanged.
+### Finalization
 
-### Finalized
+A finalização canônica executa em uma transação PostgreSQL:
 
-Finalization is a single PostgreSQL transaction. It locks the appointment and Encounter Record, revalidates actor/tenant/ownership/capabilities/revision/status, rejects competing Evolution provenance, materializes one canonical Evolution, freezes the Encounter Record and then updates the appointment to `finalizado` through the existing trigger chain.
+1. lock/revalidação de actor, clinic, appointment, ownership, capabilities, status e revision;
+2. materialização da Evolution enquanto o appointment ainda está `em_atendimento`;
+3. vínculo/congelamento do Encounter Record como `finalized`;
+4. atualização do appointment para `finalizado`;
+5. execução da cadeia clínica/financeira já existente;
+6. commit somente se os invariantes inesperados permanecerem íntegros.
 
-A finalized Encounter Record cannot return to draft, change content/provenance/evolution linkage, or be hard-deleted by the browser. Future corrections will use an auditable addendum/rectification model; that model is intentionally not implemented in #394.
+Um Encounter Record finalizado é histórico. Ele não volta a draft e não é reescrito silenciosamente. **Correction/addendum auditável ainda não está implementado** e deve ser uma slice própria.
 
 ## Evolution materialization
 
-The canonical Evolution text is deterministic and includes only non-empty sections, in this order:
+A Evolution oficial é determinística e contém apenas seções não vazias, na ordem clínica definida pelo #394:
 
 ```text
 Motivo / demandas
@@ -176,111 +104,128 @@ Observações
 <additional_notes>
 ```
 
-Empty sections are omitted. No LLM participates in canonical materialization. The resulting Evolution preserves the existing exact clinic, patient, professional and session/appointment linkage.
+Não existe um segundo textarea universal de Evolution no novo fluxo.
 
-`physiotherapy_evolutions.created_at` represents the real database creation time and uses the table default (`now()`); it is not fabricated from the appointment date or a synthetic UTC hour. Clinical session temporality remains on `Appointment.data`, `Appointment.inicio` and `Appointment.fim`.
+`physiotherapy_evolutions.created_at` usa o tempo real de criação do banco (`now()`/default canônico); não é fabricado a partir da data do appointment. A temporalidade da sessão continua em `Appointment.data`, `inicio` e `fim`.
 
-## Idempotency and encounter-level serialization
+## Idempotency e concorrência
 
-Finalization is safe for double-click/retry. A completed logical finalization returns the already-finalized record instead of creating a second Evolution or repeating the appointment transition.
+Finalização é segura contra double-click/retry: uma conclusão lógica já realizada não cria segunda Evolution nem repete a transição.
 
-#394 serializes Encounter Record commands and linked Evolution insertion at the appointment level using a shared advisory lock. A concurrent legacy Evolution insertion is allowed to finish first; the #394 finalizer then observes the competing source, fails explicitly with `clinical_encounter_evolution_conflict`, preserves the draft/appointment, and can be retried safely after the conflict is resolved. No deadlock and no duplicate active Evolution are accepted.
+Encounter Record e inserção de Evolution ligada ao mesmo appointment usam serialização/advisory lock. Uma Evolution legada concorrente pode vencer primeiro; o finalizer do #394 então deve observar o conflito e falhar explicitamente sem escolher silenciosamente um vencedor ou duplicar artefatos.
 
-## Compatibility with existing Evolutions
+## Compatibilidade com Evolutions legadas
 
-Rollout does not fabricate Encounter Records for old Evolutions and performs no clinical backfill.
+Não existe backfill clínico fictício.
 
-- Active appointment with an existing canonical Evolution and no Encounter Record: preserve the legacy finalization path; do not create another Evolution or retroactive Encounter Record.
-- Active appointment with no Evolution: the Encounter Record can become the source of the final clinical act.
-- Draft Encounter Record followed by an external/legacy Evolution for the same session: fail closed as a recoverable conflict; do not choose a winner and do not duplicate either artifact.
+- appointment ativo com Evolution canônica existente e sem Encounter Record: preservar fluxo legado e não criar Record retroativo;
+- appointment ativo sem Evolution: Encounter Record pode ser fonte do ato clínico final;
+- draft Encounter Record seguido por Evolution externa/legada concorrente: falhar fechado como conflito recuperável.
 
-The PostgreSQL 16 compatibility fixture uses a #394-owned legacy appointment (`43000000-0000-0000-0000-000000000014`) at `05:30–06:00`, with one pre-existing Evolution created while the appointment is still `em_atendimento` and no Encounter Record. Case 23 proves that a new Encounter Record is refused, the existing legacy finalization path still finalizes the appointment, exactly one Evolution remains and no Encounter Record is backfilled. This avoids depending on or mutating the reused #388 appointment fixture.
+O caso comportamental 23 do harness #394 prova compatibilidade legada usando fixture próprio do #394, sem depender do appointment financeiro #388.
 
-## Reading and RLS
+## Assessment e Nexus
 
-The Encounter Record does not invent a new clinical-read philosophy. Tenant isolation is mandatory and SELECT aligns with the existing patient clinical-record access helper used by clinical timeline/Evolution reading. RLS is defense-in-depth; commercial plan/entitlement does not grant clinical authority.
+Clinical Assessment continua um artefato estruturado/versionado separado; #394 não copia automaticamente respostas para campos do Encounter Record.
 
-The verifier covers author, unauthorized other professional, other tenant, anonymous actor, inactive profile and non-clinical administrative actor under the existing boundaries. Direct browser writes to `clinical_encounter_records` remain denied.
-
-## Relationship with Assessment
-
-Clinical Assessment remains a separate, optional, versioned artifact. #394 does not copy Assessment answers into Encounter Record fields. A future explicit `incorporar achado` action may be designed separately.
-
-## Relationship with Nexus
-
-Nexus C-01…C-06 remain unchanged. Nexus results do not populate Encounter Record fields or the generated Evolution automatically. Existing entitlement, capability, identity, care relationship, review, signature and explicit incorporation rules remain authoritative.
+Nexus C-01–C-06 permanecem independentes. Resultados Nexus não populam Encounter Record/Evolution automaticamente. Entitlement, capability, identidade médica, relação assistencial, lifecycle e incorporação explícita continuam autoritativos.
 
 ## Relationship with Finance
 
-Encounter Record finalization performs no checkout, payment, receivable or finance mutation of its own. It only updates the appointment through the existing clinical finalization route inside the same PostgreSQL transaction. Existing financial triggers therefore remain authoritative:
+Encounter Record não faz checkout nem cria cobrança por conta própria. A finalização atualiza o appointment e deixa os triggers financeiros canônicos decidirem efeitos.
 
-- expected package-coverage failures create the current financial exception and do not roll back clinical finalization;
-- unexpected financial integrity errors propagate and roll back the entire transaction.
+Contrato após #388:
 
-The #394 PostgreSQL matrix proves `package_exhausted` end to end: the appointment and Encounter Record remain finalized, one Evolution survives and the financial exception is recorded. The existing Financial Clinical Finalization gate remains responsible for the complete expected coverage taxonomy, including `package_expired` and `package_not_eligible`.
+- `package_exhausted`, `package_expired` e `package_not_eligible` são falhas esperadas de cobertura;
+- uma finalização clínica válida não é perdida por esses estados;
+- `appointment_financial_exception` registra a inconsistência;
+- não há consumo gratuito silencioso.
 
-An injected unexpected financial-integrity exception proves full atomic rollback: Appointment remains `em_atendimento`, Encounter Record remains `draft`, and the newly materialized Evolution does not survive.
+Falhas financeiras inesperadas de integridade continuam propagando exception e revertendo atomicamente Appointment + Encounter Record + Evolution.
 
-## Minimal UX contract
+#389 resolve exceções de forma explícita: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`, recep/professional sem resolução.
 
-For an own active appointment without a legacy Evolution, the universal Evolution textarea is replaced by one consultation record with flexible fields for reason, history, findings, assessment, plan and optional notes. The clinician may fill them in any order and may leave irrelevant sections empty.
+## UX contract mínimo
 
-Persistence states are truthful: `Não salvo`, `Salvando...`, `Rascunho salvo`, `Conflito de versão`, or `Erro ao salvar`. No generic autosave is introduced.
+No próprio atendimento ativo:
 
-A saved valid draft offers `Revisar e concluir`. Review may show the deterministic final text but does not create a second editable Evolution field. Human confirmation makes clear that the record becomes definitive, the official Evolution is generated and the appointment is finalized.
+- um único formulário de consulta para as seis seções;
+- preenchimento livre, sem wizard obrigatório;
+- persistence states verdadeiros (`Não salvo`, `Salvando...`, `Rascunho salvo`, conflito/erro);
+- sem autosave genérico;
+- revisão read-only antes da conclusão;
+- confirmação humana antes de tornar o registro definitivo.
 
-## PostgreSQL 16 verification evidence
+## Verification evidence
 
-The implementation head immediately before the #394 documentation-only finalization passed the full isolated PostgreSQL 16 gate with **34/34 behavior cases** and the behavioral structural verifier.
+### Behavior verifier / CI
 
-`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` is intentionally a **behavior/harness verifier**. It validates the state produced by the isolated 34-case suite, including `public._clinical_encounter_394_results`, and therefore must not be run directly as the post-migration production verifier.
+`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` pertence ao **harness comportamental** e depende do estado criado pelos casos 1–34, incluindo `_clinical_encounter_394_results`.
 
-Verified behavior invariants include:
+Ele **não é verifier pós-migration para banco real**.
 
-- one Encounter Record per appointment and immutable server-derived linkage;
-- tenant/professional/inactive-profile/capability denial;
-- stale revision rejection without overwrite;
-- finalized record immutability and browser hard-delete denial;
-- deterministic materialization with empty sections omitted and no invented content;
-- exact generated Evolution clinic/patient/professional/session linkage;
-- Evolution present before appointment reaches `finalizado`;
-- idempotent double finalize/retry;
-- dedicated legacy Evolution compatibility (case 23);
-- competing Evolution fail-closed behavior (case 24);
-- expected package exhaustion preserving clinical finalization plus financial exception (case 25);
-- unexpected financial integrity error rolling back Appointment + Encounter Record + Evolution (cases 26 and 32);
-- tenant/RLS/anonymous/non-clinical read isolation and finalized-history readability (cases 27–28);
-- fail-closed `NULL` identity/capability helpers (case 29);
-- `professional_id` as the sole #394 appointment identity authority (case 30);
-- real Evolution creation timestamp separated from appointment clinical time (case 31);
-- repeated successful finalize/double-click idempotency (case 33);
-- direct browser mutation of finalized Encounter Record denied (case 34).
+Os 34 casos PostgreSQL 16 cobrem cardinalidade, linkage, authorization, stale revision, finalized immutability, materialização determinística, idempotência, legacy Evolution, concorrência, expected coverage exception, unexpected rollback, RLS isolation, fail-closed NULL helpers, `professional_id` canônico, `created_at` real e browser mutation denial.
 
-The migration is replayed twice in the behavior harness. The verifier requires exactly one `trg_00_lock_linked_evolution_encounter` and one `trg_guard_clinical_encounter_record_integrity`, preventing replay-created trigger duplication.
+A migration é replayed no harness e os triggers críticos são verificados sem duplicação.
 
-The behavior harness temporarily grants only the reduced-fixture access needed to inspect Evolution rows and call the pure materializer oracle. Both temporary grants are revoked before the concurrency and final verifier stages. The behavioral verifier explicitly rejects leaked `authenticated EXECUTE` on `materialize_clinical_encounter_evolution(...)`. These harness grants are not part of the production migration.
+### Production-safe verifier / #395
 
-### Production-safe rollout verifier (#395)
+`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` é o verifier apropriado para banco real logo após a migration.
 
-`supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` is the direct post-migration verifier for a real database. It begins a transaction, sets it `READ ONLY`, performs catalog/schema/function/ACL/trigger inspection only, and always ends with `ROLLBACK` when successful. It neither invokes mutating Encounter RPCs nor requires behavior fixtures, synthetic clinical IDs, temporary grants or `public._clinical_encounter_394_results`.
+Ele:
 
-The dedicated CI gate applies the #394 migration to an isolated PostgreSQL 16 schema containing zero application rows and then runs only this production verifier. The gate also proves before and after verification that the behavior result ledger is absent and no application rows were created.
+- começa com `BEGIN` + `SET TRANSACTION READ ONLY`;
+- inspeciona schema/constraints/FKs/RLS/policies/grants/functions/triggers/índices;
+- não cria fixtures;
+- não usa IDs clínicos sintéticos;
+- não chama RPC mutante;
+- não depende de `_clinical_encounter_394_results`;
+- termina em `ROLLBACK`.
 
-## Future production runbook — document only, do not execute in #394/#395
+O CI #395 também provou que ele roda isoladamente sobre PostgreSQL 16 sem carregar os casos comportamentais.
 
-1. Merge only after all frontend, PostgreSQL 16, clinical authorization/foundation, financial finalization, production-safe verifier and Nexus gates are green.
-2. Back up/confirm database restore posture and verify the deployed application is compatible with the migration.
-3. Apply the additive #394 migration once using `psql -v ON_ERROR_STOP=1` under the normal MedicsPro migration procedure.
-4. Immediately run `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` against the deployed schema. Do **not** use `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` directly in production; that file belongs to the isolated 34-case behavior harness.
-5. Re-run the existing Clinical Foundation, Clinical Authorization and Financial/Clinical Finalization verification scripts.
-6. Deploy the compatible frontend only after database verification succeeds.
-7. Smoke-test: new structured draft/save/finalize, legacy Evolution compatibility, stale revision conflict, expected package-coverage exception and an unauthorized access case.
-8. Do not backfill historical Evolutions into Encounter Records.
+## Production rollout status — 2026-09-10
 
-#394 and #395 themselves perform none of these production steps.
+O runbook deixou de ser apenas futuro.
+
+### Observado
+
+- migration `20260910_clinical_encounter_record_foundation.sql` **aplicada em produção em 2026-09-10**;
+- `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` passou com **`VERIFY #394 PRODUCTION OK`**;
+- Clinical Foundation passou;
+- Clinical Authorization passou;
+- Financial Exception Resolution #389 passou;
+- migration #394 não deve ser reaplicada por causa de documentação antiga.
+
+O verifier antigo #388 contém uma assertion histórica de ausência da RPC criada posteriormente pelo #389. Essa assertion é obsoleta no schema atual e deve ser atualizada/versionada antes de reutilização contra produção; isso não é defeito do #394.
+
+### Smoke real observado antes da finalização
+
+Foi comprovado:
+
+- Encounter Record persistido;
+- refresh/navegação preservaram conteúdo;
+- draft revision observada;
+- antes da finalização: **1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions** no cenário exercitado.
+
+### Pendência operacional curta
+
+Este documento **não possui evidência suficiente** para afirmar que a inspeção read-only pós-finalização desse mesmo smoke foi formalmente observada. Antes de tratar o rollout funcional como completamente evidenciado, registrar o estado final esperado por leitura real.
+
+Da mesma forma, não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidência posterior.
 
 ## Deliberately deferred
 
-#394 does not implement a structured problem list, diagnosis coding engine, prescriptions, exams, certificates, reports, referrals, attachments, generic autosave, AI-generated charting, new finance, Nexus lifecycle changes or broad redesign.
+Não fazem parte da foundation #394:
 
-A later post-rollout clinical slice should be chosen from pilot evidence. An auditable correction/addendum path for finalized encounter records remains a natural candidate unless a real document workflow (prescription or certificate) has higher immediate value.
+- correction/addendum de registro finalizado;
+- problem list/diagnosis engine amplo;
+- Prescription V1 e demais documentos médicos;
+- instrument delivery unificado;
+- cobertura contextual do Encounter;
+- autosave genérico;
+- IA escrevendo o registro canônico;
+- novo lifecycle Nexus;
+- redesign amplo do financeiro.
+
+Essas evoluções devem ser slices separadas e preservar os invariantes acima.
