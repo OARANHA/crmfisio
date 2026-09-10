@@ -45,13 +45,15 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260910_clinical_encounter_record_foundation.sql
 "${PSQL[@]}" -f supabase-migrations/20260910_clinical_encounter_record_foundation.sql
 
-# Cases 16/17 use the pure materializer as a direct test oracle. Production keeps
-# it server-only; grant it only inside this isolated harness and revoke it before
-# hardening/verifier checks. The formal verifier proves the grant did not leak.
-"${PSQL[@]}" -c "GRANT EXECUTE ON FUNCTION public.materialize_clinical_encounter_evolution(text,text,text,text,text,text) TO authenticated"
+# The reduced #387 fixture omits the app-read table grant and cases 16/17 also use
+# the pure materializer as a direct oracle. Expose both only in this isolated test
+# window, then revoke them before concurrency/verifier checks. The production
+# migration remains unchanged and the verifier proves the internal function grant
+# did not leak.
+"${PSQL[@]}" -c "GRANT SELECT ON public.physiotherapy_evolutions TO authenticated; GRANT EXECUTE ON FUNCTION public.materialize_clinical_encounter_evolution(text,text,text,text,text,text) TO authenticated"
 "${PSQL[@]}" -f tests/sql/clinical_encounter_record_cases.sql
-"${PSQL[@]}" -c "REVOKE EXECUTE ON FUNCTION public.materialize_clinical_encounter_evolution(text,text,text,text,text,text) FROM authenticated"
 "${PSQL[@]}" -f tests/sql/clinical_encounter_record_hardening_cases.sql
+"${PSQL[@]}" -c "REVOKE EXECUTE ON FUNCTION public.materialize_clinical_encounter_evolution(text,text,text,text,text,text) FROM authenticated; REVOKE SELECT ON public.physiotherapy_evolutions FROM authenticated"
 
 # True concurrency regression: a legacy Evolution INSERT holds the same advisory
 # lock as #394 finalization. The finalizer must wait, observe the committed
