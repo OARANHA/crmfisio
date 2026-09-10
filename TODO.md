@@ -17,7 +17,8 @@ Referências: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), [`PRODUCT_ROADMA
 - [x] Encounter Clinical Record Foundation (#394).
 - [x] Production-safe verifier para #394 (#395).
 - [x] Consultório / Gestão Privacy Shell (#396).
-- [x] Clinical Instrument Authorization Foundation (#399) implementada no repositório: `clinical.instrument.apply`, catálogo neutro, configuração institucional e boundary Apply in Encounter. **Migration ainda não aplicada em produção.**
+- [x] Clinical Instrument Authorization Foundation (#399): `clinical.instrument.apply`, catálogo neutro, configuração institucional e boundary Apply in Encounter. **Rollout de produção, alinhamento de admin-team/frontend e smoke controlado concluídos em 2026-09-10.**
+- [x] Encounter Temporal Start Boundary (#400): impede ator normal de entrar em `em_atendimento` com appointment futuro e endurece #399 contra future-active legado. **Migration, verifier read-only e smoke real de produção concluídos em 2026-09-10.**
 - [x] Assessment foundation com modelos estruturados, drafts/versionamento e integração ao atendimento.
 - [x] Nexus C-01–C-06 hardening integrado ao runtime MedicsPro.
 - [x] Finalização clínica separada de falhas esperadas de cobertura (#388).
@@ -25,11 +26,11 @@ Referências: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), [`PRODUCT_ROADMA
 
 ## P0 — Pendências operacionais curtas antes de ampliar piloto
 
+- [ ] Reparar de forma separada e auditável o appointment histórico futuro `de857836-baa0-476f-bd7b-d6f52df33007`, hoje ainda fisicamente `em_atendimento`; não misturar o repair com migrations #399/#400.
 - [ ] Registrar prova read-only pós-finalização do smoke real do #394, caso ainda não exista evidência posterior no repositório: Encounter Record finalizado + Evolution oficial + appointment finalizado + efeitos financeiros esperados.
 - [ ] Executar/documentar smoke real das ações `CHARGE` e `WAIVE` do #389, se ainda não houver evidência posterior.
 - [ ] Atualizar/versionar o verifier antigo #388 que ainda possui assertion obsoleta sobre ausência da RPC criada posteriormente pelo #389. Não usar essa assertion contra o schema atual.
 - [ ] Fazer smoke visual e uso real suficiente do Consultório / Gestão (#396), especialmente owner/admin elegível, professional clinical-only, mobile e URL administrativa protegida.
-- [ ] Aplicar a migration #399 em produção somente após aprovação/merge explícitos e seguir verifier/rollout; enquanto isso, repository state ≠ production state para essa foundation.
 - [ ] Consolidar observabilidade mínima dos fluxos de beta antes de ampliar o número de clínicas.
 
 ## P1 — Encounter e ergonomia profissional
@@ -38,6 +39,7 @@ Referências: [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), [`PRODUCT_ROADMA
 - [ ] Validar linguagem e ordem clínica com médico e demais profissionais do piloto.
 - [ ] Implementar correção/adendo auditável para Encounter Record finalizado; nunca sobrescrever silenciosamente histórico.
 - [ ] Melhorar leitura longitudinal e comparação de registros sem tornar histórico editável.
+- [ ] Hardening posterior das superfícies que ainda possam considerar um estado legado future-active suficiente para contexto de Encounter, especialmente `assert_clinical_encounter_394_context()` e finalização; #399 já possui defense-in-depth temporal.
 - [ ] Implementar autoentrada no Modo Consultório somente quando existir um ponto canônico único após iniciar/continuar o próprio Encounter; não inferir por rota/query ou mera existência de appointment ativo.
 
 ## P1 — Instrumentos clínicos multiprofissionais
@@ -58,7 +60,7 @@ PHQ-9/GAD-7 e instrumentos semelhantes podem ser multiprofissionais conforme fin
 
 Sequência canônica após a #399:
 
-1. [x] **Clinical Instrument Authorization Foundation (#399)** — código/migration entregues no repositório; catálogo neutro expõe explicitamente apenas `phq9`/`gad7`, reutilizando a engine Nexus por referência técnica; rollout de produção ainda pendente.
+1. [x] **Clinical Instrument Authorization Foundation (#399)** — repository + produção alinhados; catálogo neutro expõe explicitamente apenas `phq9`/`gad7`, reutilizando a engine Nexus por referência técnica; smoke de produção confirmou fail-closed e ALLOW somente com configuração + capability + próprio Encounter válido.
 2. [ ] **Clinician-Assisted Administration** — suportar administração presencial/assistida do mesmo instrumento/versionamento/scoring usado no self-assessment, com provenance explícita e `appointment_id` quando houver Encounter.
 3. [ ] **Encounter Instrument UX** — oferecer **Aplicar agora** e, somente quando houver boundary próprio, **Enviar ao paciente** dentro do atendimento, com estados de autorização/relevância distintos e sem criar segunda implementação de PHQ-9/GAD-7 no Assessment Engine.
 4. [ ] **Consultório V5 integration/polish** — integrar Instrumentos ao futuro Clinical Cockpit e absorver ergonomia do MedicsPro histórico sem portar arquitetura/autorização/autosave/checkout legados.
@@ -102,6 +104,7 @@ Requisitos associados ainda futuros:
 - [ ] Resolver o issue tri-state capability/configuration onde estado desconhecido possa ser confundido com desabilitado/habilitado.
 - [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos.
 - [ ] Não liberar Nexus por role, especialidade isolada, PresentationContext ou simples relevância de instrumento.
+- [ ] Evoluir `current_clinic_operational_date()` para timezone por tenant antes de expansão para clínicas fora do fuso operacional atual; não duplicar semântica temporal no browser.
 
 ## P1 — UX pilot / onboarding
 
@@ -113,6 +116,7 @@ Requisitos associados ainda futuros:
 ## P2 — Agenda e comunicação
 
 - [x] Agenda role-aware, comandos protegidos, conflitos/capacidade e vínculo exato ao Encounter.
+- [x] Boundary temporal #400: appointment futuro não entra em `em_atendimento` por ator normal; mesmo-dia permanece permitido; enforcement PostgreSQL + defense-in-depth #399 validados em produção.
 - [ ] Bloqueios/jornada/feriados e exceções por profissional/unidade quando necessários ao piloto.
 - [ ] Busca/encaixe de próximo horário com risco de conflito claro.
 - [ ] Revisar retry/backoff, observabilidade e falhas do WhatsApp/Evolution ponta a ponta.
@@ -130,6 +134,7 @@ Requisitos associados ainda futuros:
 - [x] CI com `npm test`, typecheck, lint, build e dependency audit.
 - [x] Verificadores PostgreSQL dedicados para invariantes clínicos/financeiros críticos.
 - [x] Production-safe verifier read-only do Encounter Record.
+- [x] Verifier read-only + behavior gate do Encounter Temporal Start Boundary (#400), com effective-stack #399→#400.
 - [ ] Expandir E2E do ciclo paciente → agenda → atendimento → prontuário → financeiro → comunicação.
 - [ ] Melhorar observabilidade frontend/Edge Functions/workers e logs estruturados sem payload clínico desnecessário.
 - [ ] Revisar periodicamente RLS, grants, `SECURITY DEFINER`, índices e contratos de migrations.
