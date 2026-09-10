@@ -22,6 +22,9 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | Encounter UX | 🟢 estrutural | #392/#393 entregaram workspace clínico dedicado e reconciliação do legado sem importar arquitetura/autorização antiga. |
 | Encounter Clinical Record | 🟢 estrutural | #394 entregue: um registro editável por atendimento, revisão humana, Evolution oficial determinística e finalização transacional. |
 | #394 rollout / verifier | 🟢 técnico | Migration #394 aplicada em produção em 2026-09-10; production-safe verifier passou com `VERIFY #394 PRODUCTION OK`. |
+| Clinical Instrument Authorization #399 | 🟢 técnico | Migration/verifier em produção, `admin-team` e frontend alinhados, smoke médico real passou com fail-closed/ALLOW composto e rollback sem resíduos. |
+| Encounter Temporal Start Boundary #400 | 🟢 técnico | Migration/verifier em produção; smoke reproduziu o bug real e confirmou `appointment_future_encounter_start_forbidden`; future-active legado também permanece DENY para #399. |
+| Known future-active histórico | 🟡 operacional | Appointment `de857836-baa0-476f-bd7b-d6f52df33007` ainda precisa de reparação separada e auditável; não há artefatos clínicos/financeiros vinculados no levantamento forense. |
 | Finalização clínica × cobertura | 🟢 estrutural | #388 preserva finalização clínica diante de falhas esperadas de cobertura e registra `appointment_financial_exception`. |
 | Resolução de exceção financeira | 🟢 estrutural | #389: owner/admin `CHARGE|WAIVE`; financeiro `CHARGE`; recep/professional sem resolução. |
 | Assessment Engine | 🟢 estrutural | Foundation de avaliações estruturadas, drafts/versionamento e integração ao atendimento já existe. |
@@ -53,18 +56,25 @@ Não existe uma segunda Evolution universal obrigatória no fluxo novo. A Evolut
 
 Encounter Record finalizado é histórico. Correção/adendo auditável ainda não foi implementado e deve ser tratado como nova slice; não fazer backfill fictício de registros antigos.
 
-## Evidência de produção do #394
+## Evidência de produção — #394, #399 e #400
 
 Estado conhecido em **2026-09-10**:
 
-- migration `20260910_clinical_encounter_record_foundation.sql` aplicada em produção;
-- verifier read-only de produção passou: `VERIFY #394 PRODUCTION OK`;
+- migration `20260910_clinical_encounter_record_foundation.sql` (#394) aplicada em produção;
+- verifier read-only de produção #394 passou: `VERIFY #394 PRODUCTION OK`;
+- migration `20260910_clinical_instrument_encounter_authorization.sql` (#399) aplicada em produção;
+- verifier read-only #399 passou; `admin-team` e frontend foram alinhados ao mesmo `main`;
+- smoke #399 com Dr. Médico Nexus provou DENY sem composição completa, ALLOW somente com PHQ-9 enabled + `clinical.instrument.apply` + próprio Encounter e zero resíduos após rollback;
+- migration `20260910_encounter_temporal_start_boundary.sql` (#400) aplicada em produção;
+- verifier #400 passou em transação read-only;
+- smoke #400 reproduziu o bug real de início futuro e confirmou o bloqueio `appointment_future_encounter_start_forbidden`;
+- o mesmo smoke comprovou que um future-active legado não autoriza Apply-in-Encounter na #399 e terminou com rollback limpo;
 - Clinical Foundation passou;
 - Clinical Authorization passou;
 - Financial Exception Resolution #389 passou;
 - o verifier antigo #388 contém uma assertion histórica de ausência da RPC de resolução que foi criada posteriormente pelo #389; essa assertion é obsoleta para o schema atual e precisa ser versionada/atualizada antes de reutilização direta.
 
-### Smoke observado antes da finalização
+### Smoke observado antes da finalização #394
 
 Foi observado no fluxo real:
 
@@ -74,6 +84,24 @@ Foi observado no fluxo real:
 - antes da finalização havia **1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions** para o cenário exercitado.
 
 Não há, neste snapshot documental, evidência suficiente no repositório para declarar como observada a comprovação read-only **pós-finalização** desse mesmo smoke. A validação curta deve confirmar os artefatos finais sem inventar resultado.
+
+### Estado histórico future-active conhecido
+
+Permanece uma row criada antes da #400:
+
+```text
+appointment_id = de857836-baa0-476f-bd7b-d6f52df33007
+data           = 2026-09-23
+status         = em_atendimento
+```
+
+A #400 deliberadamente não faz saneamento retroativo. O smoke real confirmou que:
+
+- esse future-active físico retorna DENY no boundary #399;
+- uma nova tentativa do mesmo profissional de executar `agendado → em_atendimento` para a data futura é bloqueada;
+- o smoke terminou em `ROLLBACK`, portanto a row histórica continua aguardando reparação explícita/auditável.
+
+O levantamento forense não encontrou `clinical_encounter_records`, `physiotherapy_evolutions`, `package_session_usage` nem `payments` associados a esse appointment.
 
 ## Finalização clínica e semântica financeira
 
@@ -140,6 +168,25 @@ Autorização permanece médico-only e fail-closed:
 
 Especialidade informa relevância; não concede acesso por si. Role operacional também não basta.
 
+A foundation #399 não concede `nexus.*`; o smoke de produção confirmou zero grants Nexus residuais. Instrumentos clínicos neutros e Nexus médico avançado continuam boundaries diferentes.
+
+## Instrumentos clínicos — estado do piloto
+
+A foundation #399 está verde em produção. O estado funcional é:
+
+```text
+[x] autorização base + Apply-in-Encounter boundary
+[x] exposição neutra controlada de PHQ-9/GAD-7
+[x] clinic settings fail-closed
+[x] temporal defense #400 para future-active
+[ ] Clinician-Assisted Administration
+[ ] persistência multiprofissional nova, se necessária
+[ ] Encounter Instrument UX
+[ ] Enviar ao paciente / boundary remoto
+```
+
+Não interpretar foundation verde como instrumento já administrável na UI.
+
 ## UX / design — por que permanece YELLOW
 
 A arquitetura e as boundaries principais estão maduras o suficiente para piloto controlado, mas isso não demonstra que a experiência já foi validada por profissionais externos.
@@ -162,14 +209,16 @@ A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conte�
 
 ## Próximo foco recomendado
 
-1. fechar evidência operacional curta do smoke #394 pós-finalização e smoke #389 CHARGE/WAIVE;
+1. reparar de forma auditável o appointment future-active conhecido e fechar evidência operacional curta do smoke #394 pós-finalização e smoke #389 CHARGE/WAIVE;
 2. corrigir/versionar a assertion obsoleta do verifier #388;
 3. executar piloto UX do Encounter/Consultório e remover fricções observadas;
 4. evoluir **Cobertura deste atendimento** sem expor Financeiro global;
-5. unificar Instrument Delivery (`Aplicar agora` / `Enviar ao paciente`);
+5. evoluir Instrument Delivery a partir da foundation já em produção: Clinician-Assisted Administration → Encounter Instrument UX → boundary remoto quando desenhado;
 6. construir Prescription V1 e demais documentos apenas conforme demanda do piloto;
 7. evoluir configuração financeira/parcerias sem criar role econômica;
 8. ampliar onboarding e integrações somente com evidência de necessidade.
+
+Timezone por tenant permanece follow-up obrigatório antes de expansão para clínicas em outros fusos; `America/Sao_Paulo` é somente o fallback operacional atual da #400.
 
 ## Regra de implantação
 

@@ -3,7 +3,7 @@
 > **Este arquivo é um snapshot de continuidade. AGENTS.md contém as regras operacionais. Código/schema atuais prevalecem quando o snapshot envelhecer.**
 
 **Data do snapshot:** 2026-09-10  
-**Base auditada da #399:** `2385cf1bc1cf9b7ee4f60578413baa37d798a728`
+**Main canônica auditada:** `a4c4dd949186bf87e58a71c07802be2faace7536`
 
 ## Produto e arquitetura em poucas linhas
 
@@ -101,7 +101,7 @@ A multiprofissionalidade de instrumentos não é resolvida concedendo `nexus.*` 
 
 ### Instrumentos clínicos — foundation #399
 
-**Repository state:** a Clinical Instrument Authorization Foundation foi implementada no PR #399.
+**Repository state:** a Clinical Instrument Authorization Foundation foi implementada e mergeada no PR #399.
 
 Ela entrega:
 
@@ -109,7 +109,7 @@ Ela entrega:
 - catálogo neutro `clinical_instrument_catalog`, separado do registry Nexus, com exposição explícita somente de `phq9` e `gad7` nesta slice;
 - vínculo técnico do catálogo neutro com os contratos versionados da engine Nexus, sem duplicar definição, perguntas, validação ou scoring;
 - configuração institucional `clinic_clinical_instrument_settings`, default `false`;
-- boundary server-side `can_apply_clinical_instrument_in_encounter(...)`, restrito ao próprio `appointments.professional_id` e status `em_atendimento`;
+- boundary server-side `can_apply_clinical_instrument_in_encounter(...)`, restrito ao próprio `appointments.professional_id` e a Encounter ativo válido;
 - owner/admin sem bypass de ato clínico;
 - helper base não executável pelo browser.
 
@@ -117,23 +117,51 @@ Membership em `nexus_result_contracts` não equivale a exposição multiprofissi
 
 PHQ-9/GAD-7 continuam usando definição, versão, validação e scoring da engine canônica Nexus. `clinical.assessment.apply` continua distinto de `clinical.instrument.apply`.
 
-**Production state:** a migration `20260910_clinical_instrument_encounter_authorization.sql` da #399 **ainda não foi aplicada em produção**.
+**Production state:** o rollout da #399 foi concluído em 2026-09-10:
 
-Portanto, neste momento:
+- migration `20260910_clinical_instrument_encounter_authorization.sql` aplicada com `COMMIT`;
+- verifier read-only #399 passou;
+- `admin-team` foi alinhado ao mesmo `main` e smoke de CORS/auth passou;
+- frontend de produção foi confirmado contendo `clinical.instrument.apply`;
+- smoke controlado com o Dr. Médico Nexus provou fail-closed sem configuração/capability, `ALLOW` apenas com PHQ-9 habilitado + grant explícito + próprio Encounter e `DENY` para GAD-7/cross-tenant;
+- o smoke terminou em `ROLLBACK` e confirmou zero resíduos de capability, setting ou `nexus.*`.
 
-- repository state = foundation implementada;
-- production state = rollout pendente;
-- nenhuma administração de PHQ-9/GAD-7 foi implementada ainda;
-- nenhum novo resultado multiprofissional é persistido;
-- nenhuma entrega remota/`Enviar ao paciente` foi implementada;
-- nenhuma UI PHQ/GAD foi implementada.
+A foundation está, portanto, disponível no backend de produção. Isso **não** significa que a administração de PHQ-9/GAD-7 já exista: nenhum novo resultado multiprofissional é persistido, nenhuma entrega remota/`Enviar ao paciente` foi implementada e nenhuma UI PHQ/GAD foi entregue.
+
+### Encounter Temporal Start Boundary — #400
+
+A #400 foi mergeada na `main` como `a4c4dd949186bf87e58a71c07802be2faace7536` e também está instalada em produção.
+
+Contrato vigente:
+
+```text
+appointment.data > current_clinic_operational_date()
++ ator normal tentando ENTRAR em em_atendimento
+→ DENY
+```
+
+A regra cobre `INSERT` já nascendo em `em_atendimento` e `UPDATE` que entra nesse status, preserva mesmo-dia e datas passadas e mantém bypass controlado para `service_role`/manutenção direta confiável.
+
+`current_clinic_operational_date()` usa atualmente `America/Sao_Paulo` como convenção/fallback operacional. Isso ainda **não** é timezone configurável por tenant; evolução por clínica continua follow-up antes de expansão para fusos diferentes.
+
+Defense-in-depth: `can_apply_clinical_instrument_in_encounter(...)` também exige que `appointments.data <= current_clinic_operational_date()`. Assim, um estado legado fisicamente futuro em `em_atendimento` não ganha autoridade de Apply-in-Encounter.
+
+Em produção:
+
+- migration `20260910_encounter_temporal_start_boundary.sql` aplicada com `COMMIT`;
+- verifier #400 executou `SET TRANSACTION READ ONLY` e passou com `VERIFY #400 OK`;
+- smoke real reproduziu o defeito forense em transação e confirmou `appointment_future_encounter_start_forbidden`;
+- o mesmo smoke confirmou que o future-active legado continua `DENY` para #399;
+- `ROLLBACK` restaurou integralmente o estado e deixou zero resíduos temporários.
+
+O appointment histórico conhecido `de857836-baa0-476f-bd7b-d6f52df33007` permanece fisicamente `em_atendimento` em 2026-09-23. Ele não possui Encounter Record, Evolution, consumo de pacote ou payment no levantamento forense. Sua reparação é operação separada, explícita e ainda pendente.
 
 ## Instrument Delivery — sequência
 
-Estado após eventual merge da #399:
+Estado atual:
 
 ```text
-[x] Clinical Instrument Authorization Foundation (#399)
+[x] Clinical Instrument Authorization Foundation (#399) — repository + produção
 [ ] Clinician-Assisted Administration
 [ ] Encounter Instrument UX
 [ ] Consultório V5 integration/polish
@@ -183,7 +211,7 @@ um Encounter
 
 A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou arquitetura legada.
 
-## Marcos recentemente fechados / implementados no repositório
+## Marcos recentemente fechados / implementados
 
 - #390 — Clinician Daily Home.
 - #391 — Agenda Role-Aware V4.
@@ -192,7 +220,8 @@ A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar
 - #394 — Encounter Clinical Record Foundation.
 - #395 — Production-safe verifier read-only para #394.
 - #396 — Consultório / Gestão Privacy Shell.
-- #399 — Clinical Instrument Authorization Foundation implementada no repositório; rollout de migration ainda pendente.
+- #399 — Clinical Instrument Authorization Foundation, rollout de produção concluído.
+- #400 — Encounter Temporal Start Boundary, rollout e smoke de produção concluídos; reparação do estado histórico conhecido ainda pendente.
 - Nexus C-01–C-06 hardening.
 - #388 — separação finalização clínica × falha esperada de cobertura.
 - #389 — resolução explícita de exceção financeira.
@@ -203,21 +232,25 @@ A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar
 
 - `20260910_clinical_encounter_record_foundation.sql` (#394) **já foi aplicada em produção**.
 - O verifier production-safe passou com `VERIFY #394 PRODUCTION OK`.
+- `20260910_clinical_instrument_encounter_authorization.sql` (#399) foi aplicada em produção; verifier read-only, `admin-team`, frontend e smoke controlado foram alinhados/validados.
+- `20260910_encounter_temporal_start_boundary.sql` (#400) foi aplicada em produção; verifier read-only e smoke real do bug passaram.
 - Clinical Foundation passou.
 - Clinical Authorization passou.
 - Financial Exception Resolution #389 passou no ambiente verificado.
 
-### Rollout pendente
+### Pendências pós-rollout
 
-- `20260910_clinical_instrument_encounter_authorization.sql` (#399) está implementada e verificada no repositório/CI, mas **não foi aplicada em produção**.
-- não declarar `clinical.instrument.apply`, `clinical_instrument_catalog`, `clinic_clinical_instrument_settings` ou o boundary #399 como disponíveis no schema de produção antes do rollout explícito.
+- reparar de forma separada e auditável o appointment histórico futuro `de857836-baa0-476f-bd7b-d6f52df33007`; não misturar esse repair com migrations #399/#400;
+- auditar/hardening posterior das superfícies legadas que ainda tratam `status='em_atendimento'` como contexto suficiente para um estado histórico inválido, especialmente `assert_clinical_encounter_394_context()` e fluxos de finalização;
+- evoluir timezone por tenant antes de expansão para clínicas fora do fuso operacional atual.
 
 ### Não reaplicar por causa deste snapshot
 
-- não reaplicar a migration #394 apenas porque um documento antigo a descreva como futura;
+- não reaplicar migrations #394, #399 ou #400 apenas porque um documento antigo as descreva como futuras;
 - não executar o verifier comportamental `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` como verifier direto de produção: ele depende do harness/fixtures;
 - em produção, para inspeção read-only do #394, usar `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql`;
-- não usar a assertion histórica do verifier #388 que espera ausência da RPC criada posteriormente pelo #389 como verdade do schema atual.
+- não usar a assertion histórica do verifier #388 que espera ausência da RPC criada posteriormente pelo #389 como verdade do schema atual;
+- não usar o verifier #400 para tentar encontrar ou reparar rows históricas: ele valida o contrato instalado e é intencionalmente read-only.
 
 O ledger/schema real de produção continua sendo autoridade para migrations anteriores; este snapshot não substitui uma inspeção de migration history.
 
@@ -232,15 +265,19 @@ O smoke real do draft #394 comprovou:
 
 Não há evidência documental suficiente neste snapshot para afirmar a comprovação read-only pós-finalização desse mesmo smoke. Tratar isso como pendência curta até haver observação registrada.
 
+O smoke #399 em produção comprovou a composição de autorização de instrumentos no médico piloto e terminou com rollback limpo. O smoke #400 comprovou em produção que o bug real de início futuro agora é bloqueado e que um future-active legado não escapa pelo boundary #399; também terminou com rollback limpo.
+
 Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidência posterior.
 
 ## Pendências operacionais abertas
 
+- reparação auditável do appointment futuro conhecido `de857836-baa0-476f-bd7b-d6f52df33007`;
 - prova read-only pós-finalização do smoke #394;
 - smoke real das ações #389 `CHARGE` e `WAIVE`, se ainda não registrado;
 - atualizar/versionar a assertion obsoleta do verifier #388;
 - smoke visual/uso real de #396 e Encounter com profissionais reais;
-- rollout da migration #399 após aprovação/merge explícitos;
+- hardening posterior de superfícies que ainda possam aceitar um estado legado future-active fora do boundary #399;
+- timezone por tenant antes de expansão geográfica para outros fusos;
 - observabilidade suficiente para ampliar piloto com segurança.
 
 ## Decisões canônicas que não devem regredir
@@ -257,11 +294,12 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 10. `ENGINE != AUTHORIZATION != RELEVANCE`.
 11. Nexus engine registry membership não equivale a multiprofessional clinical exposure.
 12. Histórico finalizado não é reaberto/reescrito silenciosamente.
-13. Foundations fechadas não devem ser reabertas sem evidência real.
+13. Appointment de data futura não pode entrar em `em_atendimento` por ator normal; mesmo-dia permanece permitido pela #400.
+14. Foundations fechadas não devem ser reabertas sem evidência real.
 
 ## Próximos passos recomendados
 
-1. fechar as evidências operacionais curtas #394/#389/#396;
+1. reparar de forma auditável o estado histórico future-active conhecido e fechar as evidências operacionais curtas #394/#389/#396;
 2. pilotar e polir ergonomia do Encounter com profissionais reais;
 3. construir **Cobertura deste atendimento** sem expor Financeiro global;
 4. evoluir instrumentos a partir da foundation #399: Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish;
@@ -280,7 +318,8 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 - [`BETA_READINESS.md`](BETA_READINESS.md) — gates de beta.
 - [`CLINICAL_ENCOUNTER_RECORD.md`](CLINICAL_ENCOUNTER_RECORD.md) — contrato do Encounter Record.
 - [`PRESENTATION_CONTEXT.md`](PRESENTATION_CONTEXT.md) — Consultório/Gestão.
-- [`CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`](CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md) — foundation #399 e rollout pendente.
+- [`CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`](CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md) — foundation #399 e rollout de produção.
+- [`ENCOUNTER_TEMPORAL_START_BOUNDARY.md`](ENCOUNTER_TEMPORAL_START_BOUNDARY.md) — boundary temporal #400 e estado de rollout/repair.
 - [`CLINICAL_PILOT_ACCEPTANCE.md`](CLINICAL_PILOT_ACCEPTANCE.md) — aceite clínico.
 - [`FINANCIAL_PILOT_ACCEPTANCE.md`](FINANCIAL_PILOT_ACCEPTANCE.md) — aceite financeiro.
 - [`BETA_ROLLOUT_ORDER.md`](BETA_ROLLOUT_ORDER.md) — ordem operacional.

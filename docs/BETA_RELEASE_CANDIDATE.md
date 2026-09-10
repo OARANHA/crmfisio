@@ -16,6 +16,8 @@ O candidato beta inclui, entre outras foundations já integradas:
 - Encounter Clinical Record (#394);
 - production-safe verifier do Encounter Record (#395);
 - Consultório / Gestão Privacy Shell (#396);
+- Clinical Instrument Authorization Foundation (#399), já alinhada em produção;
+- Encounter Temporal Start Boundary (#400), já validada em produção;
 - finalização clínica separada de falha esperada de cobertura (#388);
 - resolução explícita de exceção financeira (#389);
 - assessment engine, CRM, financeiro, mensageria e automações no runtime canônico.
@@ -27,11 +29,13 @@ O candidato beta inclui, entre outras foundations já integradas:
 Além disso:
 
 - `PresentationContext != authorization`;
+- `ENGINE != EXPOSURE != AUTHORIZATION != RELEVANCE` para instrumentos clínicos;
 - `platform_admin` não é role de clínica;
 - parceiro/repasse não é role;
 - Nexus não é segundo runtime;
 - Encounter Record é a unidade editável do novo atendimento;
 - Evolution é materialização oficial após confirmação humana;
+- appointment de data futura não entra em `em_atendimento` por ator normal;
 - finalização clínica não depende de sucesso de cobertura esperada;
 - histórico finalizado não é reescrito silenciosamente.
 
@@ -41,15 +45,54 @@ Em 2026-09-10:
 
 - migration #394 foi aplicada em produção;
 - `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` passou com `VERIFY #394 PRODUCTION OK`;
+- migration #399 foi aplicada em produção e seu verifier read-only passou;
+- `admin-team` e frontend foram alinhados ao mesmo `main` para a capability `clinical.instrument.apply`;
+- smoke #399 com médico piloto comprovou fail-closed sem composição completa, ALLOW somente com setting + capability + próprio Encounter e rollback sem resíduos;
+- migration #400 foi aplicada em produção e seu verifier read-only passou;
+- smoke #400 reproduziu a tentativa real de iniciar appointment futuro e confirmou `appointment_future_encounter_start_forbidden`;
+- o mesmo smoke comprovou que um future-active legado permanece DENY para Apply-in-Encounter e terminou com rollback limpo;
 - Clinical Foundation passou;
 - Clinical Authorization passou;
 - Financial Exception Resolution #389 passou.
 
-Isso é evidência estrutural do rollout do #394. Não equivale automaticamente ao smoke funcional completo pós-finalização.
+Essa evidência é estrutural/técnica. Não equivale automaticamente ao smoke funcional completo pós-finalização do #394 nem a UX validada por profissionais externos.
 
-O draft smoke observado comprovou persistência, refresh/navegação e revision; antes da finalização o cenário continha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
+O draft smoke #394 observado comprovou persistência, refresh/navegação e revision; antes da finalização o cenário continha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
 A comprovação read-only pós-finalização deve permanecer pendente até existir evidência registrada. O mesmo vale para smoke real `CHARGE`/`WAIVE` do #389.
+
+## Estado histórico conhecido após #400
+
+Existe um appointment criado antes da correção temporal:
+
+```text
+appointment_id = de857836-baa0-476f-bd7b-d6f52df33007
+data           = 2026-09-23
+status         = em_atendimento
+```
+
+A #400 não executa saneamento retroativo. O levantamento forense não encontrou Encounter Record, Evolution, package usage ou payment associados.
+
+O smoke de produção provou que essa row não autoriza Apply-in-Encounter e que a mesma tentativa de início futuro é agora bloqueada. O repair real continua pendente e deve ser separado/auditável.
+
+Esse residual é **YELLOW operacional**, não regressão do boundary #400.
+
+## Instrumentos clínicos
+
+Estado técnico atual:
+
+```text
+[x] Clinical Instrument Authorization Foundation (#399)
+[x] temporal defense Apply-in-Encounter (#400)
+[ ] Clinician-Assisted Administration
+[ ] persistência multiprofissional nova, se necessária
+[ ] Encounter Instrument UX
+[ ] boundary remoto / Enviar ao paciente
+```
+
+PHQ-9/GAD-7 permanecem referenciando a engine/versionamento/scoring Nexus, mas `clinical.instrument.apply` é authorization boundary neutro separado de `nexus.*`.
+
+Não considerar PHQ-9/GAD-7 “entregues na UI” apenas porque a foundation está em produção.
 
 ## Dívida de verifier conhecida
 
@@ -63,6 +106,7 @@ Antes de ampliar uso real:
 
 - executar o roteiro atual de `CLINICAL_PILOT_ACCEPTANCE.md`;
 - confirmar appointment/paciente/profissional exatos;
+- confirmar que appointment futuro não inicia por ator normal e mesmo-dia continua sujeito às boundaries clínicas canônicas;
 - validar draft/revision e conclusão Encounter Record → Evolution → appointment;
 - confirmar outro profissional sem autoria indevida;
 - confirmar owner/admin sem bypass de clinical identity/capability;
@@ -108,15 +152,17 @@ Um snapshot documental não deve congelar para sempre um SHA técnico antigo com
 
 ## Sequência recomendada a partir daqui
 
-0. fechar evidência operacional curta #394/#389/#396;
+0. reparar auditavelmente o known future-active e fechar evidência operacional curta #394/#389/#396;
 1. Encounter UX / physician ergonomics;
 2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
+3. Clinician-Assisted Administration → Encounter Instrument UX;
 4. Prescription V1;
 5. demais documentos médicos conforme piloto;
 6. Finance Configuration com parceria/repasse como relação econômica, não role;
 7. onboarding/pilot friction;
 8. financeiro avançado/integracões conforme evidência.
+
+Timezone por tenant permanece follow-up obrigatório antes de expansão para clínicas em outros fusos; `America/Sao_Paulo` é somente o fallback operacional vigente da #400.
 
 ## Critério para chamar de Beta Candidate
 
