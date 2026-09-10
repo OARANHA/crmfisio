@@ -1,110 +1,177 @@
 # MedicsPro — Product Roadmap
 
+**Estado em 2026-09-10**
+
 ## North Star
 
 **Receita protegida/recuperada + eficiência operacional + qualidade clínica por clínica/mês.**
 
-O MedicsPro deve provar valor financeiro e operacional sem abrir mão de segurança clínica, multi-tenant e excelente UX.
+MedicsPro deve provar valor financeiro e operacional sem abrir mão de segurança clínica, multi-tenant, auditabilidade e excelente UX.
 
-## Estado atual — 2026-09-05
+O produto é um SaaS multiprofissional para clínicas: **ERP + CRM + Agenda + EHR/Prontuário + Financeiro + Automação + relacionamento com paciente**.
 
-### ✅ Fundação pronta para piloto controlado
+Fluxo central:
 
-- Supabase real como fonte de verdade do núcleo operacional.
-- Isolamento multi-tenant por `clinic_id` com RLS/RBAC.
-- `platform_admin` separado dos papéis internos das clínicas.
-- Provisionamento seguro e auditável de clínicas e primeiro `owner`.
-- Entitlements por clínica com separação entre plano, configuração e autorização.
-- Unidades e salas persistidas.
-- Agenda com transições de estado protegidas e autoria operacional.
-- Financeiro operacional validado com gate SQL limpo e cenários manuais de aceite.
-- Pacotes com venda, saldo, consumo unitário, validade e bloqueio por esgotamento.
-- Histórico de status financeiro e `paid_at` auditável.
-- Revenue Recovery e automações já conectados ao banco real.
+**Paciente → Agenda → Atendimento → Prontuário → Documentos → Financeiro → Comunicação**
 
-### 🟢 Financeiro — liberado para piloto controlado
+O núcleo clínico é compartilhado. Profissão, especialidade, identidade e capabilities compõem ferramentas; role operacional não define profissão.
 
-Critérios validados em `docs/FINANCIAL_PILOT_ACCEPTANCE.md`:
+---
 
-- um único recebível por atendimento avulso finalizado;
-- idempotência;
-- pacote ativo consome uma sessão sem cobrança avulsa;
-- pacote esgotado/vencido bloqueia finalização;
-- baixa por PIX registra `pago`, método, `paid_at` e histórico;
-- lançamentos pagos são imutáveis;
-- recepção pode criar contas a receber e não pode criar contas a pagar;
-- automação `pendente -> atrasado` validada;
-- totais da UI conferidos contra `payments`;
-- gate `VERIFY_20260904_FINANCIAL_PILOT_READINESS.sql` com zero inconsistências.
+## FOUNDATION DONE
 
-### ⚠️ Pendências P1 já conhecidas
+Estas foundations não devem ser reabertas sem evidência concreta de regressão ou novo requisito incompatível.
 
-1. Fluxo auditável para cancelamento após pagamento antecipado: estorno, crédito, retenção ou transferência para reagendamento.
-2. Expor na UI o vínculo entre cobrança antecipada e atendimento sem depender de operação manual no banco.
-3. Fechar governança de entitlements/configurações de ponta a ponta em todos os módulos.
-4. Generalizar o papel clínico além do legado `fisio`, preservando compatibilidade enquanto médicos usam `professional_type='medico'`.
-5. Garantir que o Nexus Clinical Engine seja exclusivo de médicos autorizados e nunca liberado apenas por `role='fisio'`.
+### Identidade, tenant e autorização
 
-## Próxima sequência de execução
+- multi-tenant por clínica com Auth/RLS/RBAC;
+- papéis canônicos `owner`, `admin`, `professional`, `recep`, `financeiro`;
+- `platform_admin` separado do domínio interno da clínica;
+- `professional_id` como referência clínica canônica, com `fisio_id` apenas como compatibilidade residual;
+- entitlement da plataforma, configuração da clínica e autorização do usuário tratados como conceitos distintos;
+- identidade/capability/autoria/relação assistencial como boundary de atos clínicos.
 
-1. **Configurações / Entitlements / governança por clínica**
-   - garantir que módulos ocultem/bloqueiem corretamente na UI e no servidor;
-   - permitir ao Platform Admin controlar disponibilidade por clínica;
-   - permitir à clínica configurar apenas o que estiver dentro do entitlement.
+### Nexus C-01–C-06
 
-2. **Atendimento clínico em andamento**
-   - experiência dedicada ao profissional;
-   - autoria, evolução, plano, medidas e finalização segura;
-   - base comum para diferentes profissões.
+- Nexus integrado ao runtime MedicsPro, com `OARANHA/nexus` apenas como upstream/lab;
+- médico-only e fail-closed;
+- entitlement + capability + identidade médica válida + relação assistencial + autorização server-side;
+- especialidade informa relevância, não concede autorização.
 
-3. **Assessment Engine**
-   - avaliações padrão;
-   - minhas avaliações;
-   - builder versionado;
-   - body map/pain map estruturado;
-   - histórico longitudinal.
+### Fluxo clínico #390–#396
 
-4. **Nexus Clinical Engine**
-   - médico-only;
-   - especialidade-aware;
-   - validação de CRM e entitlement efetivo;
-   - preservar lógica clínica especializada já existente.
+- #390 — Clinician Daily Home;
+- #391 — Agenda Role-Aware V4;
+- #392 — Clinical Encounter UX V4;
+- #393 — Legacy Clinical Reconciliation V4.1;
+- #394 — Encounter Clinical Record Foundation;
+- #395 — production-safe verifier read-only do #394;
+- #396 — Consultório / Gestão Privacy Shell.
 
-5. **Agenda premium + comunicação**
-   - semana/dia por profissional e sala;
-   - indisponibilidades e exceções;
-   - confirmação, no-show, lista de espera e Evolution com observabilidade.
+O Encounter Record é a unidade editável do novo atendimento. O profissional registra motivo/demandas, HDA/história atual, achados/exame, avaliação clínica/problemas, plano/conduta e observações uma única vez. Após confirmação humana, o registro gera determinísticamente a Evolution oficial e o appointment é finalizado.
 
-6. **Financeiro avançado**
-   - estorno/crédito/retenção;
-   - pagamento parcial/múltiplos meios;
-   - caixa e conciliação;
-   - repasses/comissões;
-   - recibos/comprovantes e NFS-e.
+### Finalização clínica × financeiro
 
-7. **CRM / retenção / reativação**
-   - funil lead -> avaliação -> tratamento -> pacote;
-   - follow-ups;
-   - reativação 30/60/90;
-   - churn risk e jornada do paciente.
+Após #388, falhas esperadas de cobertura não devem apagar uma finalização clínica válida. `package_exhausted`, `package_expired` e `package_not_eligible` geram `appointment_financial_exception`, sem consumo gratuito silencioso.
 
-8. **Relatórios / ROI / inteligência operacional**
-   - receita, ocupação, inadimplência, retenção e produtividade;
-   - relatório mensal de ROI do MedicsPro.
+#389 adiciona resolução explícita:
 
-## Regra de produto
+- owner/admin: `CHARGE` ou `WAIVE`;
+- financeiro: `CHARGE`;
+- recep/professional: sem resolução.
 
-Nenhuma feature entra apenas por estética. Cada entrega deve melhorar pelo menos um destes indicadores:
+Parceiro/repasse não é autorização.
 
-- receita;
+---
+
+## PILOT HARDENING
+
+Fundação técnica pronta não equivale a UX validada por profissionais externos.
+
+### 0. Fechar smoke e observabilidade pendentes
+
+Antes de ampliar o piloto:
+
+- registrar a comprovação read-only pós-finalização do smoke real #394, se não houver evidência posterior no repositório;
+- registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
+- atualizar/versionar o verifier antigo #388 cuja assertion sobre ausência da RPC #389 ficou obsoleta;
+- fazer smoke visual/uso real do Consultório/Gestão #396;
+- garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
+
+### Validação UX
+
+- medir tempo/cliques do fluxo agenda → atendimento → registro → conclusão;
+- testar owner/admin clínico, professional clinical-only, recepção e financeiro com dados realistas;
+- validar desktop/mobile e light/dark nos fluxos principais;
+- tratar loading/empty/error/success como parte do produto;
+- registrar fricções observadas, não apenas preferências subjetivas.
+
+---
+
+## NEXT PRODUCT SLICES
+
+### 1. Encounter UX / physician ergonomics
+
+Aprimorar o ambiente de atendimento com evidência de profissionais reais, sem trocar o lifecycle já fechado.
+
+Prioridades:
+
+- menos navegação e contexto persistente do paciente/appointment;
+- leitura longitudinal eficiente;
+- correção/adendo auditável de Encounter Record finalizado;
+- linguagem e ergonomia adequadas a diferentes profissionais;
+- autoentrada em Consultório apenas quando houver callback canônico único pós-início/continuação do Encounter.
+
+### 2. Cobertura deste atendimento
+
+Adicionar informação financeira **contextual ao Encounter**, não o Financeiro global.
+
+Mostrar somente o necessário ao atendimento atual, como particular/pacote e estado de cobertura permitido. Preservar #388/#389 e o privacy shell: saldo global, faturamento, lucro, repasse de outros profissionais e caixa da clínica continuam fora do Consultório.
+
+### 3. Instrument Delivery — PHQ-9 / GAD-7
+
+Unificar a entrega de instrumentos validados em dois caminhos explícitos:
+
+- **Aplicar agora**;
+- **Enviar ao paciente**.
+
+O resultado deve voltar ao prontuário com autoria, contexto e lifecycle verificáveis. Não criar um segundo motor clínico.
+
+### 4. Prescription V1
+
+Implementar a primeira fatia de prescrição com contrato canônico, autoria, emitente, lifecycle/histórico e regras server-side adequadas. UX histórica pode inspirar ergonomia; arquitetura e autorização atuais prevalecem.
+
+### 5. Demais documentos médicos conforme piloto
+
+Priorizar atestado/declaração, solicitação de exames, relatório/laudo e outros documentos somente conforme demanda observada e requisitos aplicáveis. Evitar vários módulos superficiais ao mesmo tempo.
+
+### 6. Finance Configuration
+
+Evoluir configuração financeira sem transformar relação econômica em role:
+
+- operação solo/equipe;
+- categorias;
+- parceiro/repasse em percentual ou valor fixo;
+- histórico e effective dates;
+- regras por profissional/procedimento quando justificadas.
+
+Não assumir comissão fixa canônica.
+
+### 7. Onboarding e pilot friction
+
+Reduzir tempo de setup e suporte para a primeira clínica/profissional. Tratar as maiores fricções encontradas no piloto antes de ampliar integrações secundárias.
+
+### 8. Financeiro avançado e integrações por evidência
+
+Somente depois do núcleo acima e com demanda do piloto:
+
+- pagamento parcial/múltiplos meios;
+- caixa/conciliação;
+- recibos/NFS-e;
+- integrações de pagamento;
+- automações e relatórios avançados.
+
+---
+
+## Princípios de priorização
+
+Cada entrega deve melhorar materialmente pelo menos um destes eixos:
+
+- receita protegida/recuperada;
 - ocupação da agenda;
-- retenção;
-- qualidade clínica;
-- segurança;
-- eficiência operacional;
+- retenção e continuidade;
+- qualidade/segurança clínica;
+- eficiência de profissional/recepção/gestão;
 - onboarding/time-to-value;
+- privacidade e auditabilidade;
 - percepção de produto moderno e confiável.
 
-## Regra de release
+Não usar feature count como objetivo. Preferir poucas jornadas de alta frequência claramente melhores.
 
-`main` deve ser tratada como **branch potencialmente deployável**. O ambiente Portainer atual acompanha o GitHub em ciclos curtos; portanto, todo merge em `main` precisa estar em estado deploy-safe e mudanças de banco devem ser compatíveis com a versão publicada.
+---
+
+## Regra de continuidade
+
+Código/schema atuais prevalecem sobre documentação envelhecida. Use [`AGENTS.md`](AGENTS.md) como autoridade operacional, [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) como snapshot e [`TODO.md`](TODO.md) para pendências concretas.
+
+`main` é potencialmente deployável. Mudanças de banco exigem rollout/verifier explícitos; nenhum documento deve converter plano, smoke parcial ou ausência de blocker em validação que não foi observada.
