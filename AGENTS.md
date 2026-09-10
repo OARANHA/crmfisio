@@ -183,6 +183,45 @@ Desired model:
 
 This separation is a strategic requirement for a scalable SaaS business.
 
+### Clinical instruments — additional separation
+
+For clinical instruments, use the stronger canonical rule:
+
+```text
+ENGINE != AUTHORIZATION != RELEVANCE
+```
+
+Do not collapse these product layers:
+
+```text
+PROFESSION
+-> professional identity and requirements
+
+SPECIALTY
+-> relevance, ordering and suggestions
+
+CLINIC PROTOCOL / CONFIGURATION
+-> institutional availability
+
+CAPABILITY
+-> effective authorization
+
+ENCOUNTER CONTEXT
+-> priority/presentation
+```
+
+No layer silently grants another. In particular:
+
+- profession or specialty never auto-grants a capability;
+- clinic protocol/configuration does not create user authority;
+- an instrument being visible/recommended does not authorize execution;
+- entitlement does not replace clinical authorization;
+- PresentationContext does not replace any of the above.
+
+Clinical instruments such as PHQ-9/GAD-7 can be relevant across different professional contexts — including Psychiatry, Family Medicine/Primary Care, Internal/General Medicine, mental-health teams and Nursing in Primary Care/Family Health — when purpose, protocol and context support their use. These examples guide relevance only; they are not ACL rules.
+
+Do not create per-specialty hardcoded authorization to solve instrument discovery.
+
 ---
 
 ## 6. Money and domain data invariants
@@ -260,7 +299,7 @@ Do not implement status transitions only in UI if they have security or integrit
 
 ---
 
-## 8. Clinical assessment and Encounter platform
+## 8. Clinical assessment, instruments and Encounter platform
 
 Clinical assessments must not become a collection of hard-coded specialty pages.
 
@@ -298,6 +337,91 @@ Clinic/professional-created reusable models should evolve through the same engin
 ### Body map / pain map
 
 An interactive human body map is a first-class clinical component, not merely a decorative image. Stored structured data should remain meaningful for historical rendering and longitudinal comparison.
+
+### Clinical instruments
+
+Treat structured clinical instruments and the product Nexus as related but distinct concepts.
+
+The canonical rule is:
+
+```text
+ENGINE != AUTHORIZATION != RELEVANCE
+```
+
+For instruments such as PHQ-9/GAD-7:
+
+- **engine** owns validated instrument identity/version, answer validation, scoring and result semantics;
+- **authorization** belongs to an explicit clinical capability/boundary and remains server-authoritative;
+- **relevance** may depend on profession, specialty, clinic protocol/configuration and Encounter context, but cannot grant access;
+- administration mode does not change the identity/version of the instrument;
+- do not duplicate the same validated PHQ-9/GAD-7 as a second implementation in Assessment Engine just to cross a product boundary.
+
+Assessment Engine remains the multiprofessional reference for structured assessments. Preserve validated PHQ-9/GAD-7 version/scoring already present while a future clinical-instrument facade/persistence contract is decided.
+
+### Nexus medical advanced boundary
+
+Do not confuse the current **advanced medical Nexus product boundary** with a universal rule about every instrument currently implemented through Nexus internals.
+
+Preserve:
+
+- C-01…C-06 semantics;
+- `nexus.*` fail-closed;
+- the current meaning of `nexus.eem`;
+- medical identity/entitlement/capability requirements where current Nexus boundaries require them.
+
+Do **not** relax C-06 to let non-medical professionals use PHQ-9/GAD-7, and do **not** grant `nexus.*` merely so a professional can administer an instrument. The future solution is a neutral clinical-instrument authorization boundary outside the `nexus.*` namespace, with Nexus advanced capabilities remaining fail-closed.
+
+No `clinical.instrument.apply` capability exists merely because this architecture is documented. Capability creation and matrix changes require a future implementation slice and verifier.
+
+### Instrument Delivery — future direction
+
+The future sequence is:
+
+```text
+1. Clinical Instrument Authorization Foundation
+2. Clinician-Assisted Administration
+3. Encounter Instrument UX
+4. Consultório V5 integration/polish
+```
+
+None of these items is implemented by documentation alone.
+
+The future Encounter UX should expose the same instrument through explicit administration modes:
+
+```text
+PHQ-9
+[Apply now] [Send to patient]
+
+GAD-7
+[Apply now] [Send to patient]
+```
+
+`Apply now` is clinician-assisted administration during the consultation and must not depend on phone/WhatsApp. `Send to patient` is patient self-administration. Both must preserve the same instrument/version/scoring and differentiated provenance, conceptually at least `patient_self` vs `clinician_assisted`.
+
+When clinician-assisted, the answers still belong to the patient; the professional is the administrator/recorder of the act, not a fabricated patient respondent. Link the exact `appointment_id` when there is an Encounter.
+
+### PHQ-9 safety contract
+
+For future PHQ-9 administration, a positive response to item 9 must remain visible and trigger explicit attention for clinical evaluation. It must not be buried in the total score, treated as an automatic diagnosis, or generate automatic conduct/prescription. Preserve the original answer.
+
+This is a future product/safety contract, not authorization to infer diagnosis or prescribe behavior from the instrument alone.
+
+### Consultório V5 direction
+
+Without implementing it yet, the desired Clinical Cockpit composition is:
+
+```text
+one Encounter
+├─ Record
+├─ Assessments
+├─ Instruments
+├─ Prescription
+├─ Exams
+├─ Documents
+└─ Nexus
+```
+
+Use historical MedicsPro as UX/workflow reference for consultation ergonomics, but never port Vue/Pinia/Mongo architecture, old authorization, old autosave, checkout coupling or legacy security assumptions.
 
 ### Clinical record principles
 
@@ -373,12 +497,14 @@ Current sequence:
 0. close short operational evidence gaps for #394/#389/#396 and observability;
 1. improve Encounter/physician ergonomics from real-pilot evidence;
 2. add **Cobertura deste atendimento** without exposing global finance in Consultório;
-3. unify instrument delivery (`Aplicar agora` + `Enviar ao paciente`) for appropriate tools such as PHQ-9/GAD-7;
+3. evolve clinical instruments in this order: **Clinical Instrument Authorization Foundation → Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish**;
 4. build Prescription V1;
 5. add other medical documents only as the pilot justifies them;
 6. evolve Finance Configuration for solo/team, categories and partner compensation with history/effective dates;
 7. remove onboarding/pilot friction;
 8. then expand advanced finance/integrations according to evidence.
+
+The four clinical-instrument slices above are future work. Do not mark them implemented, do not create `clinical.instrument.apply` from documentation, do not alter the capability matrix, and do not grant `nexus.*` as a shortcut.
 
 A feature is not pilot-ready because a screen exists. It must survive realistic data, permissions, empty/loading/error states and operational mistakes.
 
@@ -391,7 +517,9 @@ A feature is not pilot-ready because a screen exists. It must survive realistic 
 5. **Professional partner/compensation != role.** Model economic relationships separately.
 6. **Consultório is a privacy/presentation shell.** It must not alter JWT, tenant, role, RLS, capabilities, entitlements or `canView`.
 7. **Historical MedicsPro is mandatory UX/workflow reference for mature equivalent flows**, never current architecture or authorization.
-8. **Do not reopen foundations already closed without real evidence**: failing verifier, production mismatch, security issue, user evidence or incompatible new requirement.
+8. **Engine != authorization != relevance for clinical instruments.** Profession/specialty/protocol/context may influence availability and presentation, never grant authority.
+9. **Advanced medical Nexus remains fail-closed.** Do not relax C-01…C-06 or `nexus.*` to make multiprofessional instruments work.
+10. **Do not reopen foundations already closed without real evidence**: failing verifier, production mismatch, security issue, user evidence or incompatible new requirement.
 
 ---
 
