@@ -80,5 +80,5 @@ jobs:
           PGDATABASE: postgres
         run: createdb clinical_instrument_encounter_authorization_test
 
-      - name: Run #399 matrix on effective #399 -> #400 stack
+      - name: 'Run #399 matrix on effective #399 -> #400 stack'
         run: bash scripts/test-clinical-instrument-encounter-authorization.sh
