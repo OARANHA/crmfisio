@@ -24,27 +24,30 @@ END $$;
 DO $$
 DECLARE
   v_actor_def text := lower(pg_get_functiondef('public.assert_clinical_encounter_actor(uuid)'::regprocedure));
+  v_actor_executable text;
   v_finalize_def text := lower(pg_get_functiondef('public.finalize_clinical_encounter_record(uuid,integer)'::regprocedure));
   v_save_def text := lower(pg_get_functiondef('public.save_clinical_encounter_record(uuid,integer,text,text,text,text,text,text)'::regprocedure));
   v_evolution_lock_def text := lower(pg_get_functiondef('public.lock_linked_evolution_encounter()'::regprocedure));
   v_default text;
 BEGIN
-  IF position('current_user_has_valid_clinical_identity() is not true' IN v_actor_def) = 0 THEN
+  v_actor_executable := regexp_replace(v_actor_def, '--[^' || chr(10) || ']*', '', 'g');
+
+  IF position('current_user_has_valid_clinical_identity() is not true' IN v_actor_executable) = 0 THEN
     RAISE EXCEPTION 'clinical_encounter_identity_not_fail_closed';
   END IF;
-  IF position('current_user_has_clinical_capability(''clinical.attend''::text) is not true' IN v_actor_def) = 0
-     AND position('current_user_has_clinical_capability(''clinical.attend'') is not true' IN v_actor_def) = 0 THEN
+  IF position('current_user_has_clinical_capability(''clinical.attend''::text) is not true' IN v_actor_executable) = 0
+     AND position('current_user_has_clinical_capability(''clinical.attend'') is not true' IN v_actor_executable) = 0 THEN
     RAISE EXCEPTION 'clinical_encounter_attend_not_fail_closed';
   END IF;
-  IF position('current_user_has_clinical_capability(''clinical.evolution.write''::text) is not true' IN v_actor_def) = 0
-     AND position('current_user_has_clinical_capability(''clinical.evolution.write'') is not true' IN v_actor_def) = 0 THEN
+  IF position('current_user_has_clinical_capability(''clinical.evolution.write''::text) is not true' IN v_actor_executable) = 0
+     AND position('current_user_has_clinical_capability(''clinical.evolution.write'') is not true' IN v_actor_executable) = 0 THEN
     RAISE EXCEPTION 'clinical_encounter_evolution_write_not_fail_closed';
   END IF;
 
-  IF position('professional_id' IN v_actor_def) = 0 THEN
+  IF position('professional_id' IN v_actor_executable) = 0 THEN
     RAISE EXCEPTION 'clinical_encounter_canonical_professional_id_missing';
   END IF;
-  IF position('fisio_id' IN v_actor_def) > 0 THEN
+  IF position('fisio_id' IN v_actor_executable) > 0 THEN
     RAISE EXCEPTION 'clinical_encounter_fisio_id_authorization_dependency_detected';
   END IF;
 
@@ -147,7 +150,8 @@ BEGIN
         '43000000-0000-0000-0000-000000000008'::uuid,
         '43000000-0000-0000-0000-000000000009'::uuid,
         '43000000-0000-0000-0000-000000000010'::uuid,
-        '43000000-0000-0000-0000-000000000012'::uuid
+        '43000000-0000-0000-0000-000000000012'::uuid,
+        '43000000-0000-0000-0000-000000000013'::uuid
       )
     GROUP BY e.session_id
     HAVING count(*) > 1
