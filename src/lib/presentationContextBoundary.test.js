@@ -43,6 +43,60 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(shellSource).toContain('<ThemeButton theme={theme} onToggle={toggleTheme} />');
     expect(shellSource).toContain('PresentationModeControl compact={collapsed}');
     expect(shellSource).toContain('<PresentationModeControl />');
+    expect(shellSource).toContain('<PresentationHeaderControl />');
+  });
+
+  it('gives eligible owner/admin an explicit desktop header action without navigation hacks', () => {
+    const headerControl = shellSource.slice(
+      shellSource.indexOf('function PresentationHeaderControl()'),
+      shellSource.indexOf('function PresentationResolvingState()'),
+    );
+    expect(headerControl).toContain('const canSwitch = availableContexts.length > 1');
+    expect(headerControl).toContain("onClick={() => setContext('management')}");
+    expect(headerControl).toContain('Sair do Modo Consultório');
+    expect(headerControl).toContain("onClick={() => setContext('clinical')}");
+    expect(headerControl).toContain('Entrar no Modo Consultório');
+    expect(headerControl).not.toContain('navigate(');
+    expect(headerControl).not.toContain('window.location');
+  });
+
+  it('never offers a management action to clinical-only professionals', () => {
+    const headerControl = shellSource.slice(
+      shellSource.indexOf('function PresentationHeaderControl()'),
+      shellSource.indexOf('function PresentationResolvingState()'),
+    );
+    const clinicalBranch = headerControl.slice(
+      headerControl.indexOf("if (context === 'clinical')"),
+      headerControl.indexOf('if (!canSwitch)'),
+    );
+    expect(clinicalBranch).toContain('Modo Consultório');
+    expect(clinicalBranch).toContain('{canSwitch && (');
+    expect(clinicalBranch).toContain('Sair do Modo Consultório');
+  });
+
+  it('offers entry into Consultório from management only when clinical context is available', () => {
+    const headerControl = shellSource.slice(
+      shellSource.indexOf('function PresentationHeaderControl()'),
+      shellSource.indexOf('function PresentationResolvingState()'),
+    );
+    const managementBranch = headerControl.slice(headerControl.indexOf('if (!canSwitch)'));
+    expect(managementBranch).toContain('if (!canSwitch)');
+    expect(managementBranch).toContain('Ambiente protegido');
+    expect(managementBranch).toContain("onClick={() => setContext('clinical')}");
+    expect(managementBranch).toContain('Entrar no Modo Consultório');
+  });
+
+  it('keeps eligibility resolution fail-closed without rendering administrative chrome', () => {
+    expect(shellSource).toContain('if (presentationResolving) return <PresentationResolvingState />;');
+    const resolvingState = shellSource.slice(
+      shellSource.indexOf('function PresentationResolvingState()'),
+      shellSource.indexOf('export function Shell()'),
+    );
+    expect(resolvingState).toContain('role="status"');
+    expect(resolvingState).toContain('Preparando seu ambiente');
+    expect(resolvingState).not.toContain('<Outlet');
+    expect(resolvingState).not.toContain('<aside');
+    expect(resolvingState).not.toContain('Financeiro');
   });
 
   it('keeps real route guards outside the privacy boundary', () => {
