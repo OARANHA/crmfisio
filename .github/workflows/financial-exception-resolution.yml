@@ -13,6 +13,7 @@ on:
       - 'src/lib/repository.ts'
       - 'src/lib/financialExceptionResolution*'
       - 'src/pages/FinanceiroOperational.tsx'
+      - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql'
   workflow_dispatch:
 
 jobs:
