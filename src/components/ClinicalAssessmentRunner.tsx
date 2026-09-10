@@ -28,7 +28,15 @@ import {
   type ClinicalAssessment,
 } from '../lib/assessmentEngine';
 
-export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
+type ClinicalAssessmentPresentation = 'default' | 'encounter';
+
+export function ClinicalAssessmentRunner({
+  patient,
+  presentation = 'default',
+}: {
+  patient: Patient;
+  presentation?: ClinicalAssessmentPresentation;
+}) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { appointments } = useAgenda();
@@ -137,7 +145,7 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
       setAnswers({});
       setBodyPoints([]);
       setEditorContextKey(contextKey);
-      toast('Não foi possível carregar o novo motor de avaliações.', 'warn');
+      toast('Não foi possível carregar as avaliações clínicas.', 'warn');
     }).finally(() => {
       if (!cancelled && contextKeyRef.current === contextKey) setLoading(false);
     });
@@ -250,7 +258,12 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
 
   return (
     <Card>
-      <CardHead title="Avaliação atual" sub="preenchimento clínico em foco, com rascunho seguro e finalização versionada" />
+      <CardHead
+        title="Avaliação atual"
+        sub={presentation === 'encounter'
+          ? 'Preenchimento clínico desta consulta.'
+          : 'preenchimento clínico em foco, com rascunho seguro e finalização versionada'}
+      />
       <div className="p-5 space-y-4">
         {loading || !contextReady ? (
           <p className="font-mono text-[11px] text-fog">Carregando avaliação…</p>
@@ -267,6 +280,8 @@ export function ClinicalAssessmentRunner({ patient }: { patient: Patient }) {
                   <div className="mt-3 rounded-xl border border-line bg-deep p-4 text-[11.5px] leading-relaxed text-fog">
                     Nenhum modelo publicado é uma recomendação contextual para esta especialidade. Outros modelos permitidos continuam disponíveis abaixo.
                   </div>
+                ) : presentation === 'encounter' ? (
+                  <Empty title="Nenhuma avaliação estruturada disponível para este atendimento." />
                 ) : (
                   <Empty title="Nenhum modelo publicado" sub="Publique um modelo em Configurações para iniciar avaliações estruturadas." />
                 )}
