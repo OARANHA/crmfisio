@@ -1,6 +1,12 @@
 -- MedicsPro #400 — read-only installed-contract verifier.
 -- Intentionally validates structure/functions only. It does NOT scan or reject
 -- historical future-dated rows already physically in em_atendimento.
+--
+-- Historical-verifier rule: validate the installed abstraction contract and the
+-- temporal invariant, not the implementation body of the operational-date helper.
+-- The #400 migration/harness separately fingerprints the implementation introduced
+-- by #400 (America/Sao_Paulo). This verifier must remain compatible with a later,
+-- explicit per-clinic timezone implementation behind the same safe helper contract.
 
 BEGIN;
 SET TRANSACTION READ ONLY;
@@ -18,17 +24,19 @@ BEGIN
 END;
 $$;
 
--- 1) Operational-date helper uses the already-established clinic convention.
+-- 1) Operational-date helper exposes the stable, internal date abstraction.
+-- Do not inspect timezone/current_date implementation here: a future migration may
+-- legitimately make this tenant-aware while preserving this installed contract.
 DO $$
 DECLARE
   p record;
-  v_src text;
 BEGIN
   SELECT * INTO p
   FROM pg_proc
   WHERE oid='public.current_clinic_operational_date()'::regprocedure;
 
   IF NOT FOUND
+     OR p.prorettype <> 'date'::regtype
      OR p.provolatile <> 's'
      OR NOT p.prosecdef
      OR NOT coalesce(p.proconfig @> ARRAY['search_path=public, pg_temp'],false)
@@ -36,18 +44,12 @@ BEGIN
      OR has_function_privilege('anon',p.oid,'EXECUTE') THEN
     RAISE EXCEPTION 'ci400_operational_date_helper_contract_drift';
   END IF;
-
-  v_src := lower(pg_get_functiondef(p.oid));
-  IF position('america/sao_paulo' in v_src)=0
-     OR position('timezone(' in v_src)=0
-     OR position('current_date' in v_src)>0 THEN
-    RAISE EXCEPTION 'ci400_operational_date_semantics_drift';
-  END IF;
 END;
 $$;
 
 -- 2) Dedicated temporal trigger guard preserves trusted internal bypass and
--- applies only when a row enters em_atendimento.
+-- applies only when a row enters em_atendimento. The guard must consume the
+-- operational-date abstraction, whatever its future implementation becomes.
 DO $$
 DECLARE
   p record;
@@ -115,7 +117,7 @@ BEGIN
 END;
 $$;
 
--- 4) #399 defense in depth uses the exact same operational-date helper while
+-- 4) #399 defense in depth uses the exact same operational-date abstraction while
 -- preserving its own-appointment/status/base-authorization contract.
 DO $$
 DECLARE
@@ -155,5 +157,5 @@ BEGIN
 END;
 $$;
 
-\echo 'VERIFY #400 OK — future-date entry blocked structurally; historical rows not scanned'
+\echo 'VERIFY #400 OK — temporal abstraction/guards intact; helper implementation may evolve; historical rows not scanned'
 ROLLBACK;
