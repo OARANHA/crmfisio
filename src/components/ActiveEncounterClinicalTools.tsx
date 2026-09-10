@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
+import { buildEncounterScopedNexusPath } from '../lib/clinicalEncounterUx';
 import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
 import { listPatientNexusRecordIncorporations } from '../lib/nexusRecordIncorporation';
 import {
@@ -146,7 +147,7 @@ export function ActiveEncounterClinicalTools({
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {tools.map((tool) => <ClinicalTool key={tool.id} tool={tool} patientId={patient.id} />)}
+          {tools.map((tool) => <ClinicalTool key={tool.id} tool={tool} patientId={patient.id} appointmentId={encounter.id} />)}
         </div>
 
         {(lifecycle.pendingReview > 0 || lifecycle.pendingSignature > 0 || lifecycle.readyToIncorporate > 0) && <div className="mt-3 flex flex-wrap gap-2">
@@ -161,7 +162,7 @@ export function ActiveEncounterClinicalTools({
   );
 }
 
-function ClinicalTool({ tool, patientId }: { tool: ResolvedNexusClinicalTool; patientId: string }) {
+function ClinicalTool({ tool, patientId, appointmentId }: { tool: ResolvedNexusClinicalTool; patientId: string; appointmentId: string }) {
   const content = <>
     <span className="block font-display text-[12.5px] font-semibold text-paper">{tool.title}</span>
     <span className="mt-1 block text-[10.5px] text-fog">{tool.detail}</span>
@@ -172,5 +173,5 @@ function ClinicalTool({ tool, patientId }: { tool: ResolvedNexusClinicalTool; pa
     return <div className="rounded-xl border border-line/75 bg-panel px-3.5 py-3">{content}</div>;
   }
 
-  return <Link to={`/pacientes/${patientId}/nexus${tool.routeSuffix}`} className="rounded-xl border border-line/75 bg-panel px-3.5 py-3 transition-colors hover:border-aqua/35 hover:bg-raise/40">{content}</Link>;
+  return <Link to={buildEncounterScopedNexusPath(patientId, appointmentId, tool.routeSuffix)} className="rounded-xl border border-line/75 bg-panel px-3.5 py-3 transition-colors hover:border-aqua/35 hover:bg-raise/40">{content}</Link>;
 }
