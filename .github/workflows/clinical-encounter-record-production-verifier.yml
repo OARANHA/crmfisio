@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase-migrations/20260910_clinical_encounter_record_foundation.sql'
       - 'supabase-migrations/20260910_clinical_instrument_encounter_authorization.sql'
+      - 'supabase-migrations/20260910_encounter_temporal_start_boundary.sql'
       - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql'
       - 'scripts/test-clinical-encounter-record-production-verifier.sh'
       - '.github/workflows/clinical-encounter-record-production-verifier.yml'
