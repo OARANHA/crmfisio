@@ -167,9 +167,9 @@ BEGIN
   END IF;
 
   IF (SELECT count(*) FROM public.physiotherapy_evolutions
-      WHERE session_id='40000000-0000-0000-0000-000000000001' AND deleted_at IS NULL) <> 1
+      WHERE session_id='43000000-0000-0000-0000-000000000014' AND deleted_at IS NULL) <> 1
      OR EXISTS (SELECT 1 FROM public.clinical_encounter_records
-                WHERE appointment_id='40000000-0000-0000-0000-000000000001') THEN
+                WHERE appointment_id='43000000-0000-0000-0000-000000000014') THEN
     RAISE EXCEPTION 'clinical_encounter_legacy_evolution_compatibility_broken';
   END IF;
 
