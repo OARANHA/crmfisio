@@ -4,159 +4,182 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 
 ## Legenda
 
-- 🟢 GREEN — gate validado e apto para piloto controlado.
-- 🟡 YELLOW — fundação existe, mas ainda há riscos/pendências antes de ampliação.
-- 🔴 RED — bloqueia piloto.
+- 🟢 **GREEN** — foundation/gate técnico validado para piloto controlado.
+- 🟡 **YELLOW** — foundation existe, mas ainda depende de smoke, UX real, observabilidade ou validação operacional antes de ampliação.
+- 🔴 **RED** — blocker conhecido.
 
-## Estado em 2026-09-07
+## Estado em 2026-09-10
 
 | Gate | Status | Evidência / próxima ação |
-|---|---|---|
-| Multi-tenant / RLS | 🟢 | Preflight P1 em produção confirmou RLS crítico, ausência de órfãos e referências tenant-safe. |
-| Papéis e identidade | 🟢 | `platform_admin` separado de papéis internos; Auth/Profile/Clinic íntegros e login canônico via RPC. |
-| Provisionamento de clínicas | 🟢 | Fluxo idempotente e auditável validado com clínica piloto real. |
-| Platform Admin | 🟢 | Sessão isolada do login das clínicas, seleção de clínica persistida e governança funcional validada. |
-| Entitlements — UI/rotas | 🟢 | Rotas, menus, dashboards e superfícies indiretas respeitam decisões de módulo. |
-| Entitlements — Financeiro | 🟢 | `finance.access` com enforcement server-side em pagamentos, histórico e operações de pacotes. |
-| Entitlements — CRM | 🟢 | `crm.access` protege mutações e superfícies oficiais; papéis não autorizados ficam read-only. |
-| Entitlements — WhatsApp | 🟢 | `whatsapp.access` protege outbox, templates, revisão humana e Evolution worker. |
-| Entitlements — Avaliações customizadas | 🟢 | `assessments.custom` protege autoria/edição/publicação de templates próprios sem bloquear modelos padrão. |
-| Relatórios | 🟢 | `reports.access` protege o módulo; NPS usa fórmula padrão, ausência de amostra não vira 100%, realizado/pipeline são separados e risco atual não é apresentado como retenção histórica ou causalidade comprovada. |
-| Nexus Clinical Engine | 🟢 | Fail-closed, exige entitlement explícito + identidade médica válida + CRM. |
-| Financeiro core | 🟢 | Ciclo canônico e cancelamento pré-pago com resolução financeira explícita validados em produção. |
-| Agenda core | 🟢 | Transições, cancelamento/remarcação, concorrência de sessão e vínculo profissional protegidos. |
-| Pacotes | 🟢 | Venda, saldo, consumo unitário, validade/esgotamento e bloqueio validados. |
-| Atendimento clínico | 🟢 | Sessão, autoria, evolução e finalização possuem boundaries server-side; dashboard, `/hoje` e agenda completa convergem para o workspace clínico. Ver `CLINICAL_PILOT_ACCEPTANCE.md`. |
-| Assessment Engine | 🟢 | Avaliações padrão + minhas avaliações + body map estruturado possuem boundary server-side e histórico versionado. |
-| LGPD / portabilidade | 🟢 | Exportação `LGPD-portabilidade-v2` é server-authoritative, auditada na mesma transação e não depende do estado carregado no browser. |
-| WhatsApp / Evolution operacional | 🟢 | Retry cego de entrega incerta é bloqueado, webhook reconcilia de forma fail-closed e a central expõe resultado incerto, falha definitiva, reconciliação, tentativas e timestamps operacionais. |
-| UX / design system | 🟡 | Fundação visual V2.1 existe e a lista de Pacientes foi simplificada para superfície operacional; ainda falta passagem visual/uso real nas telas de maior frequência antes de ampliar o piloto. |
-| Ajuda/manual dentro do painel | 🟢 | P0 + P1 implementados: ajuda por rota/papel para Agenda, Pacientes, Atendimento, Financeiro, CRM, WhatsApp e Relatórios, com orientação de Pacotes e Avaliações dentro dos contextos existentes. |
+| --- | --- | --- |
+| Multi-tenant / RLS | 🟢 | Isolamento por clínica e gates críticos verificados; manter auditoria contínua. |
+| Papéis e identidade | 🟢 | `owner`, `admin`, `professional`, `recep`, `financeiro`; `platform_admin` separado; role != profissão; `professional_id` canônico. |
+| Provisionamento / Platform Admin | 🟢 | Fluxos server-side e auditáveis já estabelecidos. |
+| Entitlements / autorização | 🟢 | Entitlement, configuração e autorização permanecem conceitos separados; operações sensíveis continuam server-side. |
+| Nexus C-01–C-06 | 🟢 | Engine integrada ao runtime, médico-only e fail-closed por entitlement + capability + identidade + relação assistencial + servidor. |
+| Clinician Daily Home | 🟢 | #390 entregue. |
+| Agenda role-aware | 🟢 | #391 entregue; comandos clínicos respeitam ator, appointment e boundaries existentes. |
+| Encounter UX | 🟢 estrutural | #392/#393 entregaram workspace clínico dedicado e reconciliação do legado sem importar arquitetura/autorização antiga. |
+| Encounter Clinical Record | 🟢 estrutural | #394 entregue: um registro editável por atendimento, revisão humana, Evolution oficial determinística e finalização transacional. |
+| #394 rollout / verifier | 🟢 técnico | Migration #394 aplicada em produção em 2026-09-10; production-safe verifier passou com `VERIFY #394 PRODUCTION OK`. |
+| Finalização clínica × cobertura | 🟢 estrutural | #388 preserva finalização clínica diante de falhas esperadas de cobertura e registra `appointment_financial_exception`. |
+| Resolução de exceção financeira | 🟢 estrutural | #389: owner/admin `CHARGE|WAIVE`; financeiro `CHARGE`; recep/professional sem resolução. |
+| Assessment Engine | 🟢 estrutural | Foundation de avaliações estruturadas, drafts/versionamento e integração ao atendimento já existe. |
+| Consultório / Gestão | 🟢 estrutural | #396 entrega privacy/presentation shell sem alterar autorização. |
+| UX / design em uso real | 🟡 | Foundations visuais existem, mas ainda falta evidência suficiente de smoke visual e uso por profissionais reais para chamar UX de validada. |
+| Smoke pós-finalização #394 | 🟡 | Draft real foi comprovado; falta registrar a comprovação read-only pós-finalização se não houver evidência posterior no repositório. |
+| Smoke CHARGE/WAIVE #389 | 🟡 | Contrato/verifier técnico existe; ação real deve ser documentada antes de tratá-la como smoke operacional concluído. |
+| WhatsApp / Evolution operacional | 🟢 estrutural | Outbox/worker/webhook e reconciliação fail-closed existentes; observabilidade continua sendo trabalho contínuo. |
+| LGPD / auditoria técnica | 🟢 estrutural | Controles técnicos existem; não equivalem por si só a declaração jurídica completa de conformidade. |
 
-## P1 de estabilização — estado
+## Atendimento clínico — estado canônico
 
-O preflight read-only `VERIFY_20260907_P1_OPERATIONAL_PREFLIGHT.sql` foi executado no ambiente real e checks 1–13 ficaram GREEN. O ambiente possui três clínicas ativas e integridade tenant confirmada. Não havia, no momento da execução, clínica suspensa ou usuário inativo disponível como fixture; o cenário de usuário inativo já havia sido exercitado anteriormente. Não se deve suspender clínica produtiva apenas para cumprir checklist.
+O fluxo novo não converge mais para um `ClinicalWorkspace` genérico como unidade de dados. O **Encounter Record** é a unidade editável do atendimento atual.
 
-Frentes fechadas no P1:
+Modelo registrado uma única vez:
 
-1. mutações de equipe atômicas e unidades validadas antes de sincronização destrutiva;
-2. exportação LGPD server-authoritative;
-3. bootstrap de perfil autenticado por RPC canônico;
-4. leitura clínica por relação assistencial;
-5. proteção contra retry cego de entrega WhatsApp incerta + reconciliação fail-closed;
-6. preflight operacional repetível e read-only;
-7. semântica dos principais indicadores protegida contra leituras enganosas;
-8. ajuda contextual ampliada para os módulos operacionais do piloto.
+- Motivo / demandas;
+- História atual / HDA;
+- Achados / exame;
+- Avaliação clínica / problemas;
+- Plano / conduta;
+- Observações.
 
-## Entitlements — semântica atual
+Após revisão e confirmação humana:
 
-Durante o rollout controlado, módulos comuns permanecem backward-compatible quando não existe linha física de entitlement. Uma linha explícita `enabled=false` bloqueia o recurso. Nexus é exceção: `nexus.access` é fail-closed e exige liberação explícita.
+**Encounter Record → Evolution oficial determinística → appointment finalizado**
 
-Chaves atuais:
+Não existe uma segunda Evolution universal obrigatória no fluxo novo. A Evolution continua sendo o registro oficial materializado/longitudinal, não um segundo formulário para o profissional repetir o conteúdo.
 
-- `finance.access`
-- `crm.access`
-- `whatsapp.access`
-- `reports.access`
-- `assessments.custom`
-- `nexus.access`
+Encounter Record finalizado é histórico. Correção/adendo auditável ainda não foi implementado e deve ser tratado como nova slice; não fazer backfill fictício de registros antigos.
 
-## Atendimento clínico — estado do piloto
+## Evidência de produção do #394
 
-O fluxo clínico canônico converge para `ClinicalWorkspace`:
+Estado conhecido em **2026-09-10**:
 
-- dashboard clínico abre a sessão correta por `session_id`;
-- `/hoje` só oferece ações clínicas ao fisioterapeuta responsável e faz handoff ao prontuário;
-- agenda completa não oferece transição clínica de sessão de colega e não finaliza atendimento diretamente no drawer;
-- evolução compartilhada preserva `session_id`;
-- o banco exige sessão ativa, vínculo exato e evolução antes da finalização.
+- migration `20260910_clinical_encounter_record_foundation.sql` aplicada em produção;
+- verifier read-only de produção passou: `VERIFY #394 PRODUCTION OK`;
+- Clinical Foundation passou;
+- Clinical Authorization passou;
+- Financial Exception Resolution #389 passou;
+- o verifier antigo #388 contém uma assertion histórica de ausência da RPC de resolução que foi criada posteriormente pelo #389; essa assertion é obsoleta para o schema atual e precisa ser versionada/atualizada antes de reutilização direta.
 
-O roteiro vivo está em `docs/CLINICAL_PILOT_ACCEPTANCE.md` e deve ser repetido no primeiro piloto real e após alterações relevantes do fluxo.
+### Smoke observado antes da finalização
 
-## Pacientes — superfície operacional
+Foi observado no fluxo real:
 
-A listagem clinic-wide de Pacientes é deliberadamente operacional:
+- Encounter Record persistido;
+- refresh/navegação preservaram o conteúdo;
+- revisão do draft observada;
+- antes da finalização havia **1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions** para o cenário exercitado.
 
-- pesquisa por nome, nome preferido, telefone, e-mail, convênio e CPF;
-- exibe identificação, contato, convênio, jornada, última visita e status;
-- queixa principal e CID-10 não aparecem como colunas do diretório;
-- conteúdo clínico permanece dentro do prontuário e respeita o boundary de relação assistencial no backend.
+Não há, neste snapshot documental, evidência suficiente no repositório para declarar como observada a comprovação read-only **pós-finalização** desse mesmo smoke. A validação curta deve confirmar os artefatos finais sem inventar resultado.
 
-Isso mantém a regra: paciente pertence à clínica; prontuário pertence ao contexto assistencial.
+## Finalização clínica e semântica financeira
 
-## Relatórios — semântica do piloto
+O contrato atual após #388 é:
 
-Antes do piloto, os principais indicadores foram saneados para evitar interpretação incorreta:
+> uma finalização clínica válida não deve ser perdida apenas porque a cobertura esperada não pode ser consumida.
 
-- NPS usa promotores menos detratores em escala -100 a +100;
-- média 0–10 permanece conceito separado de NPS;
-- comparecimento sem amostra válida aparece como ausência de taxa, não como 100%;
-- volume de sessões não é chamado de ocupação quando não existe capacidade no denominador;
-- recuperação realizada e pipeline não são somados como receita;
-- eventos de recuperação não são apresentados como causalidade exclusiva de automação quando o vínculo causal não é comprovado;
-- risco atual de continuidade não é apresentado como retenção histórica.
+Falhas esperadas:
 
-Validação com dados reais de piloto continua recomendada para aferir utilidade dos indicadores, não para corrigir esses contratos semânticos.
+- `package_exhausted`;
+- `package_expired`;
+- `package_not_eligible`.
 
-## WhatsApp / Evolution — estado do piloto
+Resultado: appointment clínico pode permanecer finalizado e a inconsistência de cobertura é registrada em `appointment_financial_exception`. Não há consumo gratuito silencioso.
 
-O fluxo operacional está apto para piloto controlado porque separa segurança de entrega de experiência de operação:
+#389 fornece resolução explícita e auditável:
 
-- o worker interno exige segredo próprio e não pode ser disparado por sessão humana;
-- linhas `enviando` que ficam antigas são quarentenadas como `DELIVERY_UNCERTAIN`, sem retry cego;
-- falhas HTTP definitivas são registradas separadamente de resultados de transporte incertos;
-- aceite conhecido pelo provedor é persistido sem repetir o envio (`ACCEPTED_RECOVERED`);
-- o webhook tenta reconciliar eventos outbound sem `provider_message_id` local apenas quando há um único candidato; ambiguidade falha fechada;
-- a central de Mensagens expõe resultado incerto, falha definitiva, reconciliação, tentativa, evento e timestamps quando disponíveis;
-- não existe botão de retry automático para mensagens incertas.
+- owner/admin: `CHARGE` ou `WAIVE`;
+- financeiro: `CHARGE`;
+- recep/professional: sem resolução.
 
-Pendências daqui em diante são refinamentos de produto e operação assistida, não bloqueadores estruturais do piloto.
+Parceiro/repasse não é autorização.
 
-## Ajuda contextual — estado do piloto
+Falhas financeiras inesperadas de integridade continuam fail-closed e podem reverter a transação conforme os guards existentes.
 
-A ajuda acompanha o usuário sem criar uma segunda fonte de permissões:
+O smoke real de `CHARGE`/`WAIVE` deve continuar YELLOW até existir evidência observada/documentada.
 
-- conteúdo versionado em `src/lib/helpContent.ts`;
-- resolução por rota atual e papel do usuário;
-- botão `?` e drawer lateral reutilizável;
-- Agenda e `/hoje` explicam o fluxo operacional e o handoff clínico;
-- Pacientes separa cadastro operacional de prontuário;
-- Atendimento orienta sessão, autoria, evolução e Avaliação padrão x Minhas avaliações;
-- Financeiro diferencia consulta, baixa, pacotes e exceções conforme o papel;
-- CRM diferencia operação de funil de consulta read-only e reforça que CRM não é prontuário;
-- WhatsApp explica estados de entrega e proíbe retry automático de `DELIVERY_UNCERTAIN`;
-- Relatórios explicam NPS, ausência de amostra, realizado x pipeline e risco atual;
-- testes impedem instruções incompatíveis com o papel do usuário.
+## Consultório / Gestão — Presentation Privacy Shell
 
-P2 continua como evolução de onboarding, descoberta e treinamento, não como bloqueador do piloto.
+Decisão canônica do #396:
 
-## Financeiro — estado do piloto
+`PresentationContext = 'clinical' | 'management'`
 
-O cancelamento de atendimento com pagamento liquidado exige resolução financeira explícita e auditável (`refund_due`, `credit_due` ou `retained`), preservando o pagamento histórico e impedindo resolução duplicada.
+**PresentationContext != authorization.**
 
-Pendências financeiras restantes são evoluções de produto/UX, não bloqueadores do núcleo para piloto controlado:
+- professional: Consultório only;
+- owner/admin: Consultório + Gestão somente quando identidade clínica válida e `clinical.attend` forem confirmados;
+- recep/financeiro: Gestão only.
 
-1. UX própria para cobrança antecipada e resolução financeira de exceções;
-2. pagamento parcial e múltiplos meios;
-3. caixa, conciliação, repasses e documentos fiscais/recibos.
+Modo Consultório oculta visualmente:
+
+- Financeiro global;
+- CRM gerencial;
+- Relatórios administrativos;
+- Configurações.
+
+Acesso por URL continua passando pelos guards reais e, quando o ator já é autorizado, recebe privacy boundary em Consultório. Trocar o modo não altera role, RLS, capability, entitlement, `canView`, JWT ou tenant.
+
+A preferência local é isolada por `user_id + clinic_id`.
+
+Residual conhecido: **autoentrada automática no Consultório ainda não implementada**. Ela deve ser ligada apenas a um ponto canônico único após iniciar/continuar o próprio Encounter, nunca inferida por rota ou mera existência de appointment ativo.
+
+## Nexus — estado do piloto
+
+Nexus é uma engine clínica especializada do runtime MedicsPro. `OARANHA/nexus` é upstream/laboratório, não segundo produto.
+
+Autorização permanece médico-only e fail-closed:
+
+1. entitlement da clínica;
+2. capability necessária;
+3. identidade médica válida;
+4. relação assistencial/contexto permitido;
+5. autorização server-side.
+
+Especialidade informa relevância; não concede acesso por si. Role operacional também não basta.
+
+## UX / design — por que permanece YELLOW
+
+A arquitetura e as boundaries principais estão maduras o suficiente para piloto controlado, mas isso não demonstra que a experiência já foi validada por profissionais externos.
+
+Antes de mudar UX/design para GREEN:
+
+- executar smoke visual das telas de maior frequência;
+- observar profissional real usando Agenda → Encounter → revisão → finalização;
+- testar owner/admin alternando Consultório/Gestão e professional clinical-only;
+- conferir desktop/mobile, light/dark, loading, empty, error e success;
+- registrar fricções concretas e corrigi-las por impacto.
+
+Ausência de blocker estrutural não é evidência de ótima ergonomia.
+
+## Pacientes e prontuário
+
+A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conteúdo clínico detalhado segue boundaries assistenciais. Paciente pertence ao contexto da clínica; prontuário exige o contexto/autorização clínica apropriados.
+
+`professional_id` é a referência clínica canônica. `fisio_id` pode existir em compatibilidade física, mas não deve voltar a ser autoridade de autorização.
 
 ## Próximo foco recomendado
 
-1. Executar `CLINICAL_PILOT_ACCEPTANCE.md` no primeiro profissional piloto e remover fricções observadas.
-2. Fazer passagem visual/uso real de Agenda, Pacientes, Atendimento e Financeiro antes de marcar UX/design system como GREEN.
-3. Validar utilidade dos relatórios com dados reais de piloto sem reabrir contratos semânticos já saneados.
-4. Evoluir onboarding/checklist inicial somente a partir das dúvidas observadas no piloto.
-5. Tratar evoluções financeiras avançadas conforme necessidade real do piloto.
+1. fechar evidência operacional curta do smoke #394 pós-finalização e smoke #389 CHARGE/WAIVE;
+2. corrigir/versionar a assertion obsoleta do verifier #388;
+3. executar piloto UX do Encounter/Consultório e remover fricções observadas;
+4. evoluir **Cobertura deste atendimento** sem expor Financeiro global;
+5. unificar Instrument Delivery (`Aplicar agora` / `Enviar ao paciente`);
+6. construir Prescription V1 e demais documentos apenas conforme demanda do piloto;
+7. evoluir configuração financeira/parcerias sem criar role econômica;
+8. ampliar onboarding e integrações somente com evidência de necessidade.
 
 ## Regra de implantação
 
-A branch `main` deve ser tratada como potencialmente produtiva. O ambiente Portainer acompanha o GitHub em ciclos curtos, portanto:
+`main` é potencialmente produtiva. Portanto:
 
 - nunca usar `main` como área de experimentação;
 - PRs precisam estar deploy-safe antes do merge;
-- alterações de schema devem ser compatíveis com a versão da aplicação em produção;
-- preferir migrations versionadas, idempotentes e verificáveis;
-- migrations de produção devem ser aplicadas a partir de commit de merge conhecido;
-- validar com verifier canônico após aplicação;
-- mudanças de segurança devem ter teste funcional negativo e, quando possível, positivo;
-- mudanças que exigem ação no servidor devem ser explicitamente destacadas antes da execução em produção.
+- migrations devem ser compatíveis, versionadas e verificáveis;
+- migration já aplicada não deve ser reaplicada por documentação desatualizada;
+- verifier de produção deve ser apropriado para banco real/read-only quando esse for o contrato;
+- mudanças de segurança precisam de testes negativos e positivos quando aplicável;
+- qualquer ação de servidor/produção deve ser explicitamente destacada;
+- nunca declarar smoke/piloto concluído sem evidência observada.

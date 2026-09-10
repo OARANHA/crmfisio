@@ -1,106 +1,143 @@
 # MedicsPro Beta — ordem controlada de rollout
 
-Este documento prepara o rollout do Beta Candidate. Ele não autoriza merge, deploy ou alteração de produção.
+**Estado em 2026-09-10.** Este documento organiza continuidade operacional. Ele não autoriza deploy ou alteração de produção por si só.
 
 ## Princípios
 
-- fazer backup antes de qualquer alteração de banco;
-- validar o estado atual antes de reaplicar migrations já presentes no ambiente;
-- executar uma etapa por vez e só prosseguir após o verifier correspondente;
-- não ativar enforcement de entitlements nesta entrega;
-- não alterar conteúdo clínico protegido durante rollout;
-- parar imediatamente em qualquer verifier vermelho ou anomalia financeira crítica.
+- inspecionar estado real antes de aplicar qualquer migration;
+- nunca reaplicar migration já presente apenas porque um runbook antigo ainda a chama de futura;
+- usar o verifier apropriado ao ambiente: comportamento isolado em CI ≠ verifier read-only de produção;
+- executar uma mudança de produção por vez e guardar evidência observada;
+- parar em qualquer falha de RLS/tenant, autorização, lifecycle, integridade financeira ou verifier;
+- não transformar ausência de blocker técnico em UX/piloto validado.
 
-## 1. Nexus — fundação antes das superfícies clínicas
+## Foundations que já não são etapas de implantação nova
 
-A ordem canônica é:
+As foundations abaixo estão incorporadas ao estado canônico e não devem ser “reexecutadas como roteiro inicial” sem inspeção do ambiente:
 
-1. `supabase-migrations/20260903_nexus_wave0_foundation.sql`
-2. `supabase-migrations/20260903_nexus_wave0_hardening.sql`
-3. `supabase-migrations/VERIFY_20260903_NEXUS_WAVE0_FOUNDATION.sql`
-4. `supabase-migrations/20260903_nexus_eem_evidence.sql`
-5. `supabase-migrations/20260904_nexus_self_assessment_secure.sql`
-6. `supabase-migrations/VERIFY_20260904_NEXUS_SELF_ASSESSMENT.sql`
-7. `supabase-migrations/20260904_nexus_self_assessment_processor.sql`
-8. `supabase-migrations/VERIFY_20260904_NEXUS_SELF_ASSESSMENT_PROCESSOR.sql`
-9. `supabase-migrations/20260904_nexus_self_assessment_whatsapp.sql`
-10. `supabase-migrations/VERIFY_20260904_NEXUS_SELF_ASSESSMENT_WHATSAPP.sql`
+- multi-tenant, roles e `platform_admin` separado;
+- entitlements/configuração/autorização separados;
+- Nexus C-01–C-06;
+- Clinician Daily Home (#390);
+- Agenda Role-Aware V4 (#391);
+- Encounter UX (#392/#393);
+- Encounter Clinical Record (#394);
+- production-safe verifier (#395);
+- Consultório / Gestão Privacy Shell (#396);
+- finalização clínica × coverage exception (#388/#389).
 
-O Wave0 cria/garante os contratos que o frontend usa: `professional_type`, catálogo de capabilities, `professional_capabilities`, `nexus_evidence_sources`, `nexus_clinical_results`, `nexus_red_flags`, RLS e helpers server-side. O hardening torna o conteúdo/origem das red flags imutável após criação.
+## 0. Fechar evidências operacionais curtas
 
-A sequência de autoavaliação precisa permanecer completa porque a UI profissional depende de todo o vertical slice: convite seguro -> WhatsApp -> formulário público -> submissão -> claim server-side -> cálculo determinístico -> resultado finalizado -> red flags. Não publicar a UI de envio se migrations/RPCs e Edge Functions correspondentes não estiverem presentes e validados.
+Antes de ampliar piloto:
 
-Depois das migrations/verifiers, atualizar de forma controlada:
+1. registrar a inspeção read-only pós-finalização do smoke #394, se ainda não houver evidência posterior;
+2. executar/documentar smoke real `CHARGE` e `WAIVE` do #389, se pendente;
+3. atualizar/versionar o verifier antigo #388 cuja assertion de ausência da RPC #389 ficou obsoleta;
+4. executar smoke visual/uso real do privacy shell #396;
+5. confirmar observabilidade suficiente para diagnosticar falhas de beta.
 
-1. `supabase/functions/nexus-self-assessment-invite/index.ts`;
-2. `supabase/functions/nexus-self-assessment-processor/index.ts`;
-3. `supabase/functions/medicspro-automation/index.ts`, somente quando governança/observabilidade da plataforma já estiverem aplicadas.
+### Estado conhecido do #394
 
-Antes de liberar uso clínico real, validar ainda:
+- migration `20260910_clinical_encounter_record_foundation.sql` aplicada em produção em 2026-09-10;
+- verifier production-safe passou com `VERIFY #394 PRODUCTION OK`;
+- Clinical Foundation passou;
+- Clinical Authorization passou;
+- Financial Exception Resolution #389 passou.
 
-- `nexus.eem` e `nexus.scales` disponíveis para o profissional esperado;
-- tenant A não acessa paciente/resultados de tenant B;
-- resultado finalizado é imutável;
-- red flag só pode ser reconhecida sem reescrever origem/conteúdo;
-- seed EEM presente com `nexus-eem-2026-09-03`;
-- convite Nexus não expõe token/link no retorno autenticado;
-- paciente sem login só acessa o formulário pelo token temporário esperado;
-- PHQ-9/GAD-7 ponta a ponta, incluindo WhatsApp, processor e red flags;
-- falha/retry do processor não duplica resultado clínico;
-- EEM e longitudinal funcionam com dados reais versionados.
+**Não reaplicar a migration #394.**
 
-## 2. Platform Admin — control-plane antes de runtime
+Para inspeção do schema instalado, usar `supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql`. O arquivo `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` pertence ao harness comportamental de 34 casos e não é verifier direto de produção.
 
-Executar nesta ordem:
+## 1. Pilotar o ciclo clínico atual
 
-1. confirmar que `20260903_platform_provisioning.sql` já existe no ambiente e que o verifier/provisionamento previamente validado continua íntegro;
-2. `supabase-migrations/20260904_platform_admin_governance.sql`
-3. `supabase-migrations/VERIFY_20260904_PLATFORM_ADMIN_GOVERNANCE.sql`
-4. `supabase-migrations/20260904_platform_automation_observability_security.sql`
-5. `supabase-migrations/VERIFY_20260904_PLATFORM_AUTOMATION_OBSERVABILITY_SECURITY.sql`
-6. `supabase-migrations/20260904_platform_clinic_entitlements.sql`
-7. `supabase-migrations/VERIFY_20260904_PLATFORM_CLINIC_ENTITLEMENTS.sql`
-8. `supabase-migrations/20260904_platform_entitlements_console.sql`
-9. `supabase-migrations/20260904_clinic_entitlement_runtime_contract.sql`
-10. `supabase-migrations/VERIFY_20260904_CLINIC_ENTITLEMENT_RUNTIME_CONTRACT.sql`
+Fluxo a observar:
 
-Depois:
+**Meu dia/Agenda → iniciar/continuar appointment → Encounter Record → revisão humana → Evolution oficial → appointment finalizado**
 
-- confirmar explicitamente o Platform Admin inicial;
-- validar `/#/platform` sem vínculo clínico automático;
-- testar provisionamento idempotente de uma clínica de teste antes da clínica piloto real;
-- seedar entitlements somente da clínica piloto;
-- conferir `configured`, `enabled` e `effective` pela RPC read-only;
-- manter enforcement desligado até verificação por clínica.
+Validar:
 
-A função `medicspro-automation` só deve ser atualizada após governança/observabilidade existirem e os verifiers estarem verdes.
+- appointment/paciente/profissional corretos;
+- `professional_id` canônico;
+- draft persistente e revision/conflito;
+- ausência de segunda Evolution universal;
+- histórico finalizado read-only;
+- outro profissional sem ato clínico indevido;
+- owner/admin clínico sem bypass administrativo;
+- Nexus somente quando todas as boundaries médicas autorizarem.
 
-## 3. Financeiro — gate do piloto
+O smoke de draft do #394 já comprovou persistência, refresh/navegação e estado pré-finalização (1 record, 0 Evolutions, 0 payments, 0 financial exceptions). Não declarar a inspeção pós-finalização como executada sem observação real.
 
-Ordem:
+## 2. Validar Consultório / Gestão em uso real
 
-1. executar `supabase-migrations/VERIFY_20260904_FINANCIAL_PILOT_READINESS.sql` como diagnóstico inicial;
-2. executar `supabase-migrations/AUDIT_PILOT_FINANCIAL_CONSISTENCY.sql` e guardar o resultado;
-3. se os dados estiverem consistentes, aplicar `supabase-migrations/20260904_finalized_appointment_financial_source_lock.sql`;
-4. executar `supabase-migrations/VERIFY_20260904_FINALIZED_APPOINTMENT_FINANCIAL_SOURCE_LOCK.sql`;
-5. repetir auditoria financeira;
-6. executar os 10 cenários manuais de `docs/FINANCIAL_PILOT_ACCEPTANCE.md`.
+#396 é presentation/privacy shell, não autorização.
 
-Não liberar piloto se houver, entre outros, cobrança duplicada, atendimento finalizado sem origem financeira coerente, pacote consumido de forma incompatível, pagamento marcado como pago sem dados mínimos ou quebra de vínculo tenant/paciente.
+Validar:
 
-## 4. Frontend e smoke test
+- professional Consultório-only, sem ação de Gestão;
+- owner/admin elegível alternando apenas quando identidade clínica válida + `clinical.attend`;
+- owner/admin não clínico, recep e financeiro em Gestão-only;
+- Financeiro global, CRM gerencial, Relatórios administrativos e Configurações ocultos em Consultório;
+- URL direta continua sob guards reais e recebe privacy boundary;
+- troca de contexto não altera role, JWT, tenant, RLS, capabilities, entitlements ou `canView`;
+- preferência isolada por `user_id + clinic_id`;
+- desktop/mobile e light/dark sem vazamento de chrome administrativo durante resolução.
 
-Somente depois dos gates de ambiente:
+Autoentrada automática no Consultório está fora do rollout atual.
 
-1. deploy do frontend aprovado;
-2. smoke test como Platform Admin;
-3. smoke test como owner/admin de clínica;
-4. smoke test como recepção;
-5. smoke test como profissional clínico não psiquiatra;
-6. smoke test como médico/psiquiatra com Nexus;
-7. paciente real de teste: prontuário -> Nexus -> autoavaliação -> EEM -> longitudinal;
-8. confirmar que finance/admin continuam respeitando permissões e não dominam a experiência clínica.
+## 3. Financeiro — semântica atual
+
+Não usar mais “pacote esgotado/vencido bloqueia a finalização clínica” como cenário canônico.
+
+Para `package_exhausted`, `package_expired` e `package_not_eligible`:
+
+1. preservar a finalização clínica válida;
+2. não consumir cobertura inválida gratuitamente;
+3. registrar `appointment_financial_exception`;
+4. resolver explicitamente conforme #389 quando necessário.
+
+Resolução:
+
+- owner/admin: `CHARGE|WAIVE`;
+- financeiro: `CHARGE`;
+- recep/professional: sem resolução.
+
+Falhas financeiras inesperadas de integridade permanecem fail-closed e devem interromper o rollout.
+
+## 4. Próximas slices de produto no piloto
+
+Depois das evidências curtas acima:
+
+1. Encounter UX / physician ergonomics;
+2. Cobertura deste atendimento;
+3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
+4. Prescription V1;
+5. demais documentos médicos conforme evidência;
+6. Finance Configuration (solo/equipe, categorias, parceiro %/fixo com histórico/effective dates);
+7. onboarding/pilot friction;
+8. financeiro avançado/integracões conforme necessidade observada.
+
+Cada slice precisa de PR, CI e rollout próprios quando alterar comportamento/schema.
+
+## 5. Critério para ampliar o beta
+
+Ampliar apenas quando:
+
+- foundations críticas continuam verdes;
+- smokes pendentes foram observados e registrados;
+- não existem blockers P0/P1 de tenant/autorização/integridade;
+- profissionais reais conseguem executar as jornadas principais com fricção aceitável;
+- suporte/observabilidade permitem detectar e reverter problemas rapidamente.
 
 ## Critério de parada
 
-Qualquer falha em RLS/tenant boundary, capability clínica, imutabilidade de resultado, red flag, idempotência da autoavaliação, auditoria financeira ou verifier interrompe o rollout. Corrigir antes de avançar para a etapa seguinte.
+Parar imediatamente diante de:
+
+- cross-tenant leak;
+- capability/identity bypass;
+- histórico clínico mutável indevidamente;
+- duplicate Evolution/financial side effect;
+- perda de finalização ou cobrança por erro inesperado;
+- verifier vermelho que represente o schema/contrato atual;
+- divergência de produção não compreendida.
+
+Não “resolver” gate alterando fixture, verifier ou documentação para esconder um invariant real.

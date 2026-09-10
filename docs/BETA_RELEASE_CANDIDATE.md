@@ -1,106 +1,130 @@
 # MedicsPro Beta Release Candidate
 
-Este documento consolida o estado de preparação da primeira composição beta visível do MedicsPro. Ele não autoriza merge, deploy ou alteração de produção.
+**Snapshot em 2026-09-10.** Este documento descreve a composição beta atual e seus gates. Não autoriza deploy ou produção.
 
-## Produto visível incluído
+## Composição canônica atual
 
-- dashboard orientado ao profissional, com experiência Nexus-first para psiquiatria;
-- entrada global Nexus dentro do MedicsPro;
-- Nexus contextual no prontuário canônico do paciente;
-- autoavaliações PHQ-9/GAD-7 com envio, status, resultado e red flags;
-- EEM especializado canônico, preservando lógica clínica protegida e autoria do Dr. Adolfo Aranha;
-- evolução longitudinal baseada em resultados clínicos finalizados/versionados;
-- avaliações padrão / minhas avaliações e mapa corporal do engine genérico;
-- Central do Platform Admin com governança, observabilidade, provisionamento e módulos por clínica;
-- financeiro existente com gates e hardening preparados para piloto.
+O candidato beta inclui, entre outras foundations já integradas:
+
+- papéis/identidade multiprofissionais e `professional_id` canônico;
+- Platform Admin separado do domínio de clínicas;
+- entitlements/configuração/autorização separados;
+- Nexus C-01–C-06 como engine clínica integrada, médico-only/fail-closed;
+- Clinician Daily Home (#390);
+- Agenda Role-Aware V4 (#391);
+- Clinical Encounter UX + reconciliação histórica (#392/#393);
+- Encounter Clinical Record (#394);
+- production-safe verifier do Encounter Record (#395);
+- Consultório / Gestão Privacy Shell (#396);
+- finalização clínica separada de falha esperada de cobertura (#388);
+- resolução explícita de exceção financeira (#389);
+- assessment engine, CRM, financeiro, mensageria e automações no runtime canônico.
 
 ## Regras arquiteturais preservadas
 
 `role != profession != capability != entitlement != clinic configuration`
 
-- Platform Admin não é role de clínica;
-- profissão personaliza UX, mas não concede autorização;
-- entitlement não concede capability clínica;
-- Nexus não cria paciente, prontuário, login ou mensageria paralelos;
-- conteúdo clínico protegido não deve ser reescrito por integração visual;
-- entitlements de runtime permanecem sem enforcement até seed e verifier por clínica.
+Além disso:
 
-## Gate técnico antes de merge
+- `PresentationContext != authorization`;
+- `platform_admin` não é role de clínica;
+- parceiro/repasse não é role;
+- Nexus não é segundo runtime;
+- Encounter Record é a unidade editável do novo atendimento;
+- Evolution é materialização oficial após confirmação humana;
+- finalização clínica não depende de sucesso de cobertura esperada;
+- histórico finalizado não é reescrito silenciosamente.
 
-1. CI do HEAD final deve passar em testes, typecheck e build.
-2. `dependency-audit` deve passar com `npm audit --omit=dev --audit-level=critical`.
-3. Não podem existir imports/rotas quebradas nas superfícies Nexus ou Platform Admin.
-4. Rotas Nexus protegidas devem exigir `nexus.access`; escrita do EEM continua exigindo `nexus.eem`.
-5. EEM deve continuar usando a implementação canônica e capability `nexus.eem`.
-6. Longitudinal deve usar apenas resultados finalizados/versionados, sem reinterpretar histórico.
-7. Nenhuma migration de produção deve ser aplicada durante a fase de preview.
+## Estado de produção conhecido
 
-## Gate Platform Admin para rollout
+Em 2026-09-10:
 
-Aplicar em janela controlada e verificar, nesta ordem lógica:
+- migration #394 foi aplicada em produção;
+- `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql` passou com `VERIFY #394 PRODUCTION OK`;
+- Clinical Foundation passou;
+- Clinical Authorization passou;
+- Financial Exception Resolution #389 passou.
 
-1. fundação de provisionamento já existente/compatível;
-2. governança de Platform Admin;
-3. segurança/observabilidade das automações;
-4. entitlements por clínica;
-5. console de módulos por clínica;
-6. contrato read-only de entitlement de runtime;
-7. cadastro explícito do Platform Admin inicial;
-8. seed explícito de entitlements da clínica piloto;
-9. verifiers correspondentes;
-10. somente depois disso considerar enforcement módulo a módulo.
+Isso é evidência estrutural do rollout do #394. Não equivale automaticamente ao smoke funcional completo pós-finalização.
 
-## Gate Nexus para uso clínico real
+O draft smoke observado comprovou persistência, refresh/navegação e revision; antes da finalização o cenário continha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-- confirmar foundation Nexus já aplicada no ambiente alvo;
-- aplicar/verificar evidence seed exigido pelo EEM quando necessário;
-- aplicar/verificar vertical slice server-side das autoavaliações Nexus quando necessário;
-- confirmar capabilities profissionais esperadas;
-- validar tenant boundary e acesso paciente A/B;
-- validar PHQ-9/GAD-7 ponta a ponta incluindo processor e red flags;
-- validar EEM, narrativa determinística e proposta ao SOAP sem sobrescrita silenciosa;
-- validar longitudinal com dados reais versionados;
-- manter itens da fila de revisão clínica bloqueados até revisão especialista.
+A comprovação read-only pós-finalização deve permanecer pendente até existir evidência registrada. O mesmo vale para smoke real `CHARGE`/`WAIVE` do #389.
 
-## Gate financeiro para piloto
+## Dívida de verifier conhecida
 
-Arquivos consolidados nesta branch:
+O verifier histórico #388 contém uma assertion sobre ausência da RPC que #389 criou posteriormente. Essa assertion é obsoleta para o schema atual.
 
-- `docs/FINANCIAL_PILOT_ACCEPTANCE.md`;
-- `supabase-migrations/VERIFY_20260904_FINANCIAL_PILOT_READINESS.sql`;
-- `supabase-migrations/AUDIT_PILOT_FINANCIAL_CONSISTENCY.sql`;
-- `supabase-migrations/20260904_finalized_appointment_financial_source_lock.sql`;
-- `supabase-migrations/VERIFY_20260904_FINALIZED_APPOINTMENT_FINANCIAL_SOURCE_LOCK.sql`.
+Não usar essa checagem antiga como blocker sem versioná-la/atualizá-la. As demais invariantes de #388 continuam relevantes e não devem ser relaxadas.
 
-Antes de liberar profissionais reais:
+## Gate clínico do beta
 
-- aplicar o lock financeiro em janela controlada;
-- rodar o verifier estrutural;
-- executar as auditorias read-only;
-- as consultas críticas devem retornar zero anomalias;
-- executar os dez cenários manuais descritos no critério de aceite financeiro.
+Antes de ampliar uso real:
 
-## Sequência recomendada de entrega
+- executar o roteiro atual de `CLINICAL_PILOT_ACCEPTANCE.md`;
+- confirmar appointment/paciente/profissional exatos;
+- validar draft/revision e conclusão Encounter Record → Evolution → appointment;
+- confirmar outro profissional sem autoria indevida;
+- confirmar owner/admin sem bypass de clinical identity/capability;
+- validar Nexus somente quando todas as boundaries médicas autorizarem;
+- observar profissionais reais e registrar fricção de UX.
 
-1. congelar o HEAD verde do preview beta;
-2. revisar visualmente a composição;
-3. obter autorização explícita de merge;
-4. criar backup de produção;
-5. aplicar migrations/verifiers necessárias em ordem controlada;
-6. validar Platform Admin e clínica piloto;
-7. validar Nexus e financeiro ponta a ponta;
-8. fazer deploy do frontend aprovado;
-9. smoke test por perfis: Platform Admin, owner/admin, recepção e profissional clínico;
-10. somente então liberar o beta para profissionais convidados.
+## Gate financeiro do beta
 
-## Estado atual do candidato
+Usar a semântica atual de `FINANCIAL_PILOT_ACCEPTANCE.md`.
 
-HEAD técnico validado: `b835964f23f4d5a55cfcdff3178d46e716f6eef6`.
+Não esperar que pacote esgotado/vencido/não elegível bloqueie uma conclusão clínica válida. Esperar `appointment_financial_exception` sem consumo gratuito silencioso e resolução explícita posterior.
 
-CI final confirmada: workflow `Clinical workflow CI` run **#201**, com jobs `validate` e `dependency-audit` verdes.
+Validar `CHARGE`/`WAIVE` por smoke real antes de considerar essas ações operacionalmente fechadas.
 
-Isso qualifica a branch como **Beta Candidate técnico**. O trabalho restante depende de autorização controlada de merge/deploy e de validações de ambiente; não depende de nova arquitetura de produto.
+## Gate Consultório / Gestão
 
-## Critério de Beta Candidate
+Validar em uso real:
 
-A branch pode ser chamada de **Beta Candidate** quando o HEAD final estiver verde e todo trabalho restante depender apenas de autorização controlada de merge/deploy e validações de ambiente — não de nova arquitetura de produto.
+- professional Consultório-only;
+- owner/admin alternando contextos somente se clinicamente elegíveis;
+- recep/financeiro Gestão-only;
+- ocultação visual das áreas administrativas em Consultório;
+- URL direta ainda sob guards reais;
+- nenhuma alteração de role/RLS/capabilities/entitlements/canView/JWT/tenant;
+- isolamento local por `user_id + clinic_id`;
+- desktop/mobile, light/dark e resolving fail-closed.
+
+Autoentrada automática em Consultório permanece fora desta composição.
+
+## Gate técnico de cada novo HEAD
+
+Um novo candidato de código precisa, conforme os paths afetados:
+
+1. `npm test`;
+2. typecheck;
+3. lint;
+4. build;
+5. dependency audit;
+6. workflows PostgreSQL/clinical/financial/Nexus relevantes;
+7. revisão de diff e boundaries afetadas.
+
+Um snapshot documental não deve congelar para sempre um SHA técnico antigo como “o candidato”. O SHA real do HEAD validado deve ser registrado na evidência do PR/release correspondente.
+
+## Sequência recomendada a partir daqui
+
+0. fechar evidência operacional curta #394/#389/#396;
+1. Encounter UX / physician ergonomics;
+2. Cobertura deste atendimento;
+3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
+4. Prescription V1;
+5. demais documentos médicos conforme piloto;
+6. Finance Configuration com parceria/repasse como relação econômica, não role;
+7. onboarding/pilot friction;
+8. financeiro avançado/integracões conforme evidência.
+
+## Critério para chamar de Beta Candidate
+
+A composição pode ser tratada como **Beta Candidate técnico** quando:
+
+- foundations críticas estão verdes;
+- não há blocker estrutural conhecido;
+- o HEAD efetivamente candidato passou seus gates;
+- trabalho restante é explicitamente classificado como smoke/UX/operacional ou próxima slice de produto.
+
+Isso não significa “beta validado por usuários”. UX permanece YELLOW até observação suficiente por profissionais reais.

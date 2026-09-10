@@ -1,117 +1,182 @@
-# MedicsPro — ERP + CRM + Prontuário Eletrônico para Fisioterapia
+# MedicsPro — SaaS multiprofissional para clínicas
 
-> Operação clínica integrada com **Agenda Inteligente**, **PEP**, **Financeiro**, **CRM**, **Mensageria** e recursos técnicos de apoio à conformidade com a LGPD.
+MedicsPro integra **ERP + CRM + Agenda + EHR/Prontuário + Financeiro + Automação + relacionamento com paciente** em um único runtime orientado à operação real da clínica.
 
-![React](https://img.shields.io/badge/React_18-61dafb?logo=react&logoColor=000&style=flat-square)
-![TypeScript](https://img.shields.io/badge/TypeScript_5-3178c6?logo=typescript&logoColor=fff&style=flat-square)
-![Vite](https://img.shields.io/badge/Vite_6-646cff?logo=vite&logoColor=fff&style=flat-square)
-![Tailwind](https://img.shields.io/badge/Tailwind_4-38bdf8?logo=tailwindcss&logoColor=000&style=flat-square)
-![React Router](https://img.shields.io/badge/React_Router_6-f44250?logo=reactrouter&logoColor=fff&style=flat-square)
-![LGPD](https://img.shields.io/badge/LGPD-by_design-f2545b?style=flat-square)
+O fluxo central do produto é:
 
----
+**Paciente → Agenda → Atendimento → Prontuário → Documentos → Financeiro → Comunicação**
 
-## ✨ O que está implementado
-
-### Fase 1 — MVP (operação real, sem planilha)
-
-| Módulo | Destaques |
-|---|---|
-| 🗓 **Agenda Inteligente** | Visões **dia / semana / mês**, grade 7h–19h, salas e equipamentos, status visual (Agendado → Confirmado → Em atendimento → Finalizado / Faltou / Cancelado), clique no horário vazio para agendar |
-| 🩺 **Prontuário Eletrônico (PEP)** | Cadastro completo, **anamnese**, **CID-10**, evolução clínica sessão a sessão com anexos, histórico de sessões e pacotes |
-| 💰 **Financeiro** | Contas a receber/pagar com baixa (Pix/Boleto), fluxo de caixa, **pacotes de sessões com saldo**, cobrança via WhatsApp |
-| 🎯 **CRM** | Funil kanban (Lead → Avaliação → Tratamento → Alta) com drag & drop, **NPS** com promotores/neutros/detratores, **alerta de pacientes inativos** |
-| 📊 **Dashboard do Gestor** | Produção mensal, a receber, taxa de comparecimento (no-show), novos pacientes, NPS, receita 7 dias, produtividade por fisioterapeuta, pendências que exigem ação |
-| 🔐 **RBAC** | 3 perfis — **Administrador**, **Fisioterapeuta** e **Recepcionista** — filtrando sidebar, abas e ações |
-
-### Fase 2 — Automação & conformidade
-
-- 📲 **Central de Mensagens**: fila WhatsApp com status em tempo real (`enviando → enviado → entregue ✓ → lido ✓✓`), gatilhos de automação (confirmação 48h, NPS pós-atendimento, reativação de inativos), modelos editáveis, respeito ao **opt-in LGPD**
-- 🔁 **Recorrência editável**: séries "2x por semana × 2 meses" com **edição e cancelamento** (passado preservado) e preview de datas
-- ✍️ **Assinatura digital em canvas**: termos de consentimento com **hash do conteúdo + IP + timestamp + imagem** da assinatura
-- 💸 **Fechamento de repasse**: competência mensal, base calculada das sessões finalizadas, comissão de 40%, "marcar pago"
-
-### Fase 3 — Escala & LGPD self-service
-
-- 🏢 **Multi-unidade**: seletor global (Sede Centro / Savassi) filtrando Agenda, Dashboard e Relatórios; salas e sessões vinculadas por unidade
-- 📦 **Portabilidade (art. 18, V)**: exportação JSON completa do titular com 1 clique
-- 🕳 **Anonimização operacional**: remoção dos identificadores diretos com confirmação dupla, preservando registros sujeitos às regras de retenção da clínica
-- 🧾 **Trilha de auditoria** `audit_log` append-only: cada login, assinatura, exportação, anonimização e repasse gera entrada imutável
-- 📈 **Relatórios de produção**: competência selecionável, produção por profissional, ocupação por dia, receita por categoria, **exportação CSV real** (padrão Excel pt-BR)
+O núcleo clínico é compartilhado entre profissões. Profissão, especialidade, identidade profissional, capabilities e entitlements compõem as ferramentas disponíveis sem transformar role em profissão.
 
 ---
 
-## 🚀 Rodando localmente
+## Estado atual do produto
+
+A fundação técnica já cobre os principais ciclos que precisam existir antes de ampliar o catálogo de features:
+
+- autenticação Supabase, multi-tenant e RLS;
+- papéis operacionais `owner`, `admin`, `professional`, `recep` e `financeiro`;
+- `platform_admin` em domínio separado da clínica;
+- Agenda role-aware e Clinician Daily Home;
+- atendimento clínico dedicado com Encounter UX;
+- Encounter Clinical Record editável por atendimento;
+- materialização determinística da Evolution oficial após confirmação humana;
+- assessment engine com modelos estruturados e drafts reais;
+- Nexus como engine clínica especializada integrada ao runtime MedicsPro;
+- financeiro com separação explícita entre finalização clínica e falhas esperadas de cobertura;
+- exceções financeiras auditáveis e resolução explícita;
+- CRM, comunicação/WhatsApp, consentimentos, relatórios e configurações;
+- Consultório / Gestão como contextos de apresentação, sem alterar autorização.
+
+A existência técnica de uma feature não significa que sua UX esteja validada por profissionais externos. O estado de beta, os smokes pendentes e a sequência de produto ficam nos documentos de continuidade abaixo.
+
+---
+
+## Modelo clínico canônico
+
+O novo atendimento usa um **Encounter Record** ligado ao appointment, paciente, clínica e `professional_id` canônico. O profissional registra uma vez:
+
+- Motivo / demandas;
+- História atual / HDA;
+- Achados / exame;
+- Avaliação clínica / problemas;
+- Plano / conduta;
+- Observações.
+
+Após revisão e confirmação humana, o fluxo materializa a **Evolution oficial determinística** e finaliza o appointment na mesma boundary clínica. Não existe uma segunda Evolution universal obrigatória no novo fluxo.
+
+Registros finalizados são históricos. Correção/adendo auditável de um Encounter Record finalizado ainda é uma slice futura; não há backfill fictício de atendimentos históricos.
+
+---
+
+## Papéis, profissão e autorização
+
+Papéis operacionais da clínica:
+
+| Papel | Função principal |
+| --- | --- |
+| `owner` | gestão da clínica; atos clínicos somente se também cumprir a boundary clínica |
+| `admin` | administração; não recebe autoria clínica por ser admin |
+| `professional` | papel operacional do profissional assistencial |
+| `recep` | recepção, agenda, cadastro e operação compatível |
+| `financeiro` | operação financeira compatível |
+
+`role != profissão`.
+
+A profissão/identidade clínica é modelada separadamente. `appointments.professional_id` é a referência clínica canônica. `fisio_id` e nomes físicos históricos relacionados a fisioterapia podem existir por compatibilidade, mas não devem ser usados como autorização nova nem como definição do produto.
+
+`platform_admin` pertence ao domínio da plataforma SaaS e não é role interna de clínica.
+
+Parceiro/sócio/repasse também não é role. Relações de parceria e remuneração são domínio econômico futuro e não devem ser usadas como atalho de autorização.
+
+---
+
+## Consultório / Gestão
+
+`PresentationContext = 'clinical' | 'management'` é **estado de apresentação**, não autorização.
+
+- `professional`: Consultório only;
+- `owner/admin`: Consultório + Gestão somente com identidade clínica válida + `clinical.attend`;
+- `recep/financeiro`: Gestão only.
+
+Modo Consultório oculta visualmente Financeiro global, CRM gerencial, Relatórios administrativos e Configurações. URLs administrativas continuam submetidas aos guards reais e recebem privacy boundary quando apropriado.
+
+Trocar contexto não muda role, JWT, tenant, RLS, capabilities, entitlements ou `canView`. A preferência local é isolada por `user_id + clinic_id`.
+
+Autoentrada automática no Consultório após iniciar/continuar um atendimento ainda não foi implementada; aguarda um ponto canônico único de transição.
+
+---
+
+## Nexus
+
+Nexus é uma **engine clínica especializada integrada ao runtime MedicsPro**.
+
+A hierarquia é:
+
+- `OARANHA/crmfisio` — produto/runtime canônico;
+- `OARANHA/nexus` — upstream/laboratório de inteligência clínica;
+- `OARANHA/medicspro` — referência histórica obrigatória de UX/workflow, nunca fonte de arquitetura, tenancy ou autorização atual.
+
+Nexus permanece fail-closed e médico-only: entitlement da clínica + capability + identidade médica válida + relação assistencial + autorização server-side. Especialidade define relevância; não concede autorização isoladamente. Role sozinho também não libera Nexus.
+
+---
+
+## Financeiro e finalização clínica
+
+A finalização clínica válida **não deve ser perdida** por uma falha esperada de cobertura.
+
+Estados esperados como:
+
+- `package_exhausted`;
+- `package_expired`;
+- `package_not_eligible`
+
+são registrados como `appointment_financial_exception`, sem consumo gratuito silencioso.
+
+A resolução explícita posterior segue o contrato atual:
+
+- `owner/admin`: `CHARGE` ou `WAIVE`;
+- `financeiro`: `CHARGE`;
+- `recep/professional`: sem ação de resolução.
+
+Falhas financeiras inesperadas de integridade continuam fail-closed e podem reverter a transação clínica, conforme os invariantes PostgreSQL existentes.
+
+---
+
+## Stack e arquitetura de alto nível
+
+- **Frontend:** React 18, TypeScript, Vite, Tailwind, React Router;
+- **Estado/domínios:** providers e hooks especializados, com fachadas de compatibilidade onde ainda existem — `store.tsx` não é a arquitetura monolítica canônica;
+- **Backend:** Supabase self-hosted + PostgreSQL + Auth + RLS/RBAC + RPCs + Edge Functions;
+- **Mensageria:** Evolution API integrada por outbox/worker/webhook;
+- **Validação:** Vitest, TypeScript, ESLint, build e verificadores PostgreSQL dedicados.
+
+Valores monetários de domínio são tratados em centavos inteiros quando aplicável.
+
+---
+
+## Desenvolvimento local
 
 ```bash
 git clone https://github.com/OARANHA/crmfisio.git
 cd crmfisio
-npm install
-npm run dev        # http://localhost:5173
+npm ci
+npm run dev
 ```
 
-Build de produção:
+Validação ampla:
 
 ```bash
-npm run build      # gera dist/ (estático, pronto para CDN)
-npm run preview
+npm test
+npm run typecheck
+npm run lint
+npm run build
 ```
 
-## 👤 Perfis de demonstração
-
-| Perfil | Acesso | O que observar |
-|---|---|---|
-| **Dra. Helena Duarte** · Administrador | total | Relatórios + CSV, LGPD self-service, auditoria, repasse |
-| **Dr. Caio Monteiro** · Fisioterapeuta | clínico completo | Assinatura digital no PEP, financeiro somente leitura |
-| **Rafael Nogueira** · Recepcionista | operacional | Sem acesso clínico; dispara automações de WhatsApp |
+Consulte `DEPLOY.md` antes de qualquer ação de servidor ou produção.
 
 ---
 
-## 🧱 Stack & arquitetura
+## Documentos de continuidade
 
-| Camada | Escolha | Por quê |
-|---|---|---|
-| Front-end | **React 18 + Vite + TypeScript + Tailwind 4** | Tipagem compartilhada, build estático leve, PWA-ready |
-| Estado | **Context + hooks** (`src/lib/store.tsx`) | Camada única de domínio — trocável por TanStack Query + API sem tocar nas páginas |
-| Roteamento | **React Router 6** (HashRouter) | Funciona em hospedagem estática sem rewrite de servidor |
-| Back-end | **Supabase self-hosted + PostgreSQL + Edge Functions** | RLS multi-tenant, RPCs transacionais, triggers e automações server-side |
-| Auth/Segurança | **Supabase Auth + RBAC + RLS** | Isolamento por clínica e trilha de auditoria append-only para a aplicação |
+Leia nesta ordem ao assumir trabalho no projeto:
 
-> Os tipos em `src/lib/types.ts` **espelham 1:1 o esquema relacional aprovado** (14 tabelas, 19 relacionamentos). Valores monetários em **centavos** (inteiros), nunca float.
+1. [`AGENTS.md`](AGENTS.md) — regras operacionais e invariantes;
+2. [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) — snapshot curto da continuidade atual;
+3. [`PRODUCT_ROADMAP.md`](PRODUCT_ROADMAP.md) — sequência de produto;
+4. [`TODO.md`](TODO.md) — pendências concretas;
+5. [`docs/BETA_READINESS.md`](docs/BETA_READINESS.md) — prontidão e gaps de piloto/beta.
 
-## 📁 Estrutura
-
-```
-src/
-├── components/       # Shell (login/sidebar/topbar), ECG, Reveal/CountUp, ícones SVG
-├── lib/
-│   ├── types.ts      # domínio = espelho do ERD + metadados de UI
-│   ├── seed.ts       # dados de demonstração (datas relativas à semana atual)
-│   ├── store.tsx     # estado global, RBAC, automações, ações LGPD
-│   └── ui.tsx        # design system: Card, Btn, Modal, Chip, KPI…
-└── pages/            # Dashboard, Agenda, Pacientes(PEP), Financeiro, Crm,
-                      # Mensagens, Relatorios, Config
-```
+Documentos especializados ficam em `docs/`, incluindo Encounter Record, Presentation Context, aceitação clínica/financeira e rollout.
 
 ---
 
-## 🌐 Publicando
+## Segurança e LGPD
 
-- **Vercel / Netlify / Cloudflare Pages**: suba a pasta `dist/` após `npm run build` — funciona como está, sem configuração.
-- **GitHub Pages**: por usar `HashRouter`, as rotas funcionam; ajuste `base: './'` no `vite.config.ts` antes do build para o caminho `/crmfisio/`.
+Dados de saúde são sensíveis. MedicsPro usa controles como autenticação, RLS, RBAC/capabilities, isolamento por clínica, consentimentos, auditoria e boundaries server-side. Esses controles apoiam segurança e conformidade, mas não equivalem por si só a uma declaração jurídica completa de conformidade LGPD.
 
-## 🗺 Roadmap
-
-- [x] Back-end Supabase self-hosted com PostgreSQL, Auth e Edge Functions
-- [x] WhatsApp via Evolution API com outbox, worker e webhook de status
-- [ ] Pagamentos online (Asaas/Mercado Pago) e assinatura eletrônica externa quando necessária
-- [ ] 2FA para administradores · criptografia de campo via KMS
-- [ ] PWA offline de leitura para o tablet da sala
-
-## ⚖️ LGPD
-
-Dados de saúde são dados pessoais sensíveis. O produto implementa controles técnicos como RLS, RBAC, opt-in de comunicação, consentimentos versionados, exportação do titular, anonimização operacional e auditoria append-only na aplicação. Esses recursos apoiam a conformidade, mas não substituem a definição jurídica das bases legais, dos prazos de retenção e dos processos de cada clínica.
+A regra operacional é simples: **frontend visibility nunca substitui autorização de servidor**.
 
 ---
 
-MedicsPro é um produto em evolução contínua. O estado das próximas entregas é mantido em `TODO.md` e `PRODUCT_ROADMAP.md`.
+MedicsPro está em evolução contínua. Estado canônico atual, pendências e decisões devem ser atualizados sem transformar planos futuros em features concluídas.
