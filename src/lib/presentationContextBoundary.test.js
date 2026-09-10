@@ -71,9 +71,10 @@ describe('Consultório / Gestão presentation boundary', () => {
   });
 
   it('derives owner/admin clinical eligibility from existing read-only identity and capability contracts', () => {
-    expect(providerSource).toContain("rpc('current_user_has_valid_clinical_identity')");
-    expect(providerSource).toContain("useClinicalCapability('clinical.attend', eligibilityUserId)");
+    expect(providerSource).toContain("db.rpc('current_user_has_valid_clinical_identity')");
+    expect(providerSource).toContain("db.rpc('current_user_has_clinical_capability', { p_capability: 'clinical.attend' })");
     expect(providerSource).toContain('profile?.clinic_id ?? null');
+    expect(providerSource).toContain('`${userId}:${clinicId}`');
     expect(providerSource).not.toContain('set_config');
     expect(providerSource).not.toContain('.insert(');
     expect(providerSource).not.toContain('.update(');
