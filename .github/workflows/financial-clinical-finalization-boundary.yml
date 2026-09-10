@@ -10,6 +10,7 @@ on:
       - '.github/workflows/financial-clinical-finalization-boundary.yml'
       - 'tests/sql/clinical_authorization_reconciliation_fixture.sql'
       - 'supabase-migrations/20260909_clinical_authorization_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql'
   workflow_dispatch:
 
 jobs:
