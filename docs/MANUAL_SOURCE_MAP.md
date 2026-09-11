@@ -3,7 +3,7 @@
 > Fonte editorial para gerar, no futuro, um manual coerente do sistema. Este arquivo não substitui código nem documentação técnica. Ele organiza apenas comportamento visível ao usuário e seu estado de validação.
 
 **Atualizado em:** 2026-09-11  
-**Base de referência ao criar este documento:** `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`
+**Base de referência ao criar este documento:** `main@39b78ada205a7237341847edcda6a8592d0b0c14`
 
 ## Regra editorial
 
@@ -91,7 +91,7 @@ Tópicos futuros:
 # 4. Atendimento clínico / Clinical Encounter
 
 **Estado funcional:** VALIDADO EM PRODUÇÃO para o fluxo clínico atual.  
-**Estado visual #417:** IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO.
+**Estado visual #417/#420:** IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO DA COMPOSIÇÃO FINAL.
 
 Superfícies visíveis principais:
 
@@ -110,32 +110,38 @@ Elementos de contexto atualmente observados:
 - ações de registro/finalização;
 - prontuário longitudinal como referência secundária.
 
-### Compactação visual #417
+### Compactação visual #417 e correção estrutural #420
 
-**Estado:** IMPLEMENTADO EM MAIN; screenshots e aceitação visual de produção ainda pendentes.
+A #417 compactou a tela, removeu o breadcrumb redundante durante Encounter ativo e reduziu cards/rail. O primeiro smoke real, porém, mostrou que a composição sticky ainda permitia clipping do `Estado da consulta` e que o header global desktop desperdiçava altura.
 
-Mudanças mergeadas:
+A #420 é a composição atual e substitui a referência visual anterior:
 
-- header/resumo do atendimento mais compacto;
-- breadcrumb `‹ Pacientes` e `PatientProfileHeader` ocultos durante Encounter ativo;
-- lateral desktop reduzida para 238px;
-- cards laterais mais densos;
-- sticky do rail alinhado ao header real de 68px;
-- `top: calc(68px + 0.75rem)`;
-- `max-height: calc(100vh - 68px - 1.5rem)`;
-- scroll interno da lateral apenas quando necessário;
-- seções principais com menor espaço vertical.
+- `EncounterHero` não-sticky;
+- rail esquerdo sticky independente em desktop XL;
+- toolbar `Registro / Anamneses & Avaliações / Nexus` sticky apenas na coluna principal em desktop XL;
+- rail e toolbar usam o mesmo offset de coluna (`top-3`) sem sobreposição porque ocupam colunas diferentes;
+- rail limitado ao viewport com scroll interno somente quando necessário;
+- header global removido do desktop `lg+`;
+- modo Consultório/Gestão, unidade, tema, notificações, identidade e logout concentrados no footer da sidebar;
+- sidebar collapsed mantém troca de unidade acessível por controle que expande a sidebar;
+- avatar/identidade e logout ficam empilhados/centralizados no collapsed para evitar overflow;
+- mobile/tablet preservam header compacto;
+- ajuda contextual volta ao canto inferior flutuante;
+- breadcrumb `‹ Pacientes` permanece oculto durante Encounter ativo;
+- lateral continua em torno de 238px no desktop XL e cards permanecem densos.
 
-A slice é frontend-only e não altera persistência, autorização, RLS, lifecycle de draft ou regras clínicas.
+A slice continua frontend-only e não altera persistência, autorização, RLS, lifecycle de draft ou regras clínicas.
 
 Antes de transformar esta seção em instrução visual definitiva do manual:
 
-1. redeployar o frontend contendo #417;
-2. validar 1366×768, 1440×900 e 1920×1080 quando possível;
-3. confirmar ausência de clipping no `Estado da consulta`;
-4. confirmar breadcrumb ausente durante Encounter ativo;
-5. confirmar mais conteúdo acima da dobra;
-6. capturar screenshot oficial posterior ao deploy.
+1. redeployar o frontend contendo `main@39b78ada205a7237341847edcda6a8592d0b0c14`;
+2. confirmar que o header global realmente não ocupa espaço no desktop;
+3. validar sidebar expandida e collapsed, incluindo troca de unidade, identidade e logout;
+4. confirmar ausência de clipping/overlap entre rail e toolbar durante scroll;
+5. confirmar breadcrumb ausente durante Encounter ativo;
+6. confirmar mais conteúdo acima da dobra;
+7. validar que mobile/tablet mantêm header utilizável;
+8. capturar screenshot oficial posterior ao deploy.
 
 Fonte:
 
@@ -350,7 +356,7 @@ Não registrar identificadores de paciente real no manual público.
 
 ## 2026-09-11 — UX do Clinical Encounter #417
 
-**IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO**
+**IMPLEMENTADO, MAS VISUALMENTE SUPERADO PELA #420**
 
 PR #417 foi mergeado em `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`.
 
@@ -362,15 +368,38 @@ Validação técnica:
 - 9/9 workflows GitHub PASS no head final;
 - nenhuma mudança de backend, migration, RLS, autorização ou persistência.
 
-Mudanças visuais esperadas no deploy:
+O primeiro smoke real pós-deploy confirmou a compactação, mas revelou dois blockers visuais:
 
-- topo mais compacto;
-- breadcrumb `‹ Pacientes` removido durante Encounter ativo;
-- lateral de 238px mais densa;
-- `Estado da consulta` sem clipping com sticky relativo ao header real de 68px;
-- mais conteúdo visível acima da dobra.
+- `Estado da consulta` ainda podia entrar por baixo da toolbar sticky;
+- o header global desktop continuava consumindo uma faixa alta desnecessária.
 
-Ainda falta evidência visual pós-deploy. Não usar screenshots anteriores como imagem definitiva do manual.
+Por isso, screenshots dessa composição não devem ser usados como imagem definitiva do manual.
+
+## 2026-09-11 — UX do Clinical Encounter #420
+
+**IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO**
+
+PR #420 foi mergeado em `main@39b78ada205a7237341847edcda6a8592d0b0c14`.
+
+Validação técnica:
+
+- Clinical Encounter + Presentation Context boundaries: 31/31 PASS;
+- suíte completa: 406/406 PASS;
+- typecheck, lint e build PASS;
+- 9/9 workflows GitHub PASS no head final `f97574c2971f5e568c4864cb056110198db93c00`;
+- nenhuma mudança de backend, migration, RLS, autorização ou persistência.
+
+Composição que deve ser validada no próximo redeploy:
+
+- hero rola normalmente;
+- rail esquerdo e toolbar da direita permanecem sticky sem competir;
+- header global não ocupa desktop `lg+`;
+- utilitários ficam no footer da sidebar;
+- sidebar collapsed não apresenta overflow e mantém unidade acessível;
+- ajuda contextual fica flutuante no canto inferior;
+- mobile/tablet preservam header compacto.
+
+Ainda falta evidência visual pós-deploy da #420. Não usar screenshots da #417 como imagem definitiva do manual.
 
 ---
 
