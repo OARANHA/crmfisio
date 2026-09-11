@@ -184,7 +184,7 @@ export function ClinicalEncounterWorkspaceV4({
             <dl className="mt-4 space-y-3 text-[11px]"><div><dt className="text-fog">CID-10 longitudinal</dt><dd className="mt-0.5 font-medium text-paper/90">{patientContext.cid}</dd></div><div><dt className="text-fog">Consentimentos assinados</dt><dd className="mt-0.5 font-medium text-paper/90">{signedConsentCount}</dd></div></dl>
           </div>
         </aside>
-        <main className="min-w-0 space-y-4">
+        <main className="order-1 min-w-0 space-y-4 xl:order-2">
           {workspace === 'record' && <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">
