@@ -2,8 +2,19 @@
 
 > **Este arquivo é um snapshot de continuidade. AGENTS.md contém as regras operacionais. Código/schema atuais prevalecem quando o snapshot envelhecer.**
 
-**Data do snapshot:** 2026-09-10  
-**Base auditada da #399:** `2385cf1bc1cf9b7ee4f60578413baa37d798a728`
+**Data do snapshot:** 2026-09-11  
+**Base canônica observada:** `main@52c6bfa49cbdbf50e57220a712ca9d38654ab347`
+
+## Leitura obrigatória para continuidade
+
+Depois de `AGENTS.md`, todo agente deve ler este arquivo.
+
+Para trabalho em Platform Admin, configurações, planos, entitlements, WhatsApp, templates, assinaturas ou provedores, ler também:
+
+- [`docs/PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md`](PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md)
+- [`docs/MEDICSPRO_LEGACY_REUSE_MAP.md`](MEDICSPRO_LEGACY_REUSE_MAP.md)
+
+A regra institucional permanece: **`OARANHA/crmfisio` é o runtime canônico; `OARANHA/medicspro` é referência histórica obrigatória de produto/UX/workflow quando houver equivalente maduro, nunca fonte de arquitetura/autorização.**
 
 ## Produto e arquitetura em poucas linhas
 
@@ -17,7 +28,7 @@ O núcleo clínico é compartilhado entre profissões.
 
 `role` operacional não é profissão.
 
-Papéis canônicos: `owner`, `admin`, `professional`, `recep`, `financeiro`.
+Papéis canônicos da clínica: `owner`, `admin`, `professional`, `recep`, `financeiro`.
 
 `platform_admin` pertence a um domínio separado da clínica.
 
@@ -53,9 +64,157 @@ Instrumentos clínicos como PHQ-9/GAD-7 são potencialmente multiprofissionais c
 
 `OARANHA/nexus` é upstream/laboratório de inteligência clínica.
 
-`OARANHA/medicspro` é referência histórica obrigatória de UX/workflow, nunca fonte de arquitetura/autorização atual.
+`OARANHA/medicspro` é referência histórica obrigatória de UX/workflow para domínios maduros equivalentes.
 
-Regra institucional: **não portar o velho MedicsPro; absorver o que ele entendia bem sobre o profissional.**
+Regra institucional: **não portar o velho MedicsPro; absorver o que ele entendia bem sobre o profissional e sobre a operação do SaaS.**
+
+---
+
+## Decisão canônica — Platform Control Plane × Configuração da Clínica
+
+A arquitetura de produto agora registra explicitamente três níveis separados:
+
+```text
+PLATFORM ADMIN
+    ↓ define o produto SaaS disponível para a clínica
+
+ADMINISTRAÇÃO DA CLÍNICA
+    ↓ configura como o tenant usa o que contratou
+
+USUÁRIO / PROFISSIONAL
+    ↓ usa somente o que role + identidade + capability + contexto autorizam
+```
+
+Contrato canônico:
+
+```text
+PLATFORM ENTITLEMENT
+        ↓
+CLINIC CONFIGURATION
+        ↓
+USER AUTHORIZATION / CAPABILITY
+        ↓
+RESOURCE / ENCOUNTER CONTEXT
+```
+
+Nunca colapsar essas camadas em um único boolean/menu.
+
+### Platform Admin administra o SaaS
+
+O Platform Admin pode operar:
+
+- lifecycle e provisionamento de clínicas;
+- owner/onboarding;
+- planos;
+- entitlements;
+- limites/uso;
+- overrides;
+- assinatura/receita do SaaS;
+- provedores globais;
+- saúde de integrações;
+- catálogos globais;
+- rollout/feature flags;
+- governança, auditoria e suporte;
+- equipe administrativa da plataforma.
+
+Platform Admin **não recebe acesso implícito ao prontuário clínico nem ao financeiro detalhado de pacientes**.
+
+Suporte futuro que exija dado tenant-sensitive deve possuir boundary separado, temporário, justificado e auditado.
+
+### Administração da clínica
+
+Owner/admin do tenant configuram, dentro dos entitlements:
+
+- identidade/unidades/horários;
+- equipe e acessos;
+- serviços/procedimentos;
+- clínico: avaliações padrão, Minhas avaliações, documentos, consentimentos e protocolos;
+- comunicação: WhatsApp, templates, automações, opt-in e NPS;
+- financeiro/configuração econômica permitida;
+- integrações próprias quando aplicável;
+- governança tenant-side.
+
+### Precedência de produto
+
+Direção de longo prazo:
+
+```text
+DEFAULT DA PLATAFORMA
+        ↓
+PLANO
+        ↓
+OVERRIDE EXPLÍCITO DA CLÍNICA
+        ↓
+ENTITLEMENT EFETIVO
+        ↓
+CONFIGURAÇÃO DA CLÍNICA
+        ↓
+AUTORIZAÇÃO DO USUÁRIO
+```
+
+Alterar plano/entitlement/override não deve apagar histórico.
+
+O `PlatformClinicEntitlementsPanel` atual já possui a foundation conceitual para `nexus.access`, `finance.access`, `crm.access`, `reports.access`, `assessments.custom` e `whatsapp.access`. Evoluir esta foundation antes de criar sistema paralelo.
+
+### WhatsApp
+
+Separação obrigatória:
+
+```text
+Platform Admin
+→ provider global, health, instâncias, filas, consumo, limites e falhas
+
+Admin da clínica
+→ conexão/número, QR quando aplicável, templates, opt-in, automações e preferências
+
+Usuário operacional
+→ ações autorizadas no contexto do paciente/appointment
+```
+
+A fila/reconciliação/idempotência atuais prevalecem sobre a simplicidade do sistema histórico.
+
+### Templates e catálogos
+
+Não existe um único domínio “template”. Separar:
+
+- avaliações estruturadas;
+- instrumentos clínicos validados;
+- documentos clínicos;
+- consentimentos/termos;
+- templates de comunicação.
+
+Para conteúdo customizável, direção:
+
+```text
+MODELO GLOBAL MEDICSPRO
+→ clínica adota/clona
+→ clínica personaliza
+→ versão publicada
+→ uso no paciente/Encounter
+→ snapshot/histórico imutável
+```
+
+`Avaliações padrão` e `Minhas avaliações` devem convergir no Assessment Engine existente quando se tratar de assessment estruturado.
+
+PHQ-9/GAD-7 **não** viram templates comuns para contornar authorization; continuam na engine/versionamento/scoring canônicos do eixo Clinical Instruments/Nexus.
+
+### Consulta direta ao MedicsPro histórico
+
+A auditoria direta do `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83` confirmou conceitos úteis em:
+
+- `crm-clinic-admin/src/router/index.js`;
+- `FeaturesManagerView.vue`;
+- `PlansManagerView.vue`;
+- `ClinicDetailView.vue`;
+- `WhatsappView.vue`;
+- `AdminManagementView.vue`;
+- templates/anamnese/documentos mapeados em `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`.
+
+Antes de redesenhar domínio com equivalente histórico maduro, o agente deve **abrir diretamente o legado e o runtime atual** e classificar: `preservar | evoluir | redesenhar | rejeitar`.
+
+Detalhes e etapas estão em `docs/PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md`.
+
+---
 
 ## Decisão canônica — instrumentos clínicos
 
@@ -101,7 +260,7 @@ A multiprofissionalidade de instrumentos não é resolvida concedendo `nexus.*` 
 
 ### Instrumentos clínicos — foundation #399
 
-**Repository state:** a Clinical Instrument Authorization Foundation foi implementada no PR #399.
+**Repository state:** Clinical Instrument Authorization Foundation implementada e mergeada.
 
 Ela entrega:
 
@@ -109,7 +268,7 @@ Ela entrega:
 - catálogo neutro `clinical_instrument_catalog`, separado do registry Nexus, com exposição explícita somente de `phq9` e `gad7` nesta slice;
 - vínculo técnico do catálogo neutro com os contratos versionados da engine Nexus, sem duplicar definição, perguntas, validação ou scoring;
 - configuração institucional `clinic_clinical_instrument_settings`, default `false`;
-- boundary server-side `can_apply_clinical_instrument_in_encounter(...)`, restrito ao próprio `appointments.professional_id` e status `em_atendimento`;
+- boundary server-side `can_apply_clinical_instrument_in_encounter(...)`, restrito ao próprio `appointments.professional_id`, Encounter ativo e boundary temporal efetivo após #400;
 - owner/admin sem bypass de ato clínico;
 - helper base não executável pelo browser.
 
@@ -117,20 +276,55 @@ Membership em `nexus_result_contracts` não equivale a exposição multiprofissi
 
 PHQ-9/GAD-7 continuam usando definição, versão, validação e scoring da engine canônica Nexus. `clinical.assessment.apply` continua distinto de `clinical.instrument.apply`.
 
-**Production state:** a migration `20260910_clinical_instrument_encounter_authorization.sql` da #399 **ainda não foi aplicada em produção**.
+**Production state:** #399 já compõe o stack efetivo de produção e foi revalidada pelo regression harness após #400.
 
-Portanto, neste momento:
+Ainda **não** existem:
 
-- repository state = foundation implementada;
-- production state = rollout pendente;
-- nenhuma administração de PHQ-9/GAD-7 foi implementada ainda;
-- nenhum novo resultado multiprofissional é persistido;
-- nenhuma entrega remota/`Enviar ao paciente` foi implementada;
-- nenhuma UI PHQ/GAD foi implementada.
+- Clinician-Assisted Administration;
+- novo contrato de persistência multiprofissional de resultados;
+- UI PHQ/GAD no Encounter;
+- entrega remota/`Enviar ao paciente`.
+
+---
+
+## #400 — Encounter Temporal Start Boundary
+
+PR #400 mergeado e stack efetivo aplicado/verificado em produção.
+
+Contrato:
+
+- appointment futuro não entra normalmente em `em_atendimento`;
+- `current_clinic_operational_date()` centraliza a data operacional atual;
+- guard de INSERT/UPDATE protege o início temporal;
+- bypass somente em contexto trusted/maintenance controlado;
+- #399 recebe defesa em profundidade para não aplicar instrumento em appointment futuro;
+- verifier histórico foi tornado future-compatible e não congela a implementação de timezone;
+- regression efetivo reexecuta a matriz #399 após #400.
+
+Timezone por clínica continua evolução futura antes de operar fora da premissa atual de São Paulo; não reabrir #400 por isso agora.
+
+### Repair histórico decorrente de #400
+
+O appointment conhecido `de857836-baa0-476f-bd7b-d6f52df33007` foi reparado de forma controlada em produção:
+
+- estado histórico incorreto `em_atendimento` → restaurado para `agendado`;
+- preconditions/read-only probes executados antes da mutação;
+- histórico canônico confirmou `agendado → em_atendimento` como transição indevida;
+- nenhum Encounter Record, evolução, pagamento, exceção financeira ou consumo de pacote material bloqueava o repair;
+- `clinical_assessments` possuía apenas um draft vazio, não finalizado e semanticamente compatível com o appointment restaurado; permaneceu intocado;
+- triggers permaneceram ativos;
+- audit history canônico foi preservado;
+- postcheck read-only concluído.
+
+Commit operacional de registro na `main`: `52c6bfa49cbdbf50e57220a712ca9d38654ab347`.
+
+Não repetir esse repair.
+
+---
 
 ## Instrument Delivery — sequência
 
-Estado após eventual merge da #399:
+Estado atual:
 
 ```text
 [x] Clinical Instrument Authorization Foundation (#399)
@@ -139,7 +333,7 @@ Estado após eventual merge da #399:
 [ ] Consultório V5 integration/polish
 ```
 
-O contrato de UX futuro para instrumentos como PHQ-9/GAD-7 continua sendo:
+O contrato de UX futuro continua sendo:
 
 ```text
 PHQ-9
@@ -149,9 +343,9 @@ GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
 
-`Aplicar agora` representa administração presencial/assistida durante a consulta, sem depender de celular ou WhatsApp. `Enviar ao paciente` representa administração remota/self-assessment.
+`Aplicar agora` representa administração presencial/assistida durante a consulta, sem depender de celular ou WhatsApp. `Enviar ao paciente` representa administração remota/self-assessment e requer boundary próprio.
 
-A #399 implementa somente a autorização foundation para o primeiro boundary contextual; ela não executa a administração. O modo de aplicação não muda a identidade/versionamento do instrumento e deve reutilizar o mesmo scoring validado. A provenance futura deve distinguir o modo de administração, conceitualmente `patient_self` e `clinician_assisted`, preservando autoria do ato profissional e `appointment_id` quando houver Encounter.
+O modo de aplicação não muda a identidade/versionamento do instrumento e deve reutilizar o mesmo scoring validado. A provenance futura deve distinguir conceitualmente `patient_self` e `clinician_assisted`, preservando autoria do ato profissional e `appointment_id` quando houver Encounter.
 
 ## PHQ-9 — requisito futuro de segurança
 
@@ -183,7 +377,9 @@ um Encounter
 
 A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou arquitetura legada.
 
-## Marcos recentemente fechados / implementados no repositório
+---
+
+## Marcos recentemente fechados / implementados
 
 - #390 — Clinician Daily Home.
 - #391 — Agenda Role-Aware V4.
@@ -192,34 +388,38 @@ A ergonomia do MedicsPro histórico deve ser absorvida seletivamente, sem portar
 - #394 — Encounter Clinical Record Foundation.
 - #395 — Production-safe verifier read-only para #394.
 - #396 — Consultório / Gestão Privacy Shell.
-- #399 — Clinical Instrument Authorization Foundation implementada no repositório; rollout de migration ainda pendente.
+- #399 — Clinical Instrument Authorization Foundation, efetiva no stack verificado.
+- #400 — Encounter Temporal Start Boundary, efetiva em produção.
+- repair controlado pós-#400 do único appointment histórico conhecido em estado futuro incorreto.
 - Nexus C-01–C-06 hardening.
 - #388 — separação finalização clínica × falha esperada de cobertura.
 - #389 — resolução explícita de exceção financeira.
 
+---
+
 ## Produção / migrations relevantes
 
-### Confirmado em 2026-09-10
+### Confirmado até 2026-09-11
 
-- `20260910_clinical_encounter_record_foundation.sql` (#394) **já foi aplicada em produção**.
-- O verifier production-safe passou com `VERIFY #394 PRODUCTION OK`.
-- Clinical Foundation passou.
-- Clinical Authorization passou.
+- `20260910_clinical_encounter_record_foundation.sql` (#394) aplicada e production-safe verifier aprovado.
+- stack #399 efetivo e regression revalidado após #400.
+- `20260910_encounter_temporal_start_boundary.sql` (#400) aplicada/verificada.
+- repair histórico decorrente de #400 concluído e registrado.
+- Clinical Foundation passou nos checks observados.
+- Clinical Authorization passou nos checks observados.
 - Financial Exception Resolution #389 passou no ambiente verificado.
-
-### Rollout pendente
-
-- `20260910_clinical_instrument_encounter_authorization.sql` (#399) está implementada e verificada no repositório/CI, mas **não foi aplicada em produção**.
-- não declarar `clinical.instrument.apply`, `clinical_instrument_catalog`, `clinic_clinical_instrument_settings` ou o boundary #399 como disponíveis no schema de produção antes do rollout explícito.
 
 ### Não reaplicar por causa deste snapshot
 
-- não reaplicar a migration #394 apenas porque um documento antigo a descreva como futura;
-- não executar o verifier comportamental `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` como verifier direto de produção: ele depende do harness/fixtures;
-- em produção, para inspeção read-only do #394, usar `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_PRODUCTION.sql`;
+- não reaplicar #394, #399 ou #400 apenas porque documentação antiga as descreva como futuras;
+- não repetir o repair do appointment histórico;
+- não executar o verifier comportamental `VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql` diretamente em produção quando ele depender de fixtures/harness;
+- para inspeção read-only do #394 usar o verifier production-safe apropriado;
 - não usar a assertion histórica do verifier #388 que espera ausência da RPC criada posteriormente pelo #389 como verdade do schema atual.
 
-O ledger/schema real de produção continua sendo autoridade para migrations anteriores; este snapshot não substitui uma inspeção de migration history.
+O ledger/schema real de produção continua sendo autoridade para migrations anteriores; este snapshot não substitui inspeção de migration history.
+
+---
 
 ## Evidência operacional conhecida
 
@@ -230,18 +430,47 @@ O smoke real do draft #394 comprovou:
 - revision do draft observada;
 - antes da finalização: **1 record, 0 Evolutions, 0 payments, 0 financial exceptions** no cenário exercitado.
 
-Não há evidência documental suficiente neste snapshot para afirmar a comprovação read-only pós-finalização desse mesmo smoke. Tratar isso como pendência curta até haver observação registrada.
+Ainda tratar como pendência curta qualquer prova read-only pós-finalização que não esteja registrada em evidência posterior acessível ao agente.
 
-Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidência posterior.
+Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidência específica.
+
+---
 
 ## Pendências operacionais abertas
 
-- prova read-only pós-finalização do smoke #394;
+- prova read-only pós-finalização do smoke #394, se ainda não houver evidência registrada;
 - smoke real das ações #389 `CHARGE` e `WAIVE`, se ainda não registrado;
 - atualizar/versionar a assertion obsoleta do verifier #388;
 - smoke visual/uso real de #396 e Encounter com profissionais reais;
-- rollout da migration #399 após aprovação/merge explícitos;
 - observabilidade suficiente para ampliar piloto com segurança.
+
+Não há rollout pendente de #399/#400 neste snapshot.
+
+---
+
+## Programa Platform Admin / Configurações — estado
+
+A arquitetura foi documentada, mas **não significa implementação completa**.
+
+Etapas canônicas quando esse programa for retomado:
+
+```text
+0. reconciliar estado/docs e fechar P0s abertos
+1. inventário Platform Admin atual × MedicsPro histórico
+2. control plane mínimo: clínicas + plano + entitlements + limites + overrides + auditoria
+3. arquitetura de Configurações da Clínica
+4. WhatsApp como capability SaaS configurável
+5. catálogos/templates
+6. receita & assinaturas da plataforma
+7. delegação/suporte de plataforma
+8. inteligência operacional
+```
+
+Não iniciar tudo simultaneamente. Selecionar uma vertical slice 80/20 por vez.
+
+O próximo agente deste eixo deve começar pelo **inventário comparativo atual × histórico** descrito no documento canônico, e não por uma tela isolada.
+
+---
 
 ## Decisões canônicas que não devem regredir
 
@@ -258,33 +487,10 @@ Também não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidên
 11. Nexus engine registry membership não equivale a multiprofessional clinical exposure.
 12. Histórico finalizado não é reaberto/reescrito silenciosamente.
 13. Foundations fechadas não devem ser reabertas sem evidência real.
-
-## Próximos passos recomendados
-
-1. fechar as evidências operacionais curtas #394/#389/#396;
-2. pilotar e polir ergonomia do Encounter com profissionais reais;
-3. construir **Cobertura deste atendimento** sem expor Financeiro global;
-4. evoluir instrumentos a partir da foundation #399: Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish;
-5. entregar Prescription V1;
-6. priorizar demais documentos médicos conforme piloto;
-7. evoluir Finance Configuration para solo/equipe, categorias e parceiro %/fixo com histórico/effective dates;
-8. remover fricção de onboarding e só então ampliar financeiro/integracões conforme evidência.
-
-## Documentos especializados
-
-- [`../AGENTS.md`](../AGENTS.md) — autoridade operacional.
-- [`../PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) — sequência estratégica.
-- [`../TODO.md`](../TODO.md) — trabalho aberto.
-- [`MULTIPROFESSIONAL_DOMAIN_MODEL.md`](MULTIPROFESSIONAL_DOMAIN_MODEL.md) — separações de role/profissão/especialidade/capability e instrumentos multiprofissionais.
-- [`ASSESSMENT_ENGINE.md`](ASSESSMENT_ENGINE.md) — engine de avaliações e relação com Instrument Delivery.
-- [`BETA_READINESS.md`](BETA_READINESS.md) — gates de beta.
-- [`CLINICAL_ENCOUNTER_RECORD.md`](CLINICAL_ENCOUNTER_RECORD.md) — contrato do Encounter Record.
-- [`PRESENTATION_CONTEXT.md`](PRESENTATION_CONTEXT.md) — Consultório/Gestão.
-- [`CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`](CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md) — foundation #399 e rollout pendente.
-- [`CLINICAL_PILOT_ACCEPTANCE.md`](CLINICAL_PILOT_ACCEPTANCE.md) — aceite clínico.
-- [`FINANCIAL_PILOT_ACCEPTANCE.md`](FINANCIAL_PILOT_ACCEPTANCE.md) — aceite financeiro.
-- [`BETA_ROLLOUT_ORDER.md`](BETA_ROLLOUT_ORDER.md) — ordem operacional.
-- [`BETA_RELEASE_CANDIDATE.md`](BETA_RELEASE_CANDIDATE.md) — release candidate/pilot evidence.
-- [`../DEPLOY.md`](../DEPLOY.md) — implantação e rollout.
-
-Quando este arquivo divergir do código/schema atuais, **não force o sistema a caber no snapshot**. Atualize o snapshot após verificar a fonte canônica.
+14. `platform_admin` administra o SaaS e não recebe prontuário universal.
+15. Entitlement ≠ clinic configuration ≠ user authorization.
+16. Receita/assinatura MedicsPro ≠ Financeiro paciente→clínica.
+17. WhatsApp separa provider da plataforma, configuração tenant e autorização operacional.
+18. Templates clínicos/documentais precisam de versionamento/snapshot apropriado ao domínio.
+19. PHQ-9/GAD-7 não devem ser duplicados como templates genéricos para contornar authorization.
+20. Antes de redesenhar domínio com equivalente maduro, consultar diretamente o MedicsPro histórico e comparar com o runtime atual.
