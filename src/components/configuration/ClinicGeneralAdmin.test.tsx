@@ -6,17 +6,16 @@ const testState = vi.hoisted(() => ({
   toast: vi.fn(),
   updateIdentity: vi.fn(),
   saveHours: vi.fn(),
+  weekdays: [
+    { day: 0, label: 'Segunda' },
+    { day: 1, label: 'Terça' },
+    { day: 2, label: 'Quarta' },
+    { day: 3, label: 'Quinta' },
+    { day: 4, label: 'Sexta' },
+    { day: 5, label: 'Sábado' },
+    { day: 6, label: 'Domingo' },
+  ] as const,
 }));
-
-const weekdays = [
-  { day: 0, label: 'Segunda' },
-  { day: 1, label: 'Terça' },
-  { day: 2, label: 'Quarta' },
-  { day: 3, label: 'Quinta' },
-  { day: 4, label: 'Sexta' },
-  { day: 5, label: 'Sábado' },
-  { day: 6, label: 'Domingo' },
-] as const;
 
 vi.mock('../../lib/currentUserAccess', () => ({
   useCurrentUserAccess: () => ({
@@ -29,7 +28,7 @@ vi.mock('../../lib/toastContext', () => ({
 }));
 
 vi.mock('../../lib/clinicConfiguration', () => ({
-  CLINIC_WEEKDAYS: weekdays,
+  CLINIC_WEEKDAYS: testState.weekdays,
   listIanaTimeZones: () => ['UTC', 'America/Sao_Paulo'],
   getCurrentClinicIdentity: vi.fn(async () => ({
     id: 'clinic-a',
@@ -40,7 +39,7 @@ vi.mock('../../lib/clinicConfiguration', () => ({
     address: null,
     timezone: 'UTC',
   })),
-  loadClinicOpeningHours: vi.fn(async () => weekdays.map(({ day }) => ({
+  loadClinicOpeningHours: vi.fn(async () => testState.weekdays.map(({ day }) => ({
     day_of_week: day,
     is_open: false,
     opens_at: null,
