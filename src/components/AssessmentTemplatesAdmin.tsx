@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
-import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
+import { isCustomAssessmentAuthoringAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
 import type {
   AssessmentComponent,
   AssessmentComponentType,
@@ -11,6 +11,8 @@ import type {
   AssessmentTemplateSchema,
   AssessmentTemplateVersion,
 } from '../lib/assessmentEngine';
+import { validateAssessmentTemplateSchemaForAuthoring } from '../lib/assessmentEngine';
+import { assessmentEditorNeedsCloseConfirmation } from '../lib/assessmentTemplateEditorState';
 import {
   createClinicAssessmentTemplate,
   createNextAssessmentTemplateVersion,
@@ -52,17 +54,6 @@ const slugKey = (value: string, fallback: string) => {
   return normalized || fallback;
 };
 
-const hasDuplicateComponentKeys = (schema: AssessmentTemplateSchema) => {
-  const keys = new Set<string>();
-  for (const section of schema.sections) {
-    for (const component of section.components) {
-      if (keys.has(component.key)) return true;
-      keys.add(component.key);
-    }
-  }
-  return false;
-};
-
 const componentOptions = (component: AssessmentComponent): string[] => (
   Array.isArray(component.config?.options)
     ? component.config.options.filter((item): item is string => typeof item === 'string')
@@ -85,6 +76,10 @@ export function AssessmentTemplatesAdmin() {
   const [specialty, setSpecialty] = useState('fisioterapia');
   const [customAuthoringAllowed, setCustomAuthoringAllowed] = useState<boolean | null>(null);
   const [customAuthoringError, setCustomAuthoringError] = useState(false);
+  const initialEditorState = useRef<string | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mutationInFlight = useRef(false);
 
   const canManage = isClinicManager(user?.role);
   const canAuthorCustomAssessments = canManage && customAuthoringAllowed === true;
@@ -117,7 +112,7 @@ export function AssessmentTemplatesAdmin() {
 
     void loadCurrentClinicEntitlementState('assessments.custom')
       .then((state) => {
-        if (active) setCustomAuthoringAllowed(isCurrentClinicEntitlementAllowed(state));
+        if (active) setCustomAuthoringAllowed(isCustomAssessmentAuthoringAllowed(state));
       })
       .catch((error) => {
         console.error('[MedicsPro] entitlement de avaliações customizadas:', error);
@@ -146,18 +141,33 @@ export function AssessmentTemplatesAdmin() {
     setName('');
     setDescription('');
     setSpecialty('fisioterapia');
+    initialEditorState.current = null;
+    window.setTimeout(() => openerRef.current?.focus(), 0);
   }, []);
+
+  const editorSnapshot = useCallback(() => JSON.stringify({ name, description, specialty, schema }), [name, description, specialty, schema]);
+  const markEditorClean = useCallback(() => { initialEditorState.current = editorSnapshot(); }, [editorSnapshot]);
+  const requestCloseEditor = useCallback(() => {
+    if (busy || mutationInFlight.current) return;
+    if (!assessmentEditorNeedsCloseConfirmation(initialEditorState.current, editorSnapshot(), busy)
+      || window.confirm('Há alterações não salvas. Fechar o editor mesmo assim?')) resetEditor();
+  }, [busy, editorSnapshot, resetEditor]);
 
   useEffect(() => {
     if (!editing) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) resetEditor();
+      if (event.key === 'Escape') requestCloseEditor();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [busy, editing, resetEditor]);
+  }, [editing, requestCloseEditor]);
 
-  const openClinicTemplate = async (template: AssessmentTemplate) => {
+  useEffect(() => {
+    if (!editing) return;
+    closeButtonRef.current?.focus();
+  }, [editing]);
+
+  const openClinicTemplate = async (template: AssessmentTemplate, opener?: HTMLElement | null) => {
     setBusy(true);
     try {
       const versions = await listAssessmentTemplateVersions(template.id);
@@ -173,6 +183,13 @@ export function AssessmentTemplatesAdmin() {
       setName(template.name);
       setDescription(template.description ?? '');
       setSpecialty(template.specialty ?? 'fisioterapia');
+      openerRef.current = opener ?? document.activeElement as HTMLElement | null;
+      initialEditorState.current = JSON.stringify({
+        name: template.name,
+        description: template.description ?? '',
+        specialty: template.specialty ?? 'fisioterapia',
+        schema: draft.schema.sections.length ? draft.schema : emptySchema(),
+      });
     } catch (error) {
       console.error('[MedicsPro] abrir modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível abrir o modelo.', 'warn');
@@ -224,31 +241,36 @@ export function AssessmentTemplatesAdmin() {
       toast('Adicione ao menos uma pergunta ou campo antes de salvar o modelo.', 'warn');
       return false;
     }
-    if (hasDuplicateComponentKeys(schema)) {
-      toast('Existem campos com a mesma chave. Renomeie um deles antes de salvar.', 'warn');
+    const error = validateAssessmentTemplateSchemaForAuthoring(schema);
+    if (error) {
+      toast(error, 'warn');
       return false;
     }
     return true;
   };
 
   const saveDraft = async () => {
-    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
+    if (mutationInFlight.current || !editing || !version || !name.trim() || !validateBeforeSave()) return;
+    mutationInFlight.current = true;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
       await saveAssessmentTemplateDraftVersion(version.id, schema);
       await load();
+      markEditorClean();
       toast('Rascunho do modelo salvo.');
     } catch (error) {
       console.error('[MedicsPro] salvar modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível salvar o modelo.', 'warn');
     } finally {
+      mutationInFlight.current = false;
       setBusy(false);
     }
   };
 
   const publish = async () => {
-    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
+    if (mutationInFlight.current || !editing || !version || !name.trim() || !validateBeforeSave()) return;
+    mutationInFlight.current = true;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
@@ -261,6 +283,7 @@ export function AssessmentTemplatesAdmin() {
       console.error('[MedicsPro] publicar modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível publicar o modelo.', 'warn');
     } finally {
+      mutationInFlight.current = false;
       setBusy(false);
     }
   };
@@ -397,7 +420,7 @@ export function AssessmentTemplatesAdmin() {
                         template={template}
                         sourceLabel="Clínica"
                         action={template.status === 'archived' ? 'Restaurar' : 'Editar'}
-                        onAction={() => template.status === 'archived' ? archive(template) : openClinicTemplate(template)}
+                        onAction={(opener) => template.status === 'archived' ? archive(template) : openClinicTemplate(template, opener)}
                         secondary={template.status === 'archived' ? undefined : { label: 'Arquivar', onClick: () => archive(template) }}
                         busy={busy || !canAuthorCustomAssessments}
                       />
@@ -415,7 +438,7 @@ export function AssessmentTemplatesAdmin() {
           <button
             type="button"
             className="absolute inset-0 h-full w-full bg-black/55 backdrop-blur-[2px]"
-            onClick={() => { if (!busy) resetEditor(); }}
+            onClick={requestCloseEditor}
             aria-label="Fechar editor"
           />
           <aside className="absolute inset-y-0 right-0 flex w-full max-w-[860px] flex-col border-l border-line bg-panel shadow-2xl">
@@ -427,8 +450,9 @@ export function AssessmentTemplatesAdmin() {
               </div>
               <button
                 type="button"
-                onClick={resetEditor}
+                onClick={requestCloseEditor}
                 disabled={busy}
+                ref={closeButtonRef}
                 className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-lg text-fog transition hover:bg-raise hover:text-paper disabled:opacity-40"
                 aria-label="Fechar"
               >
@@ -568,7 +592,7 @@ export function AssessmentTemplatesAdmin() {
 
             <footer className="shrink-0 border-t border-line/70 bg-panel px-5 py-4 sm:px-6">
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <Btn variant="ghost" onClick={resetEditor} disabled={busy}>Cancelar</Btn>
+                <Btn variant="ghost" onClick={requestCloseEditor} disabled={busy}>Cancelar</Btn>
                 <Btn variant="subtle" onClick={saveDraft} disabled={busy || !name.trim()}>{busy ? 'Salvando…' : 'Salvar rascunho'}</Btn>
                 <Btn onClick={publish} disabled={busy || !name.trim()}>Publicar versão</Btn>
               </div>
@@ -603,7 +627,7 @@ function TemplateCard({
   template: AssessmentTemplate;
   sourceLabel: string;
   action: string;
-  onAction: () => void;
+  onAction: (opener: HTMLElement) => void;
   secondary?: { label: string; onClick: () => void };
   busy: boolean;
 }) {
@@ -617,7 +641,7 @@ function TemplateCard({
       <h4 className="mt-3 font-display text-[14px] font-semibold leading-snug">{template.name}</h4>
       <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-fog">{template.description || 'Modelo clínico reutilizável.'}</p>
       <div className="mt-auto flex gap-2 border-t border-line/60 pt-3">
-        <Btn variant="ghost" className="min-h-9 px-3 py-2 text-[11px]" onClick={onAction} disabled={busy}>{action}</Btn>
+        <Btn variant="ghost" className="min-h-9 px-3 py-2 text-[11px]" onClick={(event) => onAction(event.currentTarget)} disabled={busy}>{action}</Btn>
         {secondary && <Btn variant="ghost" className="min-h-9 px-3 py-2 text-[11px]" onClick={secondary.onClick} disabled={busy}>{secondary.label}</Btn>}
       </div>
     </article>
