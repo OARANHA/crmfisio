@@ -139,6 +139,35 @@ export function isAssessmentTemplateSchema(value: unknown): value is AssessmentT
   });
 }
 
+export function validateAssessmentTemplateSchemaForAuthoring(schema: AssessmentTemplateSchema): string | null {
+  const componentKeys = new Set<string>();
+  for (const [sectionIndex, section] of schema.sections.entries()) {
+    if (!section.title.trim()) return `A seção ${sectionIndex + 1} precisa de um título.`;
+    for (const [componentIndex, component] of section.components.entries()) {
+      const position = `na seção “${section.title.trim()}”, pergunta ${componentIndex + 1}`;
+      if (!component.label.trim()) return `Informe o texto da pergunta ${position}.`;
+      const normalizedKey = component.key.trim();
+      if (!normalizedKey) return `A pergunta ${position} precisa de uma chave estável.`;
+      if (componentKeys.has(normalizedKey)) return `Existem campos com a mesma chave (${normalizedKey}). Renomeie um deles antes de salvar.`;
+      componentKeys.add(normalizedKey);
+
+      if (component.type === 'single_choice' || component.type === 'multiple_choice') {
+        const rawOptions = Array.isArray(component.config?.options) ? component.config.options : [];
+        const options = rawOptions.map((option) => typeof option === 'string' ? option.trim() : '');
+        if (options.length === 0) return `Adicione opções de resposta ${position}.`;
+        if (options.some((option) => !option)) return `Remova ou preencha uma opção vazia ${position}.`;
+        const normalizedOptions = new Set<string>();
+        for (const option of options) {
+          const normalized = option.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+          if (normalizedOptions.has(normalized)) return `Remova opções duplicadas ${position}.`;
+          normalizedOptions.add(normalized);
+        }
+      }
+    }
+  }
+  return null;
+}
+
 const mapTemplate = (row: any): AssessmentTemplate => ({
   id: row.id,
   clinicId: row.clinic_id,
