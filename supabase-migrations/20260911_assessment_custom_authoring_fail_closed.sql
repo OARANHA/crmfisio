@@ -22,8 +22,9 @@ AS $$
   );
 $$;
 
-REVOKE ALL ON FUNCTION public.assessment_custom_authoring_allowed(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.assessment_custom_authoring_allowed(uuid) TO authenticated;
+-- Internal predicate: never expose arbitrary clinic entitlement lookup to clients.
+REVOKE ALL ON FUNCTION public.assessment_custom_authoring_allowed(uuid)
+  FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.require_assessment_template_manager()
 RETURNS uuid
@@ -50,6 +51,12 @@ BEGIN
 END;
 $$;
 
+-- CREATE OR REPLACE preserves legacy ACLs, so make the intended RPC boundary
+-- explicit on every upgrade state.
+REVOKE ALL ON FUNCTION public.require_assessment_template_manager()
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.require_assessment_template_manager() TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.guard_custom_assessment_template_entitlement()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -67,6 +74,9 @@ BEGIN
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.guard_custom_assessment_template_entitlement()
+  FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.guard_custom_assessment_version_entitlement()
 RETURNS trigger
@@ -89,5 +99,8 @@ BEGIN
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.guard_custom_assessment_version_entitlement()
+  FROM PUBLIC, anon, authenticated, service_role;
 
 COMMIT;
