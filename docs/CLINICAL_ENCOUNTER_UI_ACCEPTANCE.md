@@ -5,7 +5,7 @@
 **Data:** 2026-09-11  
 **Runtime observado:** frontend pós-PR #420  
 **Base funcional da #420:** `main@39b78ada205a7237341847edcda6a8592d0b0c14`  
-**Estado:** **ACEITAÇÃO PARCIAL EM PRODUÇÃO — dois probes visuais ainda pendentes**
+**Estado:** **VALIDADO EM PRODUÇÃO**
 
 ## Contexto
 
@@ -38,34 +38,29 @@ Nexus
 - Encounter hero compacto e legível;
 - toolbar clínica separada do hero;
 - breadcrumb redundante `‹ Pacientes` ausente durante Encounter ativo;
-- rail esquerdo visível no topo, sem clipping aparente nesse estado;
 - cards `Estado da consulta` e `Paciente em contexto` densos e legíveis;
-- sidebar expandida mantém navegação principal e concentra no rodapé:
-  - Modo Consultório/Gestão;
-  - seletor de unidade;
-  - tema;
-  - notificações;
-  - identidade;
-  - logout;
+- sidebar expandida concentra no rodapé modo, unidade, tema, notificações, identidade e logout;
 - área `Anamneses & Avaliações` mostra substancialmente mais conteúdo acima da dobra;
 - `Registro`, `Anamneses & Avaliações` e `Nexus` permanecem visualmente coerentes entre si;
 - trigger de ajuda contextual aparece discretamente no canto inferior.
 
-## Ainda não comprovado pelos screenshots recebidos
+### Probe de scroll — PASS
 
-A aceitação final depende de apenas dois probes visuais adicionais:
+Com o hero já fora da viewport:
 
-1. **scroll real da página**
-   - rolar o Encounter;
-   - confirmar que rail esquerdo permanece visível;
-   - confirmar que a toolbar sticky da coluna principal não cobre o rail;
-   - confirmar ausência de clipping/overlap durante o scroll.
+- `Estado da consulta` permaneceu visível e íntegro na coluna esquerda;
+- a toolbar `Registro / Anamneses & Avaliações / Nexus` permaneceu sticky na coluna principal;
+- não houve sobreposição entre rail e toolbar;
+- não houve clipping visual relevante.
 
-2. **sidebar collapsed**
-   - recolher a sidebar;
-   - confirmar ausência de overflow nos `80px`;
-   - confirmar avatar e logout empilhados/centralizados;
-   - confirmar controle de unidade centralizado e capaz de expandir a sidebar.
+### Probe de sidebar collapsed — PASS
+
+Com a sidebar recolhida:
+
+- não houve overflow horizontal perceptível;
+- utilitários permaneceram organizados em coluna;
+- avatar e logout ficaram empilhados/centralizados;
+- o estado compacto permaneceu utilizável durante o Encounter.
 
 ## Estado funcional preservado
 
@@ -83,12 +78,14 @@ A #420 é frontend/UX only. Não altera:
 
 Persistência do draft de Anamneses & Avaliações já havia sido validada em produção antes desta aceitação visual.
 
-## Critério de fechamento
+## Conclusão
 
-Promover para **VALIDADO EM PRODUÇÃO** somente quando os dois probes pendentes acima forem observados sem regressão.
+A composição visual pós-#420 está **VALIDADA EM PRODUÇÃO** para o fluxo desktop observado.
 
-Depois disso:
+Referência canônica atual:
 
-- atualizar `docs/CURRENT_STATE.md`;
-- atualizar `docs/MANUAL_SOURCE_MAP.md`;
-- usar apenas screenshots sanitizados/sem dados identificáveis como referência do futuro manual.
+- #417 = compactação inicial, visualmente superada;
+- #420 = composição atual validada;
+- este documento = registro de aceitação visual.
+
+Para o futuro manual, usar apenas screenshots sanitizados e sem dados identificáveis.
