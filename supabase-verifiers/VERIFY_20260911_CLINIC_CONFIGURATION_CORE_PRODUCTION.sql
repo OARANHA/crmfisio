@@ -83,7 +83,7 @@ BEGIN
     RAISE EXCEPTION 'clinic_opening_hours_missing';
   END IF;
 
-  SELECT array_agg(a.attname ORDER BY keys.ordinality)
+  SELECT array_agg(a.attname::text ORDER BY keys.ordinality)
     INTO v_pk_columns
   FROM pg_catalog.pg_constraint c
   CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS keys(attnum, ordinality)
@@ -106,7 +106,7 @@ BEGIN
       AND c.convalidated
       AND c.confdeltype = 'c'
       AND (
-        SELECT array_agg(a.attname ORDER BY keys.ordinality)
+        SELECT array_agg(a.attname::text ORDER BY keys.ordinality)
         FROM unnest(c.conkey) WITH ORDINALITY AS keys(attnum, ordinality)
         JOIN pg_catalog.pg_attribute a
           ON a.attrelid = c.conrelid
