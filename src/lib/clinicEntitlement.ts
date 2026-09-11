@@ -31,6 +31,16 @@ export function isCurrentClinicEntitlementAllowed(state: CurrentClinicEntitlemen
   return !state.configured || state.effective;
 }
 
+/**
+ * Custom assessment authoring is deliberately stricter than the generic
+ * rollout rule: creating or changing a clinic-owned clinical template needs an
+ * explicit, currently effective Platform grant. Reading the MedicsPro library
+ * remains governed by the normal assessment read boundary.
+ */
+export function isCustomAssessmentAuthoringAllowed(state: CurrentClinicEntitlementState): boolean {
+  return state.key === 'assessments.custom' && state.configured && state.effective;
+}
+
 export async function loadCurrentClinicEntitlementState(
   key: PlatformClinicEntitlementKey,
 ): Promise<CurrentClinicEntitlementState> {

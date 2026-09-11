@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { Btn, Card, CardHead, Field, Input } from '../lib/ui';
 import { isClinicManager } from '../lib/permissions';
-import { isCurrentClinicEntitlementAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
+import { isCustomAssessmentAuthoringAllowed, loadCurrentClinicEntitlementState } from '../lib/clinicEntitlement';
 import type {
+  AssessmentComponent,
   AssessmentComponentType,
   AssessmentTemplate,
   AssessmentTemplateSchema,
   AssessmentTemplateVersion,
 } from '../lib/assessmentEngine';
+import { validateAssessmentTemplateSchemaForAuthoring } from '../lib/assessmentEngine';
+import { assessmentEditorNeedsCloseConfirmation } from '../lib/assessmentTemplateEditorState';
 import {
   createClinicAssessmentTemplate,
   createNextAssessmentTemplateVersion,
@@ -28,8 +31,8 @@ const COMPONENT_TYPES: { value: AssessmentComponentType; label: string }[] = [
   { value: 'integer', label: 'Número inteiro' },
   { value: 'decimal', label: 'Número decimal' },
   { value: 'scale', label: 'Escala' },
-  { value: 'single_choice', label: 'Escolha única' },
-  { value: 'multiple_choice', label: 'Múltipla escolha' },
+  { value: 'single_choice', label: 'Múltipla escolha · 1 resposta' },
+  { value: 'multiple_choice', label: 'Múltipla escolha · várias respostas' },
   { value: 'yes_no', label: 'Sim / Não' },
   { value: 'date', label: 'Data' },
   { value: 'body_map', label: 'Mapa corporal' },
@@ -51,16 +54,13 @@ const slugKey = (value: string, fallback: string) => {
   return normalized || fallback;
 };
 
-const hasDuplicateComponentKeys = (schema: AssessmentTemplateSchema) => {
-  const keys = new Set<string>();
-  for (const section of schema.sections) {
-    for (const component of section.components) {
-      if (keys.has(component.key)) return true;
-      keys.add(component.key);
-    }
-  }
-  return false;
-};
+const componentOptions = (component: AssessmentComponent): string[] => (
+  Array.isArray(component.config?.options)
+    ? component.config.options.filter((item): item is string => typeof item === 'string')
+    : []
+);
+
+const supportsOptions = (type: AssessmentComponentType) => type === 'single_choice' || type === 'multiple_choice';
 
 export function AssessmentTemplatesAdmin() {
   const { user } = useCurrentUserAccess();
@@ -76,6 +76,10 @@ export function AssessmentTemplatesAdmin() {
   const [specialty, setSpecialty] = useState('fisioterapia');
   const [customAuthoringAllowed, setCustomAuthoringAllowed] = useState<boolean | null>(null);
   const [customAuthoringError, setCustomAuthoringError] = useState(false);
+  const initialEditorState = useRef<string | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mutationInFlight = useRef(false);
 
   const canManage = isClinicManager(user?.role);
   const canAuthorCustomAssessments = canManage && customAuthoringAllowed === true;
@@ -86,7 +90,7 @@ export function AssessmentTemplatesAdmin() {
       setTemplates(await listAssessmentTemplatesForAdmin());
     } catch (error) {
       console.error('[MedicsPro] modelos de avaliação:', error);
-      toast('Não foi possível carregar os modelos de avaliação.', 'warn');
+      toast('Não foi possível carregar os modelos de anamnese e avaliação.', 'warn');
     } finally {
       setLoading(false);
     }
@@ -108,7 +112,7 @@ export function AssessmentTemplatesAdmin() {
 
     void loadCurrentClinicEntitlementState('assessments.custom')
       .then((state) => {
-        if (active) setCustomAuthoringAllowed(isCurrentClinicEntitlementAllowed(state));
+        if (active) setCustomAuthoringAllowed(isCustomAssessmentAuthoringAllowed(state));
       })
       .catch((error) => {
         console.error('[MedicsPro] entitlement de avaliações customizadas:', error);
@@ -125,21 +129,45 @@ export function AssessmentTemplatesAdmin() {
     () => templates.filter((template) => template.ownerType === 'platform' && template.status !== 'archived'),
     [templates],
   );
-  const mine = useMemo(
+  const clinicTemplates = useMemo(
     () => templates.filter((template) => template.ownerType === 'clinic'),
     [templates],
   );
 
-  const resetEditor = () => {
+  const resetEditor = useCallback(() => {
     setEditing(null);
     setVersion(null);
     setSchema(emptySchema());
     setName('');
     setDescription('');
     setSpecialty('fisioterapia');
-  };
+    initialEditorState.current = null;
+    window.setTimeout(() => openerRef.current?.focus(), 0);
+  }, []);
 
-  const openClinicTemplate = async (template: AssessmentTemplate) => {
+  const editorSnapshot = useCallback(() => JSON.stringify({ name, description, specialty, schema }), [name, description, specialty, schema]);
+  const markEditorClean = useCallback(() => { initialEditorState.current = editorSnapshot(); }, [editorSnapshot]);
+  const requestCloseEditor = useCallback(() => {
+    if (busy || mutationInFlight.current) return;
+    if (!assessmentEditorNeedsCloseConfirmation(initialEditorState.current, editorSnapshot(), busy)
+      || window.confirm('Há alterações não salvas. Fechar o editor mesmo assim?')) resetEditor();
+  }, [busy, editorSnapshot, resetEditor]);
+
+  useEffect(() => {
+    if (!editing) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') requestCloseEditor();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editing, requestCloseEditor]);
+
+  useEffect(() => {
+    if (!editing) return;
+    closeButtonRef.current?.focus();
+  }, [editing]);
+
+  const openClinicTemplate = async (template: AssessmentTemplate, opener?: HTMLElement | null) => {
     setBusy(true);
     try {
       const versions = await listAssessmentTemplateVersions(template.id);
@@ -155,6 +183,13 @@ export function AssessmentTemplatesAdmin() {
       setName(template.name);
       setDescription(template.description ?? '');
       setSpecialty(template.specialty ?? 'fisioterapia');
+      openerRef.current = opener ?? document.activeElement as HTMLElement | null;
+      initialEditorState.current = JSON.stringify({
+        name: template.name,
+        description: template.description ?? '',
+        specialty: template.specialty ?? 'fisioterapia',
+        schema: draft.schema.sections.length ? draft.schema : emptySchema(),
+      });
     } catch (error) {
       console.error('[MedicsPro] abrir modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível abrir o modelo.', 'warn');
@@ -167,7 +202,7 @@ export function AssessmentTemplatesAdmin() {
     setBusy(true);
     try {
       const id = await createClinicAssessmentTemplate({
-        name: 'Nova avaliação',
+        name: 'Nova anamnese ou avaliação',
         specialty: 'fisioterapia',
         schema: emptySchema(),
       });
@@ -175,7 +210,7 @@ export function AssessmentTemplatesAdmin() {
       setTemplates(all);
       const created = all.find((item) => item.id === id);
       if (created) await openClinicTemplate(created);
-      toast('Modelo criado. Estruture os campos e publique quando estiver pronto.');
+      toast('Modelo criado. Configure os campos e publique quando estiver pronto.');
     } catch (error) {
       console.error('[MedicsPro] criar modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível criar o modelo.', 'warn');
@@ -187,12 +222,12 @@ export function AssessmentTemplatesAdmin() {
   const duplicateStandard = async (template: AssessmentTemplate) => {
     setBusy(true);
     try {
-      const id = await duplicateStandardAssessmentTemplate(template.id, `${template.name} — minha versão`);
+      const id = await duplicateStandardAssessmentTemplate(template.id, `${template.name} — clínica`);
       const all = await listAssessmentTemplatesForAdmin();
       setTemplates(all);
       const created = all.find((item) => item.id === id);
       if (created) await openClinicTemplate(created);
-      toast('Modelo padrão duplicado. A cópia agora pertence à sua clínica.');
+      toast('Modelo padrão duplicado. A cópia agora pertence à clínica.');
     } catch (error) {
       console.error('[MedicsPro] duplicar modelo padrão:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível duplicar o modelo.', 'warn');
@@ -203,34 +238,39 @@ export function AssessmentTemplatesAdmin() {
 
   const validateBeforeSave = () => {
     if (schema.sections.length === 0 || schema.sections.every((section) => section.components.length === 0)) {
-      toast('Adicione ao menos um campo antes de salvar o modelo.', 'warn');
+      toast('Adicione ao menos uma pergunta ou campo antes de salvar o modelo.', 'warn');
       return false;
     }
-    if (hasDuplicateComponentKeys(schema)) {
-      toast('Existem campos com a mesma chave. Renomeie um deles antes de salvar.', 'warn');
+    const error = validateAssessmentTemplateSchemaForAuthoring(schema);
+    if (error) {
+      toast(error, 'warn');
       return false;
     }
     return true;
   };
 
   const saveDraft = async () => {
-    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
+    if (mutationInFlight.current || !editing || !version || !name.trim() || !validateBeforeSave()) return;
+    mutationInFlight.current = true;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
       await saveAssessmentTemplateDraftVersion(version.id, schema);
       await load();
+      markEditorClean();
       toast('Rascunho do modelo salvo.');
     } catch (error) {
       console.error('[MedicsPro] salvar modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível salvar o modelo.', 'warn');
     } finally {
+      mutationInFlight.current = false;
       setBusy(false);
     }
   };
 
   const publish = async () => {
-    if (!editing || !version || !name.trim() || !validateBeforeSave()) return;
+    if (mutationInFlight.current || !editing || !version || !name.trim() || !validateBeforeSave()) return;
+    mutationInFlight.current = true;
     setBusy(true);
     try {
       await updateClinicAssessmentTemplateMeta(editing.id, { name, description, specialty });
@@ -238,11 +278,12 @@ export function AssessmentTemplatesAdmin() {
       await publishAssessmentTemplateVersion(editing.id, version.id);
       await load();
       resetEditor();
-      toast('Modelo publicado. Ele já pode ser usado em novas avaliações.');
+      toast('Modelo publicado. Profissionais autorizados já podem usá-lo em novas avaliações.');
     } catch (error) {
       console.error('[MedicsPro] publicar modelo de avaliação:', error);
       toast(error instanceof Error ? error.message : 'Não foi possível publicar o modelo.', 'warn');
     } finally {
+      mutationInFlight.current = false;
       setBusy(false);
     }
   };
@@ -292,13 +333,13 @@ export function AssessmentTemplatesAdmin() {
         const number = section.components.length + 1;
         return {
           ...section,
-          components: [...section.components, { key: `campo_${sectionIndex + 1}_${number}`, type: 'long_text', label: `Campo ${number}` }],
+          components: [...section.components, { key: `campo_${sectionIndex + 1}_${number}`, type: 'long_text', label: `Pergunta ${number}` }],
         };
       }),
     }));
   };
 
-  const patchComponent = (sectionIndex: number, componentIndex: number, patch: Record<string, unknown>) => {
+  const patchComponent = (sectionIndex: number, componentIndex: number, patch: Partial<AssessmentComponent>) => {
     setSchema((current) => ({
       sections: current.sections.map((section, sIndex) => sIndex !== sectionIndex ? section : {
         ...section,
@@ -316,158 +357,297 @@ export function AssessmentTemplatesAdmin() {
     }));
   };
 
+  const setChoiceOptions = (sectionIndex: number, componentIndex: number, options: string[]) => {
+    const component = schema.sections[sectionIndex]?.components[componentIndex];
+    if (!component) return;
+    patchComponent(sectionIndex, componentIndex, { config: { ...(component.config ?? {}), options } });
+  };
+
   if (!canManage) return null;
 
   return (
-    <Card>
-      <CardHead title="Modelos de avaliações" sub="Avaliações padrão MedicsPro e modelos personalizados da clínica" />
-      <div className="p-5 space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <p className="font-display font-semibold text-[14px]">Biblioteca clínica</p>
-            <p className="text-[11px] text-fog mt-1">Use um modelo padrão ou crie uma versão própria sem perder o histórico das avaliações já realizadas.</p>
+    <>
+      <Card>
+        <CardHead
+          title="Anamneses & Avaliações"
+          sub="Biblioteca MedicsPro e modelos versionados da clínica"
+          right={<Btn onClick={createNew} disabled={busy || !canAuthorCustomAssessments}>+ Criar modelo</Btn>}
+        />
+        <div className="space-y-5 p-5">
+          <div className="rounded-2xl border border-line/70 bg-deep/45 px-4 py-3">
+            <p className="text-[12.5px] leading-relaxed text-fog">Publique modelos uma vez e reutilize-os no atendimento. Modelos padrão podem ser adotados como base sem alterar a versão mantida pelo MedicsPro.</p>
           </div>
-          <Btn className="ml-auto" onClick={createNew} disabled={busy || !canAuthorCustomAssessments}>+ Nova avaliação</Btn>
-        </div>
 
-        {customAuthoringAllowed === null && !customAuthoringError && <div className="rounded-xl border border-line bg-deep px-4 py-3 text-[11px] text-fog">Validando liberação para avaliações customizadas…</div>}
-        {customAuthoringAllowed === false && <div className="rounded-xl border border-amber/35 bg-amber/5 px-4 py-3 text-[11px] leading-relaxed text-fog"><strong className="text-amber">Autoria personalizada indisponível.</strong> {customAuthoringError ? 'Não foi possível confirmar o entitlement; por segurança, as ações de autoria ficaram bloqueadas.' : 'O Platform Admin bloqueou avaliações customizadas para esta clínica.'} Avaliações padrão e modelos existentes continuam visíveis.</div>}
-
-        {loading ? <div className="font-mono text-[11px] text-fog">Carregando modelos…</div> : (
-          <div className="grid xl:grid-cols-2 gap-5">
-            <TemplateGroup title="Avaliações padrão" subtitle="Curadas pelo MedicsPro; não podem ser alteradas pela clínica.">
-              {standards.length === 0 ? <EmptyLine text="Nenhum modelo padrão disponível." /> : standards.map((template) => (
-                <TemplateCard key={template.id} template={template} action="Usar como base" onAction={() => duplicateStandard(template)} busy={busy || !canAuthorCustomAssessments} />
-              ))}
-            </TemplateGroup>
-            <TemplateGroup title="Minhas avaliações" subtitle="Modelos próprios, versionados e reutilizáveis.">
-              {mine.length === 0 ? <EmptyLine text="Você ainda não criou modelos próprios." /> : mine.map((template) => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  action={template.status === 'archived' ? 'Restaurar' : 'Editar nova versão'}
-                  onAction={() => template.status === 'archived' ? archive(template) : openClinicTemplate(template)}
-                  secondary={template.status === 'archived' ? undefined : { label: 'Arquivar', onClick: () => archive(template) }}
-                  busy={busy || !canAuthorCustomAssessments}
-                />
-              ))}
-            </TemplateGroup>
-          </div>
-        )}
-
-        {editing && version && (
-          <div className="border border-mint/30 bg-deep p-4 sm:p-5 space-y-5">
-            <div className="flex flex-wrap items-start gap-3">
-              <div>
-                <p className="font-display text-[16px] font-semibold">Editor do modelo</p>
-                <p className="font-mono text-[10px] text-mint mt-1">{editing.status === 'active' ? 'nova versão' : 'rascunho'} · v{version.version}</p>
-              </div>
-              <Btn className="ml-auto" variant="ghost" onClick={resetEditor}>Fechar</Btn>
+          {customAuthoringAllowed === null && !customAuthoringError && (
+            <div className="rounded-xl border border-line bg-deep px-4 py-3 text-[11px] text-fog">Validando liberação para avaliações customizadas…</div>
+          )}
+          {customAuthoringAllowed === false && (
+            <div className="rounded-xl border border-amber/35 bg-amber/5 px-4 py-3 text-[11px] leading-relaxed text-fog">
+              <strong className="text-amber">Autoria personalizada indisponível.</strong>{' '}
+              {customAuthoringError ? 'Não foi possível confirmar o entitlement; por segurança, as ações de autoria ficaram bloqueadas.' : 'O Platform Admin bloqueou avaliações customizadas para esta clínica.'} Modelos publicados continuam visíveis.
             </div>
+          )}
 
-            <div className="grid md:grid-cols-3 gap-3">
-              <Field label="Nome"><Input value={name} onChange={(event) => setName(event.target.value)} /></Field>
-              <Field label="Especialidade"><Input value={specialty} onChange={(event) => setSpecialty(event.target.value)} /></Field>
-              <Field label="Descrição"><Input value={description} onChange={(event) => setDescription(event.target.value)} /></Field>
+          {loading ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((item) => <div key={item} className="h-36 animate-pulse rounded-2xl border border-line bg-deep/55" />)}
             </div>
-
-            <div className="space-y-3">
-              {schema.sections.map((section, sectionIndex) => (
-                <div key={`${section.key}-${sectionIndex}`} className="border border-line bg-panel p-4 space-y-3">
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <Field label={`Seção ${sectionIndex + 1}`}>
-                        <Input value={section.title} onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)} />
-                      </Field>
-                    </div>
-                    {schema.sections.length > 1 && <Btn variant="ghost" onClick={() => removeSection(sectionIndex)}>Remover seção</Btn>}
+          ) : (
+            <div className="space-y-7">
+              <TemplateGroup title="Biblioteca MedicsPro" subtitle="Modelos padrão curados pela plataforma. Use como base para criar uma versão da clínica.">
+                {standards.length === 0 ? <EmptyLine text="Nenhum modelo padrão disponível." /> : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {standards.map((template) => (
+                      <TemplateCard
+                        key={template.id}
+                        template={template}
+                        sourceLabel="MedicsPro"
+                        action="Usar como base"
+                        onAction={() => duplicateStandard(template)}
+                        busy={busy || !canAuthorCustomAssessments}
+                      />
+                    ))}
                   </div>
+                )}
+              </TemplateGroup>
 
-                  {section.components.map((component, componentIndex) => (
-                    <div key={`${component.key}-${componentIndex}`} className="grid lg:grid-cols-[1.4fr_.9fr_auto_auto] gap-2 items-end border-t border-line/70 pt-3">
-                      <Field label="Campo">
-                        <Input
-                          value={component.label}
-                          onChange={(event) => patchComponent(sectionIndex, componentIndex, {
-                            label: event.target.value,
-                            key: slugKey(event.target.value, component.key),
-                          })}
-                        />
-                      </Field>
-                      <Field label="Tipo">
-                        <select
-                          className="w-full rounded-xl bg-deep border border-line px-3.5 py-2.5 text-[13px] text-paper outline-none focus:border-mint/60"
-                          value={component.type}
-                          onChange={(event) => patchComponent(sectionIndex, componentIndex, { type: event.target.value as AssessmentComponentType })}
-                        >
-                          {COMPONENT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-                        </select>
-                      </Field>
-                      <label className="flex items-center gap-2 text-[11px] text-fog pb-2.5">
-                        <input type="checkbox" checked={Boolean(component.required)} onChange={(event) => patchComponent(sectionIndex, componentIndex, { required: event.target.checked })} />
-                        obrigatório
-                      </label>
-                      <Btn variant="ghost" onClick={() => removeComponent(sectionIndex, componentIndex)}>Remover</Btn>
+              <TemplateGroup title="Modelos da clínica" subtitle="Modelos próprios, versionados e reutilizáveis pelos profissionais autorizados.">
+                {clinicTemplates.length === 0 ? <EmptyLine text="A clínica ainda não criou modelos próprios." /> : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {clinicTemplates.map((template) => (
+                      <TemplateCard
+                        key={template.id}
+                        template={template}
+                        sourceLabel="Clínica"
+                        action={template.status === 'archived' ? 'Restaurar' : 'Editar'}
+                        onAction={(opener) => template.status === 'archived' ? archive(template) : openClinicTemplate(template, opener)}
+                        secondary={template.status === 'archived' ? undefined : { label: 'Arquivar', onClick: () => archive(template) }}
+                        busy={busy || !canAuthorCustomAssessments}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TemplateGroup>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {editing && version && (
+        <div className="fixed inset-0 z-[110]" role="dialog" aria-modal="true" aria-label="Editor de anamnese e avaliação">
+          <button
+            type="button"
+            className="absolute inset-0 h-full w-full bg-black/55 backdrop-blur-[2px]"
+            onClick={requestCloseEditor}
+            aria-label="Fechar editor"
+          />
+          <aside className="absolute inset-y-0 right-0 flex w-full max-w-[860px] flex-col border-l border-line bg-panel shadow-2xl">
+            <header className="flex shrink-0 items-start gap-4 border-b border-line/70 px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="font-display text-[17px] font-semibold">{editing.status === 'active' ? 'Editar nova versão' : 'Configurar modelo'}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-fog">Defina perguntas, tipos de resposta e seções. A versão publicada permanece imutável no histórico clínico.</p>
+                <p className="mt-1.5 font-mono text-[9.5px] text-mint">v{version.version} · {editing.status === 'active' ? 'nova versão' : 'rascunho'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={requestCloseEditor}
+                disabled={busy}
+                ref={closeButtonRef}
+                className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-lg text-fog transition hover:bg-raise hover:text-paper disabled:opacity-40"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="space-y-6">
+                <section className="grid gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2"><Field label="Nome do modelo"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Anamnese adulto completa" /></Field></div>
+                  <Field label="Especialidade"><Input value={specialty} onChange={(event) => setSpecialty(event.target.value)} placeholder="Ex.: fisioterapia" /></Field>
+                  <Field label="Descrição"><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Quando e para quem usar este modelo" /></Field>
+                </section>
+
+                <section className="space-y-4">
+                  {schema.sections.map((section, sectionIndex) => (
+                    <div key={`${section.key}-${sectionIndex}`} className="rounded-2xl border border-line bg-deep/35 p-4">
+                      <div className="mb-4 flex items-end gap-2">
+                        <div className="flex-1">
+                          <Field label={`Seção ${sectionIndex + 1}`}>
+                            <Input value={section.title} onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)} />
+                          </Field>
+                        </div>
+                        {schema.sections.length > 1 && <Btn variant="ghost" onClick={() => removeSection(sectionIndex)} disabled={busy}>Remover seção</Btn>}
+                      </div>
+
+                      <div className="space-y-3">
+                        {section.components.length === 0 && (
+                          <div className="rounded-xl border border-dashed border-line px-4 py-5 text-center text-[11px] text-fog">Esta seção ainda não possui perguntas.</div>
+                        )}
+                        {section.components.map((component, componentIndex) => {
+                          const options = componentOptions(component);
+                          return (
+                            <div key={`${component.key}-${componentIndex}`} className="rounded-xl border border-line/80 bg-panel p-3.5">
+                              <div className="flex items-center gap-2">
+                                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-mint/10 font-mono text-[10px] text-mint">{componentIndex + 1}</span>
+                                <p className="text-[11px] font-semibold text-fog">Pergunta / campo</p>
+                                <button
+                                  type="button"
+                                  onClick={() => removeComponent(sectionIndex, componentIndex)}
+                                  disabled={busy}
+                                  className="ml-auto rounded-lg px-2 py-1 text-[10px] font-semibold text-pulse transition hover:bg-pulse/10 disabled:opacity-40"
+                                >
+                                  Remover
+                                </button>
+                              </div>
+
+                              <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(190px,.8fr)]">
+                                <Field label="Pergunta">
+                                  <Input
+                                    value={component.label}
+                                    onChange={(event) => patchComponent(sectionIndex, componentIndex, {
+                                      label: event.target.value,
+                                      key: slugKey(event.target.value, component.key),
+                                    })}
+                                    placeholder="Digite a pergunta"
+                                  />
+                                </Field>
+                                <Field label="Tipo de resposta">
+                                  <select
+                                    className="w-full min-h-11 rounded-xl border border-line/80 bg-deep px-3.5 py-2.5 text-[13px] text-paper outline-none transition-colors focus:border-mint/60"
+                                    value={component.type}
+                                    onChange={(event) => {
+                                      const nextType = event.target.value as AssessmentComponentType;
+                                      patchComponent(sectionIndex, componentIndex, {
+                                        type: nextType,
+                                        config: supportsOptions(nextType)
+                                          ? { ...(component.config ?? {}), options: options.length ? options : ['Opção 1', 'Opção 2'] }
+                                          : component.config,
+                                      });
+                                    }}
+                                  >
+                                    {COMPONENT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                                  </select>
+                                </Field>
+                              </div>
+
+                              <label className="mt-3 inline-flex items-center gap-2 text-[11px] text-fog">
+                                <input type="checkbox" checked={Boolean(component.required)} onChange={(event) => patchComponent(sectionIndex, componentIndex, { required: event.target.checked })} />
+                                resposta obrigatória
+                              </label>
+
+                              {supportsOptions(component.type) && (
+                                <div className="mt-3 rounded-xl border border-line/70 bg-deep/45 p-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-[10.5px] font-semibold text-fog">Opções de resposta</p>
+                                    <button
+                                      type="button"
+                                      className="text-[10.5px] font-semibold text-mint"
+                                      onClick={() => setChoiceOptions(sectionIndex, componentIndex, [...options, `Opção ${options.length + 1}`])}
+                                    >
+                                      + Adicionar opção
+                                    </button>
+                                  </div>
+                                  <div className="mt-2 space-y-2">
+                                    {options.map((option, optionIndex) => (
+                                      <div key={optionIndex} className="flex gap-2">
+                                        <Input
+                                          value={option}
+                                          onChange={(event) => setChoiceOptions(sectionIndex, componentIndex, options.map((item, index) => index === optionIndex ? event.target.value : item))}
+                                          aria-label={`Opção ${optionIndex + 1}`}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setChoiceOptions(sectionIndex, componentIndex, options.filter((_, index) => index !== optionIndex))}
+                                          className="rounded-xl border border-line px-3 text-[11px] text-fog hover:border-pulse/40 hover:text-pulse"
+                                          aria-label={`Remover opção ${optionIndex + 1}`}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addComponent(sectionIndex)}
+                        disabled={busy}
+                        className="mt-3 flex min-h-10 w-full items-center justify-center rounded-xl border border-dashed border-mint/35 bg-mint/[0.035] text-[11px] font-semibold text-mint transition hover:bg-mint/[0.07] disabled:opacity-40"
+                      >
+                        + Adicionar pergunta
+                      </button>
                     </div>
                   ))}
 
-                  <Btn variant="ghost" onClick={() => addComponent(sectionIndex)}>+ Adicionar campo</Btn>
-                </div>
-              ))}
-              <Btn variant="ghost" onClick={addSection}>+ Adicionar seção</Btn>
+                  <Btn variant="ghost" onClick={addSection} disabled={busy} className="w-full">+ Adicionar seção</Btn>
+                </section>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-              <Btn onClick={saveDraft} disabled={busy || !name.trim()}>{busy ? 'Salvando…' : 'Salvar rascunho'}</Btn>
-              <Btn variant="ghost" onClick={publish} disabled={busy || !name.trim()}>Publicar versão</Btn>
-              <p className="text-[10.5px] text-fog self-center sm:ml-2">Depois de publicada, esta versão fica imutável para preservar o prontuário.</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
+            <footer className="shrink-0 border-t border-line/70 bg-panel px-5 py-4 sm:px-6">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Btn variant="ghost" onClick={requestCloseEditor} disabled={busy}>Cancelar</Btn>
+                <Btn variant="subtle" onClick={saveDraft} disabled={busy || !name.trim()}>{busy ? 'Salvando…' : 'Salvar rascunho'}</Btn>
+                <Btn onClick={publish} disabled={busy || !name.trim()}>Publicar versão</Btn>
+              </div>
+            </footer>
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
 
 function TemplateGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div>
-      <p className="font-display font-semibold text-[14px]">{title}</p>
-      <p className="text-[10.5px] text-fog mt-1">{subtitle}</p>
-      <div className="mt-3 space-y-2">{children}</div>
-    </div>
+    <section>
+      <div className="mb-3">
+        <p className="font-display text-[14px] font-semibold">{title}</p>
+        <p className="mt-1 text-[10.5px] leading-relaxed text-fog">{subtitle}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 
 function TemplateCard({
   template,
+  sourceLabel,
   action,
   onAction,
   secondary,
   busy,
 }: {
   template: AssessmentTemplate;
+  sourceLabel: string;
   action: string;
-  onAction: () => void;
+  onAction: (opener: HTMLElement) => void;
   secondary?: { label: string; onClick: () => void };
   busy: boolean;
 }) {
   return (
-    <div className="border border-line bg-deep p-3.5">
-      <div className="flex flex-wrap gap-2 items-center">
-        <p className="font-display font-semibold text-[13px]">{template.name}</p>
-        <span className={`font-mono text-[9px] ${template.status === 'active' ? 'text-mint' : 'text-fog'}`}>{template.status}</span>
-        {template.specialty && <span className="font-mono text-[9px] text-fog ml-auto">{template.specialty}</span>}
+    <article className="flex min-h-[160px] flex-col rounded-2xl border border-line bg-deep/45 p-4 transition hover:border-line2 hover:bg-deep/65">
+      <div className="flex items-center gap-2">
+        <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] ${template.ownerType === 'platform' ? 'border-aqua/30 text-aqua' : 'border-mint/30 text-mint'}`}>{sourceLabel}</span>
+        <span className="font-mono text-[9px] text-fog">{template.status}</span>
+        {template.specialty && <span className="ml-auto truncate font-mono text-[9px] text-fog">{template.specialty}</span>}
       </div>
-      <p className="text-[11px] text-fog mt-2">{template.description || 'Sem descrição.'}</p>
-      <div className="mt-3 flex gap-2">
-        <Btn variant="ghost" onClick={onAction} disabled={busy}>{action}</Btn>
-        {secondary && <Btn variant="ghost" onClick={secondary.onClick} disabled={busy}>{secondary.label}</Btn>}
+      <h4 className="mt-3 font-display text-[14px] font-semibold leading-snug">{template.name}</h4>
+      <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-fog">{template.description || 'Modelo clínico reutilizável.'}</p>
+      <div className="mt-auto flex gap-2 border-t border-line/60 pt-3">
+        <Btn variant="ghost" className="min-h-9 px-3 py-2 text-[11px]" onClick={(event) => onAction(event.currentTarget)} disabled={busy}>{action}</Btn>
+        {secondary && <Btn variant="ghost" className="min-h-9 px-3 py-2 text-[11px]" onClick={secondary.onClick} disabled={busy}>{secondary.label}</Btn>}
       </div>
-    </div>
+    </article>
   );
 }
 
 function EmptyLine({ text }: { text: string }) {
-  return <div className="border border-line bg-deep p-4 text-[11px] text-fog">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-line bg-deep/35 p-6 text-center text-[11px] text-fog">{text}</div>;
 }
