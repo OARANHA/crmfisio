@@ -1,0 +1,117 @@
+name: Clinic Configuration Core ACL Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260911_clinic_configuration_core_acl_hardening.sql'
+      - 'tests/sql/clinic_configuration_core_acl_hardening_fixture.sql'
+      - '.github/workflows/clinic-configuration-core-acl-hardening.yml'
+      - 'supabase-verifiers/VERIFY_20260911_CLINIC_CONFIGURATION_CORE_PRODUCTION.sql'
+      - 'scripts/verify-clinic-configuration-core-production.sh'
+  workflow_dispatch:
+
+jobs:
+  postgres-16-acl-hardening:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinic_configuration_core_acl_hardening_test
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert hotfix migration is ACL-only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('supabase-migrations/20260911_clinic_configuration_core_acl_hardening.sql')
+          text = path.read_text(encoding='utf-8')
+
+          forbidden = re.compile(
+              r'(?im)^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|COPY|CALL|VACUUM|ANALYZE|REFRESH)\b'
+          )
+          matches = forbidden.findall(text)
+          if matches:
+              raise SystemExit(f'hotfix migration contains non-ACL SQL: {matches}')
+
+          required = [
+              r'(?im)^\s*BEGIN;\s*$',
+              r'(?is)REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.is_valid_iana_timezone\s*\(\s*TEXT\s*\)\s+FROM\s+PUBLIC\s*,\s*anon\s*;',
+              r'(?is)GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.is_valid_iana_timezone\s*\(\s*TEXT\s*\)\s+TO\s+authenticated\s*,\s*service_role\s*;',
+              r'(?im)^\s*COMMIT;\s*$',
+          ]
+          for pattern in required:
+              if not re.search(pattern, text):
+                  raise SystemExit(f'missing required ACL contract: {pattern}')
+          PY
+
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres "$PGDATABASE"
+
+      - name: Install base fixture and reproduce explicit anon grant
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -f tests/sql/clinic_configuration_core_fixture.sql
+          psql -v ON_ERROR_STOP=1 -X -f tests/sql/clinic_configuration_core_acl_hardening_fixture.sql
+
+      - name: Apply main Clinic Configuration Core migration
+        run: psql -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_clinic_configuration_core.sql
+
+      - name: Prove explicit anon EXECUTE survives the main migration
+        run: |
+          psql -v ON_ERROR_STOP=1 -X <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT has_function_privilege('anon', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'fixture_did_not_reproduce_anon_execute_leak';
+            END IF;
+
+            IF NOT has_function_privilege('authenticated', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'authenticated_execute_missing_before_hotfix';
+            END IF;
+
+            IF NOT has_function_privilege('service_role', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'service_role_execute_missing_before_hotfix';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Apply ACL hardening hotfix
+        run: psql -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_clinic_configuration_core_acl_hardening.sql
+
+      - name: Prove expected effective ACL
+        run: |
+          psql -v ON_ERROR_STOP=1 -X <<'SQL'
+          DO $$
+          BEGIN
+            IF has_function_privilege('anon', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'anon_execute_still_present_after_hotfix';
+            END IF;
+
+            IF NOT has_function_privilege('authenticated', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'authenticated_execute_missing_after_hotfix';
+            END IF;
+
+            IF NOT has_function_privilege('service_role', 'public.is_valid_iana_timezone(text)', 'EXECUTE') THEN
+              RAISE EXCEPTION 'service_role_execute_missing_after_hotfix';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Run canonical production-safe verifier
+        run: bash scripts/verify-clinic-configuration-core-production.sh
