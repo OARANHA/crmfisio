@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampNormalizedCoordinate, isAssessmentTemplateSchema } from './assessmentEngine';
+import { clampNormalizedCoordinate, isAssessmentTemplateSchema, validateAssessmentTemplateSchemaForAuthoring } from './assessmentEngine';
 
 describe('assessmentEngine helpers', () => {
   it('clamps body-map coordinates into the normalized range', () => {
@@ -75,5 +75,25 @@ describe('assessmentEngine helpers', () => {
         },
       ],
     })).toBe(false);
+  });
+});
+
+describe('assessment template authoring validation', () => {
+  const schema = (component: Record<string, unknown>) => ({ sections: [{ key: 'dor', title: 'Dor', components: [component] }] }) as any;
+
+  it.each([
+    ['empty label', schema({ key: 'dor', type: 'long_text', label: '  ' })],
+    ['choice without options', schema({ key: 'tipo', type: 'single_choice', label: 'Tipo', config: { options: [] } })],
+    ['empty option', schema({ key: 'tipo', type: 'multiple_choice', label: 'Tipo', config: { options: ['A', '  '] } })],
+    ['normalized duplicate options', schema({ key: 'tipo', type: 'single_choice', label: 'Tipo', config: { options: ['Dor', ' dor '] } })],
+  ])('rejects %s', (_name, value) => {
+    expect(validateAssessmentTemplateSchemaForAuthoring(value)).toBeTruthy();
+  });
+
+  it('keeps section and component order while accepting valid choice options', () => {
+    const value = schema({ key: 'tipo', type: 'single_choice', label: 'Tipo', required: true, config: { options: ['Aguda', 'Crônica'] } });
+    expect(validateAssessmentTemplateSchemaForAuthoring(value)).toBeNull();
+    expect(value.sections[0].components[0].key).toBe('tipo');
+    expect(value.sections[0].components.map((component: { key: string }) => component.key)).toEqual(['tipo']);
   });
 });
