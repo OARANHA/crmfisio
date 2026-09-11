@@ -33,7 +33,7 @@ CREATE TABLE public.profiles (
   clinic_id uuid NOT NULL REFERENCES public.clinics(id),
   email text NOT NULL,
   nome text NOT NULL,
-  role text NOT NULL CHECK (role IN ('owner','admin','fisio','recep','financeiro')),
+  role text NOT NULL CHECK (role IN ('owner','admin','professional','recep','financeiro')),
   ativo boolean NOT NULL DEFAULT true
 );
 
@@ -94,7 +94,7 @@ INSERT INTO public.clinics (id, name, cnpj, lifecycle_status) VALUES
 INSERT INTO public.profiles (id, clinic_id, email, nome, role, ativo) VALUES
   ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'owner-a@example.test', 'Owner A', 'owner', true),
   ('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'admin-a@example.test', 'Admin A', 'admin', true),
-  ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'fisio-a@example.test', 'Fisio A', 'fisio', true),
+  ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', 'professional-a@example.test', 'Professional A', 'professional', true),
   ('10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', 'recep-a@example.test', 'Recep A', 'recep', true),
   ('10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000001', 'fin-a@example.test', 'Financeiro A', 'financeiro', true),
   ('10000000-0000-0000-0000-000000000006', '20000000-0000-0000-0000-000000000001', 'inactive-a@example.test', 'Inactive A', 'admin', false),
