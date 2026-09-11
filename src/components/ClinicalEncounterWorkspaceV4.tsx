@@ -155,27 +155,10 @@ export function ClinicalEncounterWorkspaceV4({
 
   return (
     <section data-clinical-encounter-mode="active" data-clinical-encounter-version="5" className="space-y-3">
-      <div className="sticky top-2 z-20 space-y-1.5 rounded-[20px] bg-base/90 pb-1.5 backdrop-blur-xl">
-        <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/70 bg-panel/95 px-3 py-2 shadow-sm">
-          <nav aria-label="Workspaces da consulta" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-            {[
-              ['record', 'Registro'], ['assessment', 'Anamneses & Avaliações'], ['nexus', 'Nexus'],
-            ].map(([id, label]) => (
-              <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
-            ))}
-          </nav>
-          <div className="flex flex-wrap items-center gap-1.5" aria-label="Estado clínico da consulta">
-            <Chip className={hasLinkedEvolution ? 'border-mint/35 text-mint' : 'border-amber/35 text-amber'}>
-              {hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro em elaboração'}
-            </Chip>
-            {hasLinkedEvolution && <ClosingChip closing={closing} />}
-          </div>
-        </div>
-      </div>
+      <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
 
       <div className="grid items-start gap-3 xl:grid-cols-[238px_minmax(0,1fr)]">
-        <aside aria-label="Contexto persistente da consulta" className="order-2 space-y-2 xl:order-1 xl:sticky xl:top-[calc(68px+0.75rem)] xl:max-h-[calc(100vh-68px-1.5rem)] xl:overflow-y-auto">
+        <aside aria-label="Contexto persistente da consulta" className="order-2 space-y-2 xl:order-1 xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto">
           <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={() => setWorkspace('record')} />
           <div className="rounded-[18px] border border-line/70 bg-panel p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
@@ -185,6 +168,23 @@ export function ClinicalEncounterWorkspaceV4({
           </div>
         </aside>
         <main className="order-1 min-w-0 space-y-4 xl:order-2">
+          <div className="rounded-2xl border border-line/70 bg-panel/95 px-3 py-2 shadow-sm xl:sticky xl:top-3 xl:z-20">
+            <div className="flex flex-wrap items-center gap-2">
+              <nav aria-label="Workspaces da consulta" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                {[
+                  ['record', 'Registro'], ['assessment', 'Anamneses & Avaliações'], ['nexus', 'Nexus'],
+                ].map(([id, label]) => (
+                  <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
+                ))}
+              </nav>
+              <div className="flex flex-wrap items-center gap-1.5" aria-label="Estado clínico da consulta">
+                <Chip className={hasLinkedEvolution ? 'border-mint/35 text-mint' : 'border-amber/35 text-amber'}>
+                  {hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro em elaboração'}
+                </Chip>
+                {hasLinkedEvolution && <ClosingChip closing={closing} />}
+              </div>
+            </div>
+          </div>
           {workspace === 'record' && <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">

@@ -37,16 +37,21 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(shellSource).toContain(": transactions.filter((t) => t.status === 'atrasado').length + consentPendencies");
   });
 
-  it('keeps desktop collapse, mobile drawer and dark/light controls in the presentation-aware shell', () => {
+  it('keeps desktop utilities in the sidebar and preserves the compact mobile header', () => {
     expect(shellSource).toContain("medicspro-sidebar-collapsed");
     expect(shellSource).toContain("lg:hidden fixed inset-0 z-50");
     expect(shellSource).toContain('<ThemeButton theme={theme} onToggle={toggleTheme} />');
     expect(shellSource).toContain('PresentationModeControl compact={collapsed}');
     expect(shellSource).toContain('<PresentationModeControl />');
     expect(shellSource).toContain('<PresentationHeaderControl />');
+    expect(shellSource).toContain('lg:hidden">');
+    expect(shellSource).toContain('aria-label="Expandir barra lateral para trocar unidade"');
+    expect(shellSource).toContain('title="Trocar unidade"');
+    expect(shellSource).toContain('collapsed ? \'flex flex-col items-center gap-2\' : \'flex items-center gap-3\'');
+    expect(shellSource).toContain('collapsed ? (\n            <div className="flex justify-center">');
   });
 
-  it('gives eligible owner/admin an explicit desktop header action without navigation hacks', () => {
+  it('keeps presentation switching independent of navigation hacks', () => {
     const headerControl = shellSource.slice(
       shellSource.indexOf('function PresentationHeaderControl()'),
       shellSource.indexOf('function PresentationResolvingState()'),
@@ -84,6 +89,17 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(managementBranch).toContain('Ambiente protegido');
     expect(managementBranch).toContain("onClick={() => setContext('clinical')}");
     expect(managementBranch).toContain('Entrar no Modo Consultório');
+  });
+
+  it('does not render the desktop header or duplicate its presentation control above the workspace', () => {
+    const desktopSidebar = shellSource.slice(shellSource.indexOf('<aside className={`hidden lg:flex'), shellSource.indexOf('{mobileOpen && ('));
+    const mobileHeader = shellSource.slice(shellSource.indexOf('<header className="sticky top-0'), shellSource.indexOf('</header>', shellSource.indexOf('<header className="sticky top-0')));
+
+    expect(desktopSidebar).toContain('PresentationModeControl compact={collapsed}');
+    expect(desktopSidebar).toContain('setUnidadeSel');
+    expect(mobileHeader).toContain('lg:hidden');
+    expect(mobileHeader).toContain('<PresentationHeaderControl />');
+    expect(mobileHeader).toContain('setUnidadeSel');
   });
 
   it('keeps eligibility resolution fail-closed without rendering administrative chrome', () => {

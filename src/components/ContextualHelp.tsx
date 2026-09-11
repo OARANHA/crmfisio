@@ -30,7 +30,7 @@ export function ContextualHelp() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-[45] grid h-11 w-11 place-items-center rounded-xl border border-line/75 bg-panel font-display text-[15px] font-bold text-fog shadow-lg transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40 sm:bottom-auto sm:right-[116px] sm:top-[14px] sm:h-10 sm:w-10 sm:shadow-none"
+        className="fixed bottom-4 right-4 z-[45] grid h-11 w-11 place-items-center rounded-xl border border-line/75 bg-panel font-display text-[15px] font-bold text-fog shadow-lg transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40 sm:bottom-5 sm:right-5 sm:h-10 sm:w-10"
         aria-label="Ajuda desta tela"
         title="Ajuda desta tela"
       >
