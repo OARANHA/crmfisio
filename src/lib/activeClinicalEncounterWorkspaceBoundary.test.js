@@ -68,6 +68,12 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(encounterWorkspace).not.toContain('Instrumentos');
   });
 
+  it('keeps the workspace first on mobile and moves patient context to the left rail on xl desktop', () => {
+    expect(encounterWorkspace).toContain('xl:grid-cols-[250px_minmax(0,1fr)]');
+    expect(encounterWorkspace).toContain('className="order-2 space-y-3 xl:order-1 xl:sticky xl:top-36"');
+    expect(encounterWorkspace).toContain('className="order-1 min-w-0 space-y-4 xl:order-2"');
+  });
+
   it('never labels a draft with an encounter that is not its provenance', () => {
     expect(assessment).toContain('visibleDraft?.appointmentId === activeAppointment.id');
     expect(assessment).toContain('visibleDraftAppointment ? ` · atendimento ${visibleDraftAppointment.inicio}` :');
