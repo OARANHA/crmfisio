@@ -3,7 +3,7 @@
 > **Snapshot de continuidade. `AGENTS.md` contém as regras operacionais; código, schema e runtime atuais prevalecem se este arquivo envelhecer.**
 
 **Data do snapshot:** 2026-09-11  
-**Base canônica observada:** `main@c6da199aaa8a7981cb32bd64d2f8cc0befcd9272`
+**Base canônica observada:** `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`
 
 ## Leitura obrigatória para qualquer agente
 
@@ -199,41 +199,56 @@ A correção está funcionalmente confirmada pela UI: o Dr. Médico Nexus carreg
 
 ---
 
-# Slice em andamento — compactação visual do Clinical Encounter
+# Compactação visual do Clinical Encounter — #417
 
-**Status:** em implementação por agente separado.  
+**Status:** IMPLEMENTADO EM `main`; aguarda redeploy do frontend e aceitação visual em produção.  
+**Merge:** `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`.  
 **Natureza:** frontend/UX only.  
 **Não envolve:** migration, RLS, capability, backend, Edge Function, Assessment Engine contract, conteúdo clínico ou persistência.
 
-Problemas observados na tela real:
+Problemas tratados:
 
-1. topo alto demais pela soma de breadcrumb + card de consulta;
-2. informações `Consulta em andamento`, paciente, horário e identidade clínica podem ser organizadas de forma mais horizontal/densa;
-3. cards `Estado da consulta` e `Paciente em contexto` ocupam altura excessiva;
-4. `Estado da consulta` sofre clipping/ocultação parcial durante scroll;
-5. Runner pode ganhar densidade vertical sem perder legibilidade, deixando mais conteúdo acima da dobra.
+1. excesso de altura no topo;
+2. breadcrumb `‹ Pacientes` redundante durante Encounter ativo;
+3. cards laterais altos demais;
+4. `Estado da consulta` sofrendo clipping/ocultação parcial durante scroll;
+5. baixa densidade vertical da área principal.
 
-Objetivo da slice:
+Mudanças mergeadas:
+
+- Encounter hero mais compacto, com menos padding, gaps, raio e sombra;
+- breadcrumb `Pacientes` e `PatientProfileHeader` deixam de ocupar espaço durante Encounter ativo; fora do Encounter permanecem iguais;
+- rail lateral reduzido para `238px` em desktop XL;
+- cards `Estado da consulta` e `Paciente em contexto` mais densos;
+- sticky lateral alinhado ao header real do shell, que possui `68px`;
+- offset: `top: calc(68px + 0.75rem)`;
+- altura máxima: `calc(100vh - 68px - 1.5rem)`;
+- `overflow-y-auto` somente no rail quando necessário;
+- seções principais com padding e espaçamento vertical reduzidos.
+
+Validação técnica da slice:
 
 ```text
-menos chrome vertical
-+ contexto clínico preservado
-+ sticky lateral correto
-+ mais formulário visível sem scroll
-+ nenhuma mudança funcional
+boundary test: 15/15 PASS antes da publicação
+full tests: 405/405 PASS antes da publicação
+typecheck: PASS
+lint: PASS
+build: PASS
+GitHub Actions no head final: 9/9 workflows PASS
 ```
 
-Direção aprovada:
+Durante a revisão do PR foi removida uma linha de SHA acidental que havia sido anexada ao arquivo de teste; o head foi revalidado antes do merge.
 
-- remover ou absorver o breadcrumb `‹ Pacientes` quando redundante;
-- compactar o header do atendimento;
-- manter nome do paciente, status, faixa horária e identidade clínica visíveis em uma faixa mais baixa;
-- reduzir padding/gaps dos cards laterais;
-- corrigir sticky/top/overflow da lateral;
-- compactar tabs, campos e ações do Runner com moderação;
-- prioridade desktop/laptop, sem quebrar viewports médios.
+A aceitação visual ainda está **pendente** porque o browser remoto do agente bloqueou o preview local com `ERR_BLOCKED_BY_CLIENT`. Não marcar esta slice como `VALIDADO EM PRODUÇÃO` antes de:
 
-Quando o PR chegar, revisar visualmente antes do merge. Se a alteração continuar frontend-only, **não há migration de servidor esperada**; haverá apenas o fluxo normal de CI e redeploy do frontend após merge.
+- redeployar o frontend;
+- conferir 1366×768, 1440×900 e 1920×1080 quando possível;
+- confirmar ausência de clipping do `Estado da consulta` durante scroll;
+- confirmar que o breadcrumb realmente desaparece no Encounter ativo;
+- confirmar que mais conteúdo do Runner fica visível acima da dobra;
+- confirmar que salvar/retomar draft permanece intacto.
+
+Se houver apenas ajustes cosméticos pequenos após a validação real, fazer micro-slice visual; não reabrir arquitetura clínica nem autorização.
 
 ---
 
@@ -316,15 +331,15 @@ O futuro manual do sistema deve ser gerado a partir do comportamento **validado*
 
 ## Próximo passo imediato
 
-Aguardar a saída do agente responsável pela compactação visual do Clinical Encounter.
+Redeployar o frontend contendo `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58` e executar aceitação visual real do Clinical Encounter.
 
-Na revisão do PR:
+Checklist pós-redeploy:
 
-1. conferir diff e screenshots;
-2. validar que a slice é frontend-only;
-3. testar que draft/persistência continuam intactos;
-4. validar sticky da lateral;
-5. comparar densidade antes/depois;
-6. rodar CI, typecheck, lint e build;
-7. mergear somente se o resultado visual e funcional estiverem corretos;
-8. atualizar este snapshot e o mapa do manual com o estado final pós-merge.
+1. confirmar desaparecimento do breadcrumb `‹ Pacientes` no Encounter ativo;
+2. comparar altura do topo e quantidade de formulário acima da dobra;
+3. rolar a tela e validar o sticky do rail esquerdo sem clipping;
+4. verificar se o scroll interno lateral só aparece quando necessário;
+5. alternar Registro → Anamneses & Avaliações → Nexus → Anamneses & Avaliações;
+6. confirmar persistência/retomada do draft;
+7. capturar screenshots oficiais se o resultado estiver aprovado;
+8. somente então atualizar este snapshot e `MANUAL_SOURCE_MAP.md` para `VALIDADO EM PRODUÇÃO`.
