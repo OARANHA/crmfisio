@@ -6,7 +6,6 @@ import { resolveOwnActiveEncounter } from '../lib/activeClinicalEncounter';
 import { useAgenda } from '../lib/agendaContext';
 import {
   canFinalizeEncounter,
-  encounterWorkspaceNavigation,
   hasOwnLinkedEncounterEvolution,
   longitudinalPatientContext,
   resolveEncounterClosingState,
@@ -48,6 +47,7 @@ export function ClinicalEncounterWorkspaceV4({
   const evolutionCapability = useClinicalCapability('clinical.evolution.write', user?.id);
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
   const [finishing, setFinishing] = useState(false);
+  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'nexus'>('record');
   const evolutionRef = useRef<HTMLElement | null>(null);
 
   const canonicalEncounter = useMemo(
@@ -154,15 +154,15 @@ export function ClinicalEncounterWorkspaceV4({
   );
 
   return (
-    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="4.1" className="space-y-4">
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="5" className="space-y-4">
       <div className="sticky top-3 z-20 space-y-2 rounded-[24px] bg-base/90 pb-2 backdrop-blur-xl">
         <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/70 bg-panel/95 px-3 py-2 shadow-sm">
-          <nav aria-label="Navegação da consulta" className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            {encounterWorkspaceNavigation.map((item) => (
-              <a key={item.id} href={`#${item.id}`} className="rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold text-fog transition-colors hover:bg-raise/60 hover:text-paper">
-                {item.label}
-              </a>
+          <nav aria-label="Workspaces da consulta" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+            {[
+              ['record', 'Registro'], ['assessment', 'Anamneses & Avaliações'], ['nexus', 'Nexus'],
+            ].map(([id, label]) => (
+              <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
             ))}
           </nav>
           <div className="flex flex-wrap items-center gap-1.5" aria-label="Estado clínico da consulta">
@@ -174,9 +174,18 @@ export function ClinicalEncounterWorkspaceV4({
         </div>
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
+        <aside aria-label="Contexto persistente da consulta" className="order-2 space-y-3 xl:order-1 xl:sticky xl:top-36">
+          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={() => setWorkspace('record')} />
+          <div className="rounded-[20px] border border-line/70 bg-panel p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
+            <p className="mt-2 font-display text-[17px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
+            <p className="mt-1 text-[11px] text-fog">{canonicalEncounter.tipo} · {canonicalEncounter.inicio.slice(0, 5)}–{canonicalEncounter.fim.slice(0, 5)}</p>
+            <dl className="mt-4 space-y-3 text-[11px]"><div><dt className="text-fog">CID-10 longitudinal</dt><dd className="mt-0.5 font-medium text-paper/90">{patientContext.cid}</dd></div><div><dt className="text-fog">Consentimentos assinados</dt><dd className="mt-0.5 font-medium text-paper/90">{signedConsentCount}</dd></div></dl>
+          </div>
+        </aside>
         <main className="min-w-0 space-y-4">
-          <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
+          {workspace === 'record' && <EncounterSection id="encounter-context" eyebrow="Contexto" title="Ponto de partida" detail="Informações já registradas no prontuário ajudam a orientar o atendimento atual.">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-line/60 bg-deep/30 p-4">
                 <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-fog">{patientContext.eyebrow}</p>
@@ -190,9 +199,9 @@ export function ClinicalEncounterWorkspaceV4({
                 <p className="mt-3 text-[11px] text-fog">{signedConsentCount} consentimento(s) assinado(s) · documentos e registros anteriores permanecem no histórico.</p>
               </div>
             </div>
-          </EncounterSection>
+          </EncounterSection>}
 
-          <section ref={evolutionRef} className="scroll-mt-36">
+          {workspace === 'record' && <section ref={evolutionRef} className="scroll-mt-36">
             <EncounterSection id="encounter-evolution" eyebrow="Registro clínico" title={hasLinkedEvolution ? 'Evolução registrada ✓' : 'Registro da consulta'} detail={hasLinkedEvolution ? 'Evolução já vinculada a este atendimento.' : 'Registre a consulta uma única vez e conclua quando estiver pronto.'}>
               {hasLinkedEvolution ? (
                 <ClinicalEncounterRecordEditor
@@ -220,9 +229,9 @@ export function ClinicalEncounterWorkspaceV4({
                 <BlockedState title="Registro clínico indisponível">Seu acesso atual não permite registrar e concluir este atendimento.</BlockedState>
               )}
             </EncounterSection>
-          </section>
+          </section>}
 
-          <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Avaliação estruturada" detail="Avaliação estruturada opcional para esta consulta.">
+          {workspace === 'assessment' && <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Anamneses & Avaliações" detail="Avaliação estruturada opcional para esta consulta.">
             {assessmentCapability.loading ? (
               <NeutralState>Carregando avaliações clínicas…</NeutralState>
             ) : assessmentCapability.error ? (
@@ -232,17 +241,17 @@ export function ClinicalEncounterWorkspaceV4({
             ) : (
               <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
             )}
-          </EncounterSection>
+          </EncounterSection>}
 
-          <EncounterSection id="encounter-tools" eyebrow="Ferramentas clínicas" title="Recursos disponíveis para este atendimento" detail="Use os recursos disponíveis conforme a necessidade clínica.">
+          {workspace === 'nexus' && <EncounterSection id="encounter-tools" eyebrow="Nexus" title="Recursos disponíveis para este atendimento" detail="Use os recursos disponíveis conforme a necessidade clínica.">
             <ActiveEncounterClinicalTools patient={patient} encounter={canonicalEncounter} identity={identity} userId={user.id} />
-          </EncounterSection>
+          </EncounterSection>}
 
-          <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Continuidade do cuidado" detail="Registre ou consulte informações relevantes para a continuidade do cuidado.">
+          {workspace === 'nexus' && <EncounterSection id="encounter-continuity" eyebrow="Conduta e continuidade" title="Continuidade do cuidado" detail="Registre ou consulte informações relevantes para a continuidade do cuidado.">
             <NexusRecordIncorporationPanel patient={patient} />
-          </EncounterSection>
+          </EncounterSection>}
 
-          <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={hasLinkedEvolution ? closing.sectionTitle : 'Concluir registro da consulta'} detail={hasLinkedEvolution ? closing.sectionDetail : 'A conclusão é feita a partir do registro acima, sem digitar uma segunda evolução.'}>
+          {workspace === 'record' && <EncounterSection id="encounter-closing" eyebrow="Encerramento" title={hasLinkedEvolution ? closing.sectionTitle : 'Concluir registro da consulta'} detail={hasLinkedEvolution ? closing.sectionDetail : 'A conclusão é feita a partir do registro acima, sem digitar uma segunda evolução.'}>
             {hasLinkedEvolution ? (
               <div className={`rounded-2xl border p-4 ${closingStyle}`}>
                 <div className="flex flex-wrap items-center gap-3">
@@ -259,22 +268,8 @@ export function ClinicalEncounterWorkspaceV4({
                 <Btn className="mt-3" variant="subtle" onClick={scrollToRecord}>Ir para o registro da consulta</Btn>
               </div>
             )}
-          </EncounterSection>
+          </EncounterSection>}
         </main>
-
-        <aside aria-label="Contexto persistente da consulta" className="space-y-3 xl:sticky xl:top-36">
-          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={scrollToRecord} />
-          <div className="rounded-[20px] border border-line/70 bg-panel p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
-            <p className="mt-2 font-display text-[17px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
-            <p className="mt-1 text-[11px] text-fog">{canonicalEncounter.tipo} · {canonicalEncounter.inicio.slice(0, 5)}–{canonicalEncounter.fim.slice(0, 5)}</p>
-            <dl className="mt-4 space-y-3 text-[11px]">
-              <div><dt className="text-fog">CID-10 longitudinal</dt><dd className="mt-0.5 font-medium text-paper/90">{patientContext.cid}</dd></div>
-              <div><dt className="text-fog">Consentimentos assinados</dt><dd className="mt-0.5 font-medium text-paper/90">{signedConsentCount}</dd></div>
-            </dl>
-            <a href="#encounter-history" className="mt-4 inline-flex text-[11px] font-semibold text-aqua hover:underline">Abrir prontuário longitudinal ↓</a>
-          </div>
-        </aside>
       </div>
 
       <details id="encounter-history" className="scroll-mt-36 rounded-[22px] border border-line/70 bg-panel">

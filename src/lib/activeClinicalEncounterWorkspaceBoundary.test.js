@@ -55,6 +55,17 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(assessment).toContain('activeAppointmentId,');
     expect(assessment).toContain('setEditorContextKey(null)');
     expect(assessment).toContain('contextKeyRef.current !== contextKey');
+    expect(assessment).toContain('autosave.setContext(contextKey, null)');
+    expect(assessment).toContain('autosave.setContext(contextKey, ownDraft.id)');
+  });
+
+  it('renders the V5 cockpit as a single active workspace without fictitious clinical tabs', () => {
+    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'nexus'>('record')");
+    expect(encounterWorkspace).toContain("workspace === 'assessment'");
+    expect(encounterWorkspace).toContain("workspace === 'nexus'");
+    expect(encounterWorkspace).not.toContain('Prescrição');
+    expect(encounterWorkspace).not.toContain('Exames');
+    expect(encounterWorkspace).not.toContain('Instrumentos');
   });
 
   it('never labels a draft with an encounter that is not its provenance', () => {
