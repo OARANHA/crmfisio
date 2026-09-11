@@ -154,8 +154,8 @@ export function ClinicalEncounterWorkspaceV4({
   );
 
   return (
-    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="5" className="space-y-4">
-      <div className="sticky top-3 z-20 space-y-2 rounded-[24px] bg-base/90 pb-2 backdrop-blur-xl">
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="5" className="space-y-3">
+      <div className="sticky top-2 z-20 space-y-1.5 rounded-[20px] bg-base/90 pb-1.5 backdrop-blur-xl">
         <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/70 bg-panel/95 px-3 py-2 shadow-sm">
           <nav aria-label="Workspaces da consulta" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
@@ -174,14 +174,14 @@ export function ClinicalEncounterWorkspaceV4({
         </div>
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
-        <aside aria-label="Contexto persistente da consulta" className="order-2 space-y-3 xl:order-1 xl:sticky xl:top-36">
+      <div className="grid items-start gap-3 xl:grid-cols-[238px_minmax(0,1fr)]">
+        <aside aria-label="Contexto persistente da consulta" className="order-2 space-y-2 xl:order-1 xl:sticky xl:top-[calc(68px+0.75rem)] xl:max-h-[calc(100vh-68px-1.5rem)] xl:overflow-y-auto">
           <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={() => setWorkspace('record')} />
-          <div className="rounded-[20px] border border-line/70 bg-panel p-4">
+          <div className="rounded-[18px] border border-line/70 bg-panel p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Paciente em contexto</p>
-            <p className="mt-2 font-display text-[17px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
+            <p className="mt-1 font-display text-[16px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
             <p className="mt-1 text-[11px] text-fog">{canonicalEncounter.tipo} · {canonicalEncounter.inicio.slice(0, 5)}–{canonicalEncounter.fim.slice(0, 5)}</p>
-            <dl className="mt-4 space-y-3 text-[11px]"><div><dt className="text-fog">CID-10 longitudinal</dt><dd className="mt-0.5 font-medium text-paper/90">{patientContext.cid}</dd></div><div><dt className="text-fog">Consentimentos assinados</dt><dd className="mt-0.5 font-medium text-paper/90">{signedConsentCount}</dd></div></dl>
+            <dl className="mt-3 space-y-2 text-[11px]"><div><dt className="text-fog">CID-10 longitudinal</dt><dd className="font-medium text-paper/90">{patientContext.cid}</dd></div><div><dt className="text-fog">Consentimentos assinados</dt><dd className="font-medium text-paper/90">{signedConsentCount}</dd></div></dl>
           </div>
         </aside>
         <main className="order-1 min-w-0 space-y-4 xl:order-2">
@@ -288,11 +288,11 @@ export function ClinicalEncounterWorkspaceV4({
 export function EncounterHero({ patient, encounter, identity }: { patient: Patient; encounter: Appointment; identity: ProfessionalIdentity | null }) {
   const when = encounterTemporalLabel(encounter);
   return (
-    <header className="overflow-hidden rounded-[22px] border border-aqua/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-aqua)_9%,var(--color-panel)),var(--color-panel)_58%,color-mix(in_srgb,var(--color-mint)_5%,var(--color-panel)))] shadow-[0_16px_40px_rgba(0,0,0,0.05)]">
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 lg:px-5">
+    <header className="overflow-hidden rounded-[18px] border border-aqua/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-aqua)_9%,var(--color-panel)),var(--color-panel)_58%,color-mix(in_srgb,var(--color-mint)_5%,var(--color-panel)))] shadow-sm">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 lg:px-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-aqua/35 bg-aqua/[0.08] px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-aqua">Consulta em andamento</span><span className="font-mono text-[10.5px] text-fog">{when}</span></div>
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1"><h1 className="font-display text-[22px] font-bold tracking-tight text-paper">{patient.preferredName || patient.nome}</h1><p className="text-[11.5px] text-fog">{encounter.tipo} · {encounter.inicio.slice(0, 5)}–{encounter.fim.slice(0, 5)}</p></div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><h1 className="font-display text-[20px] font-bold tracking-tight text-paper">{patient.preferredName || patient.nome}</h1><p className="text-[11px] text-fog">{encounter.tipo} · {encounter.inicio.slice(0, 5)}–{encounter.fim.slice(0, 5)}</p></div>
         </div>
         <div className="rounded-xl border border-line/70 bg-deep/35 px-3 py-2 text-right">
           <p className="text-[9px] uppercase tracking-[0.1em] text-fog">Identidade clínica</p>
@@ -306,8 +306,8 @@ export function EncounterHero({ patient, encounter, identity }: { patient: Patie
 
 function EncounterSection({ id, eyebrow, title, detail, children }: { id: string; eyebrow: string; title: string; detail: string; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-36 rounded-[22px] border border-line/70 bg-panel p-4 sm:p-5">
-      <div className="mb-4">
+    <section id={id} className="scroll-mt-28 rounded-[18px] border border-line/70 bg-panel p-3.5 sm:p-4">
+      <div className="mb-3">
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">{eyebrow}</p>
         <h2 className="mt-1 font-display text-[18px] font-semibold text-paper">{title}</h2>
         <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{detail}</p>
@@ -331,15 +331,15 @@ function ConsultationStateCard({
     : { label: 'Registro em elaboração', className: 'border-amber/30 text-amber' };
 
   return (
-    <div className="rounded-[20px] border border-line/70 bg-panel p-4">
+    <div className="rounded-[18px] border border-line/70 bg-panel p-3">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Estado da consulta</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-1.5">
         <Chip className={persistence.className}>{persistence.label}</Chip>
         {hasLinkedEvolution && <ClosingChip closing={closing} />}
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-fog">{hasLinkedEvolution ? 'A evolução está vinculada a este atendimento.' : 'Registre a consulta e conclua quando o conteúdo estiver pronto.'}</p>
-      {!hasLinkedEvolution && <Btn className="mt-3 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para o registro</Btn>}
-      <a href="#encounter-closing" className="mt-3 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver encerramento ↓</a>
+      <p className="mt-2 text-[11px] leading-relaxed text-fog">{hasLinkedEvolution ? 'Evolução vinculada a este atendimento.' : 'Registre e conclua quando estiver pronto.'}</p>
+      {!hasLinkedEvolution && <Btn className="mt-2 w-full" variant="subtle" onClick={onRegisterEvolution}>Ir para o registro</Btn>}
+      <a href="#encounter-closing" className="mt-2 inline-flex text-[11px] font-semibold text-aqua hover:underline">Ver encerramento ↓</a>
     </div>
   );
 }

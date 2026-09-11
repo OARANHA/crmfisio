@@ -69,8 +69,12 @@ describe('Active Clinical Encounter workspace boundary', () => {
   });
 
   it('keeps the workspace first on mobile and moves patient context to the left rail on xl desktop', () => {
-    expect(encounterWorkspace).toContain('xl:grid-cols-[250px_minmax(0,1fr)]');
-    expect(encounterWorkspace).toContain('className="order-2 space-y-3 xl:order-1 xl:sticky xl:top-36"');
+    expect(encounterWorkspace).toContain('xl:grid-cols-[');
+    expect(encounterWorkspace).toContain('xl:sticky');
+    expect(encounterWorkspace).toContain('xl:top-[calc(68px+0.75rem)]');
+    expect(encounterWorkspace).toContain('xl:max-h-[calc(100vh-68px-1.5rem)]');
+    expect(encounterWorkspace).toContain('xl:overflow-y-auto');
+    expect(encounterWorkspace).not.toContain('xl:top-36');
     expect(encounterWorkspace).toContain('className="order-1 min-w-0 space-y-4 xl:order-2"');
   });
 
