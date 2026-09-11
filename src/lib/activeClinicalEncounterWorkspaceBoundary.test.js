@@ -70,11 +70,15 @@ describe('Active Clinical Encounter workspace boundary', () => {
 
   it('keeps the workspace first on mobile and moves patient context to the left rail on xl desktop', () => {
     expect(encounterWorkspace).toContain('xl:grid-cols-[');
-    expect(encounterWorkspace).toContain('xl:sticky');
-    expect(encounterWorkspace).toContain('xl:top-[calc(68px+0.75rem)]');
-    expect(encounterWorkspace).toContain('xl:max-h-[calc(100vh-68px-1.5rem)]');
+    const hero = encounterWorkspace.slice(encounterWorkspace.indexOf('<EncounterHero'), encounterWorkspace.indexOf('<div className="grid items-start'));
+    expect(hero).not.toContain('sticky');
+    expect(encounterWorkspace).toContain('aria-label="Contexto persistente da consulta"');
+    expect(encounterWorkspace).toContain('xl:sticky xl:top-3');
+    expect(encounterWorkspace).toContain('xl:max-h-[calc(100vh-1.5rem)]');
     expect(encounterWorkspace).toContain('xl:overflow-y-auto');
-    expect(encounterWorkspace).not.toContain('xl:top-36');
+    expect(encounterWorkspace).toContain('aria-label="Workspaces da consulta"');
+    expect(encounterWorkspace).toContain('xl:sticky xl:top-3 xl:z-20');
+    expect(encounterWorkspace).not.toContain('68px+0.75rem');
     expect(encounterWorkspace).toContain('className="order-1 min-w-0 space-y-4 xl:order-2"');
   });
 
