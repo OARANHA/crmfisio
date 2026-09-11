@@ -145,4 +145,3 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(workspace).toContain('[patient.id, user?.id]');
   });
 });
-300b7d143117f7e40f14edf77dec6ade41ed9a1d
