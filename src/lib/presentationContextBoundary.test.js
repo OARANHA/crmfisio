@@ -47,6 +47,8 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(shellSource).toContain('lg:hidden">');
     expect(shellSource).toContain('aria-label="Expandir barra lateral para trocar unidade"');
     expect(shellSource).toContain('title="Trocar unidade"');
+    expect(shellSource).toContain('collapsed ? \'flex flex-col items-center gap-2\' : \'flex items-center gap-3\'');
+    expect(shellSource).toContain('collapsed ? (\n            <div className="flex justify-center">');
   });
 
   it('keeps presentation switching independent of navigation hacks', () => {

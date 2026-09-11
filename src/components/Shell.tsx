@@ -369,9 +369,11 @@ export function Shell() {
         <div className="space-y-3 border-t border-line/60 p-3.5">
           {showPresentationControl && <div className={collapsed ? 'flex justify-center' : ''}><PresentationModeControl compact={collapsed} /></div>}
           {collapsed ? (
-            <button type="button" onClick={toggleCollapsed} className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral para trocar unidade" title="Trocar unidade">
-              <IconSettings className="h-4.5 w-4.5" />
-            </button>
+            <div className="flex justify-center">
+              <button type="button" onClick={toggleCollapsed} className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral para trocar unidade" title="Trocar unidade">
+                <IconSettings className="h-4.5 w-4.5" />
+              </button>
+            </div>
           ) : (
             <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!min-h-10 !w-full !py-2 !text-[13px]" title="Filtrar por unidade">
               <option value="all">Todas as unidades</option>
@@ -382,7 +384,7 @@ export function Shell() {
             <ThemeButton theme={theme} onToggle={toggleTheme} />
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog" title="Notificações" aria-label="Notificações"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
-          <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
+          <div className={collapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'}>
             <span className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-[13px] text-on-accent shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>
               {effectiveUser.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
             </span>
