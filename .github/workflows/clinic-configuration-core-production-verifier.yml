@@ -1,0 +1,84 @@
+name: Clinic Configuration Core Production Verifier
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-verifiers/VERIFY_20260911_CLINIC_CONFIGURATION_CORE_PRODUCTION.sql'
+      - 'scripts/verify-clinic-configuration-core-production.sh'
+      - '.github/workflows/clinic-configuration-core-production-verifier.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-16-read-only:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinic_configuration_core_production_verify_test
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert verifier is explicitly read-only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('supabase-verifiers/VERIFY_20260911_CLINIC_CONFIGURATION_CORE_PRODUCTION.sql')
+          text = path.read_text(encoding='utf-8')
+
+          required = [
+              r'(?m)^BEGIN;\s*$',
+              r'(?m)^SET TRANSACTION READ ONLY;\s*$',
+              r'(?m)^ROLLBACK;\s*$',
+              r'CLINIC CONFIGURATION CORE PRODUCTION VERIFY PASSED',
+          ]
+          for pattern in required:
+              if not re.search(pattern, text):
+                  raise SystemExit(f'missing required read-only verifier marker: {pattern}')
+
+          forbidden = re.compile(
+              r'(?im)^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COPY|CALL|VACUUM|ANALYZE|REFRESH)\b'
+          )
+          matches = forbidden.findall(text)
+          if matches:
+              raise SystemExit(f'production verifier contains mutating SQL statements: {matches}')
+          PY
+
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres "$PGDATABASE"
+
+      - name: Install CI fixture and Clinic Configuration Core migration
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -f tests/sql/clinic_configuration_core_fixture.sql
+          psql -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_clinic_configuration_core.sql
+
+      - name: Run production-safe verifier
+        run: bash scripts/verify-clinic-configuration-core-production.sh
+
+      - name: Prove partial weekly configuration is informational, not corruption
+        run: |
+          psql -v ON_ERROR_STOP=1 -X <<'SQL'
+          DELETE FROM public.clinic_opening_hours
+          WHERE ctid IN (
+            SELECT ctid
+            FROM public.clinic_opening_hours
+            ORDER BY clinic_id, day_of_week
+            LIMIT 1
+          );
+          SQL
+          bash scripts/verify-clinic-configuration-core-production.sh
