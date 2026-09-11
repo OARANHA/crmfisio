@@ -68,7 +68,7 @@ O Encounter Record é a unidade editável do novo atendimento. O profissional re
 
 ### Clinical Instrument Authorization Foundation (#399)
 
-Implementada no repositório, com rollout de migration ainda pendente em produção.
+Implementada no repositório e presente no stack efetivo de produção.
 
 A foundation entrega:
 
@@ -83,6 +83,35 @@ A foundation entrega:
 Uma futura escala presente em `nexus_result_contracts` não é automaticamente exposta no catálogo clínico neutro.
 
 A #399 **não** implementa administração assistida, persistência multiprofissional nova, UI PHQ/GAD nem entrega remota.
+
+### Encounter Temporal Start Boundary (#400)
+
+A #400 foi implementada, mergeada e aplicada/verificada em produção.
+
+Contrato fechado:
+
+- fluxo normal não pode iniciar `em_atendimento` para appointment futuro;
+- `current_clinic_operational_date()` é a abstração canônica de data operacional;
+- o guard temporal protege somente a entrada em `em_atendimento`;
+- manutenção confiável possui bypass explícito controlado;
+- `can_apply_clinical_instrument_in_encounter(...)` também exige data do appointment não futura como defesa em profundidade;
+- o verifier histórico não congela a implementação de timezone e deve permanecer future-compatible.
+
+O fallback atual é `America/Sao_Paulo`. Timezone por clínica é evolução futura necessária antes de expansão geográfica relevante, não motivo para reabrir #400 agora.
+
+### Repair histórico pós-#400 (#402)
+
+O appointment futuro histórico conhecido que havia sido deixado em `em_atendimento` antes da #400 foi reparado em produção com preconditions fail-closed, audit trail canônico e verifier read-only.
+
+Resultado validado:
+
+- restore `em_atendimento → agendado`;
+- predecessor `agendado` comprovado pelo `appointment_status_history`;
+- assessment relacionado permaneceu `draft`, vazio e inalterado;
+- nenhuma dependência clínica/financeira/material apareceu;
+- verifier pós-repair passou.
+
+O repair está encerrado. Não repetir o script após o estado final validado.
 
 ### Assessment Engine
 
@@ -116,8 +145,9 @@ Antes de ampliar o piloto:
 - registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
 - atualizar/versionar o verifier antigo #388 cuja assertion sobre ausência da RPC #389 ficou obsoleta;
 - fazer smoke visual/uso real do Consultório/Gestão #396;
-- aplicar/verificar a migration #399 em produção somente após aprovação/merge explícitos;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
+
+#399, #400 e o repair #402 não permanecem como rollout pendente neste estágio.
 
 ### Validação UX
 
@@ -131,63 +161,13 @@ Antes de ampliar o piloto:
 
 ## NEXT PRODUCT SLICES
 
-### 1. Encounter UX / clinical-professional ergonomics
+### 1. Clinician-Assisted Administration — PHQ-9 / GAD-7
 
-Aprimorar o ambiente de atendimento com evidência de profissionais reais, sem trocar o lifecycle já fechado.
+Esta é a próxima slice funcional do eixo de instrumentos após a foundation #399.
 
-Prioridades:
+Objetivo: permitir administração presencial/assistida do mesmo instrumento durante o atendimento, sem depender de celular/WhatsApp e sem duplicar definição/scoring.
 
-- menos navegação e contexto persistente do paciente/appointment;
-- leitura longitudinal eficiente;
-- correção/adendo auditável de Encounter Record finalizado;
-- linguagem e ergonomia adequadas a diferentes profissionais;
-- autoentrada em Consultório apenas quando houver callback canônico único pós-início/continuação do Encounter.
-
-### 2. Cobertura deste atendimento
-
-Adicionar informação financeira **contextual ao Encounter**, não o Financeiro global.
-
-Mostrar somente o necessário ao atendimento atual, como particular/pacote e estado de cobertura permitido. Preservar #388/#389 e o privacy shell: saldo global, faturamento, lucro, repasse de outros profissionais e caixa da clínica continuam fora do Consultório.
-
-### 3. Clinical Instruments — PHQ-9 / GAD-7
-
-Instrumentos como PHQ-9/GAD-7 são potencialmente multiprofissionais conforme finalidade clínica, protocolo/configuração e contexto. Exemplos de contextos relevantes incluem Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental, Enfermagem em APS/Saúde da Família e outros profissionais quando houver indicação/protocolo apropriado.
-
-Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**. Enfermagem ainda não foi adicionada à identidade profissional suportada pelo runtime nesta slice.
-
-Estado canônico deste eixo:
-
-```text
-[x] Clinical Instrument Authorization Foundation (#399)
-[ ] Clinician-Assisted Administration
-[ ] Encounter Instrument UX
-[ ] Consultório V5 integration/polish
-```
-
-A foundation #399 está implementada no repositório, mas sua migration ainda não foi aplicada em produção. Nenhuma administração de PHQ/GAD, persistência multiprofissional nova ou entrega remota foi implementada.
-
-#### 3.1 Clinical Instrument Authorization Foundation — entregue no repositório
-
-A autoridade clínica neutra e o primeiro boundary contextual foram implementados separadamente do namespace `nexus.*`.
-
-Contrato preservado:
-
-- C-01…C-06 intactos;
-- nenhum `nexus.*` concedido apenas para aplicação de PHQ-9/GAD-7;
-- profissão/especialidade continuam identidade/relevância, nunca grant;
-- `clinical_instrument_catalog` controla exposição multiprofissional explícita e não infere exposição do registry Nexus;
-- configuração da clínica controla disponibilidade institucional via `clinic_clinical_instrument_settings`;
-- `clinical.instrument.apply` controla autorização base;
-- Apply in Encounter exige profissional atribuído + `em_atendimento`;
-- entitlement comercial continua conceito separado da autorização clínica.
-
-A engine Nexus permanece a fonte técnica de definição/versionamento/scoring de PHQ-9/GAD-7. O catálogo neutro referencia esses contratos; não os reimplementa.
-
-#### 3.2 Clinician-Assisted Administration
-
-Próxima slice deste eixo: permitir a administração presencial do mesmo instrumento durante o atendimento, sem depender de celular/WhatsApp.
-
-Contrato de produto esperado:
+Contrato esperado:
 
 - respostas pertencem ao paciente;
 - profissional administra/registra as respostas;
@@ -197,11 +177,14 @@ Contrato de produto esperado:
 - provenance diferenciada, conceitualmente `patient_self` ou `clinician_assisted`;
 - autoria do ato profissional preservada;
 - resultado não equivale a diagnóstico automático;
-- nenhuma flexibilização da persistência doctor-only Nexus apenas para obter multiprofissionalidade; se necessário, persistência clínica neutra será uma slice própria.
+- persistência canônica definida antes da UI;
+- nenhuma flexibilização da persistência doctor-only Nexus apenas para obter multiprofissionalidade.
 
-#### 3.3 Encounter Instrument UX
+Requisito de segurança PHQ-9: resposta positiva ao item 9 deve permanecer visível e gerar destaque para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
-Depois da operação canônica existir, expor no atendimento o instrumento com UX adequada. A direção continua:
+### 2. Encounter Instrument UX
+
+Depois da operação canônica existir, expor no atendimento o instrumento com UX adequada:
 
 ```text
 PHQ-9
@@ -211,15 +194,32 @@ GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
 
-`Enviar ao paciente` ainda não possui boundary nesta roadmap slice implementada e não deve herdar automaticamente o requisito de appointment ativo do Apply in Encounter.
+`Aplicar agora` usa o boundary do Encounter. `Enviar ao paciente` ainda deve nascer como boundary contextual separado; não herdar automaticamente appointment ativo como requisito universal.
 
-O modo de aplicação não muda identidade, versão nem scoring do instrumento. A UI deve diferenciar autorização de relevância e não deve duplicar PHQ-9/GAD-7 dentro do Assessment Engine.
+A UI deve distinguir autorização de relevância e não duplicar PHQ-9/GAD-7 dentro do Assessment Engine.
 
-Requisito futuro de segurança do PHQ-9: resposta positiva ao item 9 deve permanecer visível e gerar destaque para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
+### 3. Encounter UX / clinical-professional ergonomics
 
-#### 3.4 Consultório V5 integration/polish
+Aprimorar o ambiente de atendimento com evidência de profissionais reais, sem trocar o lifecycle já fechado.
 
-Direção de UX futura, não implementação atual:
+Prioridades:
+
+- menos navegação e contexto persistente do paciente/appointment;
+- leitura longitudinal eficiente;
+- correção/adendo auditável de Encounter Record finalizado;
+- linguagem e ergonomia adequadas a diferentes profissionais;
+- autoentrada em Consultório apenas quando houver callback canônico único pós-início/continuação do Encounter;
+- antes de expansão fora do timezone atual, evoluir data operacional para timezone por clínica sem regredir #400.
+
+### 4. Cobertura deste atendimento
+
+Adicionar informação financeira **contextual ao Encounter**, não o Financeiro global.
+
+Mostrar somente o necessário ao atendimento atual, como particular/pacote e estado de cobertura permitido. Preservar #388/#389 e o privacy shell: saldo global, faturamento, lucro, repasse de outros profissionais e caixa da clínica continuam fora do Consultório.
+
+### 5. Consultório V5 integration/polish
+
+Direção de UX futura:
 
 ```text
 um Encounter
@@ -234,15 +234,15 @@ um Encounter
 
 Absorver ergonomia do MedicsPro histórico sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou outros contratos legados.
 
-### 4. Prescription V1
+### 6. Prescription V1
 
 Implementar a primeira fatia de prescrição com contrato canônico, autoria, emitente, lifecycle/histórico e regras server-side adequadas. UX histórica pode inspirar ergonomia; arquitetura e autorização atuais prevalecem.
 
-### 5. Demais documentos médicos conforme piloto
+### 7. Demais documentos médicos conforme piloto
 
 Priorizar atestado/declaração, solicitação de exames, relatório/laudo e outros documentos somente conforme demanda observada e requisitos aplicáveis. Evitar vários módulos superficiais ao mesmo tempo.
 
-### 6. Finance Configuration
+### 8. Finance Configuration
 
 Evoluir configuração financeira sem transformar relação econômica em role:
 
@@ -254,11 +254,11 @@ Evoluir configuração financeira sem transformar relação econômica em role:
 
 Não assumir comissão fixa canônica.
 
-### 7. Onboarding e pilot friction
+### 9. Onboarding e pilot friction
 
 Reduzir tempo de setup e suporte para a primeira clínica/profissional. Tratar as maiores fricções encontradas no piloto antes de ampliar integrações secundárias.
 
-### 8. Financeiro avançado e integrações por evidência
+### 10. Financeiro avançado e integrações por evidência
 
 Somente depois do núcleo acima e com demanda do piloto:
 
