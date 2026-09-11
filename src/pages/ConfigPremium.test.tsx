@@ -49,7 +49,7 @@ describe('ConfigPremium', () => {
     expect(renderer.root.findByProps({ 'data-testid': 'team-admin' })).toBeTruthy();
 
     clickSection(renderer, 'Agenda & Atendimento');
-    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure-admin' }).children).toContain('infrastructure-rooms');
+    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure-admin' }).children.join('')).toBe('infrastructure-rooms');
 
     clickSection(renderer, 'Modelos Clínicos');
     expect(renderer.root.findByProps({ 'data-testid': 'storage-admin' })).toBeTruthy();
