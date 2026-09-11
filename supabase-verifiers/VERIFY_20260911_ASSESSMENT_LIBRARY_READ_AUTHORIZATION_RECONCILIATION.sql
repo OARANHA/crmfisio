@@ -61,16 +61,26 @@ BEGIN
 END $$;
 
 \echo '2) active professional can read platform library without cross-tenant leakage'
-SELECT p.id AS verification_professional_id
-FROM public.profiles p
-WHERE p.ativo IS TRUE
-  AND p.clinic_id IS NOT NULL
-  AND p.role::text = 'professional'
-ORDER BY p.id
-LIMIT 1
+SELECT
+  EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.ativo IS TRUE
+      AND p.clinic_id IS NOT NULL
+      AND p.role::text = 'professional'
+  ) AS verification_professional_available,
+  COALESCE((
+    SELECT p.id::text
+    FROM public.profiles p
+    WHERE p.ativo IS TRUE
+      AND p.clinic_id IS NOT NULL
+      AND p.role::text = 'professional'
+    ORDER BY p.id
+    LIMIT 1
+  ), '00000000-0000-0000-0000-000000000000') AS verification_professional_id
 \gset
 
-\if :{?verification_professional_id}
+\if :verification_professional_available
 BEGIN;
 SELECT set_config(
   'request.jwt.claims',
@@ -127,15 +137,24 @@ ROLLBACK;
 \endif
 
 \echo '3) disabled professional remains fail-closed when one is available'
-SELECT p.id AS verification_disabled_id
-FROM public.profiles p
-WHERE p.ativo IS FALSE
-  AND p.role::text = 'professional'
-ORDER BY p.id
-LIMIT 1
+SELECT
+  EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.ativo IS FALSE
+      AND p.role::text = 'professional'
+  ) AS verification_disabled_available,
+  COALESCE((
+    SELECT p.id::text
+    FROM public.profiles p
+    WHERE p.ativo IS FALSE
+      AND p.role::text = 'professional'
+    ORDER BY p.id
+    LIMIT 1
+  ), '00000000-0000-0000-0000-000000000000') AS verification_disabled_id
 \gset
 
-\if :{?verification_disabled_id}
+\if :verification_disabled_available
 BEGIN;
 SELECT set_config(
   'request.jwt.claims',
