@@ -1,0 +1,94 @@
+name: Assessment Library Read Authorization Reconciliation
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260911_assessment_library_read_authorization_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260911_ASSESSMENT_LIBRARY_READ_AUTHORIZATION_RECONCILIATION.sql'
+      - 'tests/sql/assessment_library_read_authorization_reconciliation_fixture.sql'
+      - '.github/workflows/assessment-library-read-authorization-reconciliation.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: assessment_library_read_reconciliation_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create isolated PostgreSQL 16 database
+        env:
+          PGDATABASE: postgres
+        run: createdb assessment_library_read_reconciliation_test
+
+      - name: Reproduce legacy effective-policy drift
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -f tests/sql/assessment_library_read_authorization_reconciliation_fixture.sql
+          psql -v ON_ERROR_STOP=1 -X <<'SQL'
+          BEGIN;
+          SELECT set_config(
+            'request.jwt.claims',
+            jsonb_build_object(
+              'sub', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+              'role', 'authenticated'
+            )::text,
+            true
+          );
+          SET LOCAL ROLE authenticated;
+          DO $$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM public.assessment_templates) THEN
+              RAISE EXCEPTION 'fixture_failed_to_reproduce_template_read_drift';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.assessment_template_versions) THEN
+              RAISE EXCEPTION 'fixture_failed_to_reproduce_version_read_drift';
+            END IF;
+          END $$;
+          ROLLBACK;
+          SQL
+
+      - name: Apply reconciliation twice
+        run: |
+          psql -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_assessment_library_read_authorization_reconciliation.sql
+          psql -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_assessment_library_read_authorization_reconciliation.sql
+
+      - name: Prove write-management policy was untouched
+        run: |
+          psql -v ON_ERROR_STOP=1 -X <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_policies
+              WHERE schemaname = 'public'
+                AND tablename = 'assessment_templates'
+                AND policyname = 'assessment_templates_insert_manager_sentinel'
+                AND cmd = 'INSERT'
+            ) THEN
+              RAISE EXCEPTION 'assessment_template_write_boundary_was_modified';
+            END IF;
+          END $$;
+          SQL
+
+      - name: Run reconciliation verifier
+        run: psql -v ON_ERROR_STOP=1 -X -f supabase-verifiers/VERIFY_20260911_ASSESSMENT_LIBRARY_READ_AUTHORIZATION_RECONCILIATION.sql
