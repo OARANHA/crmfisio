@@ -2,7 +2,7 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const testState = vi.hoisted(() => ({
-  role: 'owner',
+  user: { id: 'user-a', role: 'owner', name: 'Test User' },
   toast: vi.fn(),
   updateIdentity: vi.fn(),
   saveHours: vi.fn(),
@@ -18,9 +18,7 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock('../../lib/currentUserAccess', () => ({
-  useCurrentUserAccess: () => ({
-    user: { id: 'user-a', role: testState.role, name: 'Test User' },
-  }),
+  useCurrentUserAccess: () => ({ user: testState.user }),
 }));
 
 vi.mock('../../lib/toastContext', () => ({
@@ -76,7 +74,7 @@ function buttonByText(renderer: ReactTestRenderer, text: string) {
 
 describe('ClinicGeneralAdmin', () => {
   beforeEach(() => {
-    testState.role = 'owner';
+    testState.user.role = 'owner';
     testState.toast.mockClear();
     testState.updateIdentity.mockReset();
     testState.updateIdentity.mockImplementation(async (input) => ({ id: 'clinic-a', ...input }));
@@ -123,7 +121,7 @@ describe('ClinicGeneralAdmin', () => {
   });
 
   it('keeps non-admin clinic roles read-only and exposes no mutation actions', async () => {
-    testState.role = 'fisio';
+    testState.user.role = 'fisio';
     const renderer = await renderGeneral();
     const rendered = JSON.stringify(renderer.toJSON());
 
