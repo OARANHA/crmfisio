@@ -1,0 +1,27 @@
+name: MedicsPro Assessment Library V1 PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260911_medicspro_general_psychiatric_assessments_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260911_MEDICSPRO_GENERAL_PSYCHIATRIC_ASSESSMENTS_V1.sql'
+      - 'tests/sql/medicspro_assessment_library_v1_fixture.sql'
+      - 'tests/sql/verify_medicspro_assessment_library_v1_idempotency.sql'
+      - '.github/workflows/medicspro-assessment-library-v1.yml'
+jobs:
+  idempotency:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres }
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGPASSWORD: postgres }
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -X -f tests/sql/medicspro_assessment_library_v1_fixture.sql
+      - run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -X -f supabase-migrations/20260911_medicspro_general_psychiatric_assessments_v1.sql
+      - run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -X -f supabase-verifiers/VERIFY_20260911_MEDICSPRO_GENERAL_PSYCHIATRIC_ASSESSMENTS_V1.sql
+      - run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -X -f tests/sql/verify_medicspro_assessment_library_v1_idempotency.sql
