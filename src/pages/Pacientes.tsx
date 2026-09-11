@@ -128,12 +128,14 @@ function Pep({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
-      <Reveal>
-        <Link to="/pacientes" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fog transition-colors hover:text-mint">
-          <IconChevronL className="h-4 w-4" /> Pacientes
-        </Link>
-        {!inOwnEncounter && <div className="mt-2"><PatientProfileHeader patient={patient} /></div>}
-      </Reveal>
+      {!inOwnEncounter && (
+        <Reveal>
+          <Link to="/pacientes" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fog transition-colors hover:text-mint">
+            <IconChevronL className="h-4 w-4" /> Pacientes
+          </Link>
+          <div className="mt-2"><PatientProfileHeader patient={patient} /></div>
+        </Reveal>
+      )}
 
       {!inOwnEncounter && (
         <>
