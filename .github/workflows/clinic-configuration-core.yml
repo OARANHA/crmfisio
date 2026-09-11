@@ -1,0 +1,43 @@
+name: Clinic Configuration Core V1
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/ConfigPremium.tsx'
+      - 'src/components/InfrastructureAdmin.tsx'
+      - 'src/components/configuration/**'
+      - 'src/lib/clinicConfiguration.ts'
+      - 'supabase-migrations/20260911_clinic_configuration_core.sql'
+      - 'supabase-verifiers/VERIFY_20260911_CLINIC_CONFIGURATION_CORE.sql'
+      - 'tests/sql/clinic_configuration_core_fixture.sql'
+      - 'scripts/test-clinic-configuration-core.sh'
+      - '.github/workflows/clinic-configuration-core.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinic_configuration_core_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres clinic_configuration_core_test
+      - name: Run migration and authorization verifier
+        run: bash scripts/test-clinic-configuration-core.sh
