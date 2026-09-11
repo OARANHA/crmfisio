@@ -88,7 +88,7 @@ describe('ClinicGeneralAdmin', () => {
 
     expect(rendered).toContain('Informações da clínica');
     expect(rendered).toContain('Horário de funcionamento');
-    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure' }).children).toContain('units:editable');
+    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure' }).children.join('')).toBe('units:editable');
     expect(renderer.root.findAllByType('input').filter((input) => input.props.type === 'checkbox')).toHaveLength(7);
   });
 
@@ -121,12 +121,12 @@ describe('ClinicGeneralAdmin', () => {
   });
 
   it('keeps non-admin clinic roles read-only and exposes no mutation actions', async () => {
-    testState.user.role = 'fisio';
+    testState.user.role = 'professional';
     const renderer = await renderGeneral();
     const rendered = JSON.stringify(renderer.toJSON());
 
     expect(rendered).toContain('Somente leitura');
-    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure' }).children).toContain('units:readonly');
+    expect(renderer.root.findByProps({ 'data-testid': 'infrastructure' }).children.join('')).toBe('units:readonly');
     expect(buttonByText(renderer, 'Salvar informações')).toBeUndefined();
     expect(buttonByText(renderer, 'Salvar horários')).toBeUndefined();
     expect(testState.updateIdentity).not.toHaveBeenCalled();
