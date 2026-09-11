@@ -25,7 +25,7 @@ function clickSection(renderer: ReactTestRenderer, label: string) {
 }
 
 describe('ConfigPremium', () => {
-  it('starts in General and exposes only functional domains', () => {
+  it('starts in General and exposes only functional configuration areas', () => {
     const renderer = create(<ConfigPremium />);
     expect(renderer.root.findByProps({ 'data-testid': 'clinic-general' })).toBeTruthy();
 
@@ -35,14 +35,16 @@ describe('ConfigPremium', () => {
     expect(labels).toContain('Geral');
     expect(labels).toContain('Equipe & Acessos');
     expect(labels).toContain('Agenda & Atendimento');
-    expect(labels).toContain('Modelos Clínicos');
+    expect(labels).toContain('Anamneses & Avaliações');
+    expect(labels).toContain('Termos');
     expect(labels).toContain('Governança');
+    expect(labels).not.toContain('Prescrições');
     expect(labels).not.toContain('Comunicação');
     expect(labels).not.toContain('Financeiro');
     expect(labels).not.toContain('Integrações');
   });
 
-  it('preserves team, infrastructure, clinical models and governance composition', () => {
+  it('keeps each functional domain in a single active workspace', () => {
     const renderer = create(<ConfigPremium />);
 
     clickSection(renderer, 'Equipe & Acessos');
@@ -51,12 +53,16 @@ describe('ConfigPremium', () => {
     clickSection(renderer, 'Agenda & Atendimento');
     expect(renderer.root.findByProps({ 'data-testid': 'infrastructure-admin' }).children.join('')).toBe('infrastructure-rooms');
 
-    clickSection(renderer, 'Modelos Clínicos');
-    expect(renderer.root.findByProps({ 'data-testid': 'storage-admin' })).toBeTruthy();
+    clickSection(renderer, 'Anamneses & Avaliações');
     expect(renderer.root.findByProps({ 'data-testid': 'assessment-admin' })).toBeTruthy();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'consent-admin' })).toHaveLength(0);
+
+    clickSection(renderer, 'Termos');
     expect(renderer.root.findByProps({ 'data-testid': 'consent-admin' })).toBeTruthy();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'assessment-admin' })).toHaveLength(0);
 
     clickSection(renderer, 'Governança');
+    expect(renderer.root.findByProps({ 'data-testid': 'storage-admin' })).toBeTruthy();
     expect(renderer.root.findByProps({ 'data-testid': 'governance' })).toBeTruthy();
   });
 });
