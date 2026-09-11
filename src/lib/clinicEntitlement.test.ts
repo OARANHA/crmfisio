@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCurrentClinicEntitlementAllowed, type CurrentClinicEntitlementState } from './clinicEntitlement';
+import { isCurrentClinicEntitlementAllowed, isCustomAssessmentAuthoringAllowed, type CurrentClinicEntitlementState } from './clinicEntitlement';
 
 const state = (overrides: Partial<CurrentClinicEntitlementState>): CurrentClinicEntitlementState => ({
   clinicId: 'clinic-1',
@@ -12,6 +12,20 @@ const state = (overrides: Partial<CurrentClinicEntitlementState>): CurrentClinic
   expiresAt: null,
   updatedAt: null,
   ...overrides,
+});
+
+describe('isCustomAssessmentAuthoringAllowed', () => {
+  it('fails closed while assessments.custom is not configured', () => {
+    expect(isCustomAssessmentAuthoringAllowed(state({
+      key: 'assessments.custom', configured: false, enabled: false, effective: false, source: null,
+    }))).toBe(false);
+  });
+
+  it('allows only an explicit effective assessments.custom entitlement', () => {
+    expect(isCustomAssessmentAuthoringAllowed(state({ key: 'assessments.custom' }))).toBe(true);
+    expect(isCustomAssessmentAuthoringAllowed(state({ key: 'assessments.custom', enabled: false, effective: false }))).toBe(false);
+    expect(isCustomAssessmentAuthoringAllowed(state({ key: 'assessments.custom', effective: false }))).toBe(false);
+  });
 });
 
 describe('isCurrentClinicEntitlementAllowed', () => {
