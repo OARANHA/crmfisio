@@ -1,0 +1,1 @@
+CREATE TEMP TABLE library_v1_before AS SELECT t.id, t.name, t.owner_type, t.status, t.specialty, v.id version_id, v.version, v.schema, v.published_at FROM public.assessment_templates t JOIN public.assessment_template_versions v ON v.template_id=t.id WHERE t.id IN ('10000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000004');
