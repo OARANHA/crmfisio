@@ -17,7 +17,14 @@ import { resolveClinicId } from '../lib/repository';
 import type { Room } from '../lib/types';
 import { Btn, Card, CardHead, Field, Input, Select } from '../lib/ui';
 
-export function InfrastructureAdmin() {
+export type InfrastructureAdminMode = 'all' | 'units' | 'rooms';
+
+type InfrastructureAdminProps = {
+  mode?: InfrastructureAdminMode;
+  readOnly?: boolean;
+};
+
+export function InfrastructureAdmin({ mode = 'all', readOnly = false }: InfrastructureAdminProps) {
   const { user } = useCurrentUserAccess();
   const { toast } = useToast();
   const { refreshInfrastructure: refreshAppInfrastructure } = useInfrastructure();
@@ -34,6 +41,9 @@ export function InfrastructureAdmin() {
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState<Room['tipo']>('sala');
 
+  const showUnits = mode === 'all' || mode === 'units';
+  const showRooms = mode === 'all' || mode === 'rooms';
+
   const refresh = useCallback(async (cid: string) => {
     const data = await loadInfrastructureAdmin(cid);
     setUnits(data.units);
@@ -44,7 +54,10 @@ export function InfrastructureAdmin() {
 
   useEffect(() => {
     let active = true;
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     resolveClinicId(user.id)
       .then(async (cid) => {
@@ -79,7 +92,7 @@ export function InfrastructureAdmin() {
   };
 
   const saveUnit = async () => {
-    if (!clinicId || !unitName.trim()) return;
+    if (readOnly || !clinicId || !unitName.trim()) return;
     setSaving(true);
     try {
       if (editingUnitId) {
@@ -101,7 +114,7 @@ export function InfrastructureAdmin() {
   };
 
   const saveRoom = async () => {
-    if (!clinicId || !roomUnitId || !roomName.trim()) return;
+    if (readOnly || !clinicId || !roomUnitId || !roomName.trim()) return;
     setSaving(true);
     try {
       if (editingRoomId) {
@@ -123,12 +136,14 @@ export function InfrastructureAdmin() {
   };
 
   const editUnit = (unit: UnitAdminRow) => {
+    if (readOnly) return;
     setEditingUnitId(unit.id);
     setUnitName(unit.nome);
     setUnitAddress(unit.endereco ?? '');
   };
 
   const editRoom = (room: RoomAdminRow) => {
+    if (readOnly) return;
     setEditingRoomId(room.id);
     setRoomUnitId(room.unit_id);
     setRoomName(room.nome);
@@ -136,7 +151,8 @@ export function InfrastructureAdmin() {
   };
 
   const toggleUnit = async (unit: UnitAdminRow) => {
-    if (unit.ativo && (roomsByUnit.get(unit.id) ?? []).some((r) => r.ativo)) {
+    if (readOnly) return;
+    if (unit.ativo && (roomsByUnit.get(unit.id) ?? []).some((room) => room.ativo)) {
       toast('Desative primeiro as salas e recursos ativos desta unidade.', 'warn');
       return;
     }
@@ -152,6 +168,7 @@ export function InfrastructureAdmin() {
   };
 
   const toggleRoom = async (room: RoomAdminRow) => {
+    if (readOnly) return;
     try {
       await setRoomActive(clinicId, room.id, !room.ativo);
       await refresh(clinicId);
@@ -163,90 +180,116 @@ export function InfrastructureAdmin() {
     }
   };
 
+  const title = mode === 'units' ? 'Unidades da clínica' : mode === 'rooms' ? 'Salas & recursos' : 'Estrutura da clínica';
+  const subtitle = mode === 'units'
+    ? 'sedes, filiais e locais de atendimento usados pela operação'
+    : mode === 'rooms'
+      ? 'salas e equipamentos vinculados às unidades da clínica'
+      : 'cadastre, edite e desative unidades, salas e equipamentos usados pela agenda';
+
   return (
     <Card>
-      <CardHead title="Estrutura da clínica" sub="cadastre, edite e desative unidades, salas e equipamentos usados pela agenda" />
+      <CardHead title={title} sub={subtitle} />
       {loading ? (
         <div className="p-5 font-mono text-[11px] text-fog">Carregando estrutura…</div>
       ) : (
-        <div className="p-5 space-y-6">
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="border border-line bg-deep p-4 space-y-3">
-              <div>
-                <p className="font-display font-semibold text-[14px]">{editingUnitId ? 'Editar unidade' : 'Cadastrar unidade'}</p>
-                <p className="text-[11.5px] text-fog mt-1">Sede, filial ou local de atendimento.</p>
-              </div>
-              <Field label="Nome da unidade"><Input value={unitName} onChange={(e) => setUnitName(e.target.value)} placeholder="Ex.: Unidade Centro" /></Field>
-              <Field label="Endereço"><Input value={unitAddress} onChange={(e) => setUnitAddress(e.target.value)} placeholder="Rua, número, cidade" /></Field>
-              <div className="flex flex-wrap gap-2">
-                <Btn onClick={saveUnit} disabled={saving || !unitName.trim()}>{editingUnitId ? 'Salvar alterações' : 'Cadastrar unidade'}</Btn>
-                {editingUnitId && <Btn variant="ghost" onClick={resetUnit}>Cancelar</Btn>}
-              </div>
-            </div>
-
-            <div className="border border-line bg-deep p-4 space-y-3">
-              <div>
-                <p className="font-display font-semibold text-[14px]">{editingRoomId ? 'Editar sala ou equipamento' : 'Cadastrar sala ou equipamento'}</p>
-                <p className="text-[11.5px] text-fog mt-1">Recurso físico reservado em cada sessão.</p>
-              </div>
-              <Field label="Unidade">
-                <Select value={roomUnitId} onChange={(e) => setRoomUnitId(e.target.value)}>
-                  <option value="">Selecionar…</option>
-                  {units.filter((u) => u.ativo || u.id === roomUnitId).map((u) => <option key={u.id} value={u.id}>{u.nome}{u.ativo ? '' : ' (inativa)'}</option>)}
-                </Select>
-              </Field>
-              <Field label="Nome"><Input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Ex.: Sala 1 — Cinesioterapia" /></Field>
-              <Field label="Tipo">
-                <Select value={roomType} onChange={(e) => setRoomType(e.target.value as Room['tipo'])}>
-                  <option value="sala">Sala</option>
-                  <option value="equipamento">Equipamento / recurso</option>
-                </Select>
-              </Field>
-              <div className="flex flex-wrap gap-2">
-                <Btn onClick={saveRoom} disabled={saving || !roomUnitId || !roomName.trim()}>{editingRoomId ? 'Salvar alterações' : 'Cadastrar recurso'}</Btn>
-                {editingRoomId && <Btn variant="ghost" onClick={resetRoom}>Cancelar</Btn>}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="font-display font-semibold text-[14px]">Estrutura cadastrada</p>
-            {units.length === 0 ? (
-              <div className="mt-3 border border-amber/35 bg-amber/[0.04] p-4 text-[12px] text-amber">Cadastre a primeira unidade e ao menos uma sala para liberar agendamentos.</div>
-            ) : (
-              <div className="mt-3 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {units.map((unit) => (
-                  <div key={unit.id} className={`border p-4 ${unit.ativo ? 'border-line bg-deep' : 'border-line/50 bg-deep/40 opacity-70'}`}>
-                    <div className="flex items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-display font-semibold text-[13.5px]">{unit.nome}</p>
-                        <p className="font-mono text-[10px] text-fog mt-1">{unit.endereco || 'Endereço não informado'}</p>
-                        <p className={`font-mono text-[9px] mt-1 ${unit.ativo ? 'text-mint' : 'text-fog'}`}>{unit.ativo ? 'ativa' : 'inativa'}</p>
-                      </div>
-                      <Btn variant="ghost" onClick={() => editUnit(unit)}>Editar</Btn>
-                      <Btn variant="ghost" onClick={() => toggleUnit(unit)}>{unit.ativo ? 'Desativar' : 'Reativar'}</Btn>
-                    </div>
-                    <div className="mt-3 space-y-1.5">
-                      {(roomsByUnit.get(unit.id) ?? []).length === 0 ? (
-                        <p className="font-mono text-[10px] text-amber">Nenhuma sala/recurso cadastrado</p>
-                      ) : (roomsByUnit.get(unit.id) ?? []).map((room) => (
-                        <div key={room.id} className={`border px-2.5 py-2 ${room.ativo ? 'border-line/70' : 'border-line/40 opacity-60'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11.5px] min-w-0 flex-1 truncate">{room.nome}</span>
-                            <span className="font-mono text-[9px] text-fog uppercase">{room.tipo}</span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Btn variant="ghost" onClick={() => editRoom(room)}>Editar</Btn>
-                            <Btn variant="ghost" onClick={() => toggleRoom(room)}>{room.ativo ? 'Desativar' : 'Reativar'}</Btn>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+        <div className="space-y-6 p-5">
+          {!readOnly && (
+            <div className={`grid gap-4 ${showUnits && showRooms ? 'lg:grid-cols-2' : ''}`}>
+              {showUnits && (
+                <div className="space-y-3 border border-line bg-deep p-4">
+                  <div>
+                    <p className="font-display text-[14px] font-semibold">{editingUnitId ? 'Editar unidade' : 'Cadastrar unidade'}</p>
+                    <p className="mt-1 text-[11.5px] text-fog">Sede, filial ou local de atendimento.</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <Field label="Nome da unidade"><Input value={unitName} onChange={(event) => setUnitName(event.target.value)} placeholder="Ex.: Unidade Centro" /></Field>
+                  <Field label="Endereço"><Input value={unitAddress} onChange={(event) => setUnitAddress(event.target.value)} placeholder="Rua, número, cidade" /></Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Btn onClick={saveUnit} disabled={saving || !unitName.trim()}>{editingUnitId ? 'Salvar alterações' : 'Cadastrar unidade'}</Btn>
+                    {editingUnitId && <Btn variant="ghost" onClick={resetUnit}>Cancelar</Btn>}
+                  </div>
+                </div>
+              )}
+
+              {showRooms && (
+                <div className="space-y-3 border border-line bg-deep p-4">
+                  <div>
+                    <p className="font-display text-[14px] font-semibold">{editingRoomId ? 'Editar sala ou equipamento' : 'Cadastrar sala ou equipamento'}</p>
+                    <p className="mt-1 text-[11.5px] text-fog">Recurso físico reservado em cada sessão.</p>
+                  </div>
+                  <Field label="Unidade">
+                    <Select value={roomUnitId} onChange={(event) => setRoomUnitId(event.target.value)}>
+                      <option value="">Selecionar…</option>
+                      {units.filter((unit) => unit.ativo || unit.id === roomUnitId).map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}{unit.ativo ? '' : ' (inativa)'}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Nome"><Input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="Ex.: Sala 1 — Cinesioterapia" /></Field>
+                  <Field label="Tipo">
+                    <Select value={roomType} onChange={(event) => setRoomType(event.target.value as Room['tipo'])}>
+                      <option value="sala">Sala</option>
+                      <option value="equipamento">Equipamento / recurso</option>
+                    </Select>
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Btn onClick={saveRoom} disabled={saving || !roomUnitId || !roomName.trim()}>{editingRoomId ? 'Salvar alterações' : 'Cadastrar recurso'}</Btn>
+                    {editingRoomId && <Btn variant="ghost" onClick={resetRoom}>Cancelar</Btn>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showUnits && (
+            <div>
+              <p className="font-display text-[14px] font-semibold">Unidades cadastradas</p>
+              {units.length === 0 ? (
+                <div className="mt-3 border border-amber/35 bg-amber/[0.04] p-4 text-[12px] text-amber">Nenhuma unidade cadastrada.</div>
+              ) : (
+                <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {units.map((unit) => (
+                    <div key={unit.id} className={`border p-4 ${unit.ativo ? 'border-line bg-deep' : 'border-line/50 bg-deep/40 opacity-70'}`}>
+                      <p className="font-display text-[13.5px] font-semibold">{unit.nome}</p>
+                      <p className="mt-1 font-mono text-[10px] text-fog">{unit.endereco || 'Endereço não informado'}</p>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <span className={`font-mono text-[9px] ${unit.ativo ? 'text-mint' : 'text-fog'}`}>{unit.ativo ? 'ativa' : 'inativa'} · {(roomsByUnit.get(unit.id) ?? []).length} recurso(s)</span>
+                        {!readOnly && <div className="flex gap-2"><Btn variant="ghost" onClick={() => editUnit(unit)}>Editar</Btn><Btn variant="ghost" onClick={() => toggleUnit(unit)}>{unit.ativo ? 'Desativar' : 'Reativar'}</Btn></div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showRooms && (
+            <div>
+              <p className="font-display text-[14px] font-semibold">Salas e recursos cadastrados</p>
+              {units.length === 0 ? (
+                <div className="mt-3 border border-amber/35 bg-amber/[0.04] p-4 text-[12px] text-amber">Cadastre uma unidade em Geral antes de incluir salas ou recursos.</div>
+              ) : (
+                <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {units.map((unit) => (
+                    <div key={unit.id} className="border border-line bg-deep p-4">
+                      <p className="font-display text-[13.5px] font-semibold">{unit.nome}</p>
+                      <div className="mt-3 space-y-1.5">
+                        {(roomsByUnit.get(unit.id) ?? []).length === 0 ? (
+                          <p className="font-mono text-[10px] text-fog">Nenhuma sala/recurso cadastrado</p>
+                        ) : (roomsByUnit.get(unit.id) ?? []).map((room) => (
+                          <div key={room.id} className={`border px-2.5 py-2 ${room.ativo ? 'border-line/70' : 'border-line/40 opacity-60'}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="min-w-0 flex-1 truncate text-[11.5px]">{room.nome}</span>
+                              <span className="font-mono text-[9px] uppercase text-fog">{room.tipo}</span>
+                            </div>
+                            {!readOnly && <div className="mt-2 flex flex-wrap gap-2"><Btn variant="ghost" onClick={() => editRoom(room)}>Editar</Btn><Btn variant="ghost" onClick={() => toggleRoom(room)}>{room.ativo ? 'Desativar' : 'Reativar'}</Btn></div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Card>
