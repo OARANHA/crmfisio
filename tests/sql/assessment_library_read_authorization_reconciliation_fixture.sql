@@ -18,15 +18,6 @@ RETURNS uuid
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'
-$$;
-
--- PostgreSQL does not implicitly cast text -> uuid from a SQL function result.
-CREATE OR REPLACE FUNCTION public.test_auth_uid()
-RETURNS uuid
-LANGUAGE sql
-STABLE
-AS $$
   SELECT (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
 $$;
 
@@ -66,7 +57,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT p.clinic_id
   FROM public.profiles p
-  WHERE p.id = public.test_auth_uid()
+  WHERE p.id = auth.uid()
     AND p.ativo IS TRUE
   LIMIT 1
 $$;
@@ -80,7 +71,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT p.role
   FROM public.profiles p
-  WHERE p.id = public.test_auth_uid()
+  WHERE p.id = auth.uid()
     AND p.ativo IS TRUE
   LIMIT 1
 $$;
