@@ -3,7 +3,7 @@
 > Fonte editorial para gerar, no futuro, um manual coerente do sistema. Este arquivo não substitui código nem documentação técnica. Ele organiza apenas comportamento visível ao usuário e seu estado de validação.
 
 **Atualizado em:** 2026-09-11  
-**Base de referência ao criar este documento:** `main@c6da199aaa8a7981cb32bd64d2f8cc0befcd9272`
+**Base de referência ao criar este documento:** `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`
 
 ## Regra editorial
 
@@ -90,7 +90,8 @@ Tópicos futuros:
 
 # 4. Atendimento clínico / Clinical Encounter
 
-**Estado:** VALIDADO EM PRODUÇÃO para o fluxo clínico atual usado nesta documentação.
+**Estado funcional:** VALIDADO EM PRODUÇÃO para o fluxo clínico atual.  
+**Estado visual #417:** IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO.
 
 Superfícies visíveis principais:
 
@@ -109,19 +110,32 @@ Elementos de contexto atualmente observados:
 - ações de registro/finalização;
 - prontuário longitudinal como referência secundária.
 
-### Slice visual em andamento
+### Compactação visual #417
 
-**Estado:** EM ANDAMENTO.
+**Estado:** IMPLEMENTADO EM MAIN; screenshots e aceitação visual de produção ainda pendentes.
 
-A tela está sendo compactada para reduzir scroll sem alterar funcionamento:
+Mudanças mergeadas:
 
-- header mais baixo;
-- breadcrumb redundante removido/absorvido quando possível;
+- header/resumo do atendimento mais compacto;
+- breadcrumb `‹ Pacientes` e `PatientProfileHeader` ocultos durante Encounter ativo;
+- lateral desktop reduzida para 238px;
 - cards laterais mais densos;
-- correção do sticky de `Estado da consulta`;
-- Runner com melhor aproveitamento vertical.
+- sticky do rail alinhado ao header real de 68px;
+- `top: calc(68px + 0.75rem)`;
+- `max-height: calc(100vh - 68px - 1.5rem)`;
+- scroll interno da lateral apenas quando necessário;
+- seções principais com menor espaço vertical.
 
-O manual final deve usar screenshots **posteriores ao merge dessa slice**, não os prints anteriores como imagem definitiva.
+A slice é frontend-only e não altera persistência, autorização, RLS, lifecycle de draft ou regras clínicas.
+
+Antes de transformar esta seção em instrução visual definitiva do manual:
+
+1. redeployar o frontend contendo #417;
+2. validar 1366×768, 1440×900 e 1920×1080 quando possível;
+3. confirmar ausência de clipping no `Estado da consulta`;
+4. confirmar breadcrumb ausente durante Encounter ativo;
+5. confirmar mais conteúdo acima da dobra;
+6. capturar screenshot oficial posterior ao deploy.
 
 Fonte:
 
@@ -334,20 +348,29 @@ Evidência observada:
 
 Não registrar identificadores de paciente real no manual público.
 
-## 2026-09-11 — UX do Clinical Encounter
+## 2026-09-11 — UX do Clinical Encounter #417
 
-**EM ANDAMENTO**
+**IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO**
 
-Feedback de uso real:
+PR #417 foi mergeado em `main@9aa1a9f417838bff9425ff2d9fd276e53f8a7b58`.
 
-- excesso de altura no topo;
-- breadcrumb `‹ Pacientes` considerado dispensável no contexto;
-- card do atendimento pode agrupar status/paciente/horário horizontalmente;
-- lateral pode ser mais compacta;
-- `Estado da consulta` apresenta clipping ao scroll;
-- objetivo é reduzir necessidade de scroll sem sacrificar legibilidade.
+Validação técnica:
 
-Usar este feedback para a próxima screenshot oficial após a slice visual ser mergeada.
+- boundary test 15/15 PASS antes da publicação;
+- suíte completa 405/405 PASS antes da publicação;
+- typecheck, lint e build PASS;
+- 9/9 workflows GitHub PASS no head final;
+- nenhuma mudança de backend, migration, RLS, autorização ou persistência.
+
+Mudanças visuais esperadas no deploy:
+
+- topo mais compacto;
+- breadcrumb `‹ Pacientes` removido durante Encounter ativo;
+- lateral de 238px mais densa;
+- `Estado da consulta` sem clipping com sticky relativo ao header real de 68px;
+- mais conteúdo visível acima da dobra.
+
+Ainda falta evidência visual pós-deploy. Não usar screenshots anteriores como imagem definitiva do manual.
 
 ---
 
