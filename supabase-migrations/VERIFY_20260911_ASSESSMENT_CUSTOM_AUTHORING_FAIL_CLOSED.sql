@@ -1,5 +1,10 @@
-\echo '1) assessments.custom authoring predicate exists and is fail-closed by construction'
-SELECT to_regprocedure('public.assessment_custom_authoring_allowed(uuid)') IS NOT NULL AS ok;
+\echo '1) internal predicate and client-facing helper ACLs'
+SELECT
+  to_regprocedure('public.assessment_custom_authoring_allowed(uuid)') IS NOT NULL AS predicate_exists,
+  NOT has_function_privilege('anon', 'public.assessment_custom_authoring_allowed(uuid)', 'EXECUTE') AS predicate_anon_denied,
+  NOT has_function_privilege('authenticated', 'public.assessment_custom_authoring_allowed(uuid)', 'EXECUTE') AS predicate_authenticated_denied,
+  NOT has_function_privilege('anon', 'public.require_assessment_template_manager()', 'EXECUTE') AS manager_anon_denied,
+  has_function_privilege('authenticated', 'public.require_assessment_template_manager()', 'EXECUTE') AS manager_authenticated_allowed;
 
 \echo '2) no unconfigured fallback remains in custom authoring guards'
 SELECT p.proname,
