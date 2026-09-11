@@ -13,6 +13,7 @@ import { isClinicManager } from '../lib/permissions';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { BodyMapV2 } from './BodyMapV2';
+import { assessmentProgress } from '../lib/assessmentRunnerV2';
 import {
   createClinicalAssessmentDraft,
   finalizeClinicalAssessment,
@@ -53,6 +54,15 @@ export function ClinicalAssessmentRunner({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showOtherTemplates, setShowOtherTemplates] = useState(false);
+  const [activeSection, setActiveSection] = useState(0);
+  const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved');
+  const saveInFlight = useRef(false);
+  const saveQueued = useRef(false);
+  const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answersRef = useRef(answers);
+  const bodyPointsRef = useRef(bodyPoints);
+  answersRef.current = answers;
+  bodyPointsRef.current = bodyPoints;
 
   const userId = user?.id ?? null;
   const clinicalRead = isClinicManager(user?.role) || canReadTimeline;
@@ -92,6 +102,8 @@ export function ClinicalAssessmentRunner({
     setSchema(null);
     setAnswers({});
     setBodyPoints([]);
+    setActiveSection(0);
+    setSaveState('saved');
     setEditorContextKey(null);
 
     if (!clinicalRead) {
@@ -144,6 +156,8 @@ export function ClinicalAssessmentRunner({
       setSchema(null);
       setAnswers({});
       setBodyPoints([]);
+      setActiveSection(0);
+      setSaveState('saved');
       setEditorContextKey(contextKey);
       toast('Não foi possível carregar as avaliações clínicas.', 'warn');
     }).finally(() => {
@@ -188,35 +202,57 @@ export function ClinicalAssessmentRunner({
   };
 
   const saveDraft = async () => {
-    if (!draft || editorContextKey !== contextKey) return;
+    if (!draft || editorContextKey !== contextKey || saveInFlight.current) return;
     const saveContextKey = contextKey;
+    saveInFlight.current = true;
+    setSaveState('saving');
     setBusy(true);
     try {
-      const saved = await saveClinicalAssessmentDraft(draft.id, answers);
+      const saved = await saveClinicalAssessmentDraft(draft.id, answersRef.current);
       if (contextKeyRef.current !== saveContextKey) return;
       setDraft(saved);
       setAssessments((current) => current.map((item) => item.id === saved.id ? saved : item));
-      toast('Rascunho salvo.');
+      setSaveState('saved');
     } catch (error) {
       if (contextKeyRef.current !== saveContextKey) return;
       console.error('[MedicsPro] salvar avaliação:', error);
+      setSaveState('error');
       toast('Não foi possível salvar o rascunho.', 'warn');
     } finally {
+      saveInFlight.current = false;
       setBusy(false);
+      if (saveQueued.current && contextKeyRef.current === saveContextKey) {
+        saveQueued.current = false;
+        scheduleSave();
+      }
     }
   };
+
+  const scheduleSave = () => {
+    setSaveState('dirty');
+    if (saveInFlight.current) { saveQueued.current = true; return; }
+    if (pendingSave.current) clearTimeout(pendingSave.current);
+    pendingSave.current = setTimeout(() => { void saveDraft(); }, 900);
+  };
+
+  useEffect(() => () => { if (pendingSave.current) clearTimeout(pendingSave.current); }, []);
 
   const finalize = async () => {
     if (!draft || !schema || editorContextKey !== contextKey) return;
     const finalizeContextKey = contextKey;
-    const missing = requiredMissing(schema, answers, bodyPoints);
+    if (pendingSave.current) { clearTimeout(pendingSave.current); pendingSave.current = null; }
+    const finalAnswers = answersRef.current;
+    const finalBodyPoints = bodyPointsRef.current;
+    const missing = requiredMissing(schema, finalAnswers, finalBodyPoints);
     if (missing.length) {
+      const progress = assessmentProgress(schema, finalAnswers, finalBodyPoints);
+      if (progress.firstRequiredSection >= 0) setActiveSection(progress.firstRequiredSection);
       toast(`Preencha os campos obrigatórios: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`, 'warn');
       return;
     }
     setBusy(true);
     try {
-      await saveClinicalAssessmentDraft(draft.id, answers);
+      await saveClinicalAssessmentDraft(draft.id, finalAnswers);
       if (contextKeyRef.current !== finalizeContextKey) return;
       const finalized = await finalizeClinicalAssessment(draft.id);
       if (contextKeyRef.current !== finalizeContextKey) return;
@@ -225,6 +261,7 @@ export function ClinicalAssessmentRunner({
       setSchema(null);
       setAnswers({});
       setBodyPoints([]);
+      setActiveSection(0);
       setEditorContextKey(finalizeContextKey);
       toast('Avaliação finalizada e registrada no prontuário.');
     } catch (error) {
@@ -305,12 +342,26 @@ export function ClinicalAssessmentRunner({
                     <p className="font-mono text-[10px] text-mint mt-1">rascunho em andamento{visibleDraftAppointment ? ` · atendimento ${visibleDraftAppointment.inicio}` : ''}</p>
                   </div>
                   <div className="ml-auto flex gap-2">
-                    <Btn variant="ghost" onClick={() => void saveDraft()} disabled={busy}>Salvar rascunho</Btn>
+                    <span className={`font-mono text-[10px] ${saveState === 'error' ? 'text-pulse' : saveState === 'saved' ? 'text-mint' : 'text-amber'}`}>{saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? 'Salvo ✓' : saveState === 'error' ? 'Não salvo' : 'Alterações não salvas'}</span>
+                    <Btn variant="ghost" onClick={() => void saveDraft()} disabled={busy || saveState === 'saving'}>{saveState === 'error' ? 'Tentar novamente' : 'Salvar'}</Btn>
                     <Btn onClick={() => void finalize()} disabled={busy}>Finalizar avaliação</Btn>
                   </div>
                 </div>
-                {visibleSchema.sections.map((section) => (
-                  <section key={section.key} className="space-y-3 border-t border-line pt-4 first:border-t-0 first:pt-0">
+                {(() => {
+                  const progress = assessmentProgress(visibleSchema, answers, bodyPoints);
+                  const section = visibleSchema.sections[Math.min(activeSection, visibleSchema.sections.length - 1)];
+                  if (!section) return null;
+                  return <>
+                    <div className="flex flex-wrap items-center gap-2 border-y border-line/70 py-3">
+                      <span className="font-mono text-[10px] text-mint">{progress.complete} / {progress.total} respostas</span>
+                      <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Seções da avaliação">
+                        {visibleSchema.sections.map((item, index) => {
+                          const state = progress.sections[index];
+                          return <button key={item.key} type="button" aria-current={index === activeSection ? 'step' : undefined} onClick={() => setActiveSection(index)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold ${index === activeSection ? 'bg-mint text-on-accent' : state.requiredMissing.length ? 'text-amber hover:bg-amber/10' : 'text-fog hover:bg-raise'}`}>{state.complete === state.total && state.total > 0 ? '✓ ' : ''}{item.title}</button>;
+                        })}
+                      </div>
+                    </div>
+                  <section key={section.key} className="space-y-3">
                     <div>
                       <h4 className="font-display font-semibold text-[14px]">{section.title}</h4>
                       {section.description && <p className="text-[11px] text-fog mt-1">{section.description}</p>}
@@ -321,16 +372,16 @@ export function ClinicalAssessmentRunner({
                           key={component.key}
                           component={component}
                           value={answers[component.key]}
-                          onChange={(value) => setAnswers((current) => ({ ...current, [component.key]: value }))}
+                          onChange={(value) => { setAnswers((current) => { const next = { ...current, [component.key]: value }; answersRef.current = next; return next; }); scheduleSave(); }}
                           bodyMap={component.type === 'body_map' ? (
                             <BodyMapV2
                               assessmentId={visibleDraft.id}
                               componentKey={component.key}
                               points={bodyPoints.filter((point) => point.componentKey === component.key)}
-                              onChange={(points) => setBodyPoints((current) => [
-                                ...current.filter((point) => point.componentKey !== component.key),
-                                ...points,
-                              ])}
+                              onChange={(points) => {
+                                setBodyPoints((current) => { const next = [...current.filter((point) => point.componentKey !== component.key), ...points]; bodyPointsRef.current = next; return next; });
+                                scheduleSave();
+                              }}
                               toast={toast}
                             />
                           ) : undefined}
@@ -338,7 +389,13 @@ export function ClinicalAssessmentRunner({
                       ))}
                     </div>
                   </section>
-                ))}
+                  <div className="flex items-center justify-between border-t border-line/70 pt-4">
+                    <Btn variant="ghost" disabled={activeSection === 0} onClick={() => setActiveSection((value) => Math.max(0, value - 1))}>← Anterior</Btn>
+                    <span className="text-[10.5px] text-fog">Seção {activeSection + 1} de {visibleSchema.sections.length}</span>
+                    <Btn variant="ghost" disabled={activeSection >= visibleSchema.sections.length - 1} onClick={() => setActiveSection((value) => Math.min(visibleSchema.sections.length - 1, value + 1))}>Próxima →</Btn>
+                  </div>
+                  </>;
+                })()}
               </div>
             )}
           </>
