@@ -13,7 +13,8 @@ import { isClinicManager } from '../lib/permissions';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { BodyMapV2 } from './BodyMapV2';
-import { assessmentProgress } from '../lib/assessmentRunnerV2';
+import { assessmentProgress, requiredAssessmentComponentKeys } from '../lib/assessmentRunnerV2';
+import { createAssessmentAutosaveCoordinator, type AssessmentAutosaveJob } from '../lib/assessmentAutosaveCoordinator';
 import {
   createClinicalAssessmentDraft,
   finalizeClinicalAssessment,
@@ -56,9 +57,6 @@ export function ClinicalAssessmentRunner({
   const [showOtherTemplates, setShowOtherTemplates] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
   const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved');
-  const saveInFlight = useRef(false);
-  const saveQueued = useRef(false);
-  const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answersRef = useRef(answers);
   const bodyPointsRef = useRef(bodyPoints);
   answersRef.current = answers;
@@ -75,6 +73,28 @@ export function ClinicalAssessmentRunner({
   const contextKey = `${patient.id}:${userId ?? 'anonymous'}:${activeAppointmentId ?? 'longitudinal'}`;
   const contextKeyRef = useRef(contextKey);
   contextKeyRef.current = contextKey;
+  const autosave = useRef(createAssessmentAutosaveCoordinator<ClinicalAssessment>({
+    delayMs: 900,
+    save: (job) => saveClinicalAssessmentDraft(job.draftId, job.answers),
+    onSaving: () => setSaveState('saving'),
+    onSaved: (_job, saved) => {
+      setDraft(saved);
+      setAssessments((current) => current.map((item) => item.id === saved.id ? saved : item));
+      setSaveState('saved');
+    },
+    onError: (_job, error) => {
+      console.error('[MedicsPro] salvar avaliação:', error);
+      setSaveState('error');
+      toast('Não foi possível salvar o rascunho.', 'warn');
+    },
+  })).current;
+  const autosaveContextKey = useRef(contextKey);
+  if (autosaveContextKey.current !== contextKey) {
+    // Effects run after paint; update the coordinator identity during render so
+    // an A completion cannot briefly write into B between render and effect.
+    autosave.setContext(contextKey, null);
+    autosaveContextKey.current = contextKey;
+  }
 
   const templateById = useMemo(() => new Map(templates.map((template) => [template.id, template])), [templates]);
   const contextualTemplates = useMemo(
@@ -98,6 +118,9 @@ export function ClinicalAssessmentRunner({
 
     // A context switch must never expose the previous editor while the new
     // patient/professional/encounter is resolving.
+    // Pending work belongs to the old context. It is explicitly cancelled
+    // before the new editor state is allowed to load.
+    autosave.setContext(contextKey, null);
     setDraft(null);
     setSchema(null);
     setAnswers({});
@@ -145,6 +168,7 @@ export function ClinicalAssessmentRunner({
       if (!exact) throw new Error('A versão usada por este rascunho não está disponível.');
 
       setDraft(ownDraft);
+      autosave.setContext(contextKey, ownDraft.id);
       setSchema(exact.schema);
       setAnswers(ownDraft.answers);
       setBodyPoints(points);
@@ -165,7 +189,7 @@ export function ClinicalAssessmentRunner({
     });
 
     return () => { cancelled = true; };
-  }, [activeAppointmentId, clinicalRead, clinicalWrite, contextKey, patient.id, toast, userId]);
+  }, [activeAppointmentId, autosave, clinicalRead, clinicalWrite, contextKey, patient.id, toast, userId]);
 
   const startAssessment = async (template: AssessmentTemplate) => {
     if (!user || !clinicalWrite) return;
@@ -187,6 +211,7 @@ export function ClinicalAssessmentRunner({
       if (contextKeyRef.current !== startContextKey) return;
       setAssessments((current) => [created, ...current]);
       setDraft(created);
+      autosave.setContext(startContextKey, created.id);
       setSchema(latest.schema);
       setAnswers({});
       setBodyPoints([]);
@@ -201,46 +226,37 @@ export function ClinicalAssessmentRunner({
     }
   };
 
+  const saveJob = (draftId: string, snapshot: Record<string, unknown>): AssessmentAutosaveJob => ({
+    contextKey,
+    draftId,
+    // Values are primitives/arrays in this engine; copying prevents a queued
+    // job from ever reading answersRef after a context switch.
+    answers: Object.fromEntries(Object.entries(snapshot).map(([key, value]) => [key, Array.isArray(value) ? [...value] : value])),
+  });
+
   const saveDraft = async () => {
-    if (!draft || editorContextKey !== contextKey || saveInFlight.current) return;
-    const saveContextKey = contextKey;
-    saveInFlight.current = true;
-    setSaveState('saving');
-    setBusy(true);
+    if (!draft || editorContextKey !== contextKey) return;
     try {
-      const saved = await saveClinicalAssessmentDraft(draft.id, answersRef.current);
-      if (contextKeyRef.current !== saveContextKey) return;
-      setDraft(saved);
-      setAssessments((current) => current.map((item) => item.id === saved.id ? saved : item));
-      setSaveState('saved');
-    } catch (error) {
-      if (contextKeyRef.current !== saveContextKey) return;
-      console.error('[MedicsPro] salvar avaliação:', error);
-      setSaveState('error');
-      toast('Não foi possível salvar o rascunho.', 'warn');
-    } finally {
-      saveInFlight.current = false;
-      setBusy(false);
-      if (saveQueued.current && contextKeyRef.current === saveContextKey) {
-        saveQueued.current = false;
-        scheduleSave();
-      }
+      await autosave.flush(saveJob(draft.id, answersRef.current));
+    } catch {
+      // The coordinator has already set the current-context error state.
     }
   };
 
-  const scheduleSave = () => {
+  const scheduleSave = (draftId: string, snapshot: Record<string, unknown>) => {
+    if (editorContextKey !== contextKey) return;
     setSaveState('dirty');
-    if (saveInFlight.current) { saveQueued.current = true; return; }
-    if (pendingSave.current) clearTimeout(pendingSave.current);
-    pendingSave.current = setTimeout(() => { void saveDraft(); }, 900);
+    autosave.schedule(saveJob(draftId, snapshot));
   };
 
-  useEffect(() => () => { if (pendingSave.current) clearTimeout(pendingSave.current); }, []);
+  useEffect(() => () => {
+    autosave.setContext('__unmounted__', null);
+    autosave.cancel();
+  }, [autosave]);
 
   const finalize = async () => {
     if (!draft || !schema || editorContextKey !== contextKey) return;
     const finalizeContextKey = contextKey;
-    if (pendingSave.current) { clearTimeout(pendingSave.current); pendingSave.current = null; }
     const finalAnswers = answersRef.current;
     const finalBodyPoints = bodyPointsRef.current;
     const missing = requiredMissing(schema, finalAnswers, finalBodyPoints);
@@ -252,7 +268,7 @@ export function ClinicalAssessmentRunner({
     }
     setBusy(true);
     try {
-      await saveClinicalAssessmentDraft(draft.id, finalAnswers);
+      await autosave.flush(saveJob(draft.id, finalAnswers));
       if (contextKeyRef.current !== finalizeContextKey) return;
       const finalized = await finalizeClinicalAssessment(draft.id);
       if (contextKeyRef.current !== finalizeContextKey) return;
@@ -372,7 +388,7 @@ export function ClinicalAssessmentRunner({
                           key={component.key}
                           component={component}
                           value={answers[component.key]}
-                          onChange={(value) => { setAnswers((current) => { const next = { ...current, [component.key]: value }; answersRef.current = next; return next; }); scheduleSave(); }}
+                          onChange={(value) => { setAnswers((current) => { const next = { ...current, [component.key]: value }; answersRef.current = next; scheduleSave(visibleDraft.id, next); return next; }); }}
                           bodyMap={component.type === 'body_map' ? (
                             <BodyMapV2
                               assessmentId={visibleDraft.id}
@@ -380,7 +396,7 @@ export function ClinicalAssessmentRunner({
                               points={bodyPoints.filter((point) => point.componentKey === component.key)}
                               onChange={(points) => {
                                 setBodyPoints((current) => { const next = [...current.filter((point) => point.componentKey !== component.key), ...points]; bodyPointsRef.current = next; return next; });
-                                scheduleSave();
+                                scheduleSave(visibleDraft.id, answersRef.current);
                               }}
                               toast={toast}
                             />
@@ -437,17 +453,6 @@ function AssessmentField({ component, value, onChange, bodyMap }: {
 }
 
 function requiredMissing(schema: AssessmentTemplateSchema, answers: Record<string, unknown>, bodyPoints: AssessmentBodyPoint[]): string[] {
-  const missing: string[] = [];
-  for (const section of schema.sections) {
-    for (const component of section.components) {
-      if (!component.required || component.type === 'heading' || component.type === 'info') continue;
-      if (component.type === 'body_map') {
-        if (!bodyPoints.some((point) => point.componentKey === component.key)) missing.push(component.label);
-        continue;
-      }
-      const value = answers[component.key];
-      if (Array.isArray(value) ? value.length === 0 : value === null || value === undefined || value === '') missing.push(component.label);
-    }
-  }
-  return missing;
+  const labels = new Map(schema.sections.flatMap((section) => section.components.map((component) => [component.key, component.label])));
+  return requiredAssessmentComponentKeys(schema, answers, bodyPoints).map((key) => labels.get(key) ?? key);
 }
