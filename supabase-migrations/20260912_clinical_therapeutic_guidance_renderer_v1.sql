@@ -53,15 +53,24 @@ BEGIN
     AND v.version = 2
     AND v.published_at IS NOT NULL
     AND v.definition = '{"kind":"therapeutic_guidance","fields":["items","patient_instructions","observations"]}'::jsonb
-    AND v.render_definition->>'layout' = 'clinical-document/therapeutic-guidance-v1'
-    AND jsonb_typeof(v.render_definition->'title') = 'string'
-    AND nullif(btrim(v.render_definition->>'title'), '') IS NOT NULL
+    AND jsonb_object_length(v.render_definition) = 6
     AND v.render_definition ?& ARRAY[
+      'layout',
+      'title',
       'show_clinic_address',
       'show_clinic_phone',
       'show_patient_birth_date',
       'show_specialty'
-    ];
+    ]
+    AND v.render_definition->>'layout' = 'clinical-document/therapeutic-guidance-v1'
+    AND jsonb_typeof(v.render_definition->'title') = 'string'
+    AND nullif(btrim(v.render_definition->>'title'), '') IS NOT NULL
+    AND length(v.render_definition->>'title') <= 80
+    AND jsonb_typeof(v.render_definition->'show_clinic_address') = 'boolean'
+    AND jsonb_typeof(v.render_definition->'show_clinic_phone') = 'boolean'
+    AND jsonb_typeof(v.render_definition->'show_patient_birth_date') = 'boolean'
+    AND jsonb_typeof(v.render_definition->'show_specialty') = 'boolean'
+    AND v.variables_contract @> '["patient.name","patient.birth_date","clinic.name","clinic.address","clinic.phone","issuer.name","issuer.professional_type","issuer.specialty","issuer.council_type","issuer.council_state","issuer.registro","appointment.id","issued_at"]'::jsonb;
 
   IF v_count <> 2 THEN
     RAISE EXCEPTION 'clinical_therapeutic_guidance_renderer_v1_version_conflict';
@@ -74,6 +83,7 @@ FROM public.clinical_document_template_versions v
 WHERE v.template_id = t.id
   AND v.version = 2
   AND v.published_at IS NOT NULL
+  AND jsonb_object_length(v.render_definition) = 6
   AND v.render_definition->>'layout' = 'clinical-document/therapeutic-guidance-v1'
   AND t.owner_type = 'platform'
   AND t.document_type = 'therapeutic_guidance'
