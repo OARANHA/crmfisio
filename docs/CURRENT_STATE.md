@@ -3,10 +3,11 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `af53bf2d7229c238335ab201f3438f44543f7f89`  
+**Base canônica desta slice:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
 **Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
+**Exam Order D2-D0 Foundation:** IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -31,6 +32,7 @@ Referências principais:
 - `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`
 - `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`
 - `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`
+- `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`
 - `docs/NEXUS_GAP_MAP.md`
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
@@ -81,6 +83,8 @@ Prescrição
 Orientações
 Nexus
 ```
+
+`Exames` ainda **não** é workspace entregue. D2-D0 cria somente a autoridade backend `exam_order`; a futura D2-D1 deve consumir esse contrato no mesmo Encounter.
 
 Prescrição e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
@@ -145,42 +149,13 @@ D2-B.2C merge canônico: `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
 Produção confirmou migration base + hardening, verifier oficial, editor visual, presets seguros, emissão/impressão profissional e imutabilidade histórica do layout.
 
-Contrato:
-
-```text
-Admin preview
-      ↓
-render_definition publicado
-      ↓
-Draft live preview
-      ↓
-issue
-      ↓
-template_definition_snapshot
-      ↓
-Issued print
-```
-
-**D2-B está fechada no escopo atual.** Não reabrir por polimento sem blocker reproduzido.
+**D2-B está fechada no escopo atual.**
 
 ## D2-C — Therapeutic Guidance V1
 
 **VALIDADO EM PRODUÇÃO.**
 
 PR #435 → `33da15230cd35179681406b212e87305618a4976`.
-
-Contrato funcional:
-
-```text
-Encounter próprio ativo
-→ Orientações
-→ template published
-→ draft / save / resume
-→ revisão humana explícita
-→ issue D2-A
-→ snapshots imutáveis
-→ histórico / impressão
-```
 
 Payload:
 
@@ -204,35 +179,47 @@ Layout:
 clinical-document/therapeutic-guidance-v1
 ```
 
-Entrega validada:
-
-- preview A4 real no workspace;
-- mesma composição segura no draft e no print emitido;
-- clínica/paciente/profissional/conselho/registro/data/assinatura;
-- itens, instruções e observações estruturados;
-- novas versões imutáveis dos dois templates platform de guidance;
-- impressão nova baseada em `payload_snapshot + context_snapshot + template_definition_snapshot`;
-- fallback seguro para documentos históricos `plain-text-v1`;
-- nenhuma expansão de RLS/RPC/grants/capabilities/autoria;
-- nenhum HTML/CSS/JS administrável;
-- ausência do rótulo técnico `therapeutic_guidance` na saída para o paciente.
-
-Produção em 2026-09-12:
-
-```text
-backup: /root/medicspro_before_d2c1_20260912_194049.dump
-migration: COMMIT / MIGRATION_EXIT=0
-verifier: CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
-VERIFIER_EXIT=0
-frontend: redeploy concluído
-smoke: preview A4 + emissão/histórico/impressão profissional confirmados
-```
-
-O campo genérico `renderer_version` não foi reescrito nesta slice; a versão visual efetiva fica congelada em `template_definition_snapshot.render_definition.layout`.
+Produção confirmou preview A4, emissão/histórico/impressão profissional, cabeçalho, identidade profissional, assinatura e snapshots imutáveis. O rótulo técnico `therapeutic_guidance` não aparece na saída destinada ao paciente.
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
-Não incluir `Pedido de Exames` até existir `exam_order` canônico próprio.
+## D2-D0 — Exam Order Canonical Foundation
+
+**IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO.**
+
+Base da implementação: `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`.
+
+Decisão canônica:
+
+```text
+Pedido de Exames != template de Orientação
+Pedido de Exames = exam_order próprio
+```
+
+A micro-slice adiciona somente o foundation backend:
+
+- `exam_order` no conjunto fechado de tipos;
+- template platform `Pedido de exames` + versão publicada;
+- payload estruturado de itens, indicação/impressão, prioridade e observações;
+- emissão tipada server-side;
+- snapshots/lifecycle/auditoria herdados da D2-A;
+- verifier + comportamento PostgreSQL 16;
+- regressões dos contratos de Prescrição e Orientação.
+
+V1 mantém autoria conservadora: identidade médica ativa com CRM/UF/registro + identidade clínica válida + `clinical.documents` + próprio Encounter ativo. Especialidade não concede autoria. Owner/admin não recebem bypass.
+
+O MedicsPro histórico é referência de ergonomia (lista estruturada, indicação clínica, prioridade, histórico), mas agendamento/execução/resultados/laudos não foram acoplados ao documento.
+
+Ainda não entregue:
+
+- workspace `Exames` no Encounter;
+- renderer A4 profissional;
+- catálogo/autocomplete;
+- admin de templates de exam order;
+- integrações laboratoriais/imagem;
+- fulfillment/resultados.
+
+Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
 
 ---
 
@@ -288,4 +275,4 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-D2-C/D2-C.1 estão fechadas para o escopo atual. Antes de abrir outro `document_type`, escolher a próxima slice a partir do roadmap canônico e do gap de produto real, sem reabrir Prescrição ou Orientações por polimento visual sem blocker reproduzido.
+Revisar D2-D0 no PR e exigir CI/PostgreSQL 16 verde. Não abrir D2-D1 visual antes de fechar a fundação e seu rollout controlado. Após merge + migration + verifier de D2-D0, seguir para **D2-D1 — Exam Order Encounter UX V1**, reutilizando a mesma Clinical Documents Foundation e sem criar engine paralelo.
