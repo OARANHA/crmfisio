@@ -4,8 +4,7 @@
 
 **Atualizado em:** 2026-09-12  
 **Prescrição D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C:** MERGEADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO  
-**Therapeutic Guidance D2-C.1 Professional Print:** EM ANDAMENTO / NÃO PRODUÇÃO
+**Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO
 
 ## Regra editorial
 
@@ -52,9 +51,9 @@ Cobrir busca/abertura, contexto clínico, histórico longitudinal e superfícies
 
 # 4. Clinical Encounter
 
-**Estado visual/funcional relevante:** VALIDADO EM PRODUÇÃO para a base anterior à D2-C.
+**Estado visual/funcional relevante:** VALIDADO EM PRODUÇÃO.
 
-Workspaces na `main` atual:
+Workspaces validados:
 
 ```text
 Registro
@@ -64,7 +63,7 @@ Orientações
 Nexus
 ```
 
-`Orientações` entrou pela PR #435, mas ainda aguarda validação real de produção; portanto ainda não deve virar instrução definitiva de manual.
+Prescrição e Orientações pertencem ao mesmo Encounter e não criam segundo atendimento/prontuário.
 
 ---
 
@@ -164,11 +163,11 @@ Não existe editor HTML/CSS/JS livre.
 
 ## Therapeutic Guidance — D2-C
 
-**Estado:** MERGEADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO.
+**Estado:** VALIDADO EM PRODUÇÃO.
 
 PR #435 → `33da15230cd35179681406b212e87305618a4976`.
 
-Superfície prevista na `main`:
+Manual pode ensinar:
 
 ```text
 Encounter
@@ -180,27 +179,56 @@ Encounter
 → revisão humana
 → emitir
 → histórico
+→ imprimir
 ```
 
-Ainda não transformar esse fluxo em manual definitivo antes do smoke real.
+Regras editoriais obrigatórias:
+
+- `therapeutic_guidance` é termo interno e não deve aparecer como título ao paciente;
+- a orientação é ato documental explícito do profissional;
+- especialidade não concede autorização;
+- owner/admin não recebem autoria clínica por administrar o tenant;
+- Nexus não emite orientação automaticamente;
+- documento emitido é snapshot histórico imutável.
 
 ## Therapeutic Guidance Professional Print — D2-C.1
 
-**Estado:** PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO.
+**Estado:** VALIDADO EM PRODUÇÃO.
 
-Comportamento em implementação:
+PR #436 → `af53bf2d7229c238335ab201f3438f44543f7f89`.
+
+Manual pode documentar:
 
 - folha A4 ao vivo ao lado do editor;
-- título humano do documento;
-- clínica/paciente/profissional/conselho/registro/data;
-- orientações, instruções e observações formatadas;
-- assinatura visual;
-- mesma composição segura para preview e impressão nova;
-- impressão do emitido usando snapshots congelados;
-- fallback seguro para orientações históricas `plain-text-v1`;
-- nenhum HTML/CSS/JS administrável.
+- selo `Rascunho · não emitida` / pré-visualização sem validade;
+- título humano `Orientações terapêuticas` ou título seguro do modelo;
+- clínica, paciente, profissional, conselho/registro, especialidade e data quando disponíveis;
+- orientações numeradas;
+- instruções ao paciente;
+- observações;
+- bloco de assinatura visual;
+- identificador do documento emitido;
+- impressão do emitido com a mesma composição segura do preview;
+- histórico preservado por snapshots congelados;
+- fallback seguro para documentos antigos `plain-text-v1`;
+- ausência de editor HTML/CSS/JS livre.
 
-Somente após migration/verifier/redeploy/smoke esse comportamento poderá ser promovido a instrução de manual.
+Produção validada em 2026-09-12:
+
+```text
+migration D2-C.1
+→ COMMIT / MIGRATION_EXIT=0
+
+verifier
+→ CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+→ VERIFIER_EXIT=0
+
+frontend
+→ redeploy concluído
+
+smoke real
+→ preview A4 + emissão/histórico/impressão profissional confirmados
+```
 
 ---
 
@@ -262,8 +290,8 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 - **2026-09-12 — Prescription D2-B + D2-B.1:** VALIDADO EM PRODUÇÃO.
 - **2026-09-12 — Template Admin D2-B.2A + D2-B.2B:** VALIDADO EM PRODUÇÃO.
 - **2026-09-12 — Professional Print / Safe Presets D2-B.2C:** VALIDADO EM PRODUÇÃO, inclusive imutabilidade visual histórica.
-- **2026-09-12 — Therapeutic Guidance D2-C:** PR #435 MERGEADA; ainda sem evidência suficiente para `VALIDADO EM PRODUÇÃO`.
-- **2026-09-12 — Therapeutic Guidance D2-C.1:** PR #436 EM ANDAMENTO; não produção.
+- **2026-09-12 — Therapeutic Guidance D2-C:** VALIDADO EM PRODUÇÃO após smoke funcional real.
+- **2026-09-12 — Therapeutic Guidance D2-C.1:** VALIDADO EM PRODUÇÃO após migration/verifier/redeploy e smoke de preview A4 + impressão profissional.
 
 ---
 
