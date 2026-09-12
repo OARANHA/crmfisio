@@ -7,7 +7,7 @@
 **Live Preview D2-B.1:** VALIDADO EM PRODUÇÃO  
 **Template Admin D2-B.2A:** VALIDADO EM PRODUÇÃO  
 **Template Admin UI D2-B.2B:** VALIDADO EM PRODUÇÃO  
-**Professional Print / Safe Presets D2-B.2C:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO
+**Professional Print / Safe Presets D2-B.2C:** VALIDADO EM PRODUÇÃO
 
 ## Regra editorial
 
@@ -196,11 +196,41 @@ Regra obrigatória no manual: administrar um modelo não concede permissão para
 
 ## Professional Print / Safe Presets — D2-B.2C
 
-**Estado:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.
+**Estado:** VALIDADO EM PRODUÇÃO.
 
-NÃO documentar ainda como funcionalidade disponível.
+PR #433 → `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
-Quando validada, a evolução deverá substituir a limitação visual atual por renderer seguro/versionado compartilhado entre preview administrativo, live preview e impressão emitida, com presets fechados e sem HTML/CSS/JS arbitrário.
+Manual pode documentar agora:
+
+- editar a apresentação de um modelo da clínica;
+- escolher preset visual seguro (`Clássico`, `Institucional`, `Compacto`);
+- escolher identidade visual/acento entre as opções permitidas;
+- escolher apresentação dos medicamentos;
+- mostrar/ocultar dados de apresentação permitidos;
+- visualizar a folha de exemplo antes de publicar;
+- usar `Salvar e publicar` para criar a nova versão visual;
+- compreender que modelos MedicsPro permanecem somente leitura e podem ser duplicados para adaptação da clínica.
+
+Comportamento validado em produção:
+
+```text
+Template v2 publicado
+→ receita emitida com v2
+→ snapshot do documento congela v2
+
+Admin publica v3
+→ novas receitas usam v3
+→ receita já emitida continua imprimindo v2
+```
+
+Regras obrigatórias no manual:
+
+- a pré-visualização administrativa não possui validade clínica;
+- administrar/apresentar modelo não concede autoridade para prescrever;
+- mudanças posteriores do modelo não alteram documentos já emitidos;
+- não existe editor HTML/CSS/JS livre;
+- presets e blocos são controlados pelo MedicsPro;
+- a impressão do emitido é baseada no snapshot da emissão, não no template corrente.
 
 ---
 
@@ -279,6 +309,10 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 ## 2026-09-12 — Template Admin D2-B.2A + D2-B.2B
 
 **VALIDADO EM PRODUÇÃO** — backend administrativo aplicado/verificado e UI real em `Configurações → Documentos clínicos → Modelos de prescrição` observada.
+
+## 2026-09-12 — Professional Print / Safe Presets D2-B.2C
+
+**VALIDADO EM PRODUÇÃO** — migrations base/hardening aplicadas com COMMIT, verifier oficial verde, editor visual observado, nova versão publicada, nova emissão impressa com o preset publicado e imutabilidade histórica comprovada após evolução posterior do template.
 
 ---
 
