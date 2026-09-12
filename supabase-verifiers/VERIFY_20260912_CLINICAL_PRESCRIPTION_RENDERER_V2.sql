@@ -45,13 +45,12 @@ BEGIN
     'public.validate_clinical_document_template_contract(text,jsonb,jsonb,jsonb)'::regprocedure
   ) INTO v_def;
 
+  -- Structural smoke only. Detailed fail-closed behavior is exercised below so
+  -- the verifier does not freeze PostgreSQL pretty-print implementation details.
   IF v_def NOT LIKE '%clinical-document/plain-text-v1%'
      OR v_def NOT LIKE '%clinical-document/prescription-v2%'
-     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''preset''::text, ''''::text)%'
-     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''accent''::text, ''''::text)%'
-     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''medication_style''::text, ''''::text)%'
-     OR v_def NOT LIKE '%issuer.specialty%'
-     OR v_def NOT LIKE '%clinical_document_template_renderer_invalid%' THEN
+     OR v_def NOT LIKE '%clinical_document_template_renderer_invalid%'
+     OR v_def NOT LIKE '%clinical_document_template_variables_invalid%' THEN
     RAISE EXCEPTION 'clinical_prescription_renderer_v2_validator_drift';
   END IF;
 
@@ -73,10 +72,10 @@ BEGIN
 
   IF v_def NOT LIKE '%assert_clinical_document_actor%'
      OR v_def NOT LIKE '%assert_clinical_document_payload_ready%'
-     OR v_def NOT LIKE '%to_jsonb(pat)%nascimento%'
-     OR v_def NOT LIKE '%to_jsonb(c)%address%'
-     OR v_def NOT LIKE '%to_jsonb(c)%phone%'
-     OR v_def NOT LIKE '%to_jsonb(p)%especialidade%'
+     OR v_def NOT LIKE '%nascimento%'
+     OR v_def NOT LIKE '%address%'
+     OR v_def NOT LIKE '%phone%'
+     OR v_def NOT LIKE '%especialidade%'
      OR v_def NOT LIKE '%''template_name''%'
      OR v_def NOT LIKE '%template_definition_snapshot%'
      OR v_def NOT LIKE '%rendered_snapshot%'
@@ -114,6 +113,7 @@ BEGIN
   END IF;
 END $$;
 
+-- Full valid contract, including the new frozen specialty variable, must pass.
 SELECT public.validate_clinical_document_template_contract(
   'medication_prescription',
   '{"kind":"medication_prescription","fields":["items","observations"]}'::jsonb,
@@ -155,6 +155,18 @@ BEGIN
       '["patient.name"]'::jsonb
     );
     RAISE EXCEPTION 'clinical_prescription_renderer_v2_missing_accent_not_rejected';
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.validate_clinical_document_template_contract(
+      'medication_prescription',
+      '{"kind":"medication_prescription","fields":["items"]}'::jsonb,
+      '{"layout":"clinical-document/prescription-v2","preset":"classic","accent":"monochrome","title":"Receita","medication_style":"numbered","show_clinic_address":true,"show_clinic_phone":true,"show_patient_birth_date":true,"show_specialty":true}'::jsonb,
+      '["patient.name","issuer.unknown"]'::jsonb
+    );
+    RAISE EXCEPTION 'clinical_prescription_renderer_v2_unknown_variable_not_rejected';
   EXCEPTION
     WHEN SQLSTATE '22023' THEN NULL;
   END;
