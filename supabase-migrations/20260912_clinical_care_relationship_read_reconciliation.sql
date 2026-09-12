@@ -40,10 +40,9 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE v_clinic uuid := public.current_clinic_id(); v_role text := public.current_app_role();
+DECLARE v_clinic uuid := public.current_clinic_id();
 BEGIN
-  IF v_clinic IS NULL OR v_role IS NULL THEN RAISE EXCEPTION 'tenant_context_required' USING ERRCODE='42501'; END IF;
-  IF v_role NOT IN ('owner','admin','professional') THEN RAISE EXCEPTION 'clinical_access_required' USING ERRCODE='42501'; END IF;
+  IF v_clinic IS NULL THEN RAISE EXCEPTION 'tenant_context_required' USING ERRCODE='42501'; END IF;
   RETURN QUERY SELECT p.id,p.queixa_principal,p.cid10,p.anamnese FROM public.patients p
   WHERE p.clinic_id=v_clinic AND p.deleted_at IS NULL AND public.can_access_patient_clinical_record(p.id)
   ORDER BY p.created_at DESC;
