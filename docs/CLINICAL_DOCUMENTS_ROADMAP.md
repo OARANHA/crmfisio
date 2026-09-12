@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `af53bf2d7229c238335ab201f3438f44543f7f89`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD
+**Base canônica desta slice:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 IMPLEMENTADO — NÃO PROD
 
 ---
 
@@ -22,22 +22,25 @@ Especialidade pode influenciar relevância/ordenação, nunca autorização. Adm
 
 ---
 
-## Document types canônicos atuais
+## Document types canônicos
 
-D2-A contém somente:
+Produção antes da D2-D0 contém:
 
 - `medication_prescription`
 - `therapeutic_guidance`
 
-Candidatos posteriores, cada um com contrato próprio:
+D2-D0 adiciona, após merge + migration controlada:
 
 - `exam_order`
+
+Candidatos posteriores, cada um com contrato próprio:
+
 - `referral`
 - `attendance_declaration`
 - `medical_certificate`
 - `clinical_report`
 
-Não apresentar Pedido de Exames, atestado ou relatório como template funcional antes de existir `document_type` canônico correspondente.
+Não apresentar atestado, referral ou relatório como template funcional antes de existir `document_type` canônico correspondente.
 
 ---
 
@@ -270,6 +273,50 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
 ---
 
+# D2-D0 — Exam Order Canonical Foundation
+
+**IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO.**
+
+Base: `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`.
+
+Decisão:
+
+```text
+Pedido de Exames != template de Orientação
+Pedido de Exames = exam_order canônico próprio
+```
+
+Esta micro-slice é backend-only. Ela estende a Clinical Documents Foundation com:
+
+- `exam_order` no conjunto fechado de `document_type`;
+- template platform `Pedido de exames` com versão publicada imutável;
+- payload estruturado com `items[].exam_name` e campos opcionais de código/categoria/instruções/urgência;
+- indicação clínica, impressão/hipótese, prioridade e observações como campos estruturados opcionais;
+- validação server-side na emissão;
+- lifecycle/snapshots/eventos/histórico/cancelamento herdados da D2-A;
+- verifier production-safe + comportamento PostgreSQL 16;
+- regressão explícita dos renderers de Prescrição e Orientação.
+
+V1 é conservadora: `exam_order` usa o mesmo requisito de identidade médica ativa + CRM/UF/registro já aplicado a `medication_prescription`, além de identidade clínica válida, `clinical.documents` e próprio Encounter ativo. Não existe auto-grant por especialidade nem bypass owner/admin.
+
+Esse recorte não afirma que somente médicos podem solicitar exames em todo contexto regulatório. Qualquer expansão para outras profissões deve nascer em slice própria, com regra de autorização explícita, em vez de transformar profissão/especialidade em ACL implícita.
+
+Fora desta micro-slice:
+
+- aba/workspace `Exames` no Encounter;
+- renderer A4 profissional;
+- admin de templates de exam order;
+- catálogo/autocomplete;
+- laboratórios/integrações;
+- fulfillment/status/resultados/laudos;
+- Nexus emitindo pedido automaticamente.
+
+Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
+
+Próxima slice funcional após merge + rollout/verifier de D2-D0: **D2-D1 — Exam Order Encounter UX V1**.
+
+---
+
 ## Regras de continuidade
 
 1. D2-A não deve ser redesenhada sem blocker reproduzido.
@@ -283,3 +330,4 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 9. Migrations de produção são controladas; merge não significa aplicação.
 10. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
 11. Prescrição e Orientações estão fechadas no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
+12. Não acoplar `exam_order` documental a futuro domínio de fulfillment/resultados sem contrato explícito.
