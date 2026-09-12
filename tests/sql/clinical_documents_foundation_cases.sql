@@ -1,6 +1,7 @@
 -- Every protected operation runs as authenticated with RLS enabled.
 DROP TABLE IF EXISTS d2_results;
 CREATE TEMP TABLE d2_results(name text PRIMARY KEY, passed boolean NOT NULL);
+GRANT SELECT, INSERT ON d2_results TO authenticated;
 CREATE OR REPLACE FUNCTION pg_temp.expect_denied(p_name text, p_sql text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   BEGIN EXECUTE p_sql; INSERT INTO d2_results VALUES (p_name, false);
