@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'supabase-migrations/20260912_clinical_prescription_renderer_v2.sql'
+      - 'supabase-migrations/20260912_clinical_prescription_renderer_v2_hardening.sql'
       - 'supabase-verifiers/VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql'
       - 'tests/sql/clinical_prescription_renderer_v2_*.sql'
       - 'scripts/test-clinical-prescription-renderer-v2.sh'
@@ -16,7 +17,10 @@ on:
       - 'src/components/PrescriptionTemplatesAdmin.tsx'
       - 'docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md'
       - 'docs/CLINICAL_DOCUMENTS_ROADMAP.md'
+      - 'docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md'
+      - 'docs/CLINICAL_PRESCRIPTION_V1.md'
       - 'docs/CURRENT_STATE.md'
+      - 'docs/MANUAL_SOURCE_MAP.md'
       - '.github/workflows/clinical-prescription-renderer-v2.yml'
   workflow_dispatch:
 
