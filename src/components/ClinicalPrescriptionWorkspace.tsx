@@ -491,7 +491,7 @@ function printIssuedPrescription(document: MedicationPrescriptionDocument, fallb
   const patientName = snapshotName(document.contextSnapshot, 'patient', fallbackPatientName);
   const issuerName = snapshotName(document.contextSnapshot, 'issuer', 'Profissional responsável');
   const issuerCredential = snapshotIssuerCredential(document.contextSnapshot);
-  const items = document.payloadSnapshot.items.map((item, index) => {
+  const items = document.payloadSnapshot.items.map((item) => {
     const summary = prescriptionItemSummary(item);
     return `<li><strong>${escapeHtml(item.medicationName)}</strong>${summary ? `<div>${escapeHtml(summary)}</div>` : ''}${item.instructions ? `<div>${escapeHtml(item.instructions)}</div>` : ''}</li>`;
   }).join('');
