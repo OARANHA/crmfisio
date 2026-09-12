@@ -19,6 +19,7 @@ import {
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
+import { PrescriptionDocumentPreview } from './PrescriptionDocumentPreview';
 
 type ClinicalPrescriptionWorkspaceProps = {
   patient: Patient;
@@ -243,64 +244,68 @@ function ClinicalPrescriptionWorkspaceContext({
 
   return (
     <div className="space-y-4" data-clinical-prescription-version="1">
-      <div className="rounded-2xl border border-line/65 bg-deep/25 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">Prescrição V1</p>
-            <h3 className="mt-1 font-display text-[17px] font-semibold text-paper">{activeDocument ? 'Rascunho deste atendimento' : 'Nova prescrição'}</h3>
-            <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-fog">O rascunho pode ser salvo incompleto. A emissão exige confirmação explícita e gera um snapshot imutável.</p>
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(430px,0.95fr)] 2xl:items-start">
+        <div className="rounded-2xl border border-line/65 bg-deep/25 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">Prescrição V1</p>
+              <h3 className="mt-1 font-display text-[17px] font-semibold text-paper">{activeDocument ? 'Rascunho deste atendimento' : 'Nova prescrição'}</h3>
+              <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-fog">O rascunho pode ser salvo incompleto. A emissão exige confirmação explícita e gera um snapshot imutável.</p>
+            </div>
+            {activeDocument && <Chip className="border-amber/35 text-amber">Rascunho · {dirty ? 'alterações não salvas' : 'salvo'}</Chip>}
           </div>
-          {activeDocument && <Chip className="border-amber/35 text-amber">Rascunho · {dirty ? 'alterações não salvas' : 'salvo'}</Chip>}
+
+          {!activeDocument ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <label className="grid gap-1.5 text-[11px] font-semibold text-fog">
+                Modelo
+                <select
+                  value={selectedTemplateVersionId}
+                  onChange={(event) => setSelectedTemplateVersionId(event.target.value)}
+                  className="min-h-10 rounded-xl border border-line bg-panel px-3 text-[12px] text-paper outline-none focus:border-aqua/60"
+                >
+                  {templates.map((template) => <option key={template.id} value={template.currentVersionId}>{template.name}</option>)}
+                </select>
+              </label>
+              <Btn disabled={!selectedTemplateVersionId || creating} onClick={() => void startDraft()}>{creating ? 'Criando…' : 'Criar rascunho'}</Btn>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {payload.items.map((item, index) => (
+                <MedicationRow
+                  key={`${activeDocument.id}:${index}`}
+                  index={index}
+                  item={item}
+                  onChange={(field, value) => updateItem(index, field, value)}
+                  onRemove={() => removeItem(index)}
+                />
+              ))}
+              <button type="button" onClick={addItem} className="text-[11.5px] font-semibold text-aqua hover:underline">+ Adicionar medicamento</button>
+
+              <label className="grid gap-1.5 text-[11px] font-semibold text-fog">
+                Observações da prescrição
+                <textarea
+                  rows={3}
+                  value={payload.observations}
+                  onChange={(event) => updateObservations(event.target.value)}
+                  placeholder="Orientações complementares registradas pelo profissional."
+                  className="resize-y rounded-xl border border-line bg-panel px-3 py-2.5 text-[12px] leading-relaxed text-paper outline-none focus:border-aqua/60"
+                />
+              </label>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-3">
+                <p className="text-[10.5px] text-fog">Salvar rascunho não emite a receita. Emitir é uma ação separada que torna esta versão imutável.</p>
+                <div className="flex flex-wrap gap-2">
+                  <Btn variant="subtle" disabled={saving || !dirty} onClick={() => void saveDraft()}>{saving ? 'Salvando…' : dirty ? 'Salvar rascunho' : 'Rascunho salvo'}</Btn>
+                  <Btn disabled={!readyToIssue || saving || issuing} onClick={() => setReviewing(true)}>Revisar e emitir</Btn>
+                </div>
+              </div>
+              {!readyToIssue && <p className="text-[10.5px] text-amber">Informe o nome de cada medicamento antes de revisar para emissão.</p>}
+            </div>
+          )}
         </div>
 
-        {!activeDocument ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-            <label className="grid gap-1.5 text-[11px] font-semibold text-fog">
-              Modelo
-              <select
-                value={selectedTemplateVersionId}
-                onChange={(event) => setSelectedTemplateVersionId(event.target.value)}
-                className="min-h-10 rounded-xl border border-line bg-panel px-3 text-[12px] text-paper outline-none focus:border-aqua/60"
-              >
-                {templates.map((template) => <option key={template.id} value={template.currentVersionId}>{template.name}</option>)}
-              </select>
-            </label>
-            <Btn disabled={!selectedTemplateVersionId || creating} onClick={() => void startDraft()}>{creating ? 'Criando…' : 'Criar rascunho'}</Btn>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {payload.items.map((item, index) => (
-              <MedicationRow
-                key={`${activeDocument.id}:${index}`}
-                index={index}
-                item={item}
-                onChange={(field, value) => updateItem(index, field, value)}
-                onRemove={() => removeItem(index)}
-              />
-            ))}
-            <button type="button" onClick={addItem} className="text-[11.5px] font-semibold text-aqua hover:underline">+ Adicionar medicamento</button>
-
-            <label className="grid gap-1.5 text-[11px] font-semibold text-fog">
-              Observações da prescrição
-              <textarea
-                rows={3}
-                value={payload.observations}
-                onChange={(event) => updateObservations(event.target.value)}
-                placeholder="Orientações complementares registradas pelo profissional."
-                className="resize-y rounded-xl border border-line bg-panel px-3 py-2.5 text-[12px] leading-relaxed text-paper outline-none focus:border-aqua/60"
-              />
-            </label>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-3">
-              <p className="text-[10.5px] text-fog">Salvar rascunho não emite a receita. Emitir é uma ação separada que torna esta versão imutável.</p>
-              <div className="flex flex-wrap gap-2">
-                <Btn variant="subtle" disabled={saving || !dirty} onClick={() => void saveDraft()}>{saving ? 'Salvando…' : dirty ? 'Salvar rascunho' : 'Rascunho salvo'}</Btn>
-                <Btn disabled={!readyToIssue || saving || issuing} onClick={() => setReviewing(true)}>Revisar e emitir</Btn>
-              </div>
-            </div>
-            {!readyToIssue && <p className="text-[10.5px] text-amber">Informe o nome de cada medicamento antes de revisar para emissão.</p>}
-          </div>
-        )}
+        <PrescriptionDocumentPreview patient={patient} payload={payload} />
       </div>
 
       {reviewing && activeDocument && (
