@@ -23,7 +23,9 @@ tables = ('capability_catalog', 'professional_capabilities', 'nexus_evidence_sou
 helpers = ('current_clinic_id', 'current_app_role', 'current_nexus_medical_identity_valid',
            'current_nexus_entitlement_allowed', 'has_professional_capability',
            'can_access_patient_clinical_record')
-contents = [(p, p.read_text()) for p in sources if p not in {fix, c06, c06_verifier, c02, c02_verifier}]
+# C-01 owns a historical baseline; ignore later helper replacements such as
+# care-relationship reconciliations when assembling that prerequisite state.
+contents = [(p, p.read_text()) for p in sources if p.name <= fix.name and p not in {fix, c06, c06_verifier, c02, c02_verifier}]
 print((root / 'tests/sql/nexus_c01_fixture.sql').read_text())
 for table in tables:
     pattern = rf'CREATE TABLE IF NOT EXISTS public\.{table}\s*\([\s\S]*?\n\);'

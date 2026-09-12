@@ -1,0 +1,28 @@
+name: Clinical Care Relationship Read Reconciliation
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260912_clinical_care_relationship_read_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260912_CLINICAL_CARE_RELATIONSHIP_READ_RECONCILIATION.sql'
+      - 'tests/sql/clinical_care_relationship_read_reconciliation_cases.sql'
+      - 'tests/sql/clinical_care_relationship_read_reconciliation_fixture.sql'
+      - 'scripts/build-clinical-care-read-test.py'
+      - 'scripts/test-clinical-care-relationship-read-reconciliation.sh'
+      - '.github/workflows/clinical-care-relationship-read-reconciliation.yml'
+jobs:
+  postgres16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: postgres, PGDATABASE: clinical_care_read_test }
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - env: { PGDATABASE: postgres }
+        run: createdb clinical_care_read_test
+      - run: bash scripts/test-clinical-care-relationship-read-reconciliation.sh
