@@ -6,7 +6,6 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
--- Extend the closed document type set without rewriting historical rows.
 ALTER TABLE public.clinical_document_templates
   DROP CONSTRAINT IF EXISTS clinical_document_templates_document_type_check;
 ALTER TABLE public.clinical_document_templates
@@ -19,11 +18,8 @@ ALTER TABLE public.clinical_documents
   ADD CONSTRAINT clinical_documents_document_type_check
   CHECK (document_type IN ('medication_prescription', 'therapeutic_guidance', 'exam_order'));
 
--- D2-D0 is deliberately conservative. Exam ordering is a medical document in
--- V1 and therefore reuses the same active physician + CRM identity boundary as
--- medication_prescription, in addition to the common clinical.documents gate.
--- Broadening to other regulated professions requires a dedicated authorization
--- slice; specialty/relevance never grants authorship.
+-- V1 deliberately starts fail-closed as a medical exam-order document. Any
+-- multiprofessional expansion requires an explicit authorization slice.
 CREATE OR REPLACE FUNCTION public.current_user_can_issue_clinical_document(p_document_type text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -84,8 +80,7 @@ BEGIN
       RAISE EXCEPTION 'clinical_document_medication_items_required' USING ERRCODE = '22023';
     END IF;
     IF EXISTS (
-      SELECT 1
-      FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'medication_name', '')), '') IS NULL
     ) THEN
@@ -100,8 +95,7 @@ BEGIN
       RAISE EXCEPTION 'clinical_document_guidance_items_required' USING ERRCODE = '22023';
     END IF;
     IF EXISTS (
-      SELECT 1
-      FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'guidance', '')), '') IS NULL
     ) THEN
@@ -117,8 +111,7 @@ BEGIN
     END IF;
 
     IF EXISTS (
-      SELECT 1
-      FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'exam_name', '')), '') IS NULL
          OR (item ? 'code' AND jsonb_typeof(item->'code') IS DISTINCT FROM 'string')
@@ -179,14 +172,13 @@ BEGIN
 END;
 $$;
 
--- One curated platform template is enough for the foundation. D2-D1 will add
--- the Encounter editor/preview; a professional exam-order renderer is a
--- separate presentation slice and must not mutate issued historical snapshots.
+-- IDs 000001..000005 are already occupied by D2-A/D2-B.2C curated
+-- platform templates. Exam Order starts at 000006 to preserve those identities.
 INSERT INTO public.clinical_document_templates(
   id, owner_type, document_type, name, description, relevance_metadata, status
 )
 VALUES (
-  '12000000-0000-4000-8000-000000000005',
+  '12000000-0000-4000-8000-000000000006',
   'platform',
   'exam_order',
   'Pedido de exames',
@@ -201,8 +193,8 @@ INSERT INTO public.clinical_document_template_versions(
   published_at, published_by
 )
 VALUES (
-  '12100000-0000-4000-8000-000000000005',
-  '12000000-0000-4000-8000-000000000005',
+  '12100000-0000-4000-8000-000000000006',
+  '12000000-0000-4000-8000-000000000006',
   1,
   '{"kind":"exam_order","fields":["items","clinical_indication","impression","priority","observations"]}'::jsonb,
   '{"layout":"clinical-document/plain-text-v1"}'::jsonb,
@@ -215,8 +207,8 @@ ON CONFLICT (id) DO NOTHING;
 UPDATE public.clinical_document_templates t
 SET current_version_id = v.id
 FROM public.clinical_document_template_versions v
-WHERE t.id = '12000000-0000-4000-8000-000000000005'::uuid
-  AND v.id = '12100000-0000-4000-8000-000000000005'::uuid
+WHERE t.id = '12000000-0000-4000-8000-000000000006'::uuid
+  AND v.id = '12100000-0000-4000-8000-000000000006'::uuid
   AND v.template_id = t.id
   AND t.current_version_id IS NULL;
 
