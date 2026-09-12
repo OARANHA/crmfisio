@@ -41,6 +41,7 @@ export function PrescriptionTemplatesAdmin() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [editor, setEditor] = useState<PrescriptionTemplateAdmin | null>(null);
+  const [creatingNew, setCreatingNew] = useState(false);
   const [preview, setPreview] = useState<PrescriptionTemplateAdmin | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -79,40 +80,68 @@ export function PrescriptionTemplatesAdmin() {
   );
 
   const openEditor = (template: PrescriptionTemplateAdmin) => {
+    setCreatingNew(false);
     setEditor(template);
     setName(template.name);
     setDescription(template.description);
     setSpecialty(prescriptionTemplateSpecialty(template));
   };
 
-  const closeEditor = () => {
+  const openCreate = () => {
     if (busy) return;
     setEditor(null);
+    setCreatingNew(true);
     setName('');
     setDescription('');
     setSpecialty('geral');
   };
 
-  const createNew = async () => {
+  const closeEditor = () => {
     if (busy) return;
+    setEditor(null);
+    setCreatingNew(false);
+    setName('');
+    setDescription('');
+    setSpecialty('geral');
+  };
+
+  const save = async () => {
+    if (busy || !name.trim() || (!creatingNew && !editor)) return;
     setBusy(true);
     try {
-      const id = await createClinicPrescriptionTemplate({
-        name: 'Novo modelo de prescrição',
-        description: 'Modelo da clínica baseado na estrutura segura MedicsPro.',
-        specialty: 'geral',
+      if (creatingNew) {
+        await createClinicPrescriptionTemplate({ name, description, specialty });
+        await load();
+        closeEditorAfterMutation();
+        toast('Modelo da clínica criado e disponibilizado para novas prescrições elegíveis.');
+        return;
+      }
+
+      if (!editor) return;
+      await updateClinicPrescriptionTemplate({
+        templateId: editor.id,
+        name,
+        description,
+        specialty,
+        status: editor.status,
       });
-      const all = await listPrescriptionTemplatesForManagement();
-      setTemplates(all);
-      const created = all.find((template) => template.id === id);
-      if (created) openEditor(created);
-      toast('Modelo criado. Ajuste nome, descrição e relevância antes de usar.');
+      await load();
+      closeEditorAfterMutation();
+      toast('Modelo da clínica atualizado.');
     } catch (error) {
-      console.error('[MedicsPro] criar modelo de prescrição:', error);
-      toast('Não foi possível criar o modelo de prescrição.', 'warn');
+      console.error('[MedicsPro] salvar modelo de prescrição:', error);
+      toast(creatingNew ? 'Não foi possível criar o modelo de prescrição.' : 'Não foi possível atualizar o modelo.', 'warn');
     } finally {
       setBusy(false);
     }
+  };
+
+  const closeEditorAfterMutation = () => {
+    setEditor(null);
+    setCreatingNew(false);
+    setName('');
+    setDescription('');
+    setSpecialty('geral');
   };
 
   const duplicate = async (template: PrescriptionTemplateAdmin) => {
@@ -133,28 +162,6 @@ export function PrescriptionTemplatesAdmin() {
     }
   };
 
-  const save = async () => {
-    if (!editor || busy || !name.trim()) return;
-    setBusy(true);
-    try {
-      await updateClinicPrescriptionTemplate({
-        templateId: editor.id,
-        name,
-        description,
-        specialty,
-        status: editor.status,
-      });
-      await load();
-      setEditor(null);
-      toast('Modelo da clínica atualizado.');
-    } catch (error) {
-      console.error('[MedicsPro] atualizar modelo de prescrição:', error);
-      toast('Não foi possível atualizar o modelo.', 'warn');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const toggleArchived = async (template: PrescriptionTemplateAdmin) => {
     if (busy) return;
     const archive = template.status !== 'archived';
@@ -169,7 +176,7 @@ export function PrescriptionTemplatesAdmin() {
         status: archive ? 'archived' : 'active',
       });
       await load();
-      if (editor?.id === template.id) closeEditor();
+      if (editor?.id === template.id) closeEditorAfterMutation();
       toast(archive ? 'Modelo arquivado.' : 'Modelo reativado.');
     } catch (error) {
       console.error('[MedicsPro] status do modelo de prescrição:', error);
@@ -178,6 +185,25 @@ export function PrescriptionTemplatesAdmin() {
       setBusy(false);
     }
   };
+
+  const editorPreview = useMemo<PrescriptionTemplateAdmin>(() => ({
+    id: editor?.id ?? 'draft-preview',
+    ownerType: 'clinic',
+    clinicId: clinic.id || null,
+    name: name.trim() || 'Novo modelo de prescrição',
+    description,
+    relevanceMetadata: { specialty },
+    status: editor?.status ?? 'active',
+    currentVersionId: editor?.currentVersionId ?? null,
+    currentVersion: editor?.currentVersion ?? 1,
+    definition: editor?.definition ?? { kind: 'medication_prescription', fields: ['items', 'observations'] },
+    renderDefinition: editor?.renderDefinition ?? { layout: 'clinical-document/plain-text-v1' },
+    variablesContract: editor?.variablesContract ?? [],
+    publishedAt: editor?.publishedAt ?? null,
+    readOnly: false,
+    createdAt: editor?.createdAt ?? '',
+    updatedAt: editor?.updatedAt ?? '',
+  }), [clinic.id, description, editor, name, specialty]);
 
   if (!canManage) return null;
   if (loading) return <div className="rounded-[20px] border border-line bg-panel p-6 text-[12px] text-fog">Carregando modelos de prescrição…</div>;
@@ -192,7 +218,7 @@ export function PrescriptionTemplatesAdmin() {
               <h2 className="font-display text-[23px] font-bold tracking-tight">Modelos de prescrição</h2>
               <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-fog">Administre modelos da clínica sem alterar a autoridade clínica de quem prescreve. Modelos MedicsPro são somente leitura; uma cópia pode ser criada para a clínica.</p>
             </div>
-            <Btn onClick={() => void createNew()} disabled={busy}>+ Novo modelo</Btn>
+            <Btn onClick={openCreate} disabled={busy}>+ Novo modelo</Btn>
           </div>
         </header>
 
@@ -222,21 +248,22 @@ export function PrescriptionTemplatesAdmin() {
         </div>
       </div>
 
-      {editor && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-ink/70 p-4" role="dialog" aria-modal="true" aria-label="Editar modelo de prescrição">
+      {(editor || creatingNew) && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-ink/70 p-4" role="dialog" aria-modal="true" aria-label={creatingNew ? 'Criar modelo de prescrição' : 'Editar modelo de prescrição'}>
           <div className="w-full max-w-3xl overflow-hidden rounded-[22px] border border-line bg-panel shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mint">Modelo da clínica</p>
-                <h3 className="mt-1 font-display text-[19px] font-semibold text-paper">Editar identificação e relevância</h3>
+                <h3 className="mt-1 font-display text-[19px] font-semibold text-paper">{creatingNew ? 'Criar modelo' : 'Editar identificação e relevância'}</h3>
+                {creatingNew && <p className="mt-1 text-[10.5px] text-fog">Nada é criado no servidor até você confirmar em “Criar modelo”.</p>}
               </div>
               <button type="button" onClick={closeEditor} className="text-[12px] text-fog hover:text-paper">Fechar</button>
             </div>
             <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
               <div className="space-y-4">
-                <Field label="Nome do modelo"><Input value={name} onChange={(event) => setName(event.target.value)} /></Field>
+                <Field label="Nome do modelo"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Receita clínica padrão" /></Field>
                 <Field label="Descrição">
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} className="w-full resize-y rounded-xl border border-line bg-deep px-3 py-2.5 text-[12px] text-paper outline-none focus:border-aqua/60" />
+                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} className="w-full resize-y rounded-xl border border-line bg-deep px-3 py-2.5 text-[12px] text-paper outline-none focus:border-aqua/60" placeholder="Quando este modelo é útil para a clínica?" />
                 </Field>
                 <Field label="Especialidade / relevância">
                   <Select value={specialty} onChange={(event) => setSpecialty(event.target.value)}>
@@ -245,11 +272,11 @@ export function PrescriptionTemplatesAdmin() {
                 </Field>
                 <div className="rounded-xl border border-line/70 bg-deep/45 px-3.5 py-3 text-[10.5px] leading-relaxed text-fog">Nesta versão, o admin configura identidade e relevância do modelo. A estrutura clínica e o renderer permanecem fechados e versionados; não há editor HTML/CSS livre.</div>
               </div>
-              <TemplatePreview template={{ ...editor, name: name || editor.name, description, relevanceMetadata: { specialty } }} clinic={clinic} compact />
+              <TemplatePreview template={editorPreview} clinic={clinic} compact />
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
               <Btn variant="subtle" onClick={closeEditor} disabled={busy}>Cancelar</Btn>
-              <Btn onClick={() => void save()} disabled={busy || !name.trim()}>{busy ? 'Salvando…' : 'Salvar modelo'}</Btn>
+              <Btn onClick={() => void save()} disabled={busy || !name.trim()}>{busy ? 'Salvando…' : creatingNew ? 'Criar modelo' : 'Salvar modelo'}</Btn>
             </div>
           </div>
         </div>
