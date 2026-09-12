@@ -5,7 +5,9 @@
 **Atualizado em:** 2026-09-12  
 **Prescrição D2-B:** VALIDADO EM PRODUÇÃO  
 **Live Preview D2-B.1:** VALIDADO EM PRODUÇÃO  
-**Template Admin D2-B.2A:** backend PR #431 / não é ainda instrução de manual
+**Template Admin D2-B.2A:** VALIDADO EM PRODUÇÃO  
+**Template Admin UI D2-B.2B:** VALIDADO EM PRODUÇÃO  
+**Professional Print / Safe Presets D2-B.2C:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO
 
 ## Regra editorial
 
@@ -69,8 +71,6 @@ Nexus
 
 Prescrição já está validada como workspace real do mesmo Encounter.
 
-Composição visual consolidada inclui hero do atendimento, toolbar de workspaces, rail contextual, sidebar e comportamento responsivo conforme `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
-
 Não usar dados identificáveis de paciente em manual público.
 
 ---
@@ -95,8 +95,6 @@ PHQ-9/GAD-7 permanecem no eixo de instrumentos/Nexus, não como simples template
 **Estado:** IMPLEMENTADO em partes; documentar por capability/superfície realmente exposta.
 
 Nexus é motor de instrumentos, cálculo, evidência e apoio à decisão. Não é emissor de Clinical Documents e não gera prescrição automaticamente.
-
-Fontes: `docs/NEXUS_GAP_MAP.md`, `docs/CLINICAL_TOOLING_REUSE_PLAN.md`.
 
 ---
 
@@ -136,7 +134,7 @@ Manual pode ensinar o fluxo observado:
 9. consultar documento emitido em read-only/histórico;
 10. imprimir o documento emitido.
 
-Regras do manual:
+Regras:
 
 - `clinical.documents` não é permissão universal de prescrição;
 - criação pertence ao Encounter atual;
@@ -158,32 +156,57 @@ Comportamento validado:
 - empilhamento em viewport menor;
 - atualização visual em tempo real durante a edição;
 - profissional/registro, paciente, nascimento, data, medicamentos e observações;
-- selo `Rascunho · não emitida` e aviso `Sem validade até a emissão`;
-- prévia não é imprimível;
-- impressão é exclusiva do documento emitido.
+- selo `Rascunho · não emitida`;
+- preview sem validade;
+- impressão exclusiva do emitido.
+
+## Template Admin backend — D2-B.2A
+
+**Estado técnico:** VALIDADO EM PRODUÇÃO.
+
+PR #431 → `af7b87725a62985c0f6a38dc753b737de40b48af`.
+
+Backend administra templates da clínica por RPC, preservando separação entre administração e autoria clínica.
+
+## Template Admin UI — D2-B.2B
+
+**Estado:** VALIDADO EM PRODUÇÃO.
+
+PR #432 → `8247f91ec5c35c6cf409b7356ed1c1601b961623`.
+
+Manual já pode cobrir:
 
 ```text
-prévia = representação visual do rascunho local
-receita emitida = snapshot clínico imutável
+Configurações
+→ Documentos clínicos
+→ Modelos de prescrição
 ```
 
-O smoke de 2026-09-12 confirmou save/resume, preview, emissão, histórico/read-only e abertura da impressão do emitido.
+Fluxos observados/entregues:
 
-Limitação observada: o layout impresso atual é funcional, mas visualmente simples. A evolução prevista é por presets/renderers seguros e versionados, não por HTML arbitrário.
+- listar modelos MedicsPro read-only;
+- listar modelos da clínica;
+- visualizar modelo;
+- criar modelo da clínica;
+- duplicar modelo MedicsPro para cópia do tenant;
+- editar nome, descrição e relevância/especialidade;
+- arquivar/reativar clinic-owned.
 
-## Template Admin — D2-B.2A
+Regra obrigatória no manual: administrar um modelo não concede permissão para emitir receita.
 
-**Estado:** PR #431 EM ANDAMENTO; backend-only; NÃO documentar como funcionalidade disponível ao admin ainda.
+## Professional Print / Safe Presets — D2-B.2C
 
-Depois de merge + migration/verifier + UI D2-B.2B, o manual poderá cobrir `Configurações → Modelos de Prescrição`.
+**Estado:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.
+
+NÃO documentar ainda como funcionalidade disponível.
+
+Quando validada, a evolução deverá substituir a limitação visual atual por renderer seguro/versionado compartilhado entre preview administrativo, live preview e impressão emitida, com presets fechados e sem HTML/CSS/JS arbitrário.
 
 ---
 
 # 8. Consentimentos
 
 **Estado:** IMPLEMENTADO em partes; inventariar a UI atual antes da redação final.
-
-Não tratar consentimentos automaticamente como Clinical Documents genéricos.
 
 ---
 
@@ -200,8 +223,6 @@ atendimento
 → baixa/resolução
 → relatórios
 ```
-
-Separar cobrança do paciente pela clínica de cobrança SaaS da clínica pelo MedicsPro.
 
 ---
 
@@ -245,7 +266,7 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 
 ## 2026-09-11 — Clinical Encounter #420
 
-**VALIDADO EM PRODUÇÃO** — referência visual em `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
+**VALIDADO EM PRODUÇÃO**.
 
 ## 2026-09-12 — Clinical Documents D2-A
 
@@ -253,17 +274,11 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 
 ## 2026-09-12 — Prescription D2-B + Live Preview D2-B.1
 
-**VALIDADO EM PRODUÇÃO**
+**VALIDADO EM PRODUÇÃO** — draft/save-resume/preview/emissão/histórico/impressão observados.
 
-- PR #429 mergeada;
-- PR #430 mergeada;
-- draft salvo;
-- saída/retorno com resume correto;
-- live preview observado;
-- emissão concluída;
-- histórico/read-only pós-emissão;
-- impressão do documento emitido aberta;
-- layout impresso funcional, com refinamento visual planejado em D2-B.2C.
+## 2026-09-12 — Template Admin D2-B.2A + D2-B.2B
+
+**VALIDADO EM PRODUÇÃO** — backend administrativo aplicado/verificado e UI real em `Configurações → Documentos clínicos → Modelos de prescrição` observada.
 
 ---
 
