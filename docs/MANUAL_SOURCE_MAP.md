@@ -92,13 +92,15 @@ Tópicos:
 **Estado funcional:** VALIDADO EM PRODUÇÃO.  
 **Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
 
-Superfícies principais:
+Superfícies principais atuais:
 
 ```text
 Registro
 Anamneses & Avaliações
 Nexus
 ```
+
+`Prescrição` está planejada para D2-B e ainda não deve aparecer no manual como funcionalidade disponível.
 
 ## Composição visual canônica para o manual
 
@@ -212,18 +214,68 @@ PHQ-9/GAD-7 permanecem instrumentos versionados/validados no eixo Clinical Instr
 
 ---
 
-# 8. Documentos e consentimentos
+# 8. Prescrição, documentos e consentimentos
 
-**Estado:** IMPLEMENTADO em partes; manual precisa de inventário da UI atual.
+## Prescrição / Clinical Documents
+
+**Estado:** PLANEJADO — D1 concluído; D2 decomposto; implementação ainda não iniciada.
+
+Não documentar ainda como fluxo de usuário disponível.
+
+Arquitetura aprovada para desenvolvimento:
+
+```text
+Clinical Documents Foundation
++
+contratos tipados por document_type
+```
+
+Roadmap:
+
+1. **D2-A — Clinical Documents Foundation**
+2. **D2-B — Prescription V1 (`medication_prescription`)**
+3. **D2-C — Therapeutic Guidance V1 (`therapeutic_guidance`)**
+
+Regras editoriais futuras:
+
+- `clinical.documents` não deve ser descrita como permissão universal de prescrição;
+- Prescrição pertence ao Encounter atual, não ao Histórico clínico;
+- templates e especialidade afetam descoberta/relevância, não autorização;
+- documento emitido deverá ser snapshot imutável;
+- cancelamento/correção devem permanecer auditáveis;
+- não descrever assinatura digital/legal enquanto não houver implementação específica;
+- não descrever medicamentos controlados, catálogo farmacológico ou integração Nexus enquanto não estiverem entregues.
+
+Quando D2-B for validada em produção, documentar no mínimo:
+
+- abrir `Prescrição` dentro do Encounter;
+- escolher template elegível;
+- criar/retomar draft;
+- preencher itens;
+- preview;
+- emissão;
+- read-only pós-emissão;
+- impressão;
+- histórico.
+
+Fonte de continuidade:
+
+- `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
+- `docs/CURRENT_STATE.md`
+
+## Consentimentos atuais
+
+**Estado:** IMPLEMENTADO em partes; manual precisa de inventário da UI atual antes da redação final.
 
 Mapear:
 
-- documentos;
-- geração/assinatura;
 - consentimentos;
-- autoria;
+- autoria/aceite;
 - histórico;
-- regras por role/capability.
+- regras por role/capability;
+- impressão/snapshot conforme superfície real.
+
+Não tratar consentimentos como Clinical Documents Engine genérico.
 
 ---
 
@@ -352,6 +404,26 @@ Validação visual:
 Fonte detalhada:
 
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
+
+## 2026-09-11 — Clinical Documents D1 / D2 decomposition
+
+**PLANEJADO — NÃO IMPLEMENTADO**
+
+Evidência de produto/arquitetura:
+
+- D1 confirmou ausência de Clinical Documents Engine transversal no runtime atual;
+- histórico MedicsPro foi minerado como referência de Prescrição/Templates/Pedido de Exames/Atestados/Resultados;
+- `clinical.documents` foi classificada como capability-base, não autorização universal por tipo;
+- D2 foi decomposta para preservar revisão e segurança:
+  - D2-A foundation;
+  - D2-B Prescription V1;
+  - D2-C Therapeutic Guidance V1.
+
+Não usar esse roadmap como instrução operacional do manual antes da validação das slices correspondentes.
+
+Fonte:
+
+- `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
 
 ---
 
