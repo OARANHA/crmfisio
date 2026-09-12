@@ -27,7 +27,7 @@ describe('Clinical Prescription V1 boundary', () => {
   });
 
   it('keeps draft save separate from explicit human issue confirmation', () => {
-    expect(workspaceSource).toContain('Salvar rascunho não emite a receita. Emitir é uma ação separada e irreversível.');
+    expect(workspaceSource).toContain('Salvar rascunho não emite a receita. Emitir é uma ação separada que torna esta versão imutável.');
     expect(workspaceSource).toContain('Revisão humana obrigatória');
     expect(workspaceSource).toContain('Confirmar e emitir');
     expect(workspaceSource).toContain('saveMedicationPrescriptionDraft(');
