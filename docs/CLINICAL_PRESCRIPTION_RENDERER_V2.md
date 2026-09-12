@@ -2,6 +2,11 @@
 
 > Renderer visual seguro e versionado para `medication_prescription`. A apresentação pode evoluir sem transformar template em HTML arbitrário e sem alterar receitas já emitidas.
 
+**Estado:** VALIDADO EM PRODUÇÃO  
+**PR:** #433  
+**Merge:** `db364e17a158b2f1f13229ca595f6e7b24cfcab8`  
+**Validação de produção:** 2026-09-12
+
 ## Objetivo
 
 Fechar o gap observado no smoke real de Prescrição: o lifecycle clínico estava correto, mas a impressão era funcional e visualmente simples.
@@ -139,6 +144,8 @@ Admin publica v3 = compact/emerald
 → Receita A continua institutional/navy
 ```
 
+Essa invariável foi comprovada no smoke de produção: após publicar uma nova apresentação do template da clínica, o documento anteriormente emitido continuou reabrindo/imprimindo com a versão visual congelada na emissão.
+
 ## Contexto congelado para impressão
 
 Novas emissões congelam também os dados de apresentação necessários:
@@ -186,9 +193,9 @@ Templates platform continuam somente leitura; admin pode duplicar para o tenant 
 
 Não adicionar `Pedido de Exames` nesta família enquanto `exam_order` não existir como document type canônico.
 
-## Gates
+## Gates técnicos
 
-D2-B.2C deve provar:
+D2-B.2C provou:
 
 - PostgreSQL 16 do renderer V2;
 - regressão D2-B.2A;
@@ -202,25 +209,41 @@ D2-B.2C deve provar:
 - preview/print usam o renderer compartilhado;
 - unit tests, typecheck, lint e build.
 
-## Rollout
+## Rollout de produção concluído
 
-A migration é manual/controlada.
+A aplicação foi feita de forma controlada e pinada ao merge `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
+
+Evidência operacional:
 
 ```text
-PR mergeada
-!=
-migration aplicada
-!=
-frontend validado em produção
+backup pré-rollout
+→ criado
+
+20260912_clinical_prescription_renderer_v2.sql
+→ COMMIT / MIGRATION_1_EXIT=0
+
+20260912_clinical_prescription_renderer_v2_hardening.sql
+→ COMMIT / MIGRATION_2_EXIT=0
+
+VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
+→ CLINICAL PRESCRIPTION RENDERER V2 VERIFY PASSED
+→ VERIFIER_EXIT=0
 ```
 
-Depois de merge:
+Smoke de produção confirmou:
 
-1. backup conforme runbook;
-2. aplicar migration pinada ao SHA mergeado;
-3. executar verifier oficial;
-4. redeploy frontend;
-5. smoke como admin: editar/visualizar modelo da clínica;
-6. smoke como médico: criar draft, conferir preview, emitir e imprimir;
-7. confirmar que a impressão corresponde ao preset visual emitido;
-8. somente então marcar D2-B.2C `VALIDADO EM PRODUÇÃO`.
+1. biblioteca de templates no admin;
+2. edição visual de modelo clinic-owned;
+3. publicação de nova versão;
+4. persistência da configuração publicada;
+5. nova receita usando a apresentação publicada;
+6. impressão profissional do emitido;
+7. documento emitido preservando a apresentação original após nova evolução do template.
+
+Resultado:
+
+```text
+D2-B.2C = VALIDADO EM PRODUÇÃO
+```
+
+A família Prescrição D2-B fica fechada no escopo atual. Próxima evolução funcional dos Clinical Documents: **D2-C — Therapeutic Guidance V1**.

@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `8247f91ec5c35c6cf409b7356ed1c1601b961623`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PR #433 EM ANDAMENTO
+**Main canônica:** `db364e17a158b2f1f13229ca595f6e7b24cfcab8`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PRÓXIMO
 
 ---
 
@@ -155,28 +155,16 @@ Smoke real confirmou:
 Configurações
 → Documentos clínicos
 → Modelos de prescrição
-→ Visualizar
+→ Visualizar / Duplicar / Editar / Arquivar
 ```
 
 Admin consegue listar modelos MedicsPro/clinic-owned, criar, duplicar, editar metadados, visualizar e arquivar/reativar sem receber autoridade clínica.
 
-O smoke também confirmou que a experiência precisava evoluir para uma edição visual próxima do fluxo maduro do MedicsPro histórico, mas sem copiar `v-html`/substituição livre de variáveis.
-
 ## D2-B.2C — Professional Print Layout / Safe Presets
 
-**PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base:
-
-```text
-main@8247f91ec5c35c6cf409b7356ed1c1601b961623
-```
-
-Branch:
-
-```text
-feat/clinical-prescription-print-presets-d2b2c
-```
+PR #433 → `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
 Contrato:
 
@@ -201,7 +189,7 @@ Medicamentos:
 - `numbered`
 - `cards`
 
-Direção de runtime:
+Runtime validado:
 
 ```text
 Admin preview
@@ -217,49 +205,90 @@ template_definition_snapshot
 Issued print
 ```
 
-Escopo:
+Produção confirmada em 2026-09-12:
 
-- renderer compartilhado frontend para preview administrativo, draft e impressão;
-- edição visual por drawer com título/preset/acento/blocos seguros;
-- sem editor HTML/CSS/JS;
-- dados dinâmicos escapados;
-- template clinic-owned publica nova versão somente quando apresentação muda;
-- receitas emitidas permanecem pinadas ao template_version/snapshot usados na emissão;
-- novas emissões congelam nome/nascimento do paciente, clínica e identidade profissional necessárias à impressão;
-- platform templates curados iniciais: Receita simples, Receita com orientações e Receita compacta;
-- `plain-text-v1` continua válido para histórico/compatibilidade com fallback visual seguro;
-- nenhum novo `document_type`.
+```text
+20260912_clinical_prescription_renderer_v2.sql
+→ COMMIT / MIGRATION_1_EXIT=0
+
+20260912_clinical_prescription_renderer_v2_hardening.sql
+→ COMMIT / MIGRATION_2_EXIT=0
+
+VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
+→ CLINICAL PRESCRIPTION RENDERER V2 VERIFY PASSED
+→ VERIFIER_EXIT=0
+```
+
+Smoke real comprovou:
+
+- edição visual segura de template clinic-owned;
+- publicação de nova versão visual;
+- persistência do preset publicado;
+- preview administrativo coerente com o contrato de impressão;
+- emissão nova usando a versão publicada;
+- impressão profissional;
+- documento já emitido permanecendo com o layout/version snapshot original após evolução posterior do template;
+- platform templates somente leitura;
+- HTML/CSS/JS arbitrário fora do contrato;
+- `plain-text-v1` preservado para histórico/compatibilidade.
+
+Resultado canônico:
+
+```text
+Template v2
+→ documento A emitido
+→ snapshot v2 congelado
+
+Template evolui para v3
+→ documento A continua v2
+→ documentos novos usam v3
+```
 
 Documento: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
 
-Gate:
-
-1. PostgreSQL 16 D2-B.2C;
-2. regressão D2-B.2A;
-3. regressão D2-A/care/auth;
-4. unit/boundary tests do renderer compartilhado;
-5. typecheck/lint/build;
-6. revisão de ACL/snapshots/diff;
-7. Ready for Review somente após tudo verde.
+**Prescrição D2-B está fechada no escopo atual.** Polimento adicional só deve reabrir a família com evidência concreta de problema de produto, segurança ou integridade.
 
 ---
 
 # D2-C — Therapeutic Guidance V1
 
-**PLANEJADO após D2-B.2C estabilizada e validada.**
+**PRÓXIMA SLICE FUNCIONAL.**
 
-Reutilizará D2-A. Não misturar exames, atestados e relatórios na mesma slice.
+Reutilizar D2-A; não criar engine paralelo.
+
+Objetivo inicial:
+
+```text
+Encounter
+→ Orientação terapêutica
+→ draft estruturado
+→ revisão humana explícita
+→ emitir
+→ snapshot imutável
+→ histórico / impressão
+```
+
+Guardrails da D2-C:
+
+- definir contrato/payload próprio de `therapeutic_guidance` antes da UI;
+- reutilizar lifecycle, versionamento, snapshots, histórico e cancelamento D2-A;
+- manter emissão como ato explícito do profissional;
+- não misturar `exam_order`, atestado, referral ou relatório;
+- não transformar Nexus em emissor automático de conduta;
+- profissão/especialidade podem orientar relevância, nunca conceder ACL;
+- revisar a experiência equivalente no MedicsPro histórico antes do desenho final;
+- preferir uma slice vertical mínima e verificável.
 
 ---
 
 ## Regras de continuidade
 
 1. D2-A não deve ser redesenhada sem blocker reproduzido.
-2. Não criar Prescription Engine paralelo.
+2. Não criar Prescription/Clinical Documents Engine paralelo.
 3. Não tornar especialidade uma ACL.
 4. Não transformar template admin em autorização clínica.
 5. Não expor HTML/CSS/JS arbitrário como fonte de documento clínico.
-6. Preview administrativo e impressão devem obedecer ao mesmo contrato versionado.
+6. Preview administrativo e impressão devem obedecer ao mesmo contrato versionado quando aplicável.
 7. Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 8. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
 9. Migrations de produção são controladas; merge não significa aplicação.
