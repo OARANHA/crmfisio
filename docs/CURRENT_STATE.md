@@ -3,13 +3,13 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Base canônica desta slice:** `main@49cee461f970a3630c4fd98ab93a1ac476798e74`  
+**Base canônica desta slice:** `main@cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
 **Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
 **Exam Order D2-D0 Foundation:** VALIDADO EM PRODUÇÃO  
 **Exam Order D2-D1 Encounter UX V1:** VALIDADO EM PRODUÇÃO  
-**Exam Order D2-D2 Professional Print Renderer V1:** PR #440 / NÃO PRODUÇÃO  
+**Exam Order D2-D2 Professional Print Renderer V1:** VALIDADO EM PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -89,7 +89,7 @@ Orientações
 Nexus
 ```
 
-`Exames` consome o `exam_order` canônico D2-D0 e não cria engine paralelo. O workspace D2-D1 foi mergeado, redeployado e validado em produção com emissão real e histórico por snapshot.
+`Exames` consome o `exam_order` canônico D2-D0 e não cria engine paralelo. D2-D1 e D2-D2 foram mergeados, promovidos e validados em produção com emissão real, histórico por snapshot, preview A4 e impressão profissional.
 
 Prescrição, Pedido de Exames e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
@@ -298,41 +298,50 @@ A slice adicionou `Exames` ao Encounter médico e consome exclusivamente o backe
 
 Não há migration nesta slice. Não há fulfillment/resultados/laboratórios/Nexus auto-ordering.
 
-Em produção, o redeploy frontend e smoke real confirmaram a aba `Exames`, emissão de pedidos e histórico imutável no mesmo Encounter. O smoke também evidenciou o gap esperado de D2-D2: ainda não havia impressão profissional A4.
+Em produção, o redeploy frontend e smoke real confirmaram a aba `Exames`, emissão de pedidos e histórico imutável no mesmo Encounter.
 
 Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
 
 ## D2-D2 — Exam Order Professional Print Renderer V1
 
-**PR #440 — IMPLEMENTADO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base: `main@49cee461f970a3630c4fd98ab93a1ac476798e74`.
+PR #440 → `cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`.
 
-Layout novo:
+Layout:
 
 ```text
 clinical-document/exam-order-v1
 ```
 
-Entregue na branch:
+Produção confirmou:
 
 - nova versão imutável do template platform `Pedido de exames`;
 - v1 `plain-text-v1` preservada para histórico;
-- preview A4 real usando o mesmo renderer code-owned da impressão;
-- clínica/paciente/profissional/conselho/UF/registro/especialidade/data;
-- prioridade e exames estruturados com categoria/código/instruções/urgência;
+- preview A4 real no workspace;
+- título humano `PEDIDO DE EXAMES`;
+- clínica, paciente e profissional/CRM/especialidade visíveis;
+- prioridade e exames estruturados;
 - indicação clínica, hipótese/impressão e observações;
 - espaço explícito para assinatura do profissional solicitante;
 - botão `Imprimir` nos documentos emitidos;
 - impressão baseada exclusivamente em snapshots congelados;
-- fallback seguro para pedidos históricos `plain-text-v1`;
-- contrato visual allowlisted, sem HTML/CSS/JS administrável;
-- escaping de conteúdo dinâmico;
-- migration aditiva, verifier production-safe e harness PostgreSQL 16 dedicados.
+- pedidos históricos preservados sem re-renderização pelo template atual;
+- contrato visual fechado e code-owned;
+- nenhuma expansão de autorização, RLS, RPC, grants, roles ou capability.
 
-D2-D2 não altera autorização, RLS, RPC, grants, roles, capability, lifecycle ou o recorte médico/CRM conservador D2-D0. Não inclui fulfillment/resultados/laboratórios/imagem/Nexus auto-ordering.
+Rollout em 2026-09-12:
+
+```text
+migration D2-D2 aplicada
+verifier oficial executado com sucesso
+frontend redeployado
+smoke visual confirmado em produção
+```
 
 Documento: `docs/CLINICAL_EXAM_ORDER_RENDERER_V1.md`.
+
+**A família atual de Pedido de Exames está fechada no escopo documental básico.** Fulfillment, resultados, laudos e integrações laboratoriais/imagem devem nascer em domínio separado.
 
 ---
 
@@ -388,4 +397,4 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Fechar a PR #440 com CI completo, revisão do diff e merge. Depois do merge, D2-D2 exige backup controlado, migration pinada ao SHA mergeado, verifier oficial, redeploy do frontend e smoke real do fluxo `Exames` com preview A4, emissão, histórico, botão `Imprimir`, área de assinatura e regressão de pedido histórico `plain-text-v1`. Somente após esse smoke D2-D2 poderá ser marcada `VALIDADO EM PRODUÇÃO`.
+Fechar a sincronização documental pós-rollout de D2-D2 e, em seguida, abrir o próximo gap de maior valor do Clinical Documents: **D2-E0 — Referral / Encaminhamento Foundation**, com `document_type` próprio, payload estruturado, autoria multiprofissional explicitamente definida e sem reaproveitar `therapeutic_guidance` como atalho.
