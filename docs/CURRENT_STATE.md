@@ -3,13 +3,13 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `8247f91ec5c35c6cf409b7356ed1c1601b961623`  
+**Main canônica:** `db364e17a158b2f1f13229ca595f6e7b24cfcab8`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.1 Live Preview:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2A Template Admin backend:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2B Admin UI:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.2C Professional Print / Safe Presets:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO  
+**Prescription D2-B.2C Professional Print / Safe Presets:** VALIDADO EM PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -176,30 +176,45 @@ Smoke real em 2026-09-12 confirmou:
 Configurações
 → Documentos clínicos
 → Modelos de prescrição
-→ Visualizar
+→ Visualizar / Duplicar / Editar / Arquivar
 ```
 
-Biblioteca administrativa funcional com modelos MedicsPro read-only, modelos da clínica, criar/duplicar/editar metadados, arquivar/reativar e preview estrutural.
-
-O smoke também confirmou o próximo gap: a experiência administrativa deve se aproximar da referência histórica madura e a impressão precisa usar um layout profissional configurável, mas sem retornar ao renderer HTML livre do sistema antigo.
+Biblioteca administrativa funcional com modelos MedicsPro read-only e modelos clinic-owned, preservando a separação entre administração do template e autoria clínica.
 
 ## D2-B.2C — Professional Print Layout + Safe Presets
 
-**PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Branch:
+PR #433 → `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
-```text
-feat/clinical-prescription-print-presets-d2b2c
-```
-
-Base:
+Produção confirmada em 2026-09-12:
 
 ```text
-main@8247f91ec5c35c6cf409b7356ed1c1601b961623
+20260912_clinical_prescription_renderer_v2.sql
+→ COMMIT / MIGRATION_1_EXIT=0
+
+20260912_clinical_prescription_renderer_v2_hardening.sql
+→ COMMIT / MIGRATION_2_EXIT=0
+
+VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
+→ CLINICAL PRESCRIPTION RENDERER V2 VERIFY PASSED
+→ VERIFIER_EXIT=0
 ```
 
-Decisão arquitetural:
+Smoke real confirmou:
+
+- edição visual de template clinic-owned no admin;
+- publicação de nova versão visual imutável;
+- presets seguros `classic`, `institutional`, `compact`;
+- acentos fechados `monochrome`, `navy`, `emerald`;
+- preview administrativo e impressão com renderer compartilhado;
+- nova emissão usando a versão visual publicada;
+- impressão profissional do documento emitido;
+- receita emitida preservando o layout/version snapshot mesmo após publicação posterior do template;
+- HTML/CSS/JS arbitrário continua fora do contrato;
+- `plain-text-v1` permanece compatível para histórico.
+
+Contrato canônico:
 
 ```text
 Admin preview
@@ -215,25 +230,11 @@ template_definition_snapshot
 Issued print
 ```
 
-Escopo da #433:
-
-- contrato fechado `clinical-document/prescription-v2`;
-- presets `classic`, `institutional`, `compact`;
-- acentos fixos `monochrome`, `navy`, `emerald`;
-- medicamentos em `numbered|cards`;
-- toggles seguros de clínica/paciente/especialidade;
-- drawer de edição visual no admin;
-- shared renderer para admin preview, draft preview e issued print;
-- publicação visual clinic-owned gera nova versão imutável;
-- novas emissões congelam contexto necessário à impressão;
-- histórico usa `template_definition_snapshot`, nunca template atual;
-- HTML/CSS/JS arbitrário continua proibido;
-- versões `plain-text-v1` permanecem válidas com fallback visual seguro;
-- nenhum novo `document_type`.
-
 Documento canônico: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
 
-Após #433 estabilizada/validada, retomar **D2-C — Therapeutic Guidance V1**.
+**D2-B / Prescrição está fechada para o escopo atual.** Não reabrir por polimento visual sem blocker reproduzido.
+
+Próxima família funcional: **D2-C — Therapeutic Guidance V1**, reutilizando D2-A sem misturar `exam_order`, atestados ou relatórios.
 
 Não incluir `Pedido de Exames` até existir `exam_order` canônico próprio.
 
@@ -295,13 +296,16 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Fechar tecnicamente a **PR #433 — D2-B.2C Prescription Professional Print / Safe Presets**:
+Abrir a definição/implementação da **D2-C — Therapeutic Guidance V1** sobre a D2-A já validada.
 
-1. PostgreSQL 16 do renderer V2;
-2. regressões D2-B.2A/D2-A/care/auth;
-3. unit/boundary tests do shared renderer;
-4. typecheck/lint/build;
-5. revisão de snapshot/ACL/diff;
-6. Ready for Review somente após tudo verde.
+Guardrails obrigatórios para a próxima slice:
 
-Nenhuma ação de produção deve ocorrer antes do merge explícito da #433.
+1. reutilizar lifecycle, snapshots, histórico e cancelamento da D2-A;
+2. não criar segundo Clinical Documents Engine;
+3. definir payload tipado próprio de `therapeutic_guidance` antes da UI;
+4. preservar revisão humana explícita antes de emitir;
+5. não misturar `exam_order`, atestado, referral ou relatório;
+6. especialidade/relevância não vira ACL;
+7. Nexus pode apoiar conteúdo/decisão, mas não emitir conduta automaticamente;
+8. comparar ergonomia do MedicsPro histórico antes de desenhar a experiência atual;
+9. parar em PR para revisão antes de qualquer produção.
