@@ -53,7 +53,7 @@ BEGIN
     AND v.version = 2
     AND v.published_at IS NOT NULL
     AND v.definition = '{"kind":"therapeutic_guidance","fields":["items","patient_instructions","observations"]}'::jsonb
-    AND jsonb_object_length(v.render_definition) = 6
+    AND (SELECT count(*) FROM jsonb_object_keys(v.render_definition)) = 6
     AND v.render_definition ?& ARRAY[
       'layout',
       'title',
@@ -83,7 +83,7 @@ FROM public.clinical_document_template_versions v
 WHERE v.template_id = t.id
   AND v.version = 2
   AND v.published_at IS NOT NULL
-  AND jsonb_object_length(v.render_definition) = 6
+  AND (SELECT count(*) FROM jsonb_object_keys(v.render_definition)) = 6
   AND v.render_definition->>'layout' = 'clinical-document/therapeutic-guidance-v1'
   AND t.owner_type = 'platform'
   AND t.document_type = 'therapeutic_guidance'
