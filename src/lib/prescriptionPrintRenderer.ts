@@ -142,7 +142,7 @@ export function buildPrescriptionDocumentHtml(input: PrescriptionRenderInput): s
   const credential = formatCredential(context.issuer);
   const issuedAt = formatDateTime(context.issuedAt);
   const statusLabel = input.mode === 'issued' ? '' : 'Pré-visualização · sem validade';
-  const specialty = config.showSpecialty ? context.issuer.specialty?.trim() : '';
+  const specialty = config.showSpecialty ? (context.issuer.specialty?.trim() || '') : '';
 
   const medicationItems = input.payload.items
     .filter((item) => item.medicationName.trim() || item.dose.trim() || item.route.trim() || item.frequency.trim() || item.duration.trim() || item.instructions.trim())
