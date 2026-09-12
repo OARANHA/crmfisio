@@ -222,7 +222,7 @@ SELECT public.cancel_clinical_document(:'exam_doc', 'Cancelamento de teste D2-D0
 INSERT INTO d2d0_results VALUES
   ('exam_cancel_audited_and_snapshot_preserved', (
     SELECT status = 'canceled'
-       AND cancellation_reason = 'Cancelamento de teste D2-D0'
+       AND cancel_reason = 'Cancelamento de teste D2-D0'
        AND payload_snapshot->'items'->0->>'exam_name' = 'Hemograma completo'
        AND canceled_at IS NOT NULL
        AND canceled_by = 'd2100000-0000-4000-8000-000000000001'::uuid
