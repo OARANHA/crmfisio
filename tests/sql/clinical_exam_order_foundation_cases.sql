@@ -40,6 +40,18 @@ INSERT INTO d2d0_results VALUES
       AND id = '12000000-0000-4000-8000-000000000006'::uuid
   ));
 
+SELECT pg_temp.d2d0_expect_error(
+  'professional_id_only_not_document_owner',
+  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000006','{}'::jsonb)$$,
+  'clinical_document_own_active_encounter_required'
+);
+
+SELECT pg_temp.d2d0_expect_error(
+  'terminal_encounter_exam_draft_denied',
+  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000003','12100000-0000-4000-8000-000000000006','{}'::jsonb)$$,
+  'clinical_document_own_active_encounter_required'
+);
+
 SELECT (public.create_clinical_document_draft(
   'd2300000-0000-4000-8000-000000000001',
   '12100000-0000-4000-8000-000000000006',
@@ -110,6 +122,29 @@ INSERT INTO d2d0_results VALUES
   ));
 COMMIT;
 
+-- Medical identity without the document capability must stay denied.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL row_security = on;
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+SELECT set_config('request.jwt.claim.sub','d2100000-0000-4000-8000-000000000002',true);
+INSERT INTO d2d0_results VALUES
+  ('physician_without_documents_capability_denied', NOT public.current_user_can_issue_clinical_document('exam_order')),
+  ('exam_template_hidden_without_capability', (
+    SELECT count(*) = 0 FROM public.clinical_document_templates WHERE document_type = 'exam_order'
+  ));
+COMMIT;
+
+-- Inactive medical profile is denied even if its profession/registration look valid.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL row_security = on;
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+SELECT set_config('request.jwt.claim.sub','d2100000-0000-4000-8000-000000000007',true);
+INSERT INTO d2d0_results VALUES
+  ('inactive_physician_exam_order_denied', NOT public.current_user_can_issue_clinical_document('exam_order'));
+COMMIT;
+
 -- A non-medical professional with clinical.documents remains eligible for
 -- therapeutic guidance but does not gain exam_order through profession,
 -- specialty or the coarse documents capability alone.
@@ -128,6 +163,21 @@ SELECT pg_temp.d2d0_expect_error(
   'physio_exam_draft_denied',
   $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000002','12100000-0000-4000-8000-000000000006','{}'::jsonb)$$,
   'clinical_document_eligibility_required'
+);
+COMMIT;
+
+-- A valid doctor in another tenant cannot use Clinic A's encounter.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL row_security = on;
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+SELECT set_config('request.jwt.claim.sub','d2100000-0000-4000-8000-000000000008',true);
+INSERT INTO d2d0_results VALUES
+  ('tenant_b_physician_eligible_in_own_context', public.current_user_can_issue_clinical_document('exam_order'));
+SELECT pg_temp.d2d0_expect_error(
+  'cross_tenant_exam_draft_denied',
+  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000001','12100000-0000-4000-8000-000000000006','{}'::jsonb)$$,
+  'clinical_document_own_active_encounter_required'
 );
 COMMIT;
 
@@ -152,6 +202,30 @@ SELECT pg_temp.d2d0_expect_error(
   $$INSERT INTO public.clinical_document_templates(owner_type,document_type,name,status) VALUES('platform','unknown_document','Invalido','active')$$,
   NULL
 );
+
+-- Cancellation uses the inherited D2-A audited lifecycle and preserves snapshots.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL row_security = on;
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+SELECT set_config('request.jwt.claim.sub','d2100000-0000-4000-8000-000000000001',true);
+SELECT public.cancel_clinical_document(:'exam_doc', 'Cancelamento de teste D2-D0');
+INSERT INTO d2d0_results VALUES
+  ('exam_cancel_audited_and_snapshot_preserved', (
+    SELECT status = 'canceled'
+       AND cancellation_reason = 'Cancelamento de teste D2-D0'
+       AND payload_snapshot->'items'->0->>'exam_name' = 'Hemograma completo'
+       AND canceled_at IS NOT NULL
+       AND canceled_by = 'd2100000-0000-4000-8000-000000000001'::uuid
+    FROM public.clinical_documents WHERE id = :'exam_doc'
+  )),
+  ('exam_cancel_event_appended', (
+    SELECT count(*) = 3
+    FROM public.clinical_document_events
+    WHERE document_id = :'exam_doc'
+      AND event_type IN ('created','issued','canceled')
+  ));
+COMMIT;
 
 -- Internal renderer understands exam_order and still rejects unknown types.
 INSERT INTO d2d0_results VALUES (
