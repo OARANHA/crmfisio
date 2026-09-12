@@ -49,7 +49,7 @@ BEGIN
       AND v.version = 2
       AND v.published_at IS NOT NULL
       AND v.definition = '{"kind":"therapeutic_guidance","fields":["items","patient_instructions","observations"]}'::jsonb
-      AND jsonb_object_length(v.render_definition) = 6
+      AND (SELECT count(*) FROM jsonb_object_keys(v.render_definition)) = 6
       AND v.render_definition ?& ARRAY[
         'layout',
         'title',
@@ -86,6 +86,7 @@ BEGIN
       AND t.status = 'active'
       AND v.version >= 2
       AND v.published_at IS NOT NULL
+      AND (SELECT count(*) FROM jsonb_object_keys(v.render_definition)) = 6
       AND v.render_definition->>'layout' = 'clinical-document/therapeutic-guidance-v1'
   ) <> 2 THEN
     RAISE EXCEPTION 'clinical_therapeutic_guidance_renderer_v1_current_versions_missing';
