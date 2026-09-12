@@ -74,13 +74,18 @@ BEGIN
     RAISE EXCEPTION 'clinical_document_payload_object_required' USING ERRCODE = '22023';
   END IF;
 
+  -- Preserve the D2-A medication semantics exactly; the type check and length
+  -- check stay separate so malformed JSON cannot surface an unrelated array error.
   IF p_document_type = 'medication_prescription' THEN
-    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array'
-       OR jsonb_array_length(p_payload->'items') = 0 THEN
+    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array' THEN
+      RAISE EXCEPTION 'clinical_document_medication_items_required' USING ERRCODE = '22023';
+    END IF;
+    IF jsonb_array_length(p_payload->'items') = 0 THEN
       RAISE EXCEPTION 'clinical_document_medication_items_required' USING ERRCODE = '22023';
     END IF;
     IF EXISTS (
-      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1
+      FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'medication_name', '')), '') IS NULL
     ) THEN
@@ -89,13 +94,17 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Preserve the D2-A therapeutic-guidance semantics exactly.
   IF p_document_type = 'therapeutic_guidance' THEN
-    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array'
-       OR jsonb_array_length(p_payload->'items') = 0 THEN
+    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array' THEN
+      RAISE EXCEPTION 'clinical_document_guidance_items_required' USING ERRCODE = '22023';
+    END IF;
+    IF jsonb_array_length(p_payload->'items') = 0 THEN
       RAISE EXCEPTION 'clinical_document_guidance_items_required' USING ERRCODE = '22023';
     END IF;
     IF EXISTS (
-      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1
+      FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'guidance', '')), '') IS NULL
     ) THEN
@@ -105,13 +114,16 @@ BEGIN
   END IF;
 
   IF p_document_type = 'exam_order' THEN
-    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array'
-       OR jsonb_array_length(p_payload->'items') = 0 THEN
+    IF jsonb_typeof(p_payload->'items') IS DISTINCT FROM 'array' THEN
+      RAISE EXCEPTION 'clinical_document_exam_items_required' USING ERRCODE = '22023';
+    END IF;
+    IF jsonb_array_length(p_payload->'items') = 0 THEN
       RAISE EXCEPTION 'clinical_document_exam_items_required' USING ERRCODE = '22023';
     END IF;
 
     IF EXISTS (
-      SELECT 1 FROM jsonb_array_elements(p_payload->'items') AS item
+      SELECT 1
+      FROM jsonb_array_elements(p_payload->'items') AS item
       WHERE jsonb_typeof(item) IS DISTINCT FROM 'object'
          OR nullif(btrim(coalesce(item->>'exam_name', '')), '') IS NULL
          OR (item ? 'code' AND jsonb_typeof(item->'code') IS DISTINCT FROM 'string')
