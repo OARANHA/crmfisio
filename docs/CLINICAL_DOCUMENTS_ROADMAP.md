@@ -1,85 +1,60 @@
 # MedicsPro — Clinical Documents Roadmap
 
-> Documento de continuidade para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
+> Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `15692b47fc5bca577948a03de2a686f58d5c7dd9`  
-**Estado:** D1 CONCLUÍDO / D2-A VALIDADO EM PRODUÇÃO / D2-B MERGEADO E NÃO VALIDADO EM PRODUÇÃO / D2-B.1 PR #430 EM VALIDAÇÃO
+**Main canônica:** `db046f0f8b88864b18a5181b320ae346c59a4419`  
+**Estado:** D1 CONCLUÍDO / D2-A VALIDADO EM PRODUÇÃO / D2-B VALIDADO EM PRODUÇÃO / D2-B.1 VALIDADO EM PRODUÇÃO / D2-B.2A PR #431 EM ANDAMENTO
 
 ---
 
-## Princípio arquitetural
+## Princípios
 
 ```text
 ENGINE != AUTHORIZATION != RELEVANCE
+TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
 ```
 
-`clinical.documents` é gate-base clínico. Ele não concede automaticamente prescrição ou qualquer outro ato documental específico.
+`clinical.documents` é gate-base clínico. Ele não concede automaticamente prescrição ou outro ato documental específico.
 
-Profissão/especialidade podem influenciar eligibility/relevância quando houver contrato explícito, mas nunca funcionam como bypass textual de autorização.
+Profissão/especialidade podem influenciar eligibility/relevância quando houver contrato explícito, nunca funcionar como bypass de autorização.
+
+Administração de templates pertence ao tenant; emissão de documento continua sendo ato clínico com identity + capability + autoria/contexto assistencial.
 
 ---
 
-## D1 — inventário e decisão arquitetural
-
-D1 concluiu que o MedicsPro precisava de uma Clinical Documents Foundation transversal antes de UI real de prescrição.
-
-Primitives aproveitadas:
-
-- Clinical Encounter e appointment ativo;
-- identidade clínica e conselho/registro;
-- `clinical.documents`;
-- care relationship / tenant boundaries;
-- lifecycle protegido via RPC;
-- versionamento/imutabilidade;
-- snapshot/auditoria;
-- histórico longitudinal.
-
-Do MedicsPro histórico, reaproveitar produto/UX — templates, medicamentos estruturados, observações, preview, impressão e histórico — nunca sua arquitetura Vue/Pinia/Mongo/Express ou ACL antiga.
-
-Decisão:
-
-```text
-Clinical Documents Foundation pequena
-+
-contratos tipados por document_type
-```
-
-Não criar Prescription Engine isolado e não usar HTML/CSS arbitrário como fonte clínica.
-
----
-
-## Document types atuais
+## Document types canônicos atuais
 
 D2-A contém somente:
 
 - `medication_prescription`
 - `therapeutic_guidance`
 
-Fases posteriores, somente após estabilização real dos fluxos V1:
+Candidatos posteriores, cada um com contrato próprio:
 
 - `exam_order`
 - `referral`
 - `attendance_declaration`
-- `medical_certificate` / variantes aprovadas
+- `medical_certificate`
 - `clinical_report`
 
-Não misturar resultado externo de exame com laudo autoral sem contrato próprio.
+Não apresentar `Pedido de Exames` como template funcional antes de `exam_order` existir canonicamente.
 
 ---
 
-## Lifecycle canônico D2-A
+## Lifecycle canônico
 
 ```text
-published template
-→ document draft
-→ validated payload
-→ explicit human confirmation
-→ issued snapshot
-→ longitudinal history
+published template version
+→ draft
+→ structured payload
+→ explicit human review
+→ issue
+→ immutable snapshots
+→ history
 → optional audited cancellation
 ```
 
-Estados:
+Estados do documento:
 
 ```text
 draft → issued → canceled
@@ -87,235 +62,226 @@ draft → issued → canceled
 
 Regras:
 
-- versão emitida é imutável;
+- documento emitido é historicamente imutável;
+- template/version usado na emissão fica congelado por referência + snapshot;
+- evolução posterior do template não altera receita histórica;
 - sem hard delete pós-emissão;
 - cancelamento exige motivo/auditoria;
-- correções futuras devem ser append-only/supersession;
-- impressão histórica usa snapshot emitido, nunca template atual.
-
-Snapshot preserva payload, paciente, clínica, emissor, identidade profissional, Encounter, template/version, definição/rendered snapshot, renderer version e `issued_at`.
+- impressão histórica usa snapshot emitido, nunca template corrente.
 
 ---
 
-## Authorization / eligibility
+# D1 — inventário e decisão arquitetural
 
-Gate-base:
+**CONCLUÍDO.**
 
-- authenticated;
-- active profile;
-- tenant correto;
-- identidade clínica válida;
-- `clinical.documents = true`;
-- contexto assistencial válido.
+Decisão preservada:
 
-### `medication_prescription`
+```text
+Clinical Documents Foundation pequena
++
+contratos tipados por document_type
+```
 
-Contrato V1:
-
-- identidade profissional médica válida;
-- CRM + UF + registro válidos;
-- profissional responsável pelo próprio Encounter ativo;
-- eligibility server-side do `document_type`.
-
-Essa whitelist V1 não é regra legal universal para todas as profissões. Ampliações futuras exigem policy explícita.
-
-### `therapeutic_guidance`
-
-- identidade clínica válida;
-- `clinical.documents = true`;
-- próprio Encounter ativo;
-- eligibility específica do tipo.
-
-`platform_admin` não recebe acesso clínico implícito e administrar templates é boundary separado de emitir documento.
+Do MedicsPro histórico reaproveitar conceitos bons de produto — templates, medicamentos estruturados, observações, preview, impressão e histórico — nunca sua arquitetura Vue/Pinia/Mongo/Express ou ACL antiga.
 
 ---
 
 # D2-A — Clinical Documents Foundation
 
-**Estado: VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-PR #425 → main:
+PR #425 → `0459e5908c942ac63c0dec87d517aa2131936204`.
 
-```text
-0459e5908c942ac63c0dec87d517aa2131936204
-```
-
-Produção em 2026-09-12:
+Produção 2026-09-12:
 
 ```text
 20260912_clinical_documents_foundation.sql
-→ COMMIT
-→ MIGRATION_EXIT=0
+→ COMMIT / MIGRATION_EXIT=0
 
 VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql
 → CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED
-→ ROLLBACK
 → VERIFIER_EXIT=0
 ```
 
-O `ROLLBACK` é apenas o envelope read-only do verifier.
+D2-A continua autoridade de:
 
-D2-A permanece autoridade backend de lifecycle, autorização, persistência e snapshots.
+- eligibility/autorização de emissão;
+- lifecycle;
+- persistência;
+- versions/snapshots;
+- histórico;
+- cancelamento.
+
+`medication_prescription` V1 exige médico elegível + CRM/UF/registro + `clinical.documents` + próprio Encounter ativo no boundary canônico.
 
 ---
 
 # D2-B — Prescription V1
 
-**Estado: MERGEADO / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-PR #429 foi validada e mergeada por squash:
-
-```text
-main@15692b47fc5bca577948a03de2a686f58d5c7dd9
-```
-
-Arquitetura:
-
-```text
-Encounter ativo
-→ Prescrição
-→ template elegível
-→ draft D2-A
-→ medicamentos estruturados
-→ save explícito
-→ revisão humana
-→ issue_clinical_document
-→ snapshot imutável
-→ histórico / impressão
-```
+PR #429 → `15692b47fc5bca577948a03de2a686f58d5c7dd9`.
 
 Entregue:
 
-- workspace `Prescrição` no mesmo Encounter;
-- apresentação médica sem transformar profissão em autorização;
-- eligibility server-side por D2-A;
-- editor de medicamento, dose, via, frequência, duração e instruções;
-- observações;
-- draft/resume do próprio emissor no Encounter atual;
-- estado local isolado por paciente + Encounter + usuário;
-- save explícito, sem autosave genérico;
-- revisão humana obrigatória;
-- emissão por RPC;
-- documento emitido read-only;
-- impressão somente de `payload_snapshot` + `context_snapshot`;
-- histórico do Encounter separado do histórico anterior.
+- workspace Prescrição no Encounter;
+- templates publicados elegíveis;
+- medicamentos estruturados;
+- save/resume explícito;
+- revisão humana;
+- issue via D2-A;
+- read-only/histórico pós-emissão;
+- impressão a partir de snapshots emitidos;
+- estado local isolado por paciente + Encounter + usuário.
 
-Não criou migration, RPC, RLS, grant, capability, novo `document_type`, engine paralela ou integração Nexus.
-
-CI final da #429: 420/420 testes + typecheck/lint/build + dependency audit + 10/10 workflows clínicos/Nexus verdes.
-
-Ainda falta deploy/smoke real registrado antes de promover D2-B para `VALIDADO EM PRODUÇÃO`.
-
-Documento: `docs/CLINICAL_PRESCRIPTION_V1.md`.
+Smoke real confirmou draft/save, saída/retorno, emissão, histórico/read-only e impressão.
 
 ---
 
 # D2-B.1 — Prescription Live Preview
 
-**Estado: IMPLEMENTADO NA PR #430 / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base:
-
-```text
-main@15692b47fc5bca577948a03de2a686f58d5c7dd9
-```
-
-Objetivo: recuperar a área de `Visualização` do MedicsPro histórico com arquitetura moderna e segura.
+PR #430 → `db046f0f8b88864b18a5181b320ae346c59a4419`.
 
 UX:
 
 ```text
 Desktop largo:
-Editor estruturado | Folha de receita ao vivo
+Editor estruturado | folha da receita ao vivo
 
 Viewport menor:
 Editor
 ↓
-Folha de receita
+folha da receita
 ```
 
-A prévia reflete o payload local do rascunho e mostra:
-
-- profissional autenticado / CRM disponível na sessão;
-- paciente;
-- data de nascimento;
-- data da prévia;
-- medicamentos;
-- observações.
-
-Boundary obrigatório:
+Boundary:
 
 ```text
 LIVE PREVIEW != ISSUED DOCUMENT
 ```
 
-Por isso a prévia é marcada explicitamente como `Rascunho · não emitida` / `Sem validade até a emissão`, não chama RPC, não persiste, não imprime e não cria identifier.
+A prévia é marcada como rascunho sem validade, não persiste, não chama RPC e não imprime. Documento emitido continua vindo dos snapshots D2-A.
 
-Após emissão, histórico/impressão continuam usando exclusivamente snapshots imutáveis da D2-A.
+O smoke real confirmou o fluxo. A impressão atual é funcional, porém visualmente simples; a melhoria deve vir de renderer/presets seguros, não de HTML arbitrário.
 
-Não há mudança de banco, ACL, capability, lifecycle ou Nexus.
+---
 
-Gate de saída da #430:
+# D2-B.2 — Prescription Templates + Professional Print
 
-- testes verdes;
-- TypeScript verde;
-- lint verde;
-- build verde;
-- dependency audit verde;
-- workflows clínicos/Nexus aplicáveis verdes;
-- diff/mergeabilidade revisados.
+Objetivo de produto:
 
-Depois, parar para decisão de merge. Smoke será feito somente após eventual redeploy.
+```text
+PLATFORM
+→ oferece templates seguros iniciais
+
+CLINIC ADMIN
+→ configura/clona/publica modelos da própria clínica
+
+DOCTOR
+→ escolhe modelo publicado elegível e emite
+
+ISSUED DOCUMENT
+→ nunca muda quando o template evolui
+```
+
+## D2-B.2A — Template Admin backend
+
+**PR #431 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+
+Base:
+
+```text
+main@db046f0f8b88864b18a5181b320ae346c59a4419
+```
+
+Escopo:
+
+- gestão apenas de `medication_prescription` nesta etapa;
+- owner/admin ativos do tenant podem administrar templates;
+- administração não exige CRM nem capability clínica;
+- administração não concede emissão;
+- listagem administrativa separada da RLS de eligibility do médico;
+- criar template clinic-owned com versão publicada;
+- clonar platform/mesma-clínica para cópia independente;
+- publicar nova versão append-only;
+- editar metadados e active/archive;
+- platform template read-only;
+- cross-tenant fail-closed;
+- direct mutation de tabelas continua revogada;
+- versões publicadas permanecem imutáveis;
+- issued snapshots permanecem imutáveis após nova versão/archive;
+- renderer fechado em `clinical-document/plain-text-v1` nesta micro-slice;
+- sem UI e sem produção.
+
+Documento: `docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md`.
+
+Gate:
+
+1. behavior matrix PostgreSQL 16;
+2. production-safe verifier;
+3. regressões D2-A/care/auth;
+4. testes/typecheck/lint/build;
+5. revisão de ACL/diff;
+6. Ready for Review somente após tudo verde.
+
+## D2-B.2B — Admin UI / Template Library
+
+**PLANEJADO após D2-B.2A estabilizada e aplicada.**
+
+Alvo:
+
+`Configurações → Modelos de Prescrição`
+
+Admin poderá:
+
+- listar modelos MedicsPro e clinic-owned;
+- visualizar;
+- clonar;
+- criar modelo da clínica;
+- editar metadados;
+- publicar nova versão;
+- arquivar;
+- utilizar especialidade apenas como relevância/organização.
+
+Templates platform continuam não editáveis diretamente.
+
+## D2-B.2C — Professional Print Layout / Safe Presets
+
+**PLANEJADO.**
+
+Objetivo: elevar a saída impressa ao padrão profissional observado no MedicsPro histórico sem voltar a HTML arbitrário.
+
+Presets iniciais candidatos:
+
+- Receita Simples;
+- Receita com Orientações;
+- Receita Pediátrica;
+- Receita Cardiológica;
+- Receita Dermatológica.
+
+O renderer deve usar layout/preset versionado e seguro. Logo/cabeçalho/rodapé/blocos poderão ser configuráveis dentro de um contrato fechado.
 
 ---
 
 # D2-C — Therapeutic Guidance V1
 
-**PLANEJADO; não iniciar antes da estabilização/smoke da Prescrição.**
+**PLANEJADO.**
 
-Escopo:
-
-- editor próprio de orientação terapêutica;
-- mesma foundation, snapshot, renderer e histórico;
-- `therapeutic_guidance`;
-- sem expandir para exames, atestados ou relatórios.
-
----
-
-## Fases posteriores
-
-Depois de D2-B/D2-C estáveis, selecionar novas famílias documentais por evidência real do piloto. Candidatos históricos:
-
-- pedido de exame;
-- referral;
-- declaração/atestado;
-- relatório clínico;
-- resultado externo/revisão com contrato próprio.
-
-Ver `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md`.
-
----
-
-## UX alvo do Encounter
-
-```text
-Registro
-Anamneses & Avaliações
-Prescrição
-Nexus / Ferramentas clínicas
-```
-
-Prescrição pertence ao atendimento atual. Não colocar `Nova Prescrição` no histórico longitudinal; o histórico serve para consulta de documentos já emitidos.
+Reutilizará D2-A depois de estabilizada a trilha de Prescrição. Não misturar exames, atestados e relatórios na mesma slice.
 
 ---
 
 ## Regras de continuidade
 
-1. D2-A está fechada; não redesenhar foundation sem blocker reproduzido.
-2. Não cortar behavior tests/verifiers para caber em PR.
-3. Evitar PRs funcionais paralelas no mesmo boundary clínico.
-4. Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
-5. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento do domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
-6. O manual só descreve Prescrição como disponível depois de deploy/smoke real.
-7. Consultar `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de criar ferramenta já existente no Nexus/MedicsPro histórico.
-8. A PR #430 deve parar em revisão; merge/deploy/produção são decisões separadas.
+1. D2-A não deve ser redesenhada sem blocker reproduzido.
+2. Não criar Prescription Engine paralelo.
+3. Não tornar especialidade uma ACL.
+4. Não transformar template admin em autorização clínica.
+5. Não expor HTML/CSS/JS arbitrário como fonte de documento clínico.
+6. Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
+7. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
+8. Migrations de produção são controladas; merge não significa aplicação.
+9. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
