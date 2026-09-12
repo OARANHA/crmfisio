@@ -2,7 +2,7 @@
 
 > Fonte editorial para gerar, no futuro, um manual coerente do sistema. Este arquivo não substitui código nem documentação técnica. Ele organiza comportamento visível e seu estado de validação.
 
-**Atualizado em:** 2026-09-11  
+**Atualizado em:** 2026-09-12  
 **Referência funcional do Clinical Encounter:** pós-PR #420  
 **Estado visual atual do Encounter:** **VALIDADO EM PRODUÇÃO**
 
@@ -20,7 +20,7 @@ PLANEJADO
 HISTÓRICO / NÃO USAR COMO MANUAL ATUAL
 ```
 
-Nunca transformar roadmap, prompt, código incompleto ou intenção em instrução de uso.
+Nunca transformar roadmap, prompt, backend sem UI ou intenção em instrução de uso.
 
 Quando uma tela mudar, registrar:
 
@@ -68,7 +68,7 @@ Tópicos futuros:
 - limites temporais para iniciar consulta;
 - cancelamento e exceções relevantes.
 
-Não documentar `fisio` como papel canônico atual.
+Não documentar `fisio` como papel operacional canônico atual.
 
 ---
 
@@ -92,7 +92,7 @@ Tópicos:
 **Estado funcional:** VALIDADO EM PRODUÇÃO.  
 **Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
 
-Superfícies principais atuais:
+Superfícies visíveis atuais:
 
 ```text
 Registro
@@ -100,7 +100,7 @@ Anamneses & Avaliações
 Nexus
 ```
 
-`Prescrição` está planejada para D2-B e ainda não deve aparecer no manual como funcionalidade disponível.
+A Clinical Documents Foundation D2-A existe e está validada no backend de produção, mas **`Prescrição` ainda não existe como fluxo de usuário**. Só deve entrar no manual após D2-B.
 
 ## Composição visual canônica para o manual
 
@@ -117,18 +117,6 @@ Documentar a UI atual assim:
 - ajuda contextual flutuante no canto inferior;
 - breadcrumb `‹ Pacientes` ausente durante Encounter ativo.
 
-## Evidência de produção
-
-Validado visualmente:
-
-- header global desktop realmente não ocupa espaço;
-- mais conteúdo clínico fica acima da dobra;
-- rail esquerdo permanece íntegro durante scroll;
-- toolbar clínica sticky não cobre o rail;
-- sidebar collapsed mantém controles organizados;
-- avatar/logout ficam empilhados/centralizados no collapsed;
-- Registro, Anamneses & Avaliações e Nexus mantêm linguagem visual coerente.
-
 Fonte de aceitação:
 
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
@@ -143,15 +131,7 @@ Não usar screenshots que exponham dados identificáveis de paciente no manual p
 
 **Estado:** VALIDADO EM PRODUÇÃO.
 
-## Abrir a área
-
-Durante um atendimento, profissional autorizado acessa:
-
-```text
-Anamneses & Avaliações
-```
-
-A área usa o Assessment Engine canônico.
+Durante um atendimento, profissional autorizado acessa `Anamneses & Avaliações`, usando o Assessment Engine canônico.
 
 ## Biblioteca MedicsPro V1
 
@@ -162,7 +142,7 @@ Modelos platform validados:
 
 Especialidade altera relevância/ordenação, não autorização.
 
-## Preencher avaliação
+## Preenchimento
 
 O Runner trabalha por seções e combina:
 
@@ -194,15 +174,23 @@ Fonte:
 
 **Estado:** IMPLEMENTADO em partes; manual deve ser produzido por capability/superfície real.
 
-Nexus não é sinônimo de Anamneses & Avaliações.
+Nexus não é sinônimo de Anamneses & Avaliações e não é o emissor de documentos clínicos.
 
-Antes da redação final, validar:
+Antes da redação final, validar por superfície:
 
-- superfícies realmente expostas;
+- ferramentas realmente expostas;
 - profissão/identidade exigidas;
 - capabilities `nexus.*`;
 - C-01–C-06;
-- medicamentos, problemas, diagnósticos, exames e resultados disponíveis na UI.
+- instrumentos e calculadoras efetivamente disponíveis;
+- longitudinal e incorporação ao prontuário.
+
+O upstream contém ferramentas ainda não absorvidas em massa. Elas permanecem roadmap técnico, não instruções do manual.
+
+Fonte:
+
+- `docs/NEXUS_GAP_MAP.md`
+- `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
 ---
 
@@ -212,68 +200,75 @@ Antes da redação final, validar:
 
 PHQ-9/GAD-7 permanecem instrumentos versionados/validados no eixo Clinical Instruments/Nexus.
 
+Não inferir que `RELEVANT` ou `RECOMMENDED` equivale a autorização.
+
 ---
 
 # 8. Prescrição, documentos e consentimentos
 
-## Prescrição / Clinical Documents
+## Clinical Documents Foundation
 
-**Estado:** PLANEJADO — D1 concluído; D2 decomposto; implementação ainda não iniciada.
+**Estado técnico:** VALIDADO EM PRODUÇÃO em 2026-09-12.  
+**Estado de UX:** ainda não existe fluxo visível de Prescrição.
 
-Não documentar ainda como fluxo de usuário disponível.
+D2-A entregue:
 
-Arquitetura aprovada para desenvolvimento:
+- `medication_prescription`;
+- `therapeutic_guidance`;
+- templates versionados;
+- draft/issued/canceled;
+- snapshots imutáveis;
+- eventos append-only;
+- autorização server-side;
+- typed validation na emissão;
+- cancelamento auditável.
+
+Evidência operacional registrada:
 
 ```text
-Clinical Documents Foundation
-+
-contratos tipados por document_type
+migration D2-A → COMMIT / MIGRATION_EXIT=0
+official verifier → CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED / VERIFIER_EXIT=0
 ```
 
-Roadmap:
+**Não transformar essa evidência backend em instrução de usuário.** Ainda não existe aba/fluxo Prescrição validado.
 
-1. **D2-A — Clinical Documents Foundation**
-2. **D2-B — Prescription V1 (`medication_prescription`)**
-3. **D2-C — Therapeutic Guidance V1 (`therapeutic_guidance`)**
+## Prescrição — D2-B
 
-Regras editoriais futuras:
+**Estado:** PLANEJADO / PRÓXIMA SLICE.
 
-- `clinical.documents` não deve ser descrita como permissão universal de prescrição;
-- Prescrição pertence ao Encounter atual, não ao Histórico clínico;
-- templates e especialidade afetam descoberta/relevância, não autorização;
-- documento emitido deverá ser snapshot imutável;
-- cancelamento/correção devem permanecer auditáveis;
-- não descrever assinatura digital/legal enquanto não houver implementação específica;
-- não descrever medicamentos controlados, catálogo farmacológico ou integração Nexus enquanto não estiverem entregues.
-
-Quando D2-B for validada em produção, documentar no mínimo:
+Quando D2-B estiver implementada e validada, documentar no mínimo:
 
 - abrir `Prescrição` dentro do Encounter;
 - escolher template elegível;
 - criar/retomar draft;
 - preencher itens;
 - preview;
+- confirmação humana;
 - emissão;
 - read-only pós-emissão;
 - impressão;
 - histórico.
 
-Fonte de continuidade:
+Regras editoriais futuras:
 
+- `clinical.documents` não é permissão universal de prescrição;
+- Prescrição pertence ao Encounter atual, não ao Histórico clínico como ação de criação;
+- templates/especialidade afetam descoberta/relevância, não autorização;
+- documento emitido é snapshot imutável;
+- cancelamento/correção permanecem auditáveis;
+- não descrever assinatura digital/legal enquanto não houver implementação específica;
+- não descrever switching, equivalência ou recomendação Nexus como prescrição automática.
+
+Fonte:
+
+- `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 - `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
+- `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 - `docs/CURRENT_STATE.md`
 
 ## Consentimentos atuais
 
 **Estado:** IMPLEMENTADO em partes; manual precisa de inventário da UI atual antes da redação final.
-
-Mapear:
-
-- consentimentos;
-- autoria/aceite;
-- histórico;
-- regras por role/capability;
-- impressão/snapshot conforme superfície real.
 
 Não tratar consentimentos como Clinical Documents Engine genérico.
 
@@ -376,54 +371,31 @@ Evidência sanitizada:
 
 A compactação inicial foi útil, mas o primeiro smoke revelou conflito sticky e excesso de chrome superior.
 
-Não usar #417 como referência visual definitiva.
-
 ## 2026-09-11 — UX Clinical Encounter #420
 
 **VALIDADO EM PRODUÇÃO**
 
-Validação técnica:
-
-- boundaries Clinical Encounter + Presentation Context: 31/31 PASS;
-- suíte completa: 406/406 PASS;
-- typecheck, lint e build PASS;
-- 9/9 workflows GitHub PASS no head final;
-- zero backend, migration, RLS, autorização ou persistência.
-
-Validação visual:
-
-- desktop sem header global;
-- hero/toolbar/rail separados corretamente;
-- scroll real sem clipping/overlap relevante entre rail e toolbar;
-- sidebar expanded organizada;
-- sidebar collapsed sem overflow horizontal perceptível;
-- avatar/logout empilhados/centralizados;
-- mais conteúdo clínico acima da dobra;
-- Registro, Anamneses & Avaliações e Nexus coerentes.
-
-Fonte detalhada:
-
-- `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
+Validação técnica e visual registrada em `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
 
 ## 2026-09-11 — Clinical Documents D1 / D2 decomposition
 
-**PLANEJADO — NÃO IMPLEMENTADO**
+**HISTÓRICO DE PLANEJAMENTO — D2-A POSTERIORMENTE ENTREGUE**
 
-Evidência de produto/arquitetura:
+D1 definiu a arquitetura foundation + contratos tipados e decompôs D2 em D2-A, D2-B e D2-C.
 
-- D1 confirmou ausência de Clinical Documents Engine transversal no runtime atual;
-- histórico MedicsPro foi minerado como referência de Prescrição/Templates/Pedido de Exames/Atestados/Resultados;
-- `clinical.documents` foi classificada como capability-base, não autorização universal por tipo;
-- D2 foi decomposta para preservar revisão e segurança:
-  - D2-A foundation;
-  - D2-B Prescription V1;
-  - D2-C Therapeutic Guidance V1.
+## 2026-09-12 — Clinical Documents D2-A
 
-Não usar esse roadmap como instrução operacional do manual antes da validação das slices correspondentes.
+**BACKEND VALIDADO EM PRODUÇÃO**
 
-Fonte:
+- PR #425 mergeada;
+- `main@0459e5908c942ac63c0dec87d517aa2131936204`;
+- migration `20260912_clinical_documents_foundation.sql` aplicada com COMMIT;
+- `MIGRATION_EXIT=0`;
+- verifier oficial retornou `CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED`;
+- `VERIFIER_EXIT=0`;
+- nenhuma UI de Prescrição foi criada por D2-A.
 
-- `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
+Próximo passo editorial: somente promover Prescrição para fluxo de manual após D2-B ser utilizável e validada.
 
 ---
 
