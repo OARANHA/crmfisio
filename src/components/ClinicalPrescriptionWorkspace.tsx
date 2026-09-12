@@ -20,15 +20,22 @@ import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 
-export function ClinicalPrescriptionWorkspace({
-  patient,
-  encounter,
-  userId,
-}: {
+type ClinicalPrescriptionWorkspaceProps = {
   patient: Patient;
   encounter: Appointment;
   userId: string;
-}) {
+};
+
+export function ClinicalPrescriptionWorkspace(props: ClinicalPrescriptionWorkspaceProps) {
+  const contextKey = `${props.patient.id}:${props.encounter.id}:${props.userId}`;
+  return <ClinicalPrescriptionWorkspaceContext key={contextKey} {...props} />;
+}
+
+function ClinicalPrescriptionWorkspaceContext({
+  patient,
+  encounter,
+  userId,
+}: ClinicalPrescriptionWorkspaceProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -54,6 +61,10 @@ export function ClinicalPrescriptionWorkspace({
   );
   const currentAppointmentDocuments = useMemo(
     () => history.filter((document) => document.appointmentId === encounter.id),
+    [encounter.id, history],
+  );
+  const priorDocuments = useMemo(
+    () => history.filter((document) => document.appointmentId !== encounter.id),
     [encounter.id, history],
   );
   const readyToIssue = medicationPrescriptionReadyToIssue(payload);
@@ -82,7 +93,7 @@ export function ClinicalPrescriptionWorkspace({
         if (!active) return;
         setTemplates(availableTemplates);
         setDocuments(patientDocuments);
-        setSelectedTemplateVersionId((current) => current || availableTemplates[0]?.currentVersionId || '');
+        setSelectedTemplateVersionId(availableTemplates[0]?.currentVersionId || '');
 
         const draft = patientDocuments.find((document) => (
           document.status === 'draft'
@@ -311,10 +322,10 @@ export function ClinicalPrescriptionWorkspace({
       )}
 
       <DocumentHistory
-        title="Histórico de prescrições"
-        documents={history}
+        title="Histórico anterior"
+        documents={priorDocuments}
         patientName={patient.preferredName || patient.nome}
-        empty="Ainda não há prescrições emitidas acessíveis no histórico deste paciente."
+        empty="Ainda não há prescrições anteriores acessíveis no histórico deste paciente."
       />
     </div>
   );
@@ -344,7 +355,7 @@ function MedicationRow({
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Via<input className={inputClass} value={item.route} onChange={(event) => onChange('route', event.target.value)} placeholder="Ex.: oral" /></label>
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Frequência<input className={inputClass} value={item.frequency} onChange={(event) => onChange('frequency', event.target.value)} placeholder="Ex.: 1x/dia" /></label>
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Duração<input className={inputClass} value={item.duration} onChange={(event) => onChange('duration', event.target.value)} placeholder="Ex.: 30 dias" /></label>
-        <label className="grid gap-1 text-[10px] font-semibold text-fog md:col-span-2 xl:col-span-3">Instruções<input className={inputClass} value={item.instructions} onChange={(event) => onChange('instructions', event.target.value)} placeholder="Orientação específica para este item" /></label>
+        <label className="grid gap-1 text-[10px] font-semibold text-fog md:col-span-2 xl:grid-cols-3">Instruções<input className={inputClass} value={item.instructions} onChange={(event) => onChange('instructions', event.target.value)} placeholder="Orientação específica para este item" /></label>
       </div>
     </fieldset>
   );
@@ -446,35 +457,50 @@ function PrescriptionState({ children, tone = 'muted' }: { children: string; ton
   return <div className={`rounded-xl border px-4 py-3 text-[11.5px] leading-relaxed ${tone === 'error' ? 'border-pulse/30 bg-pulse/[0.04] text-pulse' : 'border-line/65 bg-deep/30 text-fog'}`}>{children}</div>;
 }
 
-function snapshotName(context: Record<string, unknown> | null, key: 'patient' | 'issuer', fallback: string): string {
+function snapshotObject(context: Record<string, unknown> | null, key: 'patient' | 'issuer'): Record<string, unknown> | null {
   const value = context?.[key];
-  if (!value || typeof value !== 'object') return fallback;
-  const name = (value as Record<string, unknown>).name;
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function snapshotName(context: Record<string, unknown> | null, key: 'patient' | 'issuer', fallback: string): string {
+  const value = snapshotObject(context, key);
+  const name = value?.name;
   return typeof name === 'string' && name.trim() ? name.trim() : fallback;
+}
+
+function snapshotIssuerCredential(context: Record<string, unknown> | null): string {
+  const issuer = snapshotObject(context, 'issuer');
+  if (!issuer) return '';
+  const values = [issuer.council_type, issuer.council_state, issuer.registro]
+    .map((value) => typeof value === 'string' ? value.trim() : '')
+    .filter(Boolean);
+  return values.join(' ');
 }
 
 function escapeHtml(value: string): string {
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function printIssuedPrescription(document: MedicationPrescriptionDocument, fallbackPatientName: string) {
   if (document.status !== 'issued' || !document.payloadSnapshot) return;
   const patientName = snapshotName(document.contextSnapshot, 'patient', fallbackPatientName);
   const issuerName = snapshotName(document.contextSnapshot, 'issuer', 'Profissional responsável');
+  const issuerCredential = snapshotIssuerCredential(document.contextSnapshot);
   const items = document.payloadSnapshot.items.map((item, index) => {
     const summary = prescriptionItemSummary(item);
     return `<li><strong>${escapeHtml(item.medicationName)}</strong>${summary ? `<div>${escapeHtml(summary)}</div>` : ''}${item.instructions ? `<div>${escapeHtml(item.instructions)}</div>` : ''}</li>`;
   }).join('');
   const observations = document.payloadSnapshot.observations
-    ? `<section><h2>Observações</h2><p>${escapeHtml(document.payloadSnapshot.observations).replaceAll('\n', '<br>')}</p></section>`
+    ? `<section><h2>Observações</h2><p>${escapeHtml(document.payloadSnapshot.observations).replace(/\n/g, '<br>')}</p></section>`
     : '';
   const issuedAt = document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : '';
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(document.documentIdentifier)}</title><style>body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 24px;color:#111}header{border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:24px}h1{font-size:22px;margin:0 0 8px}h2{font-size:14px;margin-top:24px}p,li{font-size:14px;line-height:1.55}li{margin-bottom:16px}.meta{color:#555;font-size:12px}@media print{body{margin:0;max-width:none}}</style></head><body><header><h1>Prescrição medicamentosa</h1><div class="meta">${escapeHtml(document.documentIdentifier)} · ${escapeHtml(issuedAt)}</div></header><p><strong>Paciente:</strong> ${escapeHtml(patientName)}</p><p><strong>Profissional:</strong> ${escapeHtml(issuerName)}</p><ol>${items}</ol>${observations}<script>window.addEventListener('load',()=>window.print())<\/script></body></html>`;
+  const credentialHtml = issuerCredential ? ` · ${escapeHtml(issuerCredential)}` : '';
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(document.documentIdentifier)}</title><style>body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 24px;color:#111}header{border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:24px}h1{font-size:22px;margin:0 0 8px}h2{font-size:14px;margin-top:24px}p,li{font-size:14px;line-height:1.55}li{margin-bottom:16px}.meta{color:#555;font-size:12px}@media print{body{margin:0;max-width:none}}</style></head><body><header><h1>Prescrição medicamentosa</h1><div class="meta">${escapeHtml(document.documentIdentifier)} · ${escapeHtml(issuedAt)}</div></header><p><strong>Paciente:</strong> ${escapeHtml(patientName)}</p><p><strong>Profissional:</strong> ${escapeHtml(issuerName)}${credentialHtml}</p><ol>${items}</ol>${observations}<script>window.addEventListener('load',()=>window.print())<\/script></body></html>`;
   const target = window.open('', '_blank', 'width=900,height=760');
   if (!target) return;
   target.opener = null;
