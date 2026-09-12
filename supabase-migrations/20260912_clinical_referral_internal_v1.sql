@@ -37,7 +37,7 @@ BEGIN
     p.id,
     p.nome,
     btrim(coalesce(p.professional_type, '')),
-    btrim(coalesce(p.especialidade, '')),
+    btrim(coalesce(to_jsonb(p)->>'especialidade', to_jsonb(p)->>'specialty', '')),
     btrim(coalesce(p.council_type, '')),
     btrim(coalesce(p.council_state, '')),
     btrim(coalesce(p.registro, ''))
