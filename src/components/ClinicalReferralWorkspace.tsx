@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getCurrentClinicIdentity, type ClinicIdentity } from '../lib/clinicConfiguration';
 import {
   canIssueReferral,
   classifyReferralError,
@@ -6,7 +7,9 @@ import {
   emptyReferralPayload,
   issueReferral,
   loadReferralDocuments,
+  loadReferralTemplateRenderDefinition,
   loadReferralTemplates,
+  referralDocumentRenderDefinition,
   referralPriorityLabel,
   referralReadyToIssue,
   saveReferralDraft,
@@ -16,9 +19,11 @@ import {
   type ReferralRecipient,
   type ReferralTemplate,
 } from '../lib/clinicalReferral';
+import { buildReferralDocumentHtml, buildReferralRenderContextFromSnapshot } from '../lib/referralPrintRenderer';
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
+import { ReferralDocumentPreview } from './ReferralDocumentPreview';
 
 type ClinicalReferralWorkspaceProps = {
   patient: Patient;
@@ -32,6 +37,10 @@ const PRIORITIES: Array<{ value: ReferralPriority; label: string; detail: string
   { value: 'urgent', label: 'Urgente', detail: 'Avaliação sem demora' },
 ];
 
+const EMPTY_CLINIC: ClinicIdentity = {
+  id: '', name: 'Clínica', cnpj: null, phone: null, email: null, address: null, timezone: 'UTC',
+};
+
 export function ClinicalReferralWorkspace(props: ClinicalReferralWorkspaceProps) {
   const contextKey = `${props.patient.id}:${props.encounter.id}:${props.userId}`;
   return <ClinicalReferralWorkspaceContext key={contextKey} {...props} />;
@@ -44,8 +53,10 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
   const [eligible, setEligible] = useState(false);
   const [templates, setTemplates] = useState<ReferralTemplate[]>([]);
   const [documents, setDocuments] = useState<ReferralDocument[]>([]);
+  const [clinic, setClinic] = useState<ClinicIdentity>(EMPTY_CLINIC);
   const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState('');
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activeRenderDefinition, setActiveRenderDefinition] = useState<unknown>(null);
   const [payload, setPayload] = useState<ReferralPayload>(() => emptyReferralPayload());
   const [dirty, setDirty] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -61,6 +72,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
     () => templates.find((template) => template.currentVersionId === selectedTemplateVersionId) ?? templates[0] ?? null,
     [selectedTemplateVersionId, templates],
   );
+  const previewRenderDefinition = activeDocument ? activeRenderDefinition : selectedTemplate?.renderDefinition;
   const history = useMemo(() => documents.filter((document) => document.status !== 'draft'), [documents]);
   const currentEncounterHistory = useMemo(
     () => history.filter((document) => document.appointmentId === encounter.id),
@@ -86,16 +98,19 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
           setTemplates([]);
           setDocuments([]);
           setActiveDocumentId(null);
+          setActiveRenderDefinition(null);
           return;
         }
 
-        const [availableTemplates, patientDocuments] = await Promise.all([
+        const [availableTemplates, patientDocuments, clinicIdentity] = await Promise.all([
           loadReferralTemplates(),
           loadReferralDocuments(patient.id),
+          getCurrentClinicIdentity().catch(() => EMPTY_CLINIC),
         ]);
         if (!active) return;
         setTemplates(availableTemplates);
         setDocuments(patientDocuments);
+        setClinic(clinicIdentity);
         setSelectedTemplateVersionId(availableTemplates[0]?.currentVersionId ?? '');
 
         const draft = patientDocuments.find((document) => (
@@ -107,6 +122,18 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
           setActiveDocumentId(draft.id);
           setPayload(draft.payload);
           setDirty(false);
+          const currentTemplate = availableTemplates.find((template) => template.currentVersionId === draft.templateVersionId);
+          if (currentTemplate) {
+            setActiveRenderDefinition(currentTemplate.renderDefinition);
+          } else {
+            try {
+              const renderDefinition = await loadReferralTemplateRenderDefinition(draft.templateVersionId);
+              if (active) setActiveRenderDefinition(renderDefinition);
+            } catch (error) {
+              console.warn('[MedicsPro] renderer histórico do rascunho de encaminhamento indisponível; usando fallback seguro:', error);
+              if (active) setActiveRenderDefinition(null);
+            }
+          }
         }
       } catch (error) {
         console.error('[MedicsPro] carregar Encaminhamento V1:', error);
@@ -141,6 +168,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
       const next = await createReferralDraft(encounter.id, selectedTemplateVersionId, emptyReferralPayload());
       replaceDocument(next);
       setActiveDocumentId(next.id);
+      setActiveRenderDefinition(selectedTemplate?.renderDefinition ?? null);
       setPayload(next.payload);
       setDirty(false);
       setReviewing(false);
@@ -185,6 +213,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
       const issued = await issueReferral(documentToIssue.id);
       replaceDocument(issued);
       setActiveDocumentId(null);
+      setActiveRenderDefinition(null);
       setPayload(emptyReferralPayload());
       setDirty(false);
       setReviewing(false);
@@ -215,7 +244,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
   if (templates.length === 0) return <ReferralState tone="error">Nenhum modelo de encaminhamento elegível está disponível neste atendimento.</ReferralState>;
 
   return (
-    <div className="space-y-4" data-clinical-referral-version="1">
+    <div className="space-y-4" data-clinical-referral-version="2">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] xl:items-start">
         <section className="rounded-2xl border border-line/65 bg-deep/25 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -251,7 +280,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
                 <p className="mb-3 mt-1 text-[10.5px] leading-relaxed text-fog">Preencha o que souber. Basta identificar de forma clara um profissional, profissão, especialidade, serviço ou instituição.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Profissional" value={payload.recipient.professionalName} placeholder="Ex.: Dra. Ana Silva" onChange={(value) => updateRecipient({ professionalName: value })} />
-                  <Field label="Profissão" value={payload.recipient.professionalType} placeholder="Ex.: Cardiologista, Psicólogo, Fisioterapeuta" onChange={(value) => updateRecipient({ professionalType: value })} />
+                  <Field label="Profissão" value={payload.recipient.professionalType} placeholder="Ex.: Psicólogo, Fisioterapeuta, Médico" onChange={(value) => updateRecipient({ professionalType: value })} />
                   <Field label="Especialidade" value={payload.recipient.specialty} placeholder="Ex.: Cardiologia" onChange={(value) => updateRecipient({ specialty: value })} />
                   <Field label="Serviço" value={payload.recipient.service} placeholder="Ex.: Avaliação cardiológica" onChange={(value) => updateRecipient({ service: value })} />
                   <Field label="Instituição / local" value={payload.recipient.facility} placeholder="Ex.: Serviço de referência" onChange={(value) => updateRecipient({ facility: value })} />
@@ -265,26 +294,30 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
               <TextArea label="Observações" value={payload.observations} rows={2} placeholder="Informações complementares opcionais." onChange={(value) => updatePayload({ observations: value })} />
 
               <div className="flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
-                <Btn variant="subtle" disabled={saving || issuing} onClick={() => void saveDraft()}>{saving ? 'Salvando…' : dirty ? 'Salvar rascunho' : 'Rascunho salvo'}</Btn>
-                {!reviewing ? (
-                  <Btn disabled={!readyToIssue || saving} onClick={() => setReviewing(true)}>Revisar encaminhamento</Btn>
-                ) : (
-                  <>
-                    <Btn variant="subtle" disabled={issuing} onClick={() => setReviewing(false)}>Voltar à edição</Btn>
-                    <Btn disabled={!readyToIssue || issuing} onClick={() => void confirmIssue()}>{issuing ? 'Emitindo…' : 'Confirmar emissão'}</Btn>
-                  </>
-                )}
+                <Btn variant="subtle" disabled={saving || issuing || !dirty} onClick={() => void saveDraft()}>{saving ? 'Salvando…' : 'Salvar rascunho'}</Btn>
+                <Btn disabled={!readyToIssue || saving || issuing} onClick={() => setReviewing(true)}>Revisar encaminhamento</Btn>
                 {!readyToIssue && <span className="text-[10.5px] text-amber">Informe um destino e o motivo antes da emissão.</span>}
               </div>
             </div>
           )}
         </section>
 
-        <ReferralPreview patientName={patientName} payload={payload} templateName={selectedTemplate?.name ?? 'Encaminhamento clínico'} reviewing={reviewing} />
+        <aside className="space-y-3 xl:sticky xl:top-20">
+          <ReferralDocumentPreview patient={patient} payload={payload} renderDefinition={previewRenderDefinition} clinic={clinic} />
+          {reviewing && activeDocument && (
+            <section className="rounded-2xl border border-mint/35 bg-mint/[0.045] p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mint">Revisão humana</p>
+              <h4 className="mt-1 font-display text-[15px] font-semibold text-paper">Confirmar emissão</h4>
+              <p className="mt-2 text-[11px] leading-relaxed text-fog">Confirme destino, motivo e informações compartilhadas. Ao emitir, conteúdo, contexto e definição visual serão congelados em snapshots imutáveis.</p>
+              <div className="mt-3 flex flex-wrap gap-2"><Btn disabled={issuing || !readyToIssue} onClick={() => void confirmIssue()}>{issuing ? 'Emitindo…' : 'Emitir encaminhamento'}</Btn><Btn variant="subtle" disabled={issuing} onClick={() => setReviewing(false)}>Voltar à edição</Btn></div>
+            </section>
+          )}
+        </aside>
       </div>
 
-      <ReferralHistory title="Encaminhamentos deste atendimento" documents={currentEncounterHistory} empty="Nenhum encaminhamento emitido neste atendimento." />
-      {priorHistory.length > 0 && <ReferralHistory title="Histórico anterior" documents={priorHistory} empty="" />}
+      <ReferralHistory title="Encaminhamentos deste atendimento" documents={currentEncounterHistory} patientName={patientName} empty="Nenhum encaminhamento emitido neste atendimento." />
+      {priorHistory.length > 0 && <ReferralHistory title="Histórico anterior" documents={priorHistory} patientName={patientName} empty="" compact />}
+      <p className="sr-only">A impressão histórica usa os snapshots congelados pelo servidor.</p>
     </div>
   );
 }
@@ -304,45 +337,48 @@ function recipientLabel(recipient: ReferralRecipient): string {
     .join(' · ') || 'Destino ainda não informado';
 }
 
-function ReferralPreview({ patientName, payload, templateName, reviewing }: { patientName: string; payload: ReferralPayload; templateName: string; reviewing: boolean }) {
+function ReferralHistory({ title, documents, patientName, empty, compact = false }: { title: string; documents: ReferralDocument[]; patientName: string; empty: string; compact?: boolean }) {
   return (
-    <aside className="rounded-2xl border border-line/65 bg-deep/25 p-4 xl:sticky xl:top-24">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div><p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">Prévia de conteúdo</p><p className="mt-1 text-[11px] text-fog">A composição A4 profissional será publicada na próxima slice.</p></div>
-        <Chip className="border-amber/35 text-amber">Sem validade</Chip>
-      </div>
-      <div className="mt-4 rounded-xl border border-line/70 bg-panel p-4">
-        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.13em] text-aqua">{templateName}</p>
-        <p className="mt-3 text-[10.5px] text-fog">Paciente</p><p className="text-[12px] font-semibold text-paper">{patientName}</p>
-        <div className="mt-3 grid gap-3 border-t border-line/60 pt-3">
-          <PreviewBlock label="Destino" value={recipientLabel(payload.recipient)} />
-          <PreviewBlock label="Prioridade" value={referralPriorityLabel(payload.priority)} />
-          <PreviewBlock label="Motivo" value={payload.reason || 'Motivo ainda não informado.'} />
-          {payload.clinicalSummary && <PreviewBlock label="Resumo clínico" value={payload.clinicalSummary} />}
-          {payload.requestedAction && <PreviewBlock label="Avaliação / ação solicitada" value={payload.requestedAction} />}
-          {payload.observations && <PreviewBlock label="Observações" value={payload.observations} />}
-          {payload.recipient.contact && <PreviewBlock label="Contato do destino" value={payload.recipient.contact} />}
-        </div>
-      </div>
-      {reviewing && <div className="mt-3 rounded-xl border border-mint/30 bg-mint/[0.045] px-3 py-2.5"><p className="text-[11px] font-semibold text-mint">Revisão humana obrigatória</p><p className="mt-1 text-[10.5px] leading-relaxed text-fog">Confirme destinatário, motivo e informações compartilhadas antes de emitir. A emissão congela o snapshot clínico.</p></div>}
-    </aside>
-  );
-}
-
-function PreviewBlock({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-fog">{label}</p><p className="mt-1 whitespace-pre-wrap text-[11.5px] leading-relaxed text-paper/90">{value}</p></div>;
-}
-
-function ReferralHistory({ title, documents, empty }: { title: string; documents: ReferralDocument[]; empty: string }) {
-  return (
-    <section className="rounded-2xl border border-line/65 bg-deep/20 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-display text-[14px] font-semibold text-paper">{title}</h3><Chip>{documents.length}</Chip></div>
-      {documents.length === 0 ? <p className="text-[11px] text-fog">{empty}</p> : <div className="space-y-2">{documents.map((document) => {
-        const content = document.payloadSnapshot ?? document.payload;
-        return <article key={document.id} className="rounded-xl border border-line/60 bg-panel/70 p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="text-[11.5px] font-semibold text-paper">{recipientLabel(content.recipient)}</p><p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-fog">{content.reason || 'Motivo não registrado'}</p><p className="mt-2 font-mono text-[9px] text-fog">{document.documentIdentifier} · {document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : document.createdAt}</p></div><Chip className={document.status === 'issued' ? 'border-mint/35 text-mint' : 'border-pulse/35 text-pulse'}>{document.status === 'issued' ? 'Emitido' : 'Cancelado'}</Chip></div><p className="mt-2 text-[9.5px] text-fog">Conteúdo emitido preservado em snapshot; futuras alterações do modelo não reescrevem este documento.</p></article>;
-      })}</div>}
+    <section className="rounded-2xl border border-line/65 bg-panel p-4">
+      <div className="flex items-center justify-between gap-3"><h4 className="font-display text-[15px] font-semibold text-paper">{title}</h4><Chip>{documents.length}</Chip></div>
+      {documents.length === 0 ? <p className="mt-3 text-[11px] text-fog">{empty}</p> : (
+        <div className="mt-3 space-y-2">{documents.map((document) => {
+          const content = document.payloadSnapshot ?? document.payload;
+          return (
+            <article key={document.id} className="rounded-xl border border-line/60 bg-deep/25 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1"><p className="text-[11.5px] font-semibold text-paper">{recipientLabel(content.recipient)}</p><p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-fog">{content.reason || 'Motivo não registrado'}</p><p className="mt-2 font-mono text-[9px] text-fog">{document.documentIdentifier} · {document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : document.createdAt}</p></div>
+                <div className="flex flex-wrap items-center gap-2"><Chip className={document.status === 'issued' ? 'border-mint/35 text-mint' : 'border-pulse/35 text-pulse'}>{document.status === 'issued' ? 'Emitido' : 'Cancelado'}</Chip>{document.status === 'issued' && document.payloadSnapshot && <Btn variant="subtle" onClick={() => printIssuedReferral(document, patientName)}>Imprimir</Btn>}</div>
+              </div>
+              {!compact && <p className="mt-2 text-[10px] font-semibold text-fog">{referralPriorityLabel(content.priority)}{content.requestedAction ? ` · ${content.requestedAction}` : ''}</p>}
+              {document.status === 'canceled' && document.cancelReason && <p className="mt-2 text-[10px] text-pulse">Motivo do cancelamento: {document.cancelReason}</p>}
+              <p className="mt-2 text-[9.5px] text-fog">Conteúdo e impressão histórica usam o snapshot emitido; não acompanham alterações futuras do modelo.</p>
+            </article>
+          );
+        })}</div>
+      )}
     </section>
   );
+}
+
+function printIssuedReferral(document: ReferralDocument, fallbackPatientName: string) {
+  if (document.status !== 'issued' || !document.payloadSnapshot) return;
+  const context = buildReferralRenderContextFromSnapshot(document.contextSnapshot, fallbackPatientName, document.documentIdentifier);
+  context.issuedAt = document.issuedAt ?? context.issuedAt;
+  const html = buildReferralDocumentHtml({
+    payload: document.payloadSnapshot,
+    context,
+    renderDefinition: referralDocumentRenderDefinition(document),
+    renderedSnapshot: document.renderedSnapshot,
+    mode: 'issued',
+    autoPrint: true,
+  });
+  const target = window.open('', '_blank', 'width=900,height=760');
+  if (!target) return;
+  target.opener = null;
+  target.document.open();
+  target.document.write(html);
+  target.document.close();
 }
 
 function ReferralState({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'error' | 'muted' }) {
