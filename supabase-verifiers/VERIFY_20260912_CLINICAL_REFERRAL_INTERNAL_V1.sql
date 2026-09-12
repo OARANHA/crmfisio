@@ -41,7 +41,6 @@ BEGIN
   END IF;
 END $$;
 
--- Authenticated issuer sees only active clinical profiles in own tenant and never itself.
 SET LOCAL ROLE authenticated;
 SET LOCAL row_security = on;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
@@ -60,20 +59,24 @@ BEGIN
 END $$;
 RESET ROLE;
 
--- Trigger-level tenant/activity fail-closed probes use direct INSERT under
--- postgres inside this transaction; no business state survives ROLLBACK.
 DO $$
 DECLARE
   v_base jsonb := '{"destination_scope":"internal_professional","target_profile_id":"d2100000-0000-4000-8000-000000000004","recipient":{"professional_name":"Psicóloga D2","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_ok boolean := false;
+  v_version_id uuid;
 BEGIN
+  SELECT current_version_id INTO v_version_id
+  FROM public.clinical_document_templates
+  WHERE id='12000000-0000-4000-8000-000000000007'::uuid;
+  IF v_version_id IS NULL THEN RAISE EXCEPTION 'clinical_referral_current_version_missing'; END IF;
+
   INSERT INTO public.clinical_documents(
     id, clinic_id, patient_id, appointment_id, document_type, template_id,
     template_version_id, issuer_id, status, payload, document_identifier
   ) VALUES (
     'd2e30000-0000-4000-8000-000000000001','d2000000-0000-4000-8000-000000000001',
     'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
-    '12000000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000008',
+    '12000000-0000-4000-8000-000000000007',v_version_id,
     'd2100000-0000-4000-8000-000000000001','draft',v_base,'D2E3-VALID-TARGET'
   );
 
@@ -84,7 +87,7 @@ BEGIN
     ) VALUES (
       'd2e30000-0000-4000-8000-000000000002','d2000000-0000-4000-8000-000000000001',
       'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
-      '12000000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000008',
+      '12000000-0000-4000-8000-000000000007',v_version_id,
       'd2100000-0000-4000-8000-000000000001','draft',
       jsonb_set(v_base,'{target_profile_id}','"d2100000-0000-4000-8000-000000000008"'),'D2E3-CROSS-TENANT'
     );
@@ -99,7 +102,7 @@ BEGIN
     ) VALUES (
       'd2e30000-0000-4000-8000-000000000003','d2000000-0000-4000-8000-000000000001',
       'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
-      '12000000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000008',
+      '12000000-0000-4000-8000-000000000007',v_version_id,
       'd2100000-0000-4000-8000-000000000001','draft',
       jsonb_set(v_base,'{target_profile_id}','"d2100000-0000-4000-8000-000000000007"'),'D2E3-INACTIVE'
     );
