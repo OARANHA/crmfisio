@@ -4,6 +4,9 @@ D2-A is a backend-only foundation for versioned clinical documents. It does not
 add a Prescription UI, template administration UI, PDF/digital-signature
 integration, automatic prescribing, or a medication catalog.
 
+**Canonical merge:** `main@0459e5908c942ac63c0dec87d517aa2131936204`  
+**Production state:** migration applied and official verifier passed on 2026-09-12.
+
 ## Document types
 
 The only document types in this slice are:
@@ -13,9 +16,14 @@ The only document types in this slice are:
 
 The common server-side authorship boundary is an active authenticated profile in
 an active clinic, valid clinical identity, `clinical.documents`, and ownership
-of the active Encounter through the canonical `appointments.fisio_id` relation.
-The appointment must be in `em_atendimento` for create/save/issue. The legacy or
-compatibility `appointments.professional_id` column never grants D2-A authorship.
+of the active Encounter through the verified `appointments.fisio_id` relation
+used by this foundation. The appointment must be in `em_atendimento` for
+create/save/issue. The divergent `appointments.professional_id` value does not
+grant D2-A authorship in the tested contract.
+
+This D2-A-specific relationship must not be generalized into an unreviewed
+repository-wide rename/authorization change; future alias reconciliation needs
+its own coordinated slice.
 
 `medication_prescription` additionally requires an active physician identity
 with CRM, state and registration. Owner/admin, reception, finance and unscoped
@@ -80,8 +88,10 @@ event read policies delegate to the canonical post-#426
   intentionally preserved by #426;
 - a `professional` needs valid clinical identity, `clinical.timeline.read` and a
   concrete care relationship;
-- appointment care relationship is established by `appointments.fisio_id`;
-- appearing only in `appointments.professional_id` does not grant history read;
+- the appointment relationship covered by #426/D2-A is established through
+  `appointments.fisio_id`;
+- appearing only in the divergent `appointments.professional_id` does not grant
+  this history read path;
 - reception, finance, inactive, unscoped and cross-tenant actors are denied.
 
 These history-read rules do not imply D2-A authorship eligibility.
@@ -96,7 +106,7 @@ helpers.
 
 The behavior matrix proves, under `ROLE authenticated` with RLS enabled:
 
-- canonical `fisio_id` authorship and inverse `professional_id` denial;
+- verified `fisio_id` authorship and inverse divergent `professional_id` denial;
 - typed medication/guidance issuance with incomplete drafts still allowed;
 - `clinical.documents` and clinical identity enforcement;
 - canonical #426 history allow/deny cases including `clinical.timeline.read`,
@@ -110,3 +120,40 @@ The behavior matrix proves, under `ROLE authenticated` with RLS enabled:
 The D2 workflow also reruns the affected Clinical Authorization, Clinical
 Foundation, #426 care-read and Clinical Encounter PostgreSQL 16 regressions plus
 application tests, typecheck, lint and build.
+
+## Production rollout — 2026-09-12
+
+Applied after PR #425 was squash-merged to the canonical main.
+
+Migration:
+
+```text
+supabase-migrations/20260912_clinical_documents_foundation.sql
+```
+
+Observed completion:
+
+```text
+COMMIT
+MIGRATION_EXIT=0
+```
+
+Official verifier:
+
+```text
+supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql
+```
+
+Observed result:
+
+```text
+CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED
+ROLLBACK
+VERIFIER_EXIT=0
+```
+
+The verifier runs inside a read-only transaction; its `ROLLBACK` is expected and
+does not roll back the already committed migration.
+
+No additional server command is pending for D2-A. The next functional slice is
+D2-B Prescription V1; D2-A itself does not create a visible Prescription tab.
