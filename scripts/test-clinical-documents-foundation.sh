@@ -26,7 +26,11 @@ DO $$ BEGIN
      OR (SELECT count(*) FROM public.clinical_document_template_versions WHERE id::text LIKE '12100000-0000-4000-8000-00000000000%') <> 4 THEN
     RAISE EXCEPTION 'clinical_documents_seed_idempotency_failed';
   END IF;
-  IF EXISTS ((SELECT * FROM d2_policy_before) EXCEPT (SELECT c.relname,p.polname,p.polcmd,p.polroles::text,pg_get_expr(p.polqual,p.polrelid),pg_get_expr(p.polwithcheck,p.polrelid) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid WHERE c.relname IN ('clinical_document_templates','clinical_document_template_versions','clinical_documents','clinical_document_events')) THEN
+  IF EXISTS (
+    (SELECT * FROM d2_policy_before)
+    EXCEPT
+    (SELECT c.relname,p.polname,p.polcmd,p.polroles::text,pg_get_expr(p.polqual,p.polrelid),pg_get_expr(p.polwithcheck,p.polrelid) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid WHERE c.relname IN ('clinical_document_templates','clinical_document_template_versions','clinical_documents','clinical_document_events'))
+  ) THEN
     RAISE EXCEPTION 'clinical_documents_policy_snapshot_drift';
   END IF;
   IF (SELECT count(*) FROM public.clinical_documents) <> (SELECT count FROM d2_documents_before) THEN
