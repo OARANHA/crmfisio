@@ -35,11 +35,11 @@ python3 scripts/build-clinical-care-read-test.py | "${PSQL[@]}" >/dev/null
 # the minimal isolated test schema receives them only for this renderer slice.
 "${PSQL[@]}" -f tests/sql/clinical_prescription_renderer_v2_fixture.sql
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_prescription_renderer_v2.sql
+"${PSQL[@]}" -f supabase-migrations/20260912_clinical_prescription_renderer_v2_hardening.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
 "${PSQL[@]}" -f tests/sql/clinical_prescription_renderer_v2_cases.sql
 
-# Re-run the previous admin behavior matrix after the additive renderer migration.
+# Re-run the previous admin behavior matrix after the additive renderer migrations.
 "${PSQL[@]}" -f tests/sql/clinical_document_template_admin_cases.sql
-
 
 echo 'CLINICAL PRESCRIPTION RENDERER V2 POSTGRESQL 16 PASS'
