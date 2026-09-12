@@ -2,8 +2,9 @@
 
 > Evolução visual versionada de `therapeutic_guidance` sobre a D2-A/D2-C. Não altera autoria, eligibility, RLS ou lifecycle clínico.
 
-**Estado:** PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO  
-**Base canônica da slice:** `main@33da15230cd35179681406b212e87305618a4976`
+**Estado:** VALIDADO EM PRODUÇÃO  
+**PR:** #436  
+**Merge canônico:** `af53bf2d7229c238335ab201f3438f44543f7f89`
 
 ## Objetivo
 
@@ -82,7 +83,7 @@ O termo interno `therapeutic_guidance` não é título de documento para o usuá
 
 ## Templates platform
 
-A migration D2-C.1 publica novas versões imutáveis para os dois templates D2-A já existentes:
+A migration D2-C.1 publicou novas versões imutáveis para os dois templates D2-A já existentes:
 
 ```text
 Orientação terapêutica geral
@@ -92,7 +93,7 @@ Orientações pós-atendimento
 v1 plain-text-v1 → v2 therapeutic-guidance-v1
 ```
 
-As versões V1 permanecem publicadas e imutáveis. Nenhuma versão histórica é atualizada em lugar.
+As versões V1 permanecem publicadas e imutáveis. Nenhuma versão histórica foi atualizada em lugar.
 
 ## Preview e impressão
 
@@ -145,7 +146,7 @@ D2-C.1 não substitui `issue_clinical_document()` apenas para alterar metadado d
 
 ## Autorização preservada
 
-Nenhuma permissão nova é criada.
+Nenhuma permissão nova foi criada.
 
 A autoridade continua sendo:
 
@@ -182,7 +183,7 @@ O verifier roda em transação própria e termina com `ROLLBACK`. Esse rollback 
 
 ## Gates
 
-Antes de merge:
+No head final da #436 ficaram verdes:
 
 - unit tests do renderer;
 - boundary tests D2-C.1;
@@ -193,22 +194,52 @@ Antes de merge:
 - PostgreSQL 16 D2-C.1;
 - regressão D2-B.2C;
 - regressão de autorização clínica;
-- demais workflows canônicos sem relaxamento.
+- Clinical Foundation/Encounter/Instrument Authorization;
+- Nexus C-01/C-02/C-03/C-04/C-06.
 
-## Rollout
+## Produção — evidência de 2026-09-12
 
-Após merge, e somente pinado ao SHA mergeado:
-
-1. backup do PostgreSQL;
-2. aplicar `20260912_clinical_therapeutic_guidance_renderer_v1.sql`;
-3. executar `VERIFY_20260912_CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.sql`;
-4. redeploy do frontend;
-5. smoke com profissional elegível: criar draft → editar → salvar → retomar → revisar → emitir → histórico → imprimir;
-6. conferir clínica, paciente, profissional, conselho/registro, data, título e conteúdo na folha;
-7. imprimir uma orientação histórica `plain-text-v1` e confirmar fallback seguro;
-8. confirmar ator inelegível fail-closed;
-9. somente então promover D2-C/D2-C.1 para `VALIDADO EM PRODUÇÃO`.
+Backup antes da migration:
 
 ```text
-PR mergeada != migration aplicada != frontend validado em produção
+/root/medicspro_before_d2c1_20260912_194049.dump
+```
+
+Migration pinada ao merge `af53bf2d7229c238335ab201f3438f44543f7f89`:
+
+```text
+BEGIN
+SET
+SET
+INSERT 0 2
+DO
+UPDATE 2
+COMMIT
+MIGRATION_EXIT=0
+```
+
+Verifier oficial:
+
+```text
+CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+ROLLBACK
+VERIFIER_EXIT=0
+```
+
+Após redeploy do frontend, o smoke real confirmou a folha A4 ao vivo e a impressão do documento emitido com:
+
+- clínica e dados de cabeçalho;
+- profissional e conselho/registro;
+- título humano `ORIENTAÇÕES TERAPÊUTICAS`;
+- paciente e data;
+- orientações estruturadas;
+- instruções ao paciente;
+- bloco de assinatura;
+- identificador do documento;
+- ausência de `therapeutic_guidance` como rótulo visível ao paciente.
+
+O usuário confirmou o fluxo final como funcional.
+
+```text
+D2-C.1 — VALIDADO EM PRODUÇÃO
 ```

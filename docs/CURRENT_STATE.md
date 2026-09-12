@@ -3,11 +3,10 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `33da15230cd35179681406b212e87305618a4976`  
+**Main canônica:** `af53bf2d7229c238335ab201f3438f44543f7f89`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C:** MERGEADO / NÃO VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C.1 Professional Print:** PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO  
+**Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -73,7 +72,7 @@ Clinical Cockpit = composição da experiência no Encounter
 
 # Clinical Cockpit / Encounter
 
-Workspaces canônicos na `main`:
+Workspaces canônicos validados em produção:
 
 ```text
 Registro
@@ -82,8 +81,6 @@ Prescrição
 Orientações
 Nexus
 ```
-
-`Orientações` entrou pela PR #435, mas o fluxo ainda não deve ser marcado como validado em produção até redeploy/smoke real.
 
 Prescrição e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
@@ -168,7 +165,7 @@ Issued print
 
 ## D2-C — Therapeutic Guidance V1
 
-**MERGEADO / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
 PR #435 → `33da15230cd35179681406b212e87305618a4976`.
 
@@ -197,17 +194,17 @@ observations
 
 ## D2-C.1 — Therapeutic Guidance Professional Print Renderer V1
 
-**PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base da slice: `main@33da15230cd35179681406b212e87305618a4976`.
+PR #436 → `af53bf2d7229c238335ab201f3438f44543f7f89`.
 
-Objetivo:
+Layout:
 
 ```text
 clinical-document/therapeutic-guidance-v1
 ```
 
-A slice entrega:
+Entrega validada:
 
 - preview A4 real no workspace;
 - mesma composição segura no draft e no print emitido;
@@ -217,9 +214,21 @@ A slice entrega:
 - impressão nova baseada em `payload_snapshot + context_snapshot + template_definition_snapshot`;
 - fallback seguro para documentos históricos `plain-text-v1`;
 - nenhuma expansão de RLS/RPC/grants/capabilities/autoria;
-- nenhum HTML/CSS/JS administrável.
+- nenhum HTML/CSS/JS administrável;
+- ausência do rótulo técnico `therapeutic_guidance` na saída para o paciente.
 
-O campo genérico `renderer_version` não é reescrito nesta slice; a versão visual efetiva está congelada em `template_definition_snapshot.render_definition.layout`.
+Produção em 2026-09-12:
+
+```text
+backup: /root/medicspro_before_d2c1_20260912_194049.dump
+migration: COMMIT / MIGRATION_EXIT=0
+verifier: CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+VERIFIER_EXIT=0
+frontend: redeploy concluído
+smoke: preview A4 + emissão/histórico/impressão profissional confirmados
+```
+
+O campo genérico `renderer_version` não foi reescrito nesta slice; a versão visual efetiva fica congelada em `template_definition_snapshot.render_definition.layout`.
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
@@ -279,15 +288,4 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Fechar tecnicamente a **PR #436 — D2-C.1 Therapeutic Guidance Professional Print Renderer V1**:
-
-1. renderer fechado + testes;
-2. migration aditiva de versões visuais;
-3. verifier production-safe;
-4. PostgreSQL 16 + regressão D2-B.2C/Auth;
-5. `npm test`, typecheck, lint e build;
-6. demais workflows canônicos sem relaxamento;
-7. revisar diff final e CI;
-8. merge apenas com gates verdes;
-9. após merge: backup → migration pinada → verifier → redeploy → smoke real;
-10. somente depois promover D2-C/D2-C.1 a produção validada.
+D2-C/D2-C.1 estão fechadas para o escopo atual. Antes de abrir outro `document_type`, escolher a próxima slice a partir do roadmap canônico e do gap de produto real, sem reabrir Prescrição ou Orientações por polimento visual sem blocker reproduzido.

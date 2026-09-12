@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `33da15230cd35179681406b212e87305618a4976`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C MERGEADO NÃO VALIDADO / D2-C.1 PR #436 EM ANDAMENTO
+**Main canônica:** `af53bf2d7229c238335ab201f3438f44543f7f89`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD
 
 ---
 
@@ -142,13 +142,13 @@ Documento: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
 
 # D2-C — Therapeutic Guidance V1
 
-**MERGEADO / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
 PR #435 → `33da15230cd35179681406b212e87305618a4976`.
 
 A implementação reutiliza integralmente D2-A; não cria engine paralelo, RLS, grant ou capability novos.
 
-Fluxo:
+Fluxo validado:
 
 ```text
 Encounter próprio ativo
@@ -170,7 +170,7 @@ patient_instructions
 observations
 ```
 
-Regras:
+Regras preservadas:
 
 - draft pode permanecer incompleto;
 - emissão exige `items` não vazio e cada `guidance` não vazio;
@@ -187,9 +187,9 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`.
 
 # D2-C.1 — Therapeutic Guidance Professional Print Renderer V1
 
-**PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Objetivo: fechar a apresentação documental sem redesenhar o engine D2-A.
+PR #436 → `af53bf2d7229c238335ab201f3438f44543f7f89`.
 
 Layout:
 
@@ -197,7 +197,7 @@ Layout:
 clinical-document/therapeutic-guidance-v1
 ```
 
-Novas versões platform:
+Versões platform publicadas:
 
 ```text
 Orientação terapêutica geral
@@ -207,7 +207,7 @@ Orientações pós-atendimento
 v1 plain-text-v1 → v2 therapeutic-guidance-v1
 ```
 
-Contrato:
+Contrato validado:
 
 ```text
 render_definition publicado
@@ -223,7 +223,7 @@ template_definition_snapshot
 issued print pelo mesmo renderer
 ```
 
-Escopo:
+Produção confirmou:
 
 - título humano;
 - clínica/endereço/telefone;
@@ -233,30 +233,40 @@ Escopo:
 - orientações, instruções e observações estruturadas;
 - renderer seguro compartilhado;
 - conteúdo dinâmico escapado;
-- legacy `plain-text-v1` impresso por fallback do snapshot congelado;
-- retomada de draft usa a versão exata de template/render_definition;
+- legacy `plain-text-v1` preservado como fallback histórico;
+- retomada de draft vinculada à versão exata de template/render_definition;
 - nenhuma expansão de authorization, RLS, capability ou autoria;
-- sem editor HTML/CSS/JS.
+- ausência de editor HTML/CSS/JS;
+- ausência de `therapeutic_guidance` como texto técnico na saída para paciente.
 
-D2-C.1 não substitui o RPC genérico de emissão apenas para alterar o campo `renderer_version`. A versão visual efetiva é o layout congelado em:
+Evidência de rollout:
+
+```text
+backup
+→ /root/medicspro_before_d2c1_20260912_194049.dump
+
+migration pinada a af53bf2d7229c238335ab201f3438f44543f7f89
+→ COMMIT
+→ MIGRATION_EXIT=0
+
+verifier
+→ CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+→ VERIFIER_EXIT=0
+
+frontend
+→ redeploy concluído
+
+smoke
+→ live preview A4 + emissão/histórico/impressão profissional confirmados
+```
+
+D2-C.1 não substitui o RPC genérico de emissão apenas para alterar o campo `renderer_version`. A versão visual efetiva continua o layout congelado em:
 
 ```text
 template_definition_snapshot.render_definition.layout
 ```
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
-
-Rollout após merge:
-
-```text
-backup
-→ migration pinada ao merge SHA
-→ verifier D2-C.1
-→ redeploy frontend
-→ smoke draft/save/resume/review/issue/print
-→ smoke legacy plain-text-v1
-→ somente então PROD VALIDADO
-```
 
 ---
 
@@ -272,3 +282,4 @@ backup
 8. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
 9. Migrations de produção são controladas; merge não significa aplicação.
 10. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
+11. Prescrição e Orientações estão fechadas no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
