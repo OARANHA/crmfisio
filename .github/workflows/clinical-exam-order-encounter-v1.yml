@@ -6,6 +6,8 @@ on:
       - 'src/lib/clinicalExamOrder.ts'
       - 'src/lib/clinicalExamOrder.test.ts'
       - 'src/lib/clinicalExamOrderBoundary.test.js'
+      - 'src/lib/activeClinicalEncounterWorkspaceBoundary.test.js'
+      - 'src/lib/clinicalPrescriptionBoundary.test.js'
       - 'src/components/ClinicalExamOrderWorkspace.tsx'
       - 'src/components/ClinicalEncounterWorkspaceV4.tsx'
       - 'docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md'
