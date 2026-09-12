@@ -17,13 +17,14 @@ import { useFinance } from '../lib/financeContext';
 import { updateAppointmentStatusVerified } from '../lib/appointmentOperations';
 import { usePackages } from '../lib/packageContext';
 import { professionalIdOf } from '../lib/professionalReference';
-import type { ProfessionalIdentity } from '../lib/professionalIdentity';
+import { isPhysicianProfessionalType, type ProfessionalIdentity } from '../lib/professionalIdentity';
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
+import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
 export function ClinicalEncounterWorkspaceV4({
@@ -46,8 +47,9 @@ export function ClinicalEncounterWorkspaceV4({
   const attendCapability = useClinicalCapability('clinical.attend', user?.id);
   const evolutionCapability = useClinicalCapability('clinical.evolution.write', user?.id);
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
+  const documentsCapability = useClinicalCapability('clinical.documents', user?.id);
   const [finishing, setFinishing] = useState(false);
-  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'nexus'>('record');
+  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'nexus'>('record');
   const evolutionRef = useRef<HTMLElement | null>(null);
 
   const canonicalEncounter = useMemo(
@@ -81,6 +83,7 @@ export function ClinicalEncounterWorkspaceV4({
     evolution.sessionId === encounter.id
     && professionalIdOf(evolution) === user?.id
   ));
+  const prescriptionRelevant = isPhysicianProfessionalType(identity?.professionalType);
 
   if (!isCurrentEncounter || !canonicalEncounter || !user) {
     return <>{historicalWorkspace}</>;
@@ -172,7 +175,10 @@ export function ClinicalEncounterWorkspaceV4({
             <div className="flex flex-wrap items-center gap-2">
               <nav aria-label="Workspaces da consulta" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                 {[
-                  ['record', 'Registro'], ['assessment', 'Anamneses & Avaliações'], ['nexus', 'Nexus'],
+                  ['record', 'Registro'],
+                  ['assessment', 'Anamneses & Avaliações'],
+                  ...(prescriptionRelevant ? [['prescription', 'Prescrição']] : []),
+                  ['nexus', 'Nexus'],
                 ].map(([id, label]) => (
                   <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
                 ))}
@@ -240,6 +246,18 @@ export function ClinicalEncounterWorkspaceV4({
               <ClinicalAssessmentRunner patient={patient} presentation="encounter" />
             ) : (
               <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
+            )}
+          </EncounterSection>}
+
+          {workspace === 'prescription' && prescriptionRelevant && <EncounterSection id="encounter-prescription" eyebrow="Documento clínico" title="Prescrição" detail="Crie, revise e emita prescrições medicamentosas dentro do atendimento atual.">
+            {documentsCapability.loading ? (
+              <NeutralState>Verificando acesso aos documentos clínicos…</NeutralState>
+            ) : documentsCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso à prescrição">Atualize a página antes de criar ou emitir um documento clínico.</BlockedState>
+            ) : documentsCapability.allowed ? (
+              <ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
+            ) : (
+              <BlockedState title="Prescrição indisponível">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
             )}
           </EncounterSection>}
 
