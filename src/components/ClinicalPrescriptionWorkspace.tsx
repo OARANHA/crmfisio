@@ -292,7 +292,7 @@ function ClinicalPrescriptionWorkspaceContext({
             </label>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-3">
-              <p className="text-[10.5px] text-fog">Salvar rascunho não emite a receita. Emitir é uma ação separada e irreversível.</p>
+              <p className="text-[10.5px] text-fog">Salvar rascunho não emite a receita. Emitir é uma ação separada que torna esta versão imutável.</p>
               <div className="flex flex-wrap gap-2">
                 <Btn variant="subtle" disabled={saving || !dirty} onClick={() => void saveDraft()}>{saving ? 'Salvando…' : dirty ? 'Salvar rascunho' : 'Rascunho salvo'}</Btn>
                 <Btn disabled={!readyToIssue || saving || issuing} onClick={() => setReviewing(true)}>Revisar e emitir</Btn>
