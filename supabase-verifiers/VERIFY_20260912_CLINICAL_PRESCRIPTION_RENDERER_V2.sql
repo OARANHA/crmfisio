@@ -47,12 +47,10 @@ BEGIN
 
   IF v_def NOT LIKE '%clinical-document/plain-text-v1%'
      OR v_def NOT LIKE '%clinical-document/prescription-v2%'
-     OR v_def NOT LIKE '%classic%'
-     OR v_def NOT LIKE '%institutional%'
-     OR v_def NOT LIKE '%compact%'
-     OR v_def NOT LIKE '%monochrome%'
-     OR v_def NOT LIKE '%navy%'
-     OR v_def NOT LIKE '%emerald%'
+     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''preset''::text, ''''::text)%'
+     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''accent''::text, ''''::text)%'
+     OR v_def NOT LIKE '%coalesce(p_render_definition ->> ''medication_style''::text, ''''::text)%'
+     OR v_def NOT LIKE '%issuer.specialty%'
      OR v_def NOT LIKE '%clinical_document_template_renderer_invalid%' THEN
     RAISE EXCEPTION 'clinical_prescription_renderer_v2_validator_drift';
   END IF;
@@ -75,9 +73,10 @@ BEGIN
 
   IF v_def NOT LIKE '%assert_clinical_document_actor%'
      OR v_def NOT LIKE '%assert_clinical_document_payload_ready%'
-     OR v_def NOT LIKE '%''birth_date'', pat.nascimento%'
-     OR v_def NOT LIKE '%''address'', c.address%'
-     OR v_def NOT LIKE '%''phone'', c.phone%'
+     OR v_def NOT LIKE '%to_jsonb(pat)%nascimento%'
+     OR v_def NOT LIKE '%to_jsonb(c)%address%'
+     OR v_def NOT LIKE '%to_jsonb(c)%phone%'
+     OR v_def NOT LIKE '%to_jsonb(p)%especialidade%'
      OR v_def NOT LIKE '%''template_name''%'
      OR v_def NOT LIKE '%template_definition_snapshot%'
      OR v_def NOT LIKE '%rendered_snapshot%'
@@ -115,12 +114,11 @@ BEGIN
   END IF;
 END $$;
 
--- Closed renderer must accept the curated contract and reject arbitrary markup.
 SELECT public.validate_clinical_document_template_contract(
   'medication_prescription',
   '{"kind":"medication_prescription","fields":["items","observations"]}'::jsonb,
   '{"layout":"clinical-document/prescription-v2","preset":"institutional","accent":"navy","title":"Receita médica","medication_style":"cards","show_clinic_address":true,"show_clinic_phone":true,"show_patient_birth_date":true,"show_specialty":true}'::jsonb,
-  '["patient.name","patient.birth_date","clinic.name","clinic.address","clinic.phone","issuer.name","issuer.registro","appointment.id","issued_at"]'::jsonb
+  '["patient.name","patient.birth_date","clinic.name","clinic.address","clinic.phone","issuer.name","issuer.specialty","issuer.registro","appointment.id","issued_at"]'::jsonb
 );
 
 DO $$
@@ -133,6 +131,30 @@ BEGIN
       '["patient.name"]'::jsonb
     );
     RAISE EXCEPTION 'clinical_prescription_renderer_v2_arbitrary_markup_not_rejected';
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.validate_clinical_document_template_contract(
+      'medication_prescription',
+      '{"kind":"medication_prescription","fields":["items"]}'::jsonb,
+      '{"layout":"clinical-document/prescription-v2","accent":"navy","title":"Receita","medication_style":"cards","show_clinic_address":true,"show_clinic_phone":true,"show_patient_birth_date":true,"show_specialty":true}'::jsonb,
+      '["patient.name"]'::jsonb
+    );
+    RAISE EXCEPTION 'clinical_prescription_renderer_v2_missing_preset_not_rejected';
+  EXCEPTION
+    WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.validate_clinical_document_template_contract(
+      'medication_prescription',
+      '{"kind":"medication_prescription","fields":["items"]}'::jsonb,
+      '{"layout":"clinical-document/prescription-v2","preset":"classic","title":"Receita","medication_style":"numbered","show_clinic_address":true,"show_clinic_phone":true,"show_patient_birth_date":true,"show_specialty":true}'::jsonb,
+      '["patient.name"]'::jsonb
+    );
+    RAISE EXCEPTION 'clinical_prescription_renderer_v2_missing_accent_not_rejected';
   EXCEPTION
     WHEN SQLSTATE '22023' THEN NULL;
   END;
