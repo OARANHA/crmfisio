@@ -1,0 +1,61 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const clientSource = readFileSync(resolve(here, './clinicalPrescription.ts'), 'utf8');
+const workspaceSource = readFileSync(resolve(here, '../components/ClinicalPrescriptionWorkspace.tsx'), 'utf8');
+const encounterSource = readFileSync(resolve(here, '../components/ClinicalEncounterWorkspaceV4.tsx'), 'utf8');
+
+describe('Clinical Prescription V1 boundary', () => {
+  it('reuses the four D2-A lifecycle RPCs instead of writing protected tables directly', () => {
+    expect(clientSource).toContain("db.rpc('create_clinical_document_draft'");
+    expect(clientSource).toContain("db.rpc('save_clinical_document_draft'");
+    expect(clientSource).toContain("db.rpc('issue_clinical_document'");
+    expect(clientSource).toContain("db.rpc('cancel_clinical_document'");
+    expect(clientSource).not.toContain(".from('clinical_documents').insert");
+    expect(clientSource).not.toContain(".from('clinical_documents').update");
+    expect(clientSource).not.toContain(".from('clinical_documents').delete");
+  });
+
+  it('keeps server eligibility authoritative for medication prescriptions', () => {
+    expect(clientSource).toContain("db.rpc('current_user_can_issue_clinical_document'");
+    expect(clientSource).toContain("p_document_type: 'medication_prescription'");
+    expect(workspaceSource).toContain('const canIssue = await canIssueMedicationPrescription()');
+    expect(workspaceSource).toContain('if (!eligible)');
+  });
+
+  it('keeps draft save separate from explicit human issue confirmation', () => {
+    expect(workspaceSource).toContain('Salvar rascunho não emite a receita. Emitir é uma ação separada e irreversível.');
+    expect(workspaceSource).toContain('Revisão humana obrigatória');
+    expect(workspaceSource).toContain('Confirmar e emitir');
+    expect(workspaceSource).toContain('saveMedicationPrescriptionDraft(');
+    expect(workspaceSource).toContain('issueMedicationPrescription(');
+    expect(workspaceSource).not.toContain('setInterval(');
+  });
+
+  it('prints only the immutable issued snapshot', () => {
+    expect(workspaceSource).toContain("document.status !== 'issued' || !document.payloadSnapshot");
+    expect(workspaceSource).toContain('document.payloadSnapshot.items');
+    expect(workspaceSource).not.toContain('template.definition');
+  });
+
+  it('integrates prescription as navigation inside the same canonical Encounter', () => {
+    expect(encounterSource).toContain("'prescription' | 'nexus'");
+    expect(encounterSource).toContain("['prescription', 'Prescrição']");
+    expect(encounterSource).toContain("useClinicalCapability('clinical.documents'");
+    expect(encounterSource).toContain('<ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />');
+  });
+
+  it('uses profession only for presentation relevance, not for authorization', () => {
+    expect(encounterSource).toContain('const prescriptionRelevant = isPhysicianProfessionalType(identity?.professionalType);');
+    expect(workspaceSource).toContain('canIssueMedicationPrescription');
+    expect(workspaceSource).not.toContain('isPhysicianProfessionalType');
+  });
+
+  it('does not couple Prescription V1 to Nexus', () => {
+    expect(workspaceSource).not.toContain('Nexus');
+    expect(clientSource).not.toContain('nexus.');
+  });
+});
