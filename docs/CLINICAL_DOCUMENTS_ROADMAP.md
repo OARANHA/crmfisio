@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Base canônica desta slice:** `main@49cee461f970a3630c4fd98ab93a1ac476798e74`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 PROD / D2-D1 PROD / D2-D2 PR #440 — NÃO PROD
+**Base canônica desta slice:** `main@cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 PROD / D2-D1 PROD / D2-D2 PROD
 
 ---
 
@@ -30,14 +30,17 @@ Produção contém:
 - `therapeutic_guidance`
 - `exam_order`
 
-Candidatos posteriores, cada um com contrato próprio:
+Próximo candidato priorizado:
 
 - `referral`
+
+Candidatos posteriores, cada um com contrato próprio:
+
 - `attendance_declaration`
 - `medical_certificate`
 - `clinical_report`
 
-Não apresentar atestado, referral ou relatório como template funcional antes de existir `document_type` canônico correspondente.
+Não apresentar encaminhamento, atestado, declaração ou relatório como template funcional antes de existir `document_type` canônico correspondente.
 
 ---
 
@@ -356,7 +359,7 @@ UX entregue:
 
 A UI usa eligibility server-side `current_user_can_issue_clinical_document('exam_order')`; capability/relevância no frontend não substituem o servidor.
 
-D2-D1 não criou migration, não alterou RLS/RPC/grants e não adicionou engine documental paralelo. O frontend foi redeployado e o smoke em produção confirmou a aba `Exames`, emissão real e histórico por snapshot. A ausência de impressão profissional observada nesse smoke era escopo reservado à D2-D2.
+D2-D1 não criou migration, não alterou RLS/RPC/grants e não adicionou engine documental paralelo. O frontend foi redeployado e o smoke em produção confirmou a aba `Exames`, emissão real e histórico por snapshot.
 
 Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
 
@@ -364,17 +367,17 @@ Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
 
 # D2-D2 — Exam Order Professional Print Renderer V1
 
-**PR #440 — IMPLEMENTADO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base: `main@49cee461f970a3630c4fd98ab93a1ac476798e74`.
+PR #440 → `cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`.
 
-Contrato visual novo:
+Contrato visual:
 
 ```text
 clinical-document/exam-order-v1
 ```
 
-Entrega da slice:
+Entrega validada:
 
 - nova versão publicada e imutável do template platform `Pedido de exames`;
 - versão histórica v1 `clinical-document/plain-text-v1` preservada;
@@ -394,20 +397,30 @@ Entrega da slice:
 
 D2-D2 não altera eligibility, autoria, RLS, RPCs, grants, roles, capability, lifecycle ou o recorte médico/CRM conservador estabelecido por D2-D0.
 
-A slice também mantém separados `Exam Order` documental e qualquer futuro domínio de fulfillment/resultados/laboratório/imagem.
+Produção em 2026-09-12 confirmou migration/verifier, redeploy frontend, preview A4 profissional, cabeçalho clínico humano, área de assinatura e ação `Imprimir` no histórico emitido.
 
 Documento: `docs/CLINICAL_EXAM_ORDER_RENDERER_V1.md`.
 
-Rollout de produção somente após merge e gates verdes:
+**A família atual de Pedido de Exames está fechada no escopo documental básico.** Fulfillment, resultados, laudos e integrações laboratoriais/imagem permanecem domínios separados.
 
-```text
-backup controlado
-→ migration pinada ao SHA mergeado
-→ VERIFY_20260912_CLINICAL_EXAM_ORDER_RENDERER_V1.sql
-→ redeploy frontend
-→ smoke A4 / emissão / histórico / Imprimir / assinatura
-→ regressão visual de pedido histórico plain-text-v1
-```
+---
+
+# D2-E0 — Referral / Encaminhamento Foundation
+
+**PRÓXIMO GAP PRIORIZADO.**
+
+Objetivo inicial:
+
+- criar `document_type` canônico `referral`;
+- não reutilizar `therapeutic_guidance` como atalho;
+- definir payload estruturado para destinatário/serviço, motivo do encaminhamento, resumo clínico relevante, prioridade e observações;
+- definir autorização multiprofissional explicitamente por identidade/capability/contexto, sem owner/admin/platform bypass;
+- herdar lifecycle, snapshots, histórico e cancelamento da D2-A;
+- manter especialidade como relevância, nunca ACL;
+- preparar o contrato para UX e renderer A4 em slices subsequentes;
+- não criar integração externa com prestadores/redes nesta foundation.
+
+Antes da implementação, a slice deve inventariar o que já existe no MedicsPro histórico e no runtime atual para evitar duplicar encaminhamentos ou relatórios sob nomes diferentes.
 
 ---
 
@@ -423,5 +436,6 @@ backup controlado
 8. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
 9. Migrations de produção são controladas; merge não significa aplicação.
 10. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
-11. Prescrição e Orientações estão fechadas no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
+11. Prescrição, Orientações e Pedido de Exames estão fechados no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
 12. Não acoplar `exam_order` documental a futuro domínio de fulfillment/resultados sem contrato explícito.
+13. `referral` deve nascer com boundary de autoria próprio; não inferir autorização a partir do role ou especialidade.
