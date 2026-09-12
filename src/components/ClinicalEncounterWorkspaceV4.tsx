@@ -26,6 +26,7 @@ import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
 import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';
 import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
+import { ClinicalReferralWorkspace } from './ClinicalReferralWorkspace';
 import { ClinicalTherapeuticGuidanceWorkspace } from './ClinicalTherapeuticGuidanceWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
@@ -51,7 +52,7 @@ export function ClinicalEncounterWorkspaceV4({
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
   const documentsCapability = useClinicalCapability('clinical.documents', user?.id);
   const [finishing, setFinishing] = useState(false);
-  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'nexus'>('record');
+  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'referral' | 'nexus'>('record');
   const evolutionRef = useRef<HTMLElement | null>(null);
 
   const canonicalEncounter = useMemo(
@@ -163,7 +164,7 @@ export function ClinicalEncounterWorkspaceV4({
   );
 
   return (
-    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="6" className="space-y-3">
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="7" className="space-y-3">
       <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
 
       <div className="grid items-start gap-3 xl:grid-cols-[238px_minmax(0,1fr)]">
@@ -186,6 +187,7 @@ export function ClinicalEncounterWorkspaceV4({
                   ...(prescriptionRelevant ? [['prescription', 'Prescrição']] : []),
                   ...(examOrderRelevant ? [['exams', 'Exames']] : []),
                   ['guidance', 'Orientações'],
+                  ['referral', 'Encaminhamento'],
                   ['nexus', 'Nexus'],
                 ].map(([id, label]) => (
                   <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
@@ -290,6 +292,18 @@ export function ClinicalEncounterWorkspaceV4({
               <ClinicalTherapeuticGuidanceWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
             ) : (
               <BlockedState title="Orientações indisponíveis">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
+            )}
+          </EncounterSection>}
+
+          {workspace === 'referral' && <EncounterSection id="encounter-referral" eyebrow="Documento clínico" title="Encaminhamento clínico" detail="Organize, revise e emita encaminhamentos para continuidade do cuidado dentro do atendimento atual.">
+            {documentsCapability.loading ? (
+              <NeutralState>Verificando acesso aos documentos clínicos…</NeutralState>
+            ) : documentsCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso ao encaminhamento">Atualize a página antes de criar ou emitir um documento clínico.</BlockedState>
+            ) : documentsCapability.allowed ? (
+              <ClinicalReferralWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
+            ) : (
+              <BlockedState title="Encaminhamento indisponível">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
             )}
           </EncounterSection>}
 
