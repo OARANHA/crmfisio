@@ -1,13 +1,14 @@
 # D2-D2 — Pedido de Exames / Professional Print Renderer V1
 
-**Base canônica:** `main@49cee461f970a3630c4fd98ab93a1ac476798e74`  
-**Estado desta slice:** implementada em branch; produção ainda não alterada.
+**Base canônica implementada:** `main@cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`  
+**PR:** #440  
+**Estado desta slice:** VALIDADO EM PRODUÇÃO.
 
 ## Objetivo
 
 Fechar a apresentação profissional do `exam_order` sem criar um segundo engine documental e sem alterar autorização, lifecycle ou autoria clínica.
 
-O contrato visual novo é:
+O contrato visual validado é:
 
 ```text
 clinical-document/exam-order-v1
@@ -91,15 +92,25 @@ D2-D2 não altera:
 
 Não inclui fulfillment, resultados, laudos, integração com laboratório/imagem, agendamento, cobrança, catálogo externo, assinatura digital ou Nexus emitindo pedido automaticamente.
 
-## Rollout
+## Produção
 
-Após merge, a promoção para produção exige:
+Rollout concluído em 2026-09-12 após merge da PR #440 em `main@cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`.
 
-1. backup controlado;
-2. aplicar `supabase-migrations/20260912_clinical_exam_order_renderer_v1.sql` pinada ao SHA mergeado;
-3. executar `supabase-verifiers/VERIFY_20260912_CLINICAL_EXAM_ORDER_RENDERER_V1.sql`;
-4. redeploy do frontend;
-5. smoke real: preview A4 → emitir novo pedido → histórico → Imprimir → conferir cabeçalho, paciente, exames, profissional e assinatura;
-6. confirmar que pedidos antigos continuam imprimindo pelo snapshot legado sem mudança de layout.
+Evidência confirmada:
 
-Somente então D2-D2 pode ser marcada como **VALIDADO EM PRODUÇÃO**.
+```text
+migration D2-D2 aplicada
+→ verifier oficial executado com sucesso
+→ frontend redeployado
+→ workspace Exames carregando o renderer A4 novo
+→ pré-visualização profissional visível em produção
+→ título humano “PEDIDO DE EXAMES”
+→ clínica/paciente/profissional/CRM/especialidade presentes
+→ área de assinatura visível
+→ histórico emitido exibindo ação “Imprimir”
+→ pedidos anteriores preservados como snapshots históricos
+```
+
+A evidência visual de produção confirmou também que o código interno `exam_order` não aparece como rótulo para o paciente.
+
+D2-D2 está **VALIDADO EM PRODUÇÃO** e a família atual de Pedido de Exames fica fechada no escopo documental básico. Evoluções futuras de fulfillment/resultados/laboratórios devem nascer em domínio separado.
