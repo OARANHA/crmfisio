@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `af53bf2d7229c238335ab201f3438f44543f7f89`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD
+**Base canônica desta slice:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 IMPLEMENTADO — NÃO PROD
 
 ---
 
@@ -22,22 +22,25 @@ Especialidade pode influenciar relevância/ordenação, nunca autorização. Adm
 
 ---
 
-## Document types canônicos atuais
+## Document types canônicos
 
-D2-A contém somente:
+Produção antes da D2-D0 contém:
 
 - `medication_prescription`
 - `therapeutic_guidance`
 
-Candidatos posteriores, cada um com contrato próprio:
+D2-D0 adiciona, após merge + migration controlada:
 
 - `exam_order`
+
+Candidatos posteriores, cada um com contrato próprio:
+
 - `referral`
 - `attendance_declaration`
 - `medical_certificate`
 - `clinical_report`
 
-Não apresentar Pedido de Exames, atestado ou relatório como template funcional antes de existir `document_type` canônico correspondente.
+Não apresentar atestado, referral ou relatório como template funcional antes de existir `document_type` canônico correspondente.
 
 ---
 
@@ -223,50 +226,53 @@ template_definition_snapshot
 issued print pelo mesmo renderer
 ```
 
-Produção confirmou:
-
-- título humano;
-- clínica/endereço/telefone;
-- paciente/nascimento;
-- profissional/tipo/conselho/UF/registro/especialidade;
-- data e assinatura visual;
-- orientações, instruções e observações estruturadas;
-- renderer seguro compartilhado;
-- conteúdo dinâmico escapado;
-- legacy `plain-text-v1` preservado como fallback histórico;
-- retomada de draft vinculada à versão exata de template/render_definition;
-- nenhuma expansão de authorization, RLS, capability ou autoria;
-- ausência de editor HTML/CSS/JS;
-- ausência de `therapeutic_guidance` como texto técnico na saída para paciente.
-
-Evidência de rollout:
-
-```text
-backup
-→ /root/medicspro_before_d2c1_20260912_194049.dump
-
-migration pinada a af53bf2d7229c238335ab201f3438f44543f7f89
-→ COMMIT
-→ MIGRATION_EXIT=0
-
-verifier
-→ CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
-→ VERIFIER_EXIT=0
-
-frontend
-→ redeploy concluído
-
-smoke
-→ live preview A4 + emissão/histórico/impressão profissional confirmados
-```
-
-D2-C.1 não substitui o RPC genérico de emissão apenas para alterar o campo `renderer_version`. A versão visual efetiva continua o layout congelado em:
-
-```text
-template_definition_snapshot.render_definition.layout
-```
+Produção confirmou título humano, cabeçalho clínico, paciente/profissional/conselho/registro, assinatura visual, conteúdo estruturado, fallback histórico `plain-text-v1` e ausência de expansão de autorização.
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
+
+---
+
+# D2-D0 — Exam Order Canonical Foundation
+
+**IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO.**
+
+Base: `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`.
+
+Decisão:
+
+```text
+Pedido de Exames != template de Orientação
+Pedido de Exames = exam_order canônico próprio
+```
+
+Esta micro-slice é backend-only. Ela estende a Clinical Documents Foundation com:
+
+- `exam_order` no conjunto fechado de `document_type`;
+- template platform `Pedido de exames` com versão publicada imutável;
+- payload estruturado com `items[].exam_name` e campos opcionais de código/categoria/instruções/urgência;
+- indicação clínica, impressão/hipótese, prioridade e observações como campos estruturados opcionais;
+- validação server-side na emissão;
+- lifecycle/snapshots/eventos/histórico/cancelamento herdados da D2-A;
+- verifier production-safe + comportamento PostgreSQL 16;
+- regressão explícita dos renderers de Prescrição e Orientação.
+
+V1 é conservadora: `exam_order` usa o mesmo requisito de identidade médica ativa + CRM/UF/registro já aplicado a `medication_prescription`, além de identidade clínica válida, `clinical.documents` e próprio Encounter ativo. Não existe auto-grant por especialidade nem bypass owner/admin.
+
+Esse recorte não afirma que somente médicos podem solicitar exames em todo contexto regulatório. Qualquer expansão para outras profissões deve nascer em slice própria, com regra de autorização explícita, em vez de transformar profissão/especialidade em ACL implícita.
+
+Fora desta micro-slice:
+
+- aba/workspace `Exames` no Encounter;
+- renderer A4 profissional;
+- admin de templates de exam order;
+- catálogo/autocomplete;
+- laboratórios/integrações;
+- fulfillment/status/resultados/laudos;
+- Nexus emitindo pedido automaticamente.
+
+Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
+
+Próxima slice funcional após merge + rollout/verifier de D2-D0: **D2-D1 — Exam Order Encounter UX V1**.
 
 ---
 
@@ -282,4 +288,5 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 8. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
 9. Migrations de produção são controladas; merge não significa aplicação.
 10. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
-11. Prescrição e Orientações estão fechadas no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
+11. Prescrição e Orientações estão fechadas no escopo atual.
+12. Não acoplar `exam_order` documental a futuro domínio de fulfillment/resultados sem contrato explícito.
