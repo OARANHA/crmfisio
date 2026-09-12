@@ -2,8 +2,10 @@
 
 > Primeira superfície funcional de `exam_order` no Encounter, consumindo exclusivamente a Clinical Documents Foundation já validada em D2-D0.
 
-**Base:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
-**Estado:** IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO
+**Base implementada:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
+**PR:** #439  
+**Merge canônico:** `49cee461f970a3630c4fd98ab93a1ac476798e74`  
+**Estado:** VALIDADO EM PRODUÇÃO
 
 ## Objetivo
 
@@ -71,7 +73,7 @@ Draft pode permanecer incompleto. Emissão só é habilitada no client quando to
 
 ## UX
 
-O Clinical Cockpit passa a apresentar:
+O Clinical Cockpit em produção apresenta:
 
 ```text
 Registro
@@ -95,7 +97,6 @@ O workspace `Exames` oferece:
 - hipótese/impressão;
 - observações;
 - save/resume explícito;
-- prévia de conteúdo sem validade;
 - revisão humana explícita antes da emissão;
 - histórico do atendimento e histórico anterior.
 
@@ -103,15 +104,9 @@ O histórico usa `payload_snapshot` quando disponível. Documento emitido não a
 
 ## Prévia e impressão
 
-D2-D1 entrega uma prévia clínica de conteúdo para conferência, propositalmente marcada:
+D2-D1 entrou em produção com uma prévia clínica de conteúdo marcada como sem validade. Ela provou o fluxo funcional, mas não era o renderer profissional final.
 
-```text
-Prévia de conteúdo · Sem validade
-```
-
-Ela ainda não é o renderer profissional final.
-
-O próximo recorte visual é D2-D2, que deve publicar uma nova versão imutável do template com layout A4 próprio e reutilizar a mesma composição para preview profissional e impressão emitida, preservando versões `plain-text-v1` históricas.
+A evolução visual é D2-D2, que publica nova versão imutável do template com layout A4 próprio e reutiliza a mesma composição segura para preview profissional e impressão emitida, preservando versões `plain-text-v1` históricas.
 
 ## Escopo negativo
 
@@ -128,14 +123,13 @@ D2-D1 não implementa:
 - auto-sugestão/auto-ordering pelo Nexus;
 - alteração de RLS/RPC/grants;
 - migration de banco;
-- expansão multiprofissional da autoria;
-- renderer A4 final.
+- expansão multiprofissional da autoria.
 
 `Exam Order document` e futuro `Exam Fulfillment/Results` permanecem domínios separados.
 
 ## Testes e gates
 
-D2-D1 adiciona:
+D2-D1 adicionou:
 
 - unit tests do payload/normalização/readiness;
 - boundary test para server eligibility + lifecycle genérico;
@@ -148,24 +142,12 @@ D2-D1 adiciona:
 - `npm run build`;
 - `npm audit --audit-level=critical`.
 
-Nenhum gate anterior deve ser relaxado.
+Nenhum gate anterior foi relaxado.
 
 ## Produção
 
-Não há migration nesta slice.
+D2-D1 não possui migration. O rollout foi frontend-only após o merge #439.
 
-Após merge, o rollout é somente frontend/redeploy seguido de smoke real com médico elegível:
+Em 2026-09-12, o frontend foi redeployado e o smoke real confirmou a aba `Exames` em Encounter médico elegível, emissão de `Pedido de exames` e histórico de documentos emitidos baseado em snapshot. A evidência visual de produção mostrou múltiplos pedidos emitidos no mesmo atendimento sem exposição do código técnico `exam_order` ao usuário.
 
-1. abrir Encounter próprio ativo;
-2. confirmar aba `Exames`;
-3. criar draft;
-4. adicionar dois ou mais exames;
-5. definir prioridade e campos clínicos;
-6. salvar;
-7. sair/retomar o mesmo draft;
-8. revisar explicitamente;
-9. emitir;
-10. confirmar histórico imutável;
-11. confirmar que profissional não elegível não consegue operar `exam_order`.
-
-Somente após esse smoke D2-D1 pode virar `VALIDADO EM PRODUÇÃO`.
+A ausência de impressão profissional observada nesse smoke não é regressão D2-D1: ela era o escopo explicitamente reservado à D2-D2.
