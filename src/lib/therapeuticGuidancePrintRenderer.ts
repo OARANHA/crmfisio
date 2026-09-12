@@ -51,21 +51,34 @@ export const DEFAULT_THERAPEUTIC_GUIDANCE_RENDER_DEFINITION: TherapeuticGuidance
   showSpecialty: true,
 };
 
+const RENDER_DEFINITION_KEYS = new Set([
+  'layout',
+  'title',
+  'show_clinic_address',
+  'show_clinic_phone',
+  'show_patient_birth_date',
+  'show_specialty',
+]);
+
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const asString = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
-const asBoolean = (value: unknown, fallback: boolean): boolean => typeof value === 'boolean' ? value : fallback;
 
 export function normalizeTherapeuticGuidanceRenderDefinition(value: unknown): TherapeuticGuidanceRenderDefinition | null {
-  const source = isObject(value) ? value : {};
-  if (source.layout !== THERAPEUTIC_GUIDANCE_RENDER_LAYOUT_V1) return null;
+  if (!isObject(value) || value.layout !== THERAPEUTIC_GUIDANCE_RENDER_LAYOUT_V1) return null;
+  if (Object.keys(value).some((key) => !RENDER_DEFINITION_KEYS.has(key))) return null;
+  if (typeof value.title !== 'string' || !value.title.trim() || value.title.trim().length > 80) return null;
+  if (typeof value.show_clinic_address !== 'boolean'
+    || typeof value.show_clinic_phone !== 'boolean'
+    || typeof value.show_patient_birth_date !== 'boolean'
+    || typeof value.show_specialty !== 'boolean') return null;
 
   return {
     layout: THERAPEUTIC_GUIDANCE_RENDER_LAYOUT_V1,
-    title: asString(source.title).slice(0, 80) || DEFAULT_THERAPEUTIC_GUIDANCE_RENDER_DEFINITION.title,
-    showClinicAddress: asBoolean(source.show_clinic_address, true),
-    showClinicPhone: asBoolean(source.show_clinic_phone, true),
-    showPatientBirthDate: asBoolean(source.show_patient_birth_date, true),
-    showSpecialty: asBoolean(source.show_specialty, true),
+    title: value.title.trim(),
+    showClinicAddress: value.show_clinic_address,
+    showClinicPhone: value.show_clinic_phone,
+    showPatientBirthDate: value.show_patient_birth_date,
+    showSpecialty: value.show_specialty,
   };
 }
 
@@ -82,20 +95,17 @@ export function serializeTherapeuticGuidanceRenderDefinition(value: TherapeuticG
 
 export function buildTherapeuticGuidanceDocumentHtml(input: TherapeuticGuidanceRenderInput): string {
   const config = normalizeTherapeuticGuidanceRenderDefinition(input.renderDefinition);
-  if (!config && input.mode === 'issued') {
-    return buildLegacyTherapeuticGuidanceHtml(input);
-  }
+  if (!config) return buildLegacyTherapeuticGuidanceHtml(input);
 
-  const effective = config ?? DEFAULT_THERAPEUTIC_GUIDANCE_RENDER_DEFINITION;
   const context = input.context;
   const clinicDetails = [
-    effective.showClinicAddress ? context.clinic.address?.trim() : '',
-    effective.showClinicPhone ? context.clinic.phone?.trim() : '',
+    config.showClinicAddress ? context.clinic.address?.trim() : '',
+    config.showClinicPhone ? context.clinic.phone?.trim() : '',
   ].filter(Boolean).join(' · ');
-  const birthDate = effective.showPatientBirthDate ? formatDateOnly(context.patient.birthDate) : '';
+  const birthDate = config.showPatientBirthDate ? formatDateOnly(context.patient.birthDate) : '';
   const issuedAt = formatDateTime(context.issuedAt);
   const credential = formatCredential(context.issuer);
-  const specialty = effective.showSpecialty ? asString(context.issuer.specialty) : '';
+  const specialty = config.showSpecialty ? asString(context.issuer.specialty) : '';
   const professionalMeta = [humanizeProfessionalType(context.issuer.professionalType), credential, specialty]
     .filter(Boolean)
     .map(escapeHtml)
@@ -121,7 +131,7 @@ export function buildTherapeuticGuidanceDocumentHtml(input: TherapeuticGuidanceR
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(context.documentIdentifier || effective.title)}</title>
+<title>${escapeHtml(context.documentIdentifier || config.title)}</title>
 <style>
 :root{--navy:#153d6f;--navy-soft:#edf4fb;--ink:#111827;--muted:#667085;--line:#d9dee7;--surface:#f4f6f8;--paper:#fff}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--surface);color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:18px}.sheet{width:min(100%,794px);min-height:1090px;margin:0 auto;background:var(--paper);padding:46px 52px;border:1px solid #e5e7eb}.status{text-align:right;margin:0 0 14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#b45309}.clinic{text-align:center;padding:0 0 18px;border-bottom:2px solid var(--navy)}.clinic-name{font-size:20px;font-weight:850;color:var(--navy)}.clinic-details{margin-top:5px;font-size:10px;line-height:1.45;color:var(--muted)}.professional{margin-top:22px;padding:12px 14px;border-left:3px solid var(--navy);background:var(--navy-soft)}.professional-name{font-size:12px;font-weight:800}.professional-meta{margin-top:3px;font-size:9.5px;color:var(--muted)}.document-title{text-align:center;margin:30px 0 24px;font-size:20px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:var(--navy)}.patient{display:grid;grid-template-columns:1fr auto;gap:8px 20px;padding:14px 16px;border:1px solid var(--line);border-radius:8px;font-size:11px}.issued-date{text-align:right;color:var(--muted)}.section{margin-top:27px}.section-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--navy)}.guidance-list{list-style:none;margin:10px 0 0;padding:0}.guidance-list li{display:grid;grid-template-columns:24px 1fr;gap:10px;padding:11px 0;border-bottom:1px solid #edf0f4;font-size:11.5px;line-height:1.58}.item-number{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--navy-soft);color:var(--navy);font-size:10px;font-weight:850}.text-section{margin-top:24px;padding-top:14px;border-top:1px solid var(--line)}.text-section p{margin:7px 0 0;font-size:10.8px;line-height:1.6}.signature{margin:52px auto 0;max-width:340px;text-align:center}.signature-line{border-top:1px solid var(--ink);padding-top:8px}.signature-name{font-size:11px;font-weight:800}.signature-meta{margin-top:3px;font-size:9px;color:var(--muted)}.footer{margin-top:36px;padding-top:10px;border-top:1px dashed var(--line);font-size:8.5px;color:#8a94a6;text-align:center;overflow-wrap:anywhere}
@@ -134,7 +144,7 @@ export function buildTherapeuticGuidanceDocumentHtml(input: TherapeuticGuidanceR
 ${status}
 <header class="clinic"><div class="clinic-name">${escapeHtml(context.clinic.name || 'Clínica')}</div>${clinicDetails ? `<div class="clinic-details">${escapeHtml(clinicDetails)}</div>` : ''}</header>
 <section class="professional"><div class="professional-name">${escapeHtml(context.issuer.name || 'Profissional responsável')}</div>${professionalMeta ? `<div class="professional-meta">${professionalMeta}</div>` : ''}</section>
-<h1 class="document-title">${escapeHtml(effective.title)}</h1>
+<h1 class="document-title">${escapeHtml(config.title)}</h1>
 <section class="patient"><div><strong>Paciente:</strong> ${escapeHtml(context.patient.name || 'Paciente')}</div>${issuedAt ? `<div class="issued-date"><strong>Data:</strong> ${escapeHtml(issuedAt)}</div>` : '<div></div>'}${birthDate ? `<div><strong>Nascimento:</strong> ${escapeHtml(birthDate)}</div>` : '<div></div>'}</section>
 <section class="section"><div class="section-label">Orientações</div><ol class="guidance-list">${guidanceItems || '<li><span class="item-number">—</span><div>Nenhuma orientação preenchida.</div></li>'}</ol></section>
 ${instructions}
@@ -180,11 +190,14 @@ export function buildTherapeuticGuidanceRenderContextFromSnapshot(
 
 function buildLegacyTherapeuticGuidanceHtml(input: TherapeuticGuidanceRenderInput): string {
   const title = 'Orientação terapêutica';
-  const content = (input.renderedSnapshot || '').trim() || buildSafeLegacyText(input.payload, input.context);
+  const content = input.mode === 'issued' && (input.renderedSnapshot || '').trim()
+    ? (input.renderedSnapshot || '').trim()
+    : buildSafeLegacyText(input.payload, input.context);
+  const status = input.mode === 'draft' ? '<div class="status">Pré-visualização · sem validade</div>' : '';
   const autoPrintScript = input.autoPrint
     ? `<script>window.addEventListener('load',function(){window.setTimeout(function(){window.print();},60);});<\/script>`
     : '';
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.context.documentIdentifier || title)}</title><style>*{box-sizing:border-box}html,body{margin:0;background:#f4f6f8;color:#111827;font-family:Arial,Helvetica,sans-serif}body{padding:18px}.sheet{width:min(100%,794px);min-height:1090px;margin:0 auto;background:white;padding:46px 52px;border:1px solid #e5e7eb}.legacy-title{text-align:center;margin:0 0 24px;font-size:18px}.snapshot{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.65}.footer{margin-top:32px;padding-top:10px;border-top:1px dashed #d9dee7;font-size:8.5px;color:#8a94a6;text-align:center}@media print{@page{size:A4;margin:10mm}html,body{background:white}.sheet{width:auto;min-height:0;margin:0;padding:0;border:0}}</style></head><body><main class="sheet" data-therapeutic-guidance-renderer="legacy"><h1 class="legacy-title">${escapeHtml(title)}</h1><div class="snapshot">${nl2br(content)}</div>${input.context.documentIdentifier ? `<footer class="footer">${escapeHtml(input.context.documentIdentifier)}</footer>` : ''}</main>${autoPrintScript}</body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.context.documentIdentifier || title)}</title><style>*{box-sizing:border-box}html,body{margin:0;background:#f4f6f8;color:#111827;font-family:Arial,Helvetica,sans-serif}body{padding:18px}.sheet{width:min(100%,794px);min-height:1090px;margin:0 auto;background:white;padding:46px 52px;border:1px solid #e5e7eb}.status{text-align:right;margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b45309}.legacy-title{text-align:center;margin:0 0 24px;font-size:18px}.snapshot{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.65}.footer{margin-top:32px;padding-top:10px;border-top:1px dashed #d9dee7;font-size:8.5px;color:#8a94a6;text-align:center}@media print{@page{size:A4;margin:10mm}html,body{background:white}.sheet{width:auto;min-height:0;margin:0;padding:0;border:0}.status{display:none}}</style></head><body><main class="sheet" data-therapeutic-guidance-renderer="legacy">${status}<h1 class="legacy-title">${escapeHtml(title)}</h1><div class="snapshot">${nl2br(content)}</div>${input.context.documentIdentifier ? `<footer class="footer">${escapeHtml(input.context.documentIdentifier)}</footer>` : ''}</main>${autoPrintScript}</body></html>`;
 }
 
 function buildSafeLegacyText(payload: TherapeuticGuidancePayload, context: TherapeuticGuidanceRenderContext): string {
