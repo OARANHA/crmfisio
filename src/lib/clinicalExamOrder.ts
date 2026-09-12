@@ -23,6 +23,7 @@ export type ExamOrderTemplate = {
   name: string;
   description: string;
   currentVersionId: string;
+  renderDefinition: Record<string, unknown>;
 };
 
 export type ExamOrderDocumentStatus = 'draft' | 'issued' | 'canceled';
@@ -56,6 +57,11 @@ type TemplateRow = {
   current_version_id: string | null;
 };
 
+type TemplateVersionRow = {
+  id: string;
+  render_definition: unknown;
+};
+
 type DocumentRow = {
   id: string;
   patient_id: string;
@@ -80,6 +86,11 @@ type DocumentRow = {
 
 const db = supabase as any;
 const trim = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+const asObject = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+);
 
 export const emptyExamOrderItem = (): ExamOrderItem => ({
   examName: '',
@@ -145,11 +156,15 @@ export function examOrderReadyToIssue(payload: ExamOrderPayload): boolean {
   return payload.items.length > 0 && payload.items.every((item) => item.examName.trim().length > 0);
 }
 
-const mapTemplate = (row: TemplateRow): ExamOrderTemplate | null => row.current_version_id ? ({
+const mapTemplate = (
+  row: TemplateRow,
+  renderDefinition: Record<string, unknown>,
+): ExamOrderTemplate | null => row.current_version_id ? ({
   id: row.id,
   name: row.name,
   description: row.description,
   currentVersionId: row.current_version_id,
+  renderDefinition,
 }) : null;
 
 const mapDocument = (row: DocumentRow): ExamOrderDocument => ({
@@ -190,9 +205,34 @@ export async function loadExamOrderTemplates(): Promise<ExamOrderTemplate[]> {
     .eq('status', 'active')
     .order('name', { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as TemplateRow[])
-    .map(mapTemplate)
+
+  const rows = (data ?? []) as TemplateRow[];
+  const versionIds = rows.map((row) => row.current_version_id).filter((value): value is string => Boolean(value));
+  const renderByVersion = new Map<string, Record<string, unknown>>();
+  if (versionIds.length > 0) {
+    const { data: versions, error: versionError } = await db
+      .from('clinical_document_template_versions')
+      .select('id,render_definition')
+      .in('id', versionIds);
+    if (versionError) throw versionError;
+    for (const version of (versions ?? []) as TemplateVersionRow[]) {
+      renderByVersion.set(version.id, asObject(version.render_definition));
+    }
+  }
+
+  return rows
+    .map((row) => mapTemplate(row, row.current_version_id ? renderByVersion.get(row.current_version_id) ?? {} : {}))
     .filter((value): value is ExamOrderTemplate => Boolean(value));
+}
+
+export async function loadExamOrderTemplateRenderDefinition(versionId: string): Promise<Record<string, unknown>> {
+  const { data, error } = await db
+    .from('clinical_document_template_versions')
+    .select('id,render_definition')
+    .eq('id', versionId)
+    .single();
+  if (error || !data) throw error ?? new Error('Versão do modelo de pedido de exames não encontrada.');
+  return asObject((data as TemplateVersionRow).render_definition);
 }
 
 export async function loadExamOrderDocuments(patientId: string): Promise<ExamOrderDocument[]> {
@@ -220,10 +260,7 @@ export async function createExamOrderDraft(
   return mapDocument(data as DocumentRow);
 }
 
-export async function saveExamOrderDraft(
-  documentId: string,
-  payload: ExamOrderPayload,
-): Promise<ExamOrderDocument> {
+export async function saveExamOrderDraft(documentId: string, payload: ExamOrderPayload): Promise<ExamOrderDocument> {
   const { data, error } = await db.rpc('save_clinical_document_draft', {
     p_document_id: documentId,
     p_payload: serializeExamOrderPayload(payload),
@@ -245,6 +282,11 @@ export async function cancelExamOrder(documentId: string, reason: string): Promi
   });
   if (error || !data) throw error ?? new Error('Cancelamento do pedido de exames sem confirmação do servidor.');
   return mapDocument(data as DocumentRow);
+}
+
+export function examOrderDocumentRenderDefinition(document: ExamOrderDocument): unknown {
+  const snapshot = document.templateDefinitionSnapshot;
+  return snapshot && typeof snapshot === 'object' ? snapshot.render_definition : null;
 }
 
 export type ExamOrderErrorKind = 'eligibility' | 'active_encounter' | 'payload' | 'draft' | 'unknown';

@@ -8,7 +8,7 @@ const clientSource = readFileSync(resolve(here, './clinicalExamOrder.ts'), 'utf8
 const workspaceSource = readFileSync(resolve(here, '../components/ClinicalExamOrderWorkspace.tsx'), 'utf8');
 const encounterSource = readFileSync(resolve(here, '../components/ClinicalEncounterWorkspaceV4.tsx'), 'utf8');
 
-describe('Clinical Exam Order D2-D1 boundary', () => {
+describe('Clinical Exam Order D2-D1/D2-D2 boundary', () => {
   it('keeps D2-A lifecycle and server eligibility as the authority', () => {
     expect(clientSource).toContain("db.rpc('current_user_can_issue_clinical_document'");
     expect(clientSource).toContain("p_document_type: 'exam_order'");
@@ -20,7 +20,7 @@ describe('Clinical Exam Order D2-D1 boundary', () => {
     expect(clientSource).not.toContain(".from('clinical_documents').update");
   });
 
-  it('adds a dedicated human Exames workspace to the active Encounter', () => {
+  it('keeps a dedicated human Exames workspace in the active Encounter', () => {
     expect(encounterSource).toContain("import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';");
     expect(encounterSource).toContain("['exams', 'Exames']");
     expect(encounterSource).toContain("workspace === 'exams'");
@@ -46,9 +46,13 @@ describe('Clinical Exam Order D2-D1 boundary', () => {
     expect(workspaceSource).toContain('Emitir pedido');
   });
 
-  it('shows issued history from immutable snapshots instead of current draft state', () => {
+  it('shows and prints issued history from immutable snapshots', () => {
     expect(workspaceSource).toContain('document.payloadSnapshot ?? document.payload');
-    expect(workspaceSource).toContain('Conteúdo histórico exibido a partir do snapshot emitido');
+    expect(workspaceSource).toContain('document.payloadSnapshot');
+    expect(workspaceSource).toContain('document.contextSnapshot');
+    expect(workspaceSource).toContain('document.renderedSnapshot');
+    expect(workspaceSource).toContain('examOrderDocumentRenderDefinition(document)');
+    expect(workspaceSource).toContain('Imprimir');
     expect(clientSource).toContain('payload_snapshot');
     expect(clientSource).toContain('template_definition_snapshot');
   });
