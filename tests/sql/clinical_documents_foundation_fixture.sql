@@ -33,11 +33,17 @@ INSERT INTO public.clinics(id, lifecycle_status, deleted_at, name) VALUES
   ('d2000000-0000-4000-8000-000000000002','active',NULL,'Clínica D2 B')
 ON CONFLICT (id) DO UPDATE SET lifecycle_status='active', deleted_at=NULL;
 
-INSERT INTO public.capability_catalog(capability_key, clinical, active) VALUES
-  ('clinical.documents', true, true),
-  ('clinical.timeline.read', true, true),
-  ('clinical.attend', true, true)
-ON CONFLICT (capability_key) DO UPDATE SET active=true, clinical=true;
+INSERT INTO public.capability_catalog(
+  capability_key, domain, description, clinical, active
+) VALUES
+  ('clinical.documents', 'clinical', 'Emitir documentos clínicos estruturados', true, true),
+  ('clinical.timeline.read', 'clinical', 'Consultar timeline clínica longitudinal do paciente', true, true),
+  ('clinical.attend', 'clinical', 'Executar atos clínicos no atendimento ativo', true, true)
+ON CONFLICT (capability_key) DO UPDATE
+SET domain=excluded.domain,
+    description=excluded.description,
+    active=true,
+    clinical=true;
 
 INSERT INTO public.profiles(
   id, clinic_id, role, ativo, must_change_password, nome,
