@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Base canônica desta slice:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 PROD / D2-D1 IMPLEMENTADO — NÃO PROD
+**Base canônica desta slice:** `main@49cee461f970a3630c4fd98ab93a1ac476798e74`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 PROD / D2-D1 PROD / D2-D2 PR #440 — NÃO PROD
 
 ---
 
@@ -232,7 +232,7 @@ Produção confirmou:
 - paciente/nascimento;
 - profissional/tipo/conselho/UF/registro/especialidade;
 - data e assinatura visual;
-- orientações, instruções e observações estruturadas;
+- orientações, instruções e observações estruturados;
 - renderer seguro compartilhado;
 - conteúdo dinâmico escapado;
 - legacy `plain-text-v1` preservado como fallback histórico;
@@ -320,9 +320,9 @@ Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
 
 # D2-D1 — Exam Order Encounter UX V1
 
-**IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base: `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`.
+PR #439 → `49cee461f970a3630c4fd98ab93a1ac476798e74`.
 
 Fluxo:
 
@@ -351,45 +351,63 @@ UX entregue:
 - indicação clínica;
 - hipótese/impressão;
 - observações;
-- prévia de conteúdo marcada `Sem validade`;
 - revisão humana explícita;
 - histórico do Encounter e histórico anterior.
 
 A UI usa eligibility server-side `current_user_can_issue_clinical_document('exam_order')`; capability/relevância no frontend não substituem o servidor.
 
-D2-D1 não cria migration, não altera RLS/RPC/grants e não adiciona engine documental paralelo.
-
-Fora de D2-D1:
-
-- renderer A4 profissional;
-- admin de templates de exam order;
-- catálogo externo/autocomplete;
-- laboratórios/integrações;
-- fulfillment/status/resultados/laudos;
-- Nexus emitindo pedido automaticamente.
+D2-D1 não criou migration, não alterou RLS/RPC/grants e não adicionou engine documental paralelo. O frontend foi redeployado e o smoke em produção confirmou a aba `Exames`, emissão real e histórico por snapshot. A ausência de impressão profissional observada nesse smoke era escopo reservado à D2-D2.
 
 Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
 
-Após merge + redeploy + smoke real, D2-D1 pode virar `VALIDADO EM PRODUÇÃO`.
-
 ---
 
-# D2-D2 — Exam Order Professional Print Renderer
+# D2-D2 — Exam Order Professional Print Renderer V1
 
-**PRÓXIMO APÓS D2-D1.**
+**PR #440 — IMPLEMENTADO / NÃO PRODUÇÃO.**
 
-Objetivo:
+Base: `main@49cee461f970a3630c4fd98ab93a1ac476798e74`.
 
-- publicar nova versão imutável do template `Pedido de exames`;
-- renderer code-owned, seguro e versionado;
-- preview A4 real;
-- cabeçalho com clínica/paciente/profissional;
-- título humano `Pedido de exames`;
-- prioridade, itens, indicação, impressão e observações;
-- área de assinatura;
-- mesma composição para draft preview e issued print;
-- compatibilidade/fallback para `plain-text-v1` histórico;
-- documentos já emitidos permanecem no layout/snapshot original.
+Contrato visual novo:
+
+```text
+clinical-document/exam-order-v1
+```
+
+Entrega da slice:
+
+- nova versão publicada e imutável do template platform `Pedido de exames`;
+- versão histórica v1 `clinical-document/plain-text-v1` preservada;
+- preview A4 real no workspace;
+- mesma composição segura no draft e no print emitido;
+- clínica/paciente/profissional/conselho/UF/registro/especialidade/data;
+- prioridade e lista estruturada de exames;
+- categoria/código/instruções/urgência por item;
+- indicação clínica, hipótese/impressão e observações;
+- espaço explícito para assinatura do profissional solicitante;
+- botão `Imprimir` no histórico emitido;
+- impressão baseada em `payload_snapshot + context_snapshot + template_definition_snapshot`;
+- fallback seguro que mantém pedidos históricos no snapshot/layout original;
+- contrato de renderer fechado, code-owned, sem HTML/CSS/JS arbitrário;
+- todo conteúdo dinâmico escapado;
+- verifier e comportamento PostgreSQL 16 próprios.
+
+D2-D2 não altera eligibility, autoria, RLS, RPCs, grants, roles, capability, lifecycle ou o recorte médico/CRM conservador estabelecido por D2-D0.
+
+A slice também mantém separados `Exam Order` documental e qualquer futuro domínio de fulfillment/resultados/laboratório/imagem.
+
+Documento: `docs/CLINICAL_EXAM_ORDER_RENDERER_V1.md`.
+
+Rollout de produção somente após merge e gates verdes:
+
+```text
+backup controlado
+→ migration pinada ao SHA mergeado
+→ VERIFY_20260912_CLINICAL_EXAM_ORDER_RENDERER_V1.sql
+→ redeploy frontend
+→ smoke A4 / emissão / histórico / Imprimir / assinatura
+→ regressão visual de pedido histórico plain-text-v1
+```
 
 ---
 
