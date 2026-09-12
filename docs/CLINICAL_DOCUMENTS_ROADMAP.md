@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Main canônica:** `db364e17a158b2f1f13229ca595f6e7b24cfcab8`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PRÓXIMO
+**Main canônica:** `655f535a453493052bcd175a9209418d86eaffd0`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PR #435 EM ANDAMENTO
 
 ---
 
@@ -56,7 +56,7 @@ published template version
 → optional audited cancellation
 ```
 
-Documento emitido é historicamente imutável. Evolução posterior do template não altera receita histórica. Impressão histórica deve usar snapshots emitidos, nunca o template corrente.
+Documento emitido é historicamente imutável. Evolução posterior do template não altera documento histórico. Impressão histórica deve usar snapshots emitidos, nunca o template corrente.
 
 ---
 
@@ -85,6 +85,8 @@ PR #425 → `0459e5908c942ac63c0dec87d517aa2131936204`.
 D2-A permanece autoridade de eligibility, lifecycle, persistência, versions/snapshots, histórico e cancelamento.
 
 `medication_prescription` exige médico elegível + CRM/UF/registro + `clinical.documents` + próprio Encounter ativo no boundary canônico.
+
+`therapeutic_guidance` reutiliza o mesmo boundary-base clínico, mas não possui o requisito adicional médico/CRM da prescrição medicamentosa.
 
 ---
 
@@ -252,32 +254,61 @@ Documento: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
 
 # D2-C — Therapeutic Guidance V1
 
-**PRÓXIMA SLICE FUNCIONAL.**
+**PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO.**
 
-Reutilizar D2-A; não criar engine paralelo.
-
-Objetivo inicial:
+Base:
 
 ```text
-Encounter
-→ Orientação terapêutica
-→ draft estruturado
-→ revisão humana explícita
-→ emitir
-→ snapshot imutável
-→ histórico / impressão
+main@655f535a453493052bcd175a9209418d86eaffd0
 ```
 
-Guardrails da D2-C:
+A implementação reutiliza integralmente D2-A; não cria engine paralelo, migration, RLS, RPC, grant ou capability novos.
 
-- definir contrato/payload próprio de `therapeutic_guidance` antes da UI;
-- reutilizar lifecycle, versionamento, snapshots, histórico e cancelamento D2-A;
-- manter emissão como ato explícito do profissional;
-- não misturar `exam_order`, atestado, referral ou relatório;
-- não transformar Nexus em emissor automático de conduta;
-- profissão/especialidade podem orientar relevância, nunca conceder ACL;
-- revisar a experiência equivalente no MedicsPro histórico antes do desenho final;
-- preferir uma slice vertical mínima e verificável.
+Fluxo implementado na PR:
+
+```text
+Encounter próprio ativo
+→ Orientações
+→ template therapeutic_guidance publicado
+→ draft estruturado
+→ save / resume
+→ revisão humana explícita
+→ issue D2-A
+→ snapshot imutável
+→ histórico / impressão do rendered_snapshot
+```
+
+Payload V1:
+
+```text
+items[].guidance
+patient_instructions
+observations
+```
+
+Regras:
+
+- draft pode permanecer incompleto;
+- emissão exige `items` não vazio e todo `guidance` não vazio, conforme validator D2-A;
+- `patient_instructions` e `observations` são opcionais;
+- UI não inventa conteúdo clínico;
+- `clinical.documents` continua gate-base, mas servidor valida identidade + próprio Encounter ativo;
+- não há hardcode médico/CRM para guidance;
+- especialidade não concede autoria;
+- Nexus não emite orientação automaticamente;
+- prévia V1 é apenas conteúdo sem validade;
+- impressão histórica usa `rendered_snapshot` congelado, sem reaplicar template corrente.
+
+Templates platform D2-A já existentes:
+
+- `Orientação terapêutica geral`;
+- `Orientações pós-atendimento`.
+
+Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`.
+
+Antes de sair de draft, a PR deve fechar testes, typecheck, lint, build, dependency audit e regressões Clinical Foundation/Auth/Encounter + Nexus C-01/C-02/C-03/C-04/C-06.
+
+Após merge/redeploy, somente smoke real poderá promover D2-C a `VALIDADO EM PRODUÇÃO`.
 
 ---
 
