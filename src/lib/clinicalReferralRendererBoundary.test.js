@@ -36,8 +36,8 @@ describe('Referral Professional Renderer V1 boundary', () => {
     expect(renderer).toContain('Resumo clínico relevante');
     expect(renderer).toContain('Avaliação / ação solicitada');
     expect(renderer).toContain('Assinatura do profissional responsável pelo encaminhamento');
-    expect(renderer).toContain('context.issuer.councilType');
-    expect(renderer).toContain('context.issuer.registration');
+    expect(renderer).toContain('asString(issuer.councilType)');
+    expect(renderer).toContain('asString(issuer.registration)');
     expect(renderer).not.toContain('Documento: referral');
   });
 
