@@ -27,6 +27,18 @@ describe('Therapeutic Guidance Print Renderer V1', () => {
   it('accepts only the closed visual contract', () => {
     expect(normalizeTherapeuticGuidanceRenderDefinition({ layout: 'clinical-document/plain-text-v1' })).toBeNull();
     expect(normalizeTherapeuticGuidanceRenderDefinition({ layout: 'html', html: '<script>alert(1)</script>' })).toBeNull();
+    expect(normalizeTherapeuticGuidanceRenderDefinition({
+      ...serializeTherapeuticGuidanceRenderDefinition(DEFAULT_THERAPEUTIC_GUIDANCE_RENDER_DEFINITION),
+      html: '<script>alert(1)</script>',
+    })).toBeNull();
+    expect(normalizeTherapeuticGuidanceRenderDefinition({
+      layout: 'clinical-document/therapeutic-guidance-v1',
+      title: 'Orientações',
+      show_clinic_address: 'true',
+      show_clinic_phone: true,
+      show_patient_birth_date: true,
+      show_specialty: true,
+    })).toBeNull();
     expect(serializeTherapeuticGuidanceRenderDefinition(DEFAULT_THERAPEUTIC_GUIDANCE_RENDER_DEFINITION)).toEqual({
       layout: 'clinical-document/therapeutic-guidance-v1',
       title: 'Orientações terapêuticas',
@@ -105,6 +117,22 @@ describe('Therapeutic Guidance Print Renderer V1', () => {
     expect(html).toContain('data-therapeutic-guidance-renderer="legacy"');
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('keeps an old plain-text draft on the same legacy contract it will issue with', () => {
+    const payload = emptyTherapeuticGuidancePayload();
+    payload.items[0].guidance = 'Orientação do draft legado';
+    const html = buildTherapeuticGuidanceDocumentHtml({
+      payload,
+      context,
+      renderDefinition: { layout: 'clinical-document/plain-text-v1' },
+      mode: 'draft',
+    });
+
+    expect(html).toContain('data-therapeutic-guidance-renderer="legacy"');
+    expect(html).toContain('Pré-visualização · sem validade');
+    expect(html).toContain('Orientação do draft legado');
+    expect(html).not.toContain('data-therapeutic-guidance-renderer="v1"');
   });
 
   it('uses the frozen snapshot as the issued render context', () => {
