@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest';
 const here = dirname(fileURLToPath(import.meta.url));
 const clientSource = readFileSync(resolve(here, './clinicalPrescription.ts'), 'utf8');
 const rendererSource = readFileSync(resolve(here, './prescriptionPrintRenderer.ts'), 'utf8');
+const templatesSource = readFileSync(resolve(here, './clinicalDocumentTemplates.ts'), 'utf8');
 const workspaceSource = readFileSync(resolve(here, '../components/ClinicalPrescriptionWorkspace.tsx'), 'utf8');
 const previewSource = readFileSync(resolve(here, '../components/PrescriptionDocumentPreview.tsx'), 'utf8');
+const professionalIdentitySource = readFileSync(resolve(here, '../hooks/useProfessionalIdentity.ts'), 'utf8');
 const encounterSource = readFileSync(resolve(here, '../components/ClinicalEncounterWorkspaceV4.tsx'), 'utf8');
 
 describe('Clinical Prescription V1 boundary', () => {
@@ -39,13 +41,13 @@ describe('Clinical Prescription V1 boundary', () => {
 
   it('uses the shared safe renderer for live preview without print or RPC side effects', () => {
     expect(workspaceSource).toContain('renderDefinition={previewRenderDefinition} clinic={clinic}');
-    expect(previewSource).toContain("buildPrescriptionDocumentHtml({");
+    expect(previewSource).toContain('buildPrescriptionDocumentHtml({');
     expect(previewSource).toContain("mode: 'draft'");
     expect(previewSource).toContain('srcDoc={html}');
     expect(previewSource).toContain('sandbox=""');
     expect(previewSource).toContain('data-prescription-live-preview="draft"');
     expect(previewSource).toContain('Rascunho · não emitida');
-    expect(previewSource).not.toContain("db.rpc(");
+    expect(previewSource).not.toContain('db.rpc(');
     expect(previewSource).not.toContain('window.print');
     expect(previewSource).not.toContain('document.write');
   });
@@ -59,6 +61,15 @@ describe('Clinical Prescription V1 boundary', () => {
     expect(previewSource).toContain('const { user } = useCurrentUserAccess()');
     expect(previewSource).toContain("name: user?.nome || 'Profissional responsável'");
     expect(previewSource).toContain('registration: user?.registro');
+    expect(previewSource).toContain('councilType: identity?.councilType');
+    expect(previewSource).toContain('councilState: identity?.councilState');
+    expect(previewSource).toContain('specialty: identity?.specialty');
+    expect(professionalIdentitySource).toContain(".select('professional_type, especialidade, council_type, council_state')");
+  });
+
+  it('keeps specialty in the published template variable contract when the renderer can display it', () => {
+    expect(templatesSource).toContain("'issuer.specialty'");
+    expect(templatesSource).toContain('p_variables_contract: DEFAULT_VARIABLES_CONTRACT');
   });
 
   it('prints only the immutable issued payload/context/template renderer snapshots', () => {
