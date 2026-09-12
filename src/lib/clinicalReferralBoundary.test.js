@@ -34,21 +34,21 @@ describe('Clinical Referral Encounter V1 boundary', () => {
 
   it('requires an explicit human review before issue', () => {
     expect(workspace).toContain('Revisar encaminhamento');
-    expect(workspace).toContain('Revisão humana obrigatória');
+    expect(workspace).toContain('Revisão humana');
     expect(workspace).toContain('Confirmar emissão');
     expect(workspace).toContain('issueReferral(documentToIssue.id)');
   });
 
-  it('renders only a non-valid content preview until the professional A4 slice exists', () => {
-    expect(workspace).toContain('Prévia de conteúdo');
-    expect(workspace).toContain('Sem validade');
-    expect(workspace).toContain('A composição A4 profissional será publicada na próxima slice.');
-    expect(workspace).not.toContain('window.print');
+  it('keeps referral preview non-valid while sharing the professional renderer with print', () => {
+    expect(workspace).toContain('<ReferralDocumentPreview');
+    expect(workspace).toContain('buildReferralDocumentHtml({');
+    expect(workspace).toContain("mode: 'issued'");
+    expect(workspace).toContain('printIssuedReferral');
   });
 
   it('reads issued history from immutable snapshots when available', () => {
     expect(workspace).toContain('document.payloadSnapshot ?? document.payload');
-    expect(workspace).toContain('Conteúdo emitido preservado em snapshot');
+    expect(workspace).toContain('Conteúdo e impressão histórica usam o snapshot emitido');
   });
 
   it('keeps recipient, reason and requested action structured without Nexus automation', () => {
