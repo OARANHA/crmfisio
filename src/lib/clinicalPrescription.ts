@@ -19,6 +19,7 @@ export type MedicationPrescriptionTemplate = {
   name: string;
   description: string;
   currentVersionId: string;
+  renderDefinition: Record<string, unknown>;
 };
 
 export type ClinicalDocumentStatus = 'draft' | 'issued' | 'canceled';
@@ -34,7 +35,9 @@ export type MedicationPrescriptionDocument = {
   payload: MedicationPrescriptionPayload;
   payloadSnapshot: MedicationPrescriptionPayload | null;
   contextSnapshot: Record<string, unknown> | null;
+  templateDefinitionSnapshot: Record<string, unknown> | null;
   renderedSnapshot: string | null;
+  rendererVersion: string | null;
   documentIdentifier: string;
   issuedAt: string | null;
   canceledAt: string | null;
@@ -50,6 +53,11 @@ type TemplateRow = {
   current_version_id: string | null;
 };
 
+type TemplateVersionRow = {
+  id: string;
+  render_definition: unknown;
+};
+
 type DocumentRow = {
   id: string;
   patient_id: string;
@@ -61,7 +69,9 @@ type DocumentRow = {
   payload: unknown;
   payload_snapshot: unknown;
   context_snapshot: Record<string, unknown> | null;
+  template_definition_snapshot: Record<string, unknown> | null;
   rendered_snapshot: string | null;
+  renderer_version: string | null;
   document_identifier: string;
   issued_at: string | null;
   canceled_at: string | null;
@@ -87,6 +97,11 @@ export const emptyMedicationPrescriptionPayload = (): MedicationPrescriptionPayl
 });
 
 const trim = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+const asObject = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+);
 
 export function normalizeMedicationPrescriptionPayload(value: unknown): MedicationPrescriptionPayload {
   const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
@@ -126,11 +141,15 @@ export function medicationPrescriptionReadyToIssue(payload: MedicationPrescripti
   return payload.items.length > 0 && payload.items.every((item) => item.medicationName.trim().length > 0);
 }
 
-const mapTemplate = (row: TemplateRow): MedicationPrescriptionTemplate | null => row.current_version_id ? ({
+const mapTemplate = (
+  row: TemplateRow,
+  renderDefinition: Record<string, unknown>,
+): MedicationPrescriptionTemplate | null => row.current_version_id ? ({
   id: row.id,
   name: row.name,
   description: row.description,
   currentVersionId: row.current_version_id,
+  renderDefinition,
 }) : null;
 
 const mapDocument = (row: DocumentRow): MedicationPrescriptionDocument => ({
@@ -144,7 +163,9 @@ const mapDocument = (row: DocumentRow): MedicationPrescriptionDocument => ({
   payload: normalizeMedicationPrescriptionPayload(row.payload),
   payloadSnapshot: row.payload_snapshot ? normalizeMedicationPrescriptionPayload(row.payload_snapshot) : null,
   contextSnapshot: row.context_snapshot,
+  templateDefinitionSnapshot: row.template_definition_snapshot,
   renderedSnapshot: row.rendered_snapshot,
+  rendererVersion: row.renderer_version,
   documentIdentifier: row.document_identifier,
   issuedAt: row.issued_at,
   canceledAt: row.canceled_at,
@@ -169,15 +190,41 @@ export async function loadMedicationPrescriptionTemplates(): Promise<MedicationP
     .eq('status', 'active')
     .order('name', { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as TemplateRow[])
-    .map(mapTemplate)
+
+  const rows = (data ?? []) as TemplateRow[];
+  const versionIds = rows.map((row) => row.current_version_id).filter((value): value is string => Boolean(value));
+  const renderByVersion = new Map<string, Record<string, unknown>>();
+
+  if (versionIds.length > 0) {
+    const { data: versions, error: versionError } = await db
+      .from('clinical_document_template_versions')
+      .select('id,render_definition')
+      .in('id', versionIds);
+    if (versionError) throw versionError;
+    for (const version of (versions ?? []) as TemplateVersionRow[]) {
+      renderByVersion.set(version.id, asObject(version.render_definition));
+    }
+  }
+
+  return rows
+    .map((row) => mapTemplate(row, row.current_version_id ? renderByVersion.get(row.current_version_id) ?? {} : {}))
     .filter((value): value is MedicationPrescriptionTemplate => Boolean(value));
+}
+
+export async function loadMedicationPrescriptionTemplateRenderDefinition(versionId: string): Promise<Record<string, unknown>> {
+  const { data, error } = await db
+    .from('clinical_document_template_versions')
+    .select('id,render_definition')
+    .eq('id', versionId)
+    .single();
+  if (error || !data) throw error ?? new Error('Versão do modelo de prescrição não encontrada.');
+  return asObject((data as TemplateVersionRow).render_definition);
 }
 
 export async function loadMedicationPrescriptionDocuments(patientId: string): Promise<MedicationPrescriptionDocument[]> {
   const { data, error } = await db
     .from('clinical_documents')
-    .select('id,patient_id,appointment_id,issuer_id,template_id,template_version_id,status,payload,payload_snapshot,context_snapshot,rendered_snapshot,document_identifier,issued_at,canceled_at,cancel_reason,created_at,updated_at')
+    .select('id,patient_id,appointment_id,issuer_id,template_id,template_version_id,status,payload,payload_snapshot,context_snapshot,template_definition_snapshot,rendered_snapshot,renderer_version,document_identifier,issued_at,canceled_at,cancel_reason,created_at,updated_at')
     .eq('patient_id', patientId)
     .eq('document_type', 'medication_prescription')
     .order('created_at', { ascending: false });
@@ -224,6 +271,11 @@ export async function cancelMedicationPrescription(documentId: string, reason: s
   });
   if (error || !data) throw error ?? new Error('Cancelamento sem confirmação do servidor.');
   return mapDocument(data as DocumentRow);
+}
+
+export function prescriptionDocumentRenderDefinition(document: MedicationPrescriptionDocument): unknown {
+  const snapshot = document.templateDefinitionSnapshot;
+  return snapshot && typeof snapshot === 'object' ? snapshot.render_definition : null;
 }
 
 export type ClinicalPrescriptionErrorKind = 'eligibility' | 'active_encounter' | 'payload' | 'draft' | 'unknown';
