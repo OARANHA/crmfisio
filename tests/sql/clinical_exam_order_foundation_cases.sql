@@ -70,6 +70,13 @@ SELECT pg_temp.d2d0_expect_error(
   'clinical_document_exam_items_required'
 );
 
+SELECT public.save_clinical_document_draft(:'exam_doc', '{"items":{}}'::jsonb);
+SELECT pg_temp.d2d0_expect_error(
+  'exam_non_array_items_issue_denied',
+  format('SELECT public.issue_clinical_document(%L::uuid)', :'exam_doc'),
+  'clinical_document_exam_items_required'
+);
+
 SELECT public.save_clinical_document_draft(:'exam_doc', '{"items":[{}]}'::jsonb);
 SELECT pg_temp.d2d0_expect_error(
   'exam_blank_name_issue_denied',
@@ -111,6 +118,8 @@ INSERT INTO d2d0_results VALUES
        AND context_snapshot IS NOT NULL
        AND template_definition_snapshot IS NOT NULL
        AND btrim(coalesce(rendered_snapshot,'')) <> ''
+       AND position('Documento: Pedido de exames' in rendered_snapshot) > 0
+       AND position('Documento: exam_order' in rendered_snapshot) = 0
        AND issued_at IS NOT NULL
     FROM public.clinical_documents WHERE id = :'exam_doc'
   )),
@@ -227,15 +236,36 @@ INSERT INTO d2d0_results VALUES
   ));
 COMMIT;
 
--- Internal renderer understands exam_order and still rejects unknown types.
+-- Internal helpers must preserve the established error semantics for malformed
+-- medication/guidance payloads while adding the new exam type.
+SELECT pg_temp.d2d0_expect_error(
+  'medication_non_array_items_regression_guard',
+  $$SELECT public.assert_clinical_document_payload_ready('medication_prescription','{"items":{}}'::jsonb)$$,
+  'clinical_document_medication_items_required'
+);
+SELECT pg_temp.d2d0_expect_error(
+  'guidance_non_array_items_regression_guard',
+  $$SELECT public.assert_clinical_document_payload_ready('therapeutic_guidance','{"items":{}}'::jsonb)$$,
+  'clinical_document_guidance_items_required'
+);
+
+-- Internal renderer understands exam_order, uses a human patient-facing label,
+-- and still rejects unknown types.
 INSERT INTO d2d0_results VALUES (
   'exam_plain_text_renderer_supported',
-  position('PEDIDO DE EXAMES' in public.render_clinical_document_snapshot(
-    'exam_order',
-    'Pedido de exames',
-    '{"items":[{"exam_name":"Hemograma"}]}'::jsonb,
-    '{"patient":{"name":"Paciente"},"issuer":{"name":"Médico"}}'::jsonb
-  )) > 0
+  (
+    SELECT position('PEDIDO DE EXAMES' in rendered) > 0
+       AND position('Documento: Pedido de exames' in rendered) > 0
+       AND position('Documento: exam_order' in rendered) = 0
+    FROM (
+      SELECT public.render_clinical_document_snapshot(
+        'exam_order',
+        'Pedido de exames',
+        '{"items":[{"exam_name":"Hemograma"}]}'::jsonb,
+        '{"patient":{"name":"Paciente"},"issuer":{"name":"Médico"}}'::jsonb
+      ) AS rendered
+    ) r
+  )
 );
 SELECT pg_temp.d2d0_expect_error(
   'renderer_unknown_type_denied',
