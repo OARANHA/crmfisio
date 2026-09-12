@@ -3,13 +3,14 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `db364e17a158b2f1f13229ca595f6e7b24cfcab8`  
+**Main canônica:** `655f535a453493052bcd175a9209418d86eaffd0`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.1 Live Preview:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2A Template Admin backend:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2B Admin UI:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2C Professional Print / Safe Presets:** VALIDADO EM PRODUÇÃO  
+**Therapeutic Guidance D2-C:** PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -32,6 +33,7 @@ Referências principais:
 - `docs/CLINICAL_PRESCRIPTION_V1.md`
 - `docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md`
 - `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`
+- `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`
 - `docs/NEXUS_GAP_MAP.md`
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
@@ -84,7 +86,9 @@ Prescrição
 Nexus
 ```
 
-Prescrição pertence ao mesmo Encounter; não cria segundo atendimento/prontuário.
+A PR #435 propõe adicionar `Orientações` ao mesmo Clinical Cockpit; esse workspace ainda não deve ser tratado como produção até merge/redeploy/smoke.
+
+Prescrição pertence ao mesmo Encounter; não cria segundo atendimento/prontuário. D2-C segue o mesmo princípio para `therapeutic_guidance`.
 
 No boundary D2-A/#426 atualmente comprovado para autoria clínica de documentos, `appointments.fisio_id` permanece a referência efetivamente testada. Não introduzir fallback para `professional_id` sem reconciliação explícita.
 
@@ -234,7 +238,44 @@ Documento canônico: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
 
 **D2-B / Prescrição está fechada para o escopo atual.** Não reabrir por polimento visual sem blocker reproduzido.
 
-Próxima família funcional: **D2-C — Therapeutic Guidance V1**, reutilizando D2-A sem misturar `exam_order`, atestados ou relatórios.
+## D2-C — Therapeutic Guidance V1
+
+**PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+
+Base:
+
+```text
+main@655f535a453493052bcd175a9209418d86eaffd0
+```
+
+A slice reutiliza o document type `therapeutic_guidance` já existente na D2-A e não adiciona migration, RPC, RLS, grant ou capability.
+
+Contrato funcional proposto:
+
+```text
+Encounter próprio ativo
+→ Orientações
+→ template publicado
+→ draft / save / resume
+→ revisão humana explícita
+→ issue D2-A
+→ snapshot imutável
+→ histórico / impressão do rendered_snapshot emitido
+```
+
+O payload V1 permanece no contrato D2-A:
+
+```text
+items[].guidance
+patient_instructions
+observations
+```
+
+Ao contrário de `medication_prescription`, `therapeutic_guidance` não exige hardcode médico/CRM no contrato D2-A. Identidade clínica válida + `clinical.documents` + próprio Encounter ativo continuam obrigatórios e server-authoritative.
+
+A prévia V1 é apenas prévia de conteúdo sem validade; a impressão histórica usa o `rendered_snapshot` emitido e não reconstrói o documento a partir do template corrente.
+
+Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`.
 
 Não incluir `Pedido de Exames` até existir `exam_order` canônico próprio.
 
@@ -296,16 +337,14 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Abrir a definição/implementação da **D2-C — Therapeutic Guidance V1** sobre a D2-A já validada.
+Fechar tecnicamente a **PR #435 — D2-C Therapeutic Guidance V1** antes de qualquer merge:
 
-Guardrails obrigatórios para a próxima slice:
-
-1. reutilizar lifecycle, snapshots, histórico e cancelamento da D2-A;
-2. não criar segundo Clinical Documents Engine;
-3. definir payload tipado próprio de `therapeutic_guidance` antes da UI;
-4. preservar revisão humana explícita antes de emitir;
-5. não misturar `exam_order`, atestado, referral ou relatório;
-6. especialidade/relevância não vira ACL;
-7. Nexus pode apoiar conteúdo/decisão, mas não emitir conduta automaticamente;
-8. comparar ergonomia do MedicsPro histórico antes de desenhar a experiência atual;
-9. parar em PR para revisão antes de qualquer produção.
+1. validar testes do payload D2-C;
+2. validar boundary do Clinical Cockpit/Encounter;
+3. rodar `npm test`, typecheck, lint e build;
+4. dependency audit;
+5. Clinical Foundation/Auth/Encounter regressions;
+6. Nexus C-01/C-02/C-03/C-04/C-06 sem relaxamento;
+7. revisar o diff final e a ausência de backend/schema novo;
+8. remover draft somente após tudo verde;
+9. parar para revisão antes de merge/produção.

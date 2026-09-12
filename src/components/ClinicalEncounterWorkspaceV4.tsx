@@ -25,6 +25,7 @@ import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
 import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
+import { ClinicalTherapeuticGuidanceWorkspace } from './ClinicalTherapeuticGuidanceWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
 export function ClinicalEncounterWorkspaceV4({
@@ -49,7 +50,7 @@ export function ClinicalEncounterWorkspaceV4({
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
   const documentsCapability = useClinicalCapability('clinical.documents', user?.id);
   const [finishing, setFinishing] = useState(false);
-  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'nexus'>('record');
+  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'guidance' | 'nexus'>('record');
   const evolutionRef = useRef<HTMLElement | null>(null);
 
   const canonicalEncounter = useMemo(
@@ -178,6 +179,7 @@ export function ClinicalEncounterWorkspaceV4({
                   ['record', 'Registro'],
                   ['assessment', 'Anamneses & Avaliações'],
                   ...(prescriptionRelevant ? [['prescription', 'Prescrição']] : []),
+                  ['guidance', 'Orientações'],
                   ['nexus', 'Nexus'],
                 ].map(([id, label]) => (
                   <button key={id} type="button" aria-current={workspace === id ? 'page' : undefined} onClick={() => setWorkspace(id as typeof workspace)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors ${workspace === id ? 'bg-mint text-on-accent' : 'text-fog hover:bg-raise/60 hover:text-paper'}`}>{label}</button>
@@ -258,6 +260,18 @@ export function ClinicalEncounterWorkspaceV4({
               <ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
             ) : (
               <BlockedState title="Prescrição indisponível">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
+            )}
+          </EncounterSection>}
+
+          {workspace === 'guidance' && <EncounterSection id="encounter-guidance" eyebrow="Documento clínico" title="Orientação terapêutica" detail="Registre, revise e emita orientações terapêuticas vinculadas ao atendimento atual.">
+            {documentsCapability.loading ? (
+              <NeutralState>Verificando acesso aos documentos clínicos…</NeutralState>
+            ) : documentsCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso às orientações">Atualize a página antes de criar ou emitir um documento clínico.</BlockedState>
+            ) : documentsCapability.allowed ? (
+              <ClinicalTherapeuticGuidanceWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
+            ) : (
+              <BlockedState title="Orientações indisponíveis">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
             )}
           </EncounterSection>}
 
