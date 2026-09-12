@@ -55,10 +55,10 @@ CREATE TEMP TABLE d2d0_before AS
 SELECT
   (SELECT jsonb_agg(to_jsonb(t) ORDER BY t.id)
    FROM public.clinical_document_templates t
-   WHERE t.id = '12000000-0000-4000-8000-000000000005'::uuid) AS template_row,
+   WHERE t.id = '12000000-0000-4000-8000-000000000006'::uuid) AS template_row,
   (SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id)
    FROM public.clinical_document_template_versions v
-   WHERE v.id = '12100000-0000-4000-8000-000000000005'::uuid) AS version_row,
+   WHERE v.id = '12100000-0000-4000-8000-000000000006'::uuid) AS version_row,
   (SELECT count(*) FROM public.clinical_documents WHERE document_type='exam_order') AS exam_documents,
   (SELECT count(*) FROM public.clinical_document_events e
      JOIN public.clinical_documents d ON d.id=e.document_id
@@ -74,12 +74,12 @@ BEGIN
   IF b.template_row IS DISTINCT FROM (
        SELECT jsonb_agg(to_jsonb(t) ORDER BY t.id)
        FROM public.clinical_document_templates t
-       WHERE t.id='12000000-0000-4000-8000-000000000005'::uuid
+       WHERE t.id='12000000-0000-4000-8000-000000000006'::uuid
      )
      OR b.version_row IS DISTINCT FROM (
        SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id)
        FROM public.clinical_document_template_versions v
-       WHERE v.id='12100000-0000-4000-8000-000000000005'::uuid
+       WHERE v.id='12100000-0000-4000-8000-000000000006'::uuid
      )
      OR b.exam_documents <> (SELECT count(*) FROM public.clinical_documents WHERE document_type='exam_order')
      OR b.exam_events <> (
