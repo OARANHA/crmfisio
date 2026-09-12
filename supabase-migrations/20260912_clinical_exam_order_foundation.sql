@@ -177,7 +177,10 @@ BEGIN
     upper(btrim(p_title)),
     'Paciente: ' || coalesce(p_context->'patient'->>'name',''),
     'Profissional: ' || coalesce(p_context->'issuer'->>'name',''),
-    'Documento: ' || p_document_type,
+    'Documento: ' || CASE
+      WHEN p_document_type = 'exam_order' THEN 'Pedido de exames'
+      ELSE p_document_type
+    END,
     '',
     jsonb_pretty(p_payload)
   );
