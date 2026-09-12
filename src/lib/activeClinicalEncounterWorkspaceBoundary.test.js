@@ -96,7 +96,8 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(referralClient).toContain(".eq('document_type', 'referral')");
     expect(referralClient).toContain("db.rpc('create_clinical_document_draft'");
     expect(referralClient).toContain("db.rpc('issue_clinical_document'");
-    expect(referral).toContain('Revisão humana obrigatória');
+    expect(referral).toContain('Revisão humana');
+    expect(referral).toContain('Confirmar emissão');
     expect(prescription).toContain('ClinicalPrescriptionWorkspace');
   });
 
