@@ -1,36 +1,38 @@
 # MedicsPro — Manual Source Map
 
-> Fonte editorial para gerar, no futuro, um manual coerente do sistema. Este arquivo não substitui código nem documentação técnica. Ele organiza comportamento visível e seu estado de validação.
+> Fonte editorial para um manual futuro coerente. Não substitui código nem documentação técnica; organiza somente comportamento visível e seu estado real de validação.
 
 **Atualizado em:** 2026-09-12  
 **Referência funcional do Clinical Encounter:** pós-PR #420  
-**Estado visual atual do Encounter:** **VALIDADO EM PRODUÇÃO**
+**Prescrição:** #429 mergeada / ainda não validada em produção  
+**Live Preview:** PR #430 / implementado / ainda não validado em produção
 
 ## Regra editorial
 
-O manual final deve documentar **o que o usuário realmente consegue fazer**.
+O manual final deve documentar apenas **o que o usuário realmente consegue fazer na versão implantada e validada**.
 
-Estados permitidos:
+Estados:
 
 ```text
 VALIDADO EM PRODUÇÃO
+MERGEADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO
 IMPLEMENTADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO
 EM ANDAMENTO
 PLANEJADO
 HISTÓRICO / NÃO USAR COMO MANUAL ATUAL
 ```
 
-Nunca transformar roadmap, prompt, backend sem UI ou intenção em instrução de uso.
+Nunca transformar roadmap, prompt ou backend sem UI em instrução de uso.
 
 Quando uma tela mudar, registrar:
 
-- nome visível da área;
+- nome visível;
 - quem pode acessar;
 - pré-condições;
 - fluxo passo a passo;
 - resultado esperado;
 - persistência/retomada;
-- limitações conhecidas;
+- limitações;
 - screenshot sanitizado quando houver;
 - documento técnico relacionado.
 
@@ -49,10 +51,7 @@ Tópicos:
 - diferenças entre owner/admin/professional/recep/financeiro;
 - disponibilidade visual não substitui autorização.
 
-Fonte:
-
-- `AGENTS.md`
-- `docs/CURRENT_STATE.md`
+Fonte: `AGENTS.md` e `docs/CURRENT_STATE.md`.
 
 ---
 
@@ -78,8 +77,7 @@ Não documentar `fisio` como papel operacional canônico atual.
 
 Tópicos:
 
-- localizar paciente;
-- abrir paciente;
+- localizar/abrir paciente;
 - contexto clínico atual;
 - histórico longitudinal;
 - documentos/consentimentos quando aplicável;
@@ -89,41 +87,38 @@ Tópicos:
 
 # 4. Atendimento clínico / Clinical Encounter
 
-**Estado funcional:** VALIDADO EM PRODUÇÃO.  
+**Estado funcional:** VALIDADO EM PRODUÇÃO para a composição anterior à Prescrição.  
 **Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
 
-Superfícies visíveis atuais:
+Workspaces do código pós-#429:
 
 ```text
 Registro
 Anamneses & Avaliações
+Prescrição
 Nexus
 ```
 
-A Clinical Documents Foundation D2-A existe e está validada no backend de produção, mas **`Prescrição` ainda não existe como fluxo de usuário**. Só deve entrar no manual após D2-B.
+`Prescrição` já está na `main`, mas **não deve entrar no manual como disponível em produção** até existir deploy + smoke real registrado.
 
-## Composição visual canônica para o manual
+Composição visual já validada:
 
-A referência vigente é a #420. A #417 é histórica/superada visualmente.
-
-Documentar a UI atual assim:
-
-- hero compacto no topo do Encounter;
-- `Registro / Anamneses & Avaliações / Nexus` como toolbar da coluna principal;
-- `Estado da consulta` + `Paciente em contexto` na coluna lateral;
+- hero compacto no topo;
+- toolbar de workspaces na coluna principal;
+- `Estado da consulta` + `Paciente em contexto` no rail lateral;
 - header global desktop ausente em `lg+`;
 - utilitários no footer da sidebar;
-- sidebar collapsed utilizável sem overflow horizontal perceptível;
-- ajuda contextual flutuante no canto inferior;
-- breadcrumb `‹ Pacientes` ausente durante Encounter ativo.
+- sidebar collapsed utilizável;
+- ajuda contextual flutuante;
+- breadcrumb redundante oculto durante Encounter ativo.
 
-Fonte de aceitação:
+Fonte:
 
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
 - `docs/CURRENT_STATE.md`
 - `docs/CLINICAL_ENCOUNTER_RECORD.md`
 
-Não usar screenshots que exponham dados identificáveis de paciente no manual público.
+Não usar screenshots com dados identificáveis de paciente em manual público.
 
 ---
 
@@ -131,35 +126,18 @@ Não usar screenshots que exponham dados identificáveis de paciente no manual p
 
 **Estado:** VALIDADO EM PRODUÇÃO.
 
-Durante um atendimento, profissional autorizado acessa `Anamneses & Avaliações`, usando o Assessment Engine canônico.
+Durante o atendimento, profissional autorizado usa o Assessment Engine canônico.
 
-## Biblioteca MedicsPro V1
+Biblioteca MedicsPro V1 validada:
 
-Modelos platform validados:
+- Anamnese Médica Geral;
+- Anamnese Psiquiátrica.
 
-- Anamnese Médica Geral
-- Anamnese Psiquiátrica
+Especialidade altera relevância/ordenação, nunca autorização.
 
-Especialidade altera relevância/ordenação, não autorização.
+Runner por seções combina narrativa com campos estruturados, navegação, progresso, salvar/finalizar e retomada de draft.
 
-## Preenchimento
-
-O Runner trabalha por seções e combina:
-
-- narrativa quando há nuance clínica;
-- selects/radios/checklists/escalas quando estruturável com segurança;
-- navegação entre seções;
-- progresso;
-- salvar/finalizar.
-
-## Persistência e retomada
-
-Validado em produção:
-
-- iniciar anamnese cria/usa draft do Encounter;
-- respostas salvas persistem;
-- sair e retornar retoma o draft da mesma consulta;
-- usuário não precisa reiniciar o formulário.
+Persistência/retomada foram validadas em produção.
 
 Não descrever PHQ-9/GAD-7 como modelos comuns da Biblioteca MedicsPro.
 
@@ -174,18 +152,18 @@ Fonte:
 
 **Estado:** IMPLEMENTADO em partes; manual deve ser produzido por capability/superfície real.
 
-Nexus não é sinônimo de Anamneses & Avaliações e não é o emissor de documentos clínicos.
+Nexus não é sinônimo de Anamneses & Avaliações e não é emissor de documentos clínicos.
 
-Antes da redação final, validar por superfície:
+Antes da redação final, validar:
 
-- ferramentas realmente expostas;
-- profissão/identidade exigidas;
+- ferramentas efetivamente expostas;
+- profissão/identidade;
 - capabilities `nexus.*`;
 - C-01–C-06;
-- instrumentos e calculadoras efetivamente disponíveis;
-- longitudinal e incorporação ao prontuário.
+- instrumentos/calculadoras disponíveis;
+- longitudinal/incorporação ao prontuário.
 
-O upstream contém ferramentas ainda não absorvidas em massa. Elas permanecem roadmap técnico, não instruções do manual.
+O upstream contém ferramentas ainda não absorvidas. Roadmap técnico não vira instrução de manual.
 
 Fonte:
 
@@ -196,22 +174,22 @@ Fonte:
 
 # 7. Instrumentos clínicos
 
-**Estado:** foundation de autorização implementada; documentar somente o que estiver exposto/validado na UI.
+**Estado:** foundation de autorização implementada; documentar somente superfícies expostas/validadas.
 
-PHQ-9/GAD-7 permanecem instrumentos versionados/validados no eixo Clinical Instruments/Nexus.
+PHQ-9/GAD-7 permanecem instrumentos versionados no eixo Clinical Instruments/Nexus.
 
-Não inferir que `RELEVANT` ou `RECOMMENDED` equivale a autorização.
+`RELEVANT`/`RECOMMENDED` não equivalem a autorização.
 
 ---
 
 # 8. Prescrição, documentos e consentimentos
 
-## Clinical Documents Foundation
+## Clinical Documents Foundation — D2-A
 
 **Estado técnico:** VALIDADO EM PRODUÇÃO em 2026-09-12.  
-**Estado de UX:** ainda não existe fluxo visível de Prescrição.
+**Estado de UX:** depende das slices frontend posteriores.
 
-D2-A entregue:
+D2-A entrega:
 
 - `medication_prescription`;
 - `therapeutic_guidance`;
@@ -220,50 +198,79 @@ D2-A entregue:
 - snapshots imutáveis;
 - eventos append-only;
 - autorização server-side;
-- typed validation na emissão;
+- typed validation;
 - cancelamento auditável.
 
-Evidência operacional registrada:
+Evidência:
 
 ```text
 migration D2-A → COMMIT / MIGRATION_EXIT=0
-official verifier → CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED / VERIFIER_EXIT=0
+verifier oficial → CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED / VERIFIER_EXIT=0
 ```
 
-**Não transformar essa evidência backend em instrução de usuário.** Ainda não existe aba/fluxo Prescrição validado.
+Backend validado não deve ser confundido com fluxo de usuário validado.
 
 ## Prescrição — D2-B
 
-**Estado:** PLANEJADO / PRÓXIMA SLICE.
+**Estado:** MERGEADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO.
 
-Quando D2-B estiver implementada e validada, documentar no mínimo:
+PR #429 entrou na `main@15692b47fc5bca577948a03de2a686f58d5c7dd9`.
 
-- abrir `Prescrição` dentro do Encounter;
+Quando o deploy/smoke confirmar a superfície, o manual deverá explicar:
+
+- abrir `Prescrição` dentro do Encounter ativo;
 - escolher template elegível;
 - criar/retomar draft;
-- preencher itens;
-- preview;
-- confirmação humana;
-- emissão;
-- read-only pós-emissão;
-- impressão;
-- histórico.
+- preencher medicamento, dose, via, frequência, duração e instruções;
+- observações;
+- salvar rascunho;
+- revisar;
+- confirmar emissão;
+- documento read-only pós-emissão;
+- histórico;
+- impressão do documento emitido.
 
-Regras editoriais futuras:
+Regras editoriais:
 
 - `clinical.documents` não é permissão universal de prescrição;
-- Prescrição pertence ao Encounter atual, não ao Histórico clínico como ação de criação;
-- templates/especialidade afetam descoberta/relevância, não autorização;
+- criação pertence ao Encounter atual;
+- profissão/especialidade não substituem autorização;
 - documento emitido é snapshot imutável;
+- impressão histórica usa snapshot emitido;
 - cancelamento/correção permanecem auditáveis;
-- não descrever assinatura digital/legal enquanto não houver implementação específica;
-- não descrever switching, equivalência ou recomendação Nexus como prescrição automática.
+- não descrever assinatura digital/legal sem implementação específica;
+- não descrever switching/equivalência/recomendação Nexus como prescrição automática.
 
-Fonte:
+## Prescription Live Preview — D2-B.1
+
+**Estado:** IMPLEMENTADO NA PR #430 / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO.
+
+A #430 recupera o conceito de `Visualização` do MedicsPro histórico.
+
+Comportamento previsto para o manual, somente após smoke:
+
+- em tela larga, editor e folha de receita aparecem lado a lado;
+- em viewport menor, ficam empilhados;
+- a folha atualiza em tempo real durante a edição local;
+- mostra profissional/CRM disponível na sessão, paciente, nascimento, data, medicamentos e observações;
+- exibe claramente `Rascunho · não emitida` e `Sem validade até a emissão`;
+- a prévia não possui ação de imprimir;
+- imprimir permanece ação exclusiva do documento emitido.
+
+Distinção que o manual deve preservar:
+
+```text
+prévia = representação visual do rascunho local
+receita emitida = snapshot clínico imutável
+```
+
+Não ensinar a prévia como documento válido, receita eletrônica ou PDF assinado.
+
+Fontes:
 
 - `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 - `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
-- `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
+- `docs/CLINICAL_PRESCRIPTION_V1.md`
 - `docs/CURRENT_STATE.md`
 
 ## Consentimentos atuais
@@ -288,12 +295,9 @@ atendimento
 → relatórios
 ```
 
-Distinguir:
+Distinguir cobrança do paciente pela clínica de cobrança SaaS da clínica pelo MedicsPro.
 
-- cobrança do paciente pela clínica;
-- cobrança SaaS da clínica pelo MedicsPro.
-
-Não documentar integrações merchant/provider antes de estarem entregues.
+Não documentar merchant/provider antes de entrega real.
 
 ---
 
@@ -301,16 +305,7 @@ Não documentar integrações merchant/provider antes de estarem entregues.
 
 **Estado:** IMPLEMENTADO em partes; manual ainda não consolidado.
 
-Mapear posteriormente:
-
-- funil/CRM;
-- mensagens;
-- WhatsApp;
-- templates;
-- opt-in;
-- NPS;
-- automações;
-- boundaries de role/capability.
+Mapear posteriormente funil/CRM, mensagens, WhatsApp, templates, opt-in, NPS, automações e boundaries de role/capability.
 
 ---
 
@@ -318,7 +313,7 @@ Mapear posteriormente:
 
 **Estado:** IMPLEMENTADO em partes.
 
-Manual deve separar claramente:
+Manual deve separar:
 
 ```text
 Platform Admin
@@ -336,17 +331,7 @@ Owner/admin configuram o tenant dentro de entitlements; isso não concede automa
 
 **Estado:** foundation existente; produto ainda em evolução.
 
-Manual separado recomendado para operação interna da plataforma.
-
-Tópicos futuros:
-
-- provisionamento;
-- clínicas;
-- planos/entitlements;
-- auditoria;
-- suporte;
-- rollout/feature flags;
-- saúde de integrações.
+Manual interno separado recomendado para provisionamento, clínicas, planos/entitlements, auditoria, suporte, rollout/flags e saúde de integrações.
 
 ---
 
@@ -356,32 +341,21 @@ Tópicos futuros:
 
 **VALIDADO EM PRODUÇÃO**
 
-Evidência sanitizada:
-
-- aba `Anamneses & Avaliações` acessível;
-- modelo platform aberto no atendimento;
-- Runner exibindo seções/campos;
+- `Anamneses & Avaliações` acessível;
+- template platform aberto no atendimento;
+- Runner por seções;
 - salvar/retomar draft funcionando;
-- sair e retornar preservando estado;
 - leitura RLS validada após #414/#415.
 
 ## 2026-09-11 — UX Clinical Encounter #417
 
 **HISTÓRICO / SUPERADO VISUALMENTE PELA #420**
 
-A compactação inicial foi útil, mas o primeiro smoke revelou conflito sticky e excesso de chrome superior.
-
 ## 2026-09-11 — UX Clinical Encounter #420
 
 **VALIDADO EM PRODUÇÃO**
 
-Validação técnica e visual registrada em `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
-
-## 2026-09-11 — Clinical Documents D1 / D2 decomposition
-
-**HISTÓRICO DE PLANEJAMENTO — D2-A POSTERIORMENTE ENTREGUE**
-
-D1 definiu a arquitetura foundation + contratos tipados e decompôs D2 em D2-A, D2-B e D2-C.
+Validação registrada em `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
 
 ## 2026-09-12 — Clinical Documents D2-A
 
@@ -389,13 +363,29 @@ D1 definiu a arquitetura foundation + contratos tipados e decompôs D2 em D2-A, 
 
 - PR #425 mergeada;
 - `main@0459e5908c942ac63c0dec87d517aa2131936204`;
-- migration `20260912_clinical_documents_foundation.sql` aplicada com COMMIT;
+- migration aplicada com COMMIT;
 - `MIGRATION_EXIT=0`;
-- verifier oficial retornou `CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED`;
-- `VERIFIER_EXIT=0`;
-- nenhuma UI de Prescrição foi criada por D2-A.
+- verifier oficial passou;
+- `VERIFIER_EXIT=0`.
 
-Próximo passo editorial: somente promover Prescrição para fluxo de manual após D2-B ser utilizável e validada.
+## 2026-09-12 — Prescription D2-B
+
+**MERGEADO / AGUARDANDO VALIDAÇÃO DE PRODUÇÃO**
+
+- PR #429 mergeada;
+- `main@15692b47fc5bca577948a03de2a686f58d5c7dd9`;
+- 420/420 testes + typecheck/lint/build + gates associados verdes antes do merge;
+- nenhuma migration necessária;
+- deploy/smoke ainda não registrado neste mapa.
+
+## 2026-09-12 — Prescription Live Preview D2-B.1
+
+**IMPLEMENTADO NA PR #430 / AGUARDANDO VALIDAÇÃO**
+
+- editor + folha visual ao vivo;
+- rascunho explicitamente não emitido;
+- sem impressão da prévia;
+- nenhuma alteração backend.
 
 ---
 
@@ -404,7 +394,7 @@ Próximo passo editorial: somente promover Prescrição para fluxo de manual ap�
 - confirmar `main` atual;
 - revisar `docs/CURRENT_STATE.md`;
 - revisar este mapa;
-- usar screenshots da versão efetivamente implantada;
+- usar screenshots da versão realmente implantada;
 - sanitizar nomes/identificadores/dados de pacientes;
 - testar fluxos com professional e owner/admin quando relevante;
 - separar comportamento por role/capability;
@@ -412,4 +402,4 @@ Próximo passo editorial: somente promover Prescrição para fluxo de manual ap�
 - excluir funcionalidades apenas planejadas;
 - revisar terminologia visível antes de publicar.
 
-O objetivo é que o manual represente o produto real, não a história dos prompts de desenvolvimento.
+O manual deve representar o produto real, não a história dos prompts de desenvolvimento.
