@@ -38,14 +38,18 @@ python3 scripts/build-clinical-care-read-test.py | "${PSQL[@]}" >/dev/null
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_therapeutic_guidance_renderer_v1.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.sql
 
+# Validate the complete D2-D0 foundation before the legitimate D2-D2 template
+# pointer promotion. D2-D0 also runs independently in this workflow matrix.
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_exam_order_foundation.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_EXAM_ORDER_FOUNDATION.sql
 
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_exam_order_renderer_v1.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_EXAM_ORDER_RENDERER_V1.sql
 
-# The new visual version must not regress D2-D0 or the two prior renderer contracts.
-"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_EXAM_ORDER_FOUNDATION.sql
+# After D2-D2, do not rerun the historical D2-D0 verifier because that verifier
+# intentionally pins the then-current template pointer to v1. D2-D2 advances only
+# that pointer to immutable v2; prior Prescription and Guidance render contracts
+# must still remain green.
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.sql
 
