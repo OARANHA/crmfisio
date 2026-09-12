@@ -1,3 +1,4 @@
+import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import type { ClinicIdentity } from '../lib/clinicConfiguration';
 import type { MedicationPrescriptionPayload } from '../lib/clinicalPrescription';
 import { buildPrescriptionDocumentHtml } from '../lib/prescriptionPrintRenderer';
@@ -18,6 +19,7 @@ export function PrescriptionDocumentPreview({
   clinic,
 }: PrescriptionDocumentPreviewProps) {
   const { user } = useCurrentUserAccess();
+  const { identity } = useProfessionalIdentity(user?.id);
   const html = buildPrescriptionDocumentHtml({
     payload,
     renderDefinition,
@@ -34,10 +36,10 @@ export function PrescriptionDocumentPreview({
       },
       issuer: {
         name: user?.nome || 'Profissional responsável',
-        councilType: user?.councilType,
-        councilState: user?.councilState,
+        councilType: identity?.councilType,
+        councilState: null,
         registration: user?.registro,
-        specialty: user?.especialidade,
+        specialty: identity?.specialty,
       },
       issuedAt: new Date().toISOString(),
     },
