@@ -21,7 +21,10 @@ sources = sorted(migrations.glob("20*.sql"))
 contents = [
     (path, path.read_text())
     for path in sources
-    if path not in {c01, c06, c02, c02_verifier}
+    # This builder deliberately reconstructs the pre-C06 state. Later
+    # reconciliations must not be mistaken for C06 prerequisites merely because
+    # they redefine one of the same runtime helpers.
+    if path.name <= c06.name and path not in {c01, c06, c02, c02_verifier}
 ]
 
 nexus_tables = (
