@@ -355,7 +355,7 @@ function MedicationRow({
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Via<input className={inputClass} value={item.route} onChange={(event) => onChange('route', event.target.value)} placeholder="Ex.: oral" /></label>
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Frequência<input className={inputClass} value={item.frequency} onChange={(event) => onChange('frequency', event.target.value)} placeholder="Ex.: 1x/dia" /></label>
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Duração<input className={inputClass} value={item.duration} onChange={(event) => onChange('duration', event.target.value)} placeholder="Ex.: 30 dias" /></label>
-        <label className="grid gap-1 text-[10px] font-semibold text-fog md:col-span-2 xl:grid-cols-3">Instruções<input className={inputClass} value={item.instructions} onChange={(event) => onChange('instructions', event.target.value)} placeholder="Orientação específica para este item" /></label>
+        <label className="grid gap-1 text-[10px] font-semibold text-fog md:col-span-2 xl:col-span-3">Instruções<input className={inputClass} value={item.instructions} onChange={(event) => onChange('instructions', event.target.value)} placeholder="Orientação específica para este item" /></label>
       </div>
     </fieldset>
   );
