@@ -37,7 +37,7 @@ export function PrescriptionDocumentPreview({
       issuer: {
         name: user?.nome || 'Profissional responsável',
         councilType: identity?.councilType,
-        councilState: null,
+        councilState: identity?.councilState,
         registration: user?.registro,
         specialty: identity?.specialty,
       },
