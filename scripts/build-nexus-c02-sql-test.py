@@ -19,7 +19,9 @@ sources = sorted(migrations.glob("20*.sql"))
 contents = [
     (path, path.read_text())
     for path in sources
-    if path not in {c01, c06, c02, c02_verifier}
+    # C-02 reconstructs the state immediately before C-06/C-02. Do not allow a
+    # later reconciliation to replace that historical baseline.
+    if path.name <= c06.name and path not in {c01, c06, c02, c02_verifier}
 ]
 
 nexus_tables = (
