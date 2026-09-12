@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getCurrentClinicIdentity, type ClinicIdentity } from '../lib/clinicConfiguration';
 import {
   canIssueTherapeuticGuidance,
   classifyTherapeuticGuidanceError,
@@ -7,20 +8,38 @@ import {
   emptyTherapeuticGuidancePayload,
   issueTherapeuticGuidance,
   loadTherapeuticGuidanceDocuments,
+  loadTherapeuticGuidanceTemplateRenderDefinition,
   loadTherapeuticGuidanceTemplates,
   saveTherapeuticGuidanceDraft,
+  therapeuticGuidanceDocumentRenderDefinition,
   therapeuticGuidanceReadyToIssue,
   type TherapeuticGuidanceDocument,
   type TherapeuticGuidancePayload,
+  type TherapeuticGuidanceTemplate,
 } from '../lib/clinicalTherapeuticGuidance';
+import {
+  buildTherapeuticGuidanceDocumentHtml,
+  buildTherapeuticGuidanceRenderContextFromSnapshot,
+} from '../lib/therapeuticGuidancePrintRenderer';
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
+import { TherapeuticGuidanceDocumentPreview } from './TherapeuticGuidanceDocumentPreview';
 
 type ClinicalTherapeuticGuidanceWorkspaceProps = {
   patient: Patient;
   encounter: Appointment;
   userId: string;
+};
+
+const EMPTY_CLINIC: ClinicIdentity = {
+  id: '',
+  name: 'Clínica',
+  cnpj: null,
+  phone: null,
+  email: null,
+  address: null,
+  timezone: 'UTC',
 };
 
 export function ClinicalTherapeuticGuidanceWorkspace(props: ClinicalTherapeuticGuidanceWorkspaceProps) {
@@ -37,10 +56,12 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [eligible, setEligible] = useState(false);
-  const [templates, setTemplates] = useState<Awaited<ReturnType<typeof loadTherapeuticGuidanceTemplates>>>([]);
+  const [templates, setTemplates] = useState<TherapeuticGuidanceTemplate[]>([]);
   const [documents, setDocuments] = useState<TherapeuticGuidanceDocument[]>([]);
+  const [clinic, setClinic] = useState<ClinicIdentity>(EMPTY_CLINIC);
   const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState('');
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activeRenderDefinition, setActiveRenderDefinition] = useState<unknown>(null);
   const [payload, setPayload] = useState<TherapeuticGuidancePayload>(() => emptyTherapeuticGuidancePayload());
   const [dirty, setDirty] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -52,6 +73,11 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
     () => documents.find((document) => document.id === activeDocumentId) ?? null,
     [activeDocumentId, documents],
   );
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.currentVersionId === selectedTemplateVersionId) ?? templates[0] ?? null,
+    [selectedTemplateVersionId, templates],
+  );
+  const previewRenderDefinition = activeDocument ? activeRenderDefinition : selectedTemplate?.renderDefinition;
   const history = useMemo(
     () => documents.filter((document) => document.status !== 'draft'),
     [documents],
@@ -80,16 +106,19 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
           setTemplates([]);
           setDocuments([]);
           setActiveDocumentId(null);
+          setActiveRenderDefinition(null);
           return;
         }
 
-        const [availableTemplates, patientDocuments] = await Promise.all([
+        const [availableTemplates, patientDocuments, clinicIdentity] = await Promise.all([
           loadTherapeuticGuidanceTemplates(),
           loadTherapeuticGuidanceDocuments(patient.id),
+          getCurrentClinicIdentity().catch(() => EMPTY_CLINIC),
         ]);
         if (!active) return;
         setTemplates(availableTemplates);
         setDocuments(patientDocuments);
+        setClinic(clinicIdentity);
         setSelectedTemplateVersionId(availableTemplates[0]?.currentVersionId || '');
 
         const draft = patientDocuments.find((document) => (
@@ -101,6 +130,18 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
           setActiveDocumentId(draft.id);
           setPayload(draft.payload);
           setDirty(false);
+          const currentTemplate = availableTemplates.find((template) => template.currentVersionId === draft.templateVersionId);
+          if (currentTemplate) {
+            setActiveRenderDefinition(currentTemplate.renderDefinition);
+          } else {
+            try {
+              const renderDefinition = await loadTherapeuticGuidanceTemplateRenderDefinition(draft.templateVersionId);
+              if (active) setActiveRenderDefinition(renderDefinition);
+            } catch (error) {
+              console.warn('[MedicsPro] renderer histórico do rascunho de orientação indisponível; usando fallback seguro:', error);
+              if (active) setActiveRenderDefinition(null);
+            }
+          }
         }
       } catch (error) {
         console.error('[MedicsPro] carregar Orientação Terapêutica V1:', error);
@@ -142,6 +183,7 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
       );
       replaceDocument(next);
       setActiveDocumentId(next.id);
+      setActiveRenderDefinition(selectedTemplate?.renderDefinition ?? null);
       setPayload(next.payload);
       setDirty(false);
       toast('Rascunho de orientação terapêutica criado.');
@@ -185,6 +227,7 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
       const issued = await issueTherapeuticGuidance(documentToIssue.id);
       replaceDocument(issued);
       setActiveDocumentId(null);
+      setActiveRenderDefinition(null);
       setPayload(emptyTherapeuticGuidancePayload());
       setDirty(false);
       setReviewing(false);
@@ -303,7 +346,7 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
           )}
         </div>
 
-        <GuidanceContentPreview patientName={patient.preferredName || patient.nome} payload={payload} />
+        <TherapeuticGuidanceDocumentPreview patient={patient} payload={payload} renderDefinition={previewRenderDefinition} clinic={clinic} />
       </div>
 
       {reviewing && activeDocument && (
@@ -316,32 +359,10 @@ function ClinicalTherapeuticGuidanceWorkspaceContext({
         />
       )}
 
-      {currentAppointmentDocuments.length > 0 && <GuidanceHistory title="Emitidas neste atendimento" documents={currentAppointmentDocuments} />}
-      <GuidanceHistory title="Histórico anterior" documents={priorDocuments} empty="Ainda não há orientações terapêuticas anteriores acessíveis no histórico deste paciente." />
+      {currentAppointmentDocuments.length > 0 && <GuidanceHistory title="Emitidas neste atendimento" documents={currentAppointmentDocuments} patientName={patient.preferredName || patient.nome} />}
+      <GuidanceHistory title="Histórico anterior" documents={priorDocuments} patientName={patient.preferredName || patient.nome} empty="Ainda não há orientações terapêuticas anteriores acessíveis no histórico deste paciente." />
+      <p className="sr-only">A impressão histórica usa o snapshot congelado pelo servidor.</p>
     </div>
-  );
-}
-
-function GuidanceContentPreview({ patientName, payload }: { patientName: string; payload: TherapeuticGuidancePayload }) {
-  return (
-    <aside className="rounded-2xl border border-line/65 bg-panel p-4 xl:sticky xl:top-20" aria-label="Prévia de conteúdo da orientação terapêutica">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">Prévia de conteúdo</p><h3 className="mt-1 font-display text-[16px] font-semibold text-paper">Orientação terapêutica</h3></div>
-        <Chip className="border-amber/35 text-amber">Sem validade</Chip>
-      </div>
-      <p className="mt-3 text-[10.5px] text-fog">Paciente</p>
-      <p className="mt-0.5 text-[12.5px] font-semibold text-paper">{patientName}</p>
-      <ol className="mt-4 space-y-2">
-        {payload.items.map((item, index) => (
-          <li key={index} className="rounded-xl border border-line/60 bg-deep/25 p-3 text-[11.5px] leading-relaxed text-paper/90">
-            <span className="mr-1.5 font-semibold text-aqua">{index + 1}.</span>{item.guidance.trim() || 'Orientação ainda não preenchida.'}
-          </li>
-        ))}
-      </ol>
-      {payload.patientInstructions.trim() && <PreviewBlock title="Instruções ao paciente" text={payload.patientInstructions} />}
-      {payload.observations.trim() && <PreviewBlock title="Observações" text={payload.observations} />}
-      <p className="mt-4 border-t border-line/50 pt-3 text-[10px] leading-relaxed text-fog">Esta é uma prévia de conteúdo do rascunho, não um documento emitido. A impressão histórica usa o snapshot congelado pelo servidor.</p>
-    </aside>
   );
 }
 
@@ -365,17 +386,17 @@ function GuidanceReview({ patientName, payload, issuing, onBack, onIssue }: { pa
   );
 }
 
-function GuidanceHistory({ title, documents, empty }: { title: string; documents: TherapeuticGuidanceDocument[]; empty?: string }) {
+function GuidanceHistory({ title, documents, patientName, empty }: { title: string; documents: TherapeuticGuidanceDocument[]; patientName: string; empty?: string }) {
   const unique = documents.filter((document, index, all) => all.findIndex((candidate) => candidate.id === document.id) === index);
   return (
     <div className="rounded-2xl border border-line/65 bg-panel p-4">
       <div className="flex items-center justify-between gap-3"><h3 className="font-display text-[15px] font-semibold text-paper">{title}</h3><span className="text-[10px] text-fog">{unique.length}</span></div>
-      {unique.length === 0 ? <p className="mt-3 text-[11.5px] text-fog">{empty}</p> : <div className="mt-3 space-y-2">{unique.map((document) => <GuidanceDocumentCard key={document.id} document={document} />)}</div>}
+      {unique.length === 0 ? <p className="mt-3 text-[11.5px] text-fog">{empty}</p> : <div className="mt-3 space-y-2">{unique.map((document) => <GuidanceDocumentCard key={document.id} document={document} patientName={patientName} />)}</div>}
     </div>
   );
 }
 
-function GuidanceDocumentCard({ document }: { document: TherapeuticGuidanceDocument }) {
+function GuidanceDocumentCard({ document, patientName }: { document: TherapeuticGuidanceDocument; patientName: string }) {
   const snapshot = document.payloadSnapshot ?? document.payload;
   const issuedLabel = document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : 'data indisponível';
   return (
@@ -385,7 +406,7 @@ function GuidanceDocumentCard({ document }: { document: TherapeuticGuidanceDocum
           <div className="flex flex-wrap items-center gap-2"><p className="font-mono text-[10.5px] text-paper">{document.documentIdentifier}</p><Chip className={document.status === 'canceled' ? 'border-pulse/30 text-pulse' : 'border-mint/30 text-mint'}>{document.status === 'canceled' ? 'Cancelada' : 'Emitida'}</Chip></div>
           <p className="mt-1 text-[10.5px] text-fog">{issuedLabel}</p>
         </div>
-        {document.status === 'issued' && document.renderedSnapshot && <Btn variant="subtle" onClick={() => printIssuedGuidance(document)}>Imprimir</Btn>}
+        {document.status === 'issued' && document.payloadSnapshot && <Btn variant="subtle" onClick={() => printIssuedGuidance(document, patientName)}>Imprimir</Btn>}
       </div>
       <ol className="mt-3 space-y-1.5">
         {snapshot.items.map((item, index) => <li key={`${document.id}:${index}`} className="text-[11px] leading-relaxed text-paper/85"><span className="mr-1 font-semibold text-aqua">{index + 1}.</span>{item.guidance}</li>)}
@@ -401,20 +422,18 @@ function GuidanceState({ children, tone = 'muted' }: { children: string; tone?: 
   return <div className={`rounded-xl border px-4 py-3 text-[11.5px] leading-relaxed ${tone === 'error' ? 'border-pulse/30 bg-pulse/[0.04] text-pulse' : 'border-line/65 bg-deep/30 text-fog'}`}>{children}</div>;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function printIssuedGuidance(document: TherapeuticGuidanceDocument) {
-  if (document.status !== 'issued' || !document.renderedSnapshot) return;
-  const snapshot = escapeHtml(document.renderedSnapshot);
-  const identifier = escapeHtml(document.documentIdentifier);
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${identifier}</title><style>@page{size:A4;margin:18mm}*{box-sizing:border-box}body{margin:0;color:#111827;background:#fff;font-family:Arial,Helvetica,sans-serif}.doc{max-width:760px;margin:0 auto}.id{font-size:9px;color:#6b7280;text-align:right;margin-bottom:18px}.snapshot{white-space:pre-wrap;word-break:break-word;font:12px/1.6 Arial,Helvetica,sans-serif;margin:0;border:0;background:transparent}</style></head><body><main class="doc"><div class="id">${identifier}</div><pre class="snapshot">${snapshot}</pre></main><script>window.addEventListener('load',()=>window.print())</script></body></html>`;
+function printIssuedGuidance(document: TherapeuticGuidanceDocument, fallbackPatientName: string) {
+  if (document.status !== 'issued' || !document.payloadSnapshot) return;
+  const context = buildTherapeuticGuidanceRenderContextFromSnapshot(document.contextSnapshot, fallbackPatientName, document.documentIdentifier);
+  context.issuedAt = document.issuedAt ?? context.issuedAt;
+  const html = buildTherapeuticGuidanceDocumentHtml({
+    payload: document.payloadSnapshot,
+    context,
+    renderDefinition: therapeuticGuidanceDocumentRenderDefinition(document),
+    renderedSnapshot: document.renderedSnapshot,
+    mode: 'issued',
+    autoPrint: true,
+  });
   const target = window.open('', '_blank', 'width=900,height=760');
   if (!target) return;
   target.opener = null;
