@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const here = dirname(fileURLToPath(import.meta.url));
 const clientSource = readFileSync(resolve(here, './clinicalPrescription.ts'), 'utf8');
 const workspaceSource = readFileSync(resolve(here, '../components/ClinicalPrescriptionWorkspace.tsx'), 'utf8');
+const previewSource = readFileSync(resolve(here, '../components/PrescriptionDocumentPreview.tsx'), 'utf8');
 const encounterSource = readFileSync(resolve(here, '../components/ClinicalEncounterWorkspaceV4.tsx'), 'utf8');
 
 describe('Clinical Prescription V1 boundary', () => {
@@ -33,6 +34,26 @@ describe('Clinical Prescription V1 boundary', () => {
     expect(workspaceSource).toContain('saveMedicationPrescriptionDraft(');
     expect(workspaceSource).toContain('issueMedicationPrescription(');
     expect(workspaceSource).not.toContain('setInterval(');
+  });
+
+  it('keeps the live preview presentation-only and explicitly non-issued', () => {
+    expect(workspaceSource).toContain('<PrescriptionDocumentPreview patient={patient} payload={payload} />');
+    expect(previewSource).toContain('data-prescription-live-preview="draft"');
+    expect(previewSource).toContain('Rascunho · não emitida');
+    expect(previewSource).toContain('Sem validade até a emissão');
+    expect(previewSource).toContain('Pré-visualização de rascunho · documento não emitido');
+    expect(previewSource).toContain('payload.items.filter');
+    expect(previewSource).not.toContain("db.rpc(");
+    expect(previewSource).not.toContain('window.print');
+    expect(previewSource).not.toContain('document.write');
+  });
+
+  it('uses canonical patient and authenticated professional data in the live preview', () => {
+    expect(previewSource).toContain('patient.preferredName || patient.nome');
+    expect(previewSource).toContain('formatDateOnly(patient.nascimento)');
+    expect(previewSource).toContain('const { user } = useCurrentUserAccess()');
+    expect(previewSource).toContain("const professionalName = user?.nome || 'Profissional responsável'");
+    expect(previewSource).toContain("const professionalRegistration = user?.registro || ''");
   });
 
   it('prints only the immutable issued snapshot and its frozen professional identity', () => {
@@ -71,6 +92,7 @@ describe('Clinical Prescription V1 boundary', () => {
 
   it('does not couple Prescription V1 to Nexus', () => {
     expect(workspaceSource).not.toContain('Nexus');
+    expect(previewSource).not.toContain('Nexus');
     expect(clientSource).not.toContain('nexus.');
   });
 });

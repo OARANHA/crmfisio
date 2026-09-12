@@ -1,6 +1,6 @@
 # MedicsPro — Clinical Prescription V1 (D2-B)
 
-> Estado deste documento: implementação em PR, ainda não validada em produção. A Clinical Documents Foundation D2-A continua sendo a autoridade de lifecycle, autorização e persistência.
+> Estado deste documento: D2-B foi mergeada na `main` em `15692b47fc5bca577948a03de2a686f58d5c7dd9`, mas ainda não há evidência registrada de smoke real em produção. A micro-slice D2-B.1 (PR #430) adiciona a visualização ao vivo do rascunho e também permanece não validada em produção.
 
 ## Objetivo
 
@@ -14,6 +14,7 @@ Encounter ativo do profissional
 → template publicado elegível
 → draft
 → medicamentos estruturados
+→ visualização ao vivo do rascunho
 → salvar rascunho
 → revisão humana explícita
 → emissão D2-A
@@ -121,11 +122,56 @@ Rascunhos de outro profissional ou de outro appointment não são usados como do
 
 RLS e care relationship continuam limitando o que pode ser lido.
 
+## D2-B.1 — Live document preview
+
+PR #430 recupera a boa ergonomia de `Visualização` do MedicsPro histórico sem transformar HTML/UI em fonte clínica.
+
+Em desktop largo:
+
+```text
+Editor estruturado | Folha de receita ao vivo
+```
+
+Em viewport menor, as duas superfícies são empilhadas.
+
+A prévia lê somente estado já disponível no frontend:
+
+- usuário autenticado: nome e registro;
+- paciente em contexto: nome e data de nascimento;
+- data de visualização;
+- `payload.items` local do rascunho;
+- `payload.observations` local.
+
+Ela é deliberadamente marcada como:
+
+```text
+Rascunho · não emitida
+Sem validade até a emissão
+Pré-visualização de rascunho · documento não emitido
+```
+
+A prévia:
+
+- não chama RPC;
+- não persiste nada;
+- não concede autorização;
+- não tem botão de imprimir;
+- não gera documento identifier;
+- não substitui a revisão humana;
+- não altera o lifecycle D2-A.
+
+Portanto:
+
+```text
+live preview = apresentação do estado local
+issued document = snapshot clínico imutável
+```
+
 ## Pós-emissão
 
 Documento `issued` não volta ao editor.
 
-A visualização usa `payload_snapshot`; a impressão também é construída exclusivamente a partir do snapshot emitido e do `context_snapshot` preservado na D2-A.
+A visualização histórica usa `payload_snapshot`; a impressão também é construída exclusivamente a partir do snapshot emitido e do `context_snapshot` preservado na D2-A.
 
 Nenhum template atual é recalculado para imprimir uma receita histórica.
 
@@ -137,13 +183,15 @@ Cancelamento continua disponível na foundation e permanece auditável, mas D2-B
 
 V1 usa impressão nativa do navegador sobre uma visão criada a partir do snapshot emitido.
 
+A pré-visualização D2-B.1 não é imprimível; isso evita confusão entre rascunho e documento emitido.
+
 Não é PDF assinado e não deve ser descrito como assinatura digital ou receita eletrônica certificada.
 
 Uma camada de PDF/assinatura, caso necessária, é fase posterior e precisa de contrato próprio.
 
 ## Nexus
 
-D2-B não consome Nexus.
+D2-B/D2-B.1 não consomem Nexus.
 
 Direção futura:
 
@@ -165,6 +213,8 @@ A revisão histórica `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec8
 - impressão;
 - histórico.
 
+D2-B.1 reutiliza especificamente o conceito de uma área `Visualização`, mas não a arquitetura histórica.
+
 Não reaproveitar:
 
 - Vue/Pinia/Mongo/Express;
@@ -173,11 +223,12 @@ Não reaproveitar:
 - HTML arbitrário como fonte clínica;
 - autosave genérico que pode sugerir persistência sem confirmação.
 
-## Arquivos principais D2-B
+## Arquivos principais
 
 ```text
 src/lib/clinicalPrescription.ts
 src/components/ClinicalPrescriptionWorkspace.tsx
+src/components/PrescriptionDocumentPreview.tsx
 src/components/ClinicalEncounterWorkspaceV4.tsx
 src/lib/clinicalPrescription.test.ts
 src/lib/clinicalPrescriptionBoundary.test.js
@@ -185,10 +236,12 @@ src/lib/clinicalPrescriptionBoundary.test.js
 
 ## Estado de rollout
 
-Enquanto a PR D2-B estiver aberta:
+Estado editorial atual:
 
 ```text
-IMPLEMENTADO EM BRANCH / NÃO VALIDADO EM PRODUÇÃO
+D2-A   VALIDADO EM PRODUÇÃO
+D2-B   MERGEADO / NÃO VALIDADO EM PRODUÇÃO
+D2-B.1 IMPLEMENTADO NA PR #430 / NÃO VALIDADO EM PRODUÇÃO
 ```
 
-Somente após merge, deploy real e smoke controlado esse estado pode ser promovido para `VALIDADO EM PRODUÇÃO`.
+Somente após deploy real e smoke controlado o estado da Prescrição V1 pode ser promovido para `VALIDADO EM PRODUÇÃO`.
