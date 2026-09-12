@@ -31,6 +31,14 @@ describe('Prescription Template Admin frontend boundary', () => {
     expect(adminSource).not.toContain('updatePlatformPrescriptionTemplate');
   });
 
+  it('does not create a generic active template before the admin confirms its identity', () => {
+    expect(adminSource).toContain('setCreatingNew(true)');
+    expect(adminSource).toContain('Nada é criado no servidor até você confirmar em “Criar modelo”.');
+    expect(adminSource).toContain('if (creatingNew) {');
+    expect(adminSource).toContain('await createClinicPrescriptionTemplate({ name, description, specialty });');
+    expect(adminSource).not.toContain("name: 'Novo modelo de prescrição',\n        description:");
+  });
+
   it('makes specialty relevance explicit without turning it into authorization', () => {
     expect(clientSource).toContain("p_relevance_metadata: { specialty:");
     expect(adminSource).toContain('Especialidade / relevância');
