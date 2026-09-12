@@ -212,6 +212,44 @@ WHERE t.id = '12000000-0000-4000-8000-000000000006'::uuid
   AND v.template_id = t.id
   AND t.current_version_id IS NULL;
 
+-- ON CONFLICT is replay-safe, but it must never hide an ID collision or a
+-- partially applied/drifted canonical seed. Any mismatch aborts this transaction.
+DO $$
+DECLARE
+  t public.clinical_document_templates%ROWTYPE;
+  v public.clinical_document_template_versions%ROWTYPE;
+BEGIN
+  SELECT * INTO t
+  FROM public.clinical_document_templates
+  WHERE id = '12000000-0000-4000-8000-000000000006'::uuid;
+
+  IF t.id IS NULL
+     OR t.owner_type IS DISTINCT FROM 'platform'
+     OR t.clinic_id IS NOT NULL
+     OR t.document_type IS DISTINCT FROM 'exam_order'
+     OR t.name IS DISTINCT FROM 'Pedido de exames'
+     OR t.status IS DISTINCT FROM 'active'
+     OR t.current_version_id IS DISTINCT FROM '12100000-0000-4000-8000-000000000006'::uuid THEN
+    RAISE EXCEPTION 'clinical_exam_order_template_seed_drift' USING ERRCODE = '23514';
+  END IF;
+
+  SELECT * INTO v
+  FROM public.clinical_document_template_versions
+  WHERE id = '12100000-0000-4000-8000-000000000006'::uuid;
+
+  IF v.id IS NULL
+     OR v.template_id IS DISTINCT FROM t.id
+     OR v.version IS DISTINCT FROM 1
+     OR v.published_at IS NULL
+     OR v.definition->>'kind' IS DISTINCT FROM 'exam_order'
+     OR v.definition->'fields' IS DISTINCT FROM '["items","clinical_indication","impression","priority","observations"]'::jsonb
+     OR v.render_definition IS DISTINCT FROM '{"layout":"clinical-document/plain-text-v1"}'::jsonb
+     OR v.variables_contract IS DISTINCT FROM '["patient.name","issuer.name","issuer.registro","appointment.id"]'::jsonb THEN
+    RAISE EXCEPTION 'clinical_exam_order_template_version_seed_drift' USING ERRCODE = '23514';
+  END IF;
+END;
+$$;
+
 REVOKE ALL ON FUNCTION public.current_user_can_issue_clinical_document(text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.assert_clinical_document_payload_ready(text,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.render_clinical_document_snapshot(text,text,jsonb,jsonb) FROM PUBLIC, anon, authenticated;
