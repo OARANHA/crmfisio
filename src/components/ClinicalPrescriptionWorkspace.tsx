@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getCurrentClinicIdentity, type ClinicIdentity } from '../lib/clinicConfiguration';
 import {
   canIssueMedicationPrescription,
   classifyClinicalPrescriptionError,
@@ -7,8 +8,10 @@ import {
   emptyMedicationPrescriptionPayload,
   issueMedicationPrescription,
   loadMedicationPrescriptionDocuments,
+  loadMedicationPrescriptionTemplateRenderDefinition,
   loadMedicationPrescriptionTemplates,
   medicationPrescriptionReadyToIssue,
+  prescriptionDocumentRenderDefinition,
   prescriptionItemSummary,
   saveMedicationPrescriptionDraft,
   type MedicationPrescriptionDocument,
@@ -16,6 +19,10 @@ import {
   type MedicationPrescriptionPayload,
   type MedicationPrescriptionTemplate,
 } from '../lib/clinicalPrescription';
+import {
+  buildPrescriptionDocumentHtml,
+  buildPrescriptionRenderContextFromSnapshot,
+} from '../lib/prescriptionPrintRenderer';
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
@@ -25,6 +32,16 @@ type ClinicalPrescriptionWorkspaceProps = {
   patient: Patient;
   encounter: Appointment;
   userId: string;
+};
+
+const EMPTY_CLINIC: ClinicIdentity = {
+  id: '',
+  name: 'Clínica',
+  cnpj: null,
+  phone: null,
+  email: null,
+  address: null,
+  timezone: 'UTC',
 };
 
 export function ClinicalPrescriptionWorkspace(props: ClinicalPrescriptionWorkspaceProps) {
@@ -43,8 +60,10 @@ function ClinicalPrescriptionWorkspaceContext({
   const [eligible, setEligible] = useState(false);
   const [templates, setTemplates] = useState<MedicationPrescriptionTemplate[]>([]);
   const [documents, setDocuments] = useState<MedicationPrescriptionDocument[]>([]);
+  const [clinic, setClinic] = useState<ClinicIdentity>(EMPTY_CLINIC);
   const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState('');
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activeRenderDefinition, setActiveRenderDefinition] = useState<unknown>(null);
   const [payload, setPayload] = useState<MedicationPrescriptionPayload>(() => emptyMedicationPrescriptionPayload());
   const [dirty, setDirty] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -56,6 +75,11 @@ function ClinicalPrescriptionWorkspaceContext({
     () => documents.find((document) => document.id === activeDocumentId) ?? null,
     [activeDocumentId, documents],
   );
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.currentVersionId === selectedTemplateVersionId) ?? templates[0] ?? null,
+    [selectedTemplateVersionId, templates],
+  );
+  const previewRenderDefinition = activeDocument ? activeRenderDefinition : selectedTemplate?.renderDefinition;
   const history = useMemo(
     () => documents.filter((document) => document.status !== 'draft'),
     [documents],
@@ -84,16 +108,19 @@ function ClinicalPrescriptionWorkspaceContext({
           setTemplates([]);
           setDocuments([]);
           setActiveDocumentId(null);
+          setActiveRenderDefinition(null);
           return;
         }
 
-        const [availableTemplates, patientDocuments] = await Promise.all([
+        const [availableTemplates, patientDocuments, clinicIdentity] = await Promise.all([
           loadMedicationPrescriptionTemplates(),
           loadMedicationPrescriptionDocuments(patient.id),
+          getCurrentClinicIdentity().catch(() => EMPTY_CLINIC),
         ]);
         if (!active) return;
         setTemplates(availableTemplates);
         setDocuments(patientDocuments);
+        setClinic(clinicIdentity);
         setSelectedTemplateVersionId(availableTemplates[0]?.currentVersionId || '');
 
         const draft = patientDocuments.find((document) => (
@@ -105,6 +132,18 @@ function ClinicalPrescriptionWorkspaceContext({
           setActiveDocumentId(draft.id);
           setPayload(draft.payload);
           setDirty(false);
+          const currentTemplate = availableTemplates.find((template) => template.currentVersionId === draft.templateVersionId);
+          if (currentTemplate) {
+            setActiveRenderDefinition(currentTemplate.renderDefinition);
+          } else {
+            try {
+              const renderDefinition = await loadMedicationPrescriptionTemplateRenderDefinition(draft.templateVersionId);
+              if (active) setActiveRenderDefinition(renderDefinition);
+            } catch (error) {
+              console.warn('[MedicsPro] renderer histórico do rascunho indisponível; usando fallback seguro:', error);
+              if (active) setActiveRenderDefinition(null);
+            }
+          }
         }
       } catch (error) {
         console.error('[MedicsPro] carregar Prescrição V1:', error);
@@ -146,6 +185,7 @@ function ClinicalPrescriptionWorkspaceContext({
       );
       replaceDocument(next);
       setActiveDocumentId(next.id);
+      setActiveRenderDefinition(selectedTemplate?.renderDefinition ?? null);
       setPayload(next.payload);
       setDirty(false);
       toast('Rascunho de prescrição criado.');
@@ -189,6 +229,7 @@ function ClinicalPrescriptionWorkspaceContext({
       const issued = await issueMedicationPrescription(documentToIssue.id);
       replaceDocument(issued);
       setActiveDocumentId(null);
+      setActiveRenderDefinition(null);
       setPayload(emptyMedicationPrescriptionPayload());
       setDirty(false);
       setReviewing(false);
@@ -229,18 +270,10 @@ function ClinicalPrescriptionWorkspaceContext({
     setDirty(true);
   };
 
-  if (loading) {
-    return <PrescriptionState>Verificando elegibilidade e histórico de prescrição…</PrescriptionState>;
-  }
-  if (loadError) {
-    return <PrescriptionState tone="error">Não foi possível carregar a Prescrição V1. Atualize a página antes de tentar novamente.</PrescriptionState>;
-  }
-  if (!eligible) {
-    return <PrescriptionState tone="muted">Prescrição medicamentosa não está disponível para sua identidade clínica atual. A autorização permanece definida pelo servidor.</PrescriptionState>;
-  }
-  if (templates.length === 0) {
-    return <PrescriptionState tone="error">Nenhum template de prescrição elegível está disponível para este atendimento.</PrescriptionState>;
-  }
+  if (loading) return <PrescriptionState>Verificando elegibilidade e histórico de prescrição…</PrescriptionState>;
+  if (loadError) return <PrescriptionState tone="error">Não foi possível carregar a Prescrição V1. Atualize a página antes de tentar novamente.</PrescriptionState>;
+  if (!eligible) return <PrescriptionState tone="muted">Prescrição medicamentosa não está disponível para sua identidade clínica atual. A autorização permanece definida pelo servidor.</PrescriptionState>;
+  if (templates.length === 0) return <PrescriptionState tone="error">Nenhum template de prescrição elegível está disponível para este atendimento.</PrescriptionState>;
 
   return (
     <div className="space-y-4" data-clinical-prescription-version="1">
@@ -272,25 +305,13 @@ function ClinicalPrescriptionWorkspaceContext({
           ) : (
             <div className="mt-4 space-y-3">
               {payload.items.map((item, index) => (
-                <MedicationRow
-                  key={`${activeDocument.id}:${index}`}
-                  index={index}
-                  item={item}
-                  onChange={(field, value) => updateItem(index, field, value)}
-                  onRemove={() => removeItem(index)}
-                />
+                <MedicationRow key={`${activeDocument.id}:${index}`} index={index} item={item} onChange={(field, value) => updateItem(index, field, value)} onRemove={() => removeItem(index)} />
               ))}
               <button type="button" onClick={addItem} className="text-[11.5px] font-semibold text-aqua hover:underline">+ Adicionar medicamento</button>
 
               <label className="grid gap-1.5 text-[11px] font-semibold text-fog">
                 Observações da prescrição
-                <textarea
-                  rows={3}
-                  value={payload.observations}
-                  onChange={(event) => updateObservations(event.target.value)}
-                  placeholder="Orientações complementares registradas pelo profissional."
-                  className="resize-y rounded-xl border border-line bg-panel px-3 py-2.5 text-[12px] leading-relaxed text-paper outline-none focus:border-aqua/60"
-                />
+                <textarea rows={3} value={payload.observations} onChange={(event) => updateObservations(event.target.value)} placeholder="Orientações complementares registradas pelo profissional." className="resize-y rounded-xl border border-line bg-panel px-3 py-2.5 text-[12px] leading-relaxed text-paper outline-none focus:border-aqua/60" />
               </label>
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-3">
@@ -305,55 +326,23 @@ function ClinicalPrescriptionWorkspaceContext({
           )}
         </div>
 
-        <PrescriptionDocumentPreview patient={patient} payload={payload} />
+        <PrescriptionDocumentPreview patient={patient} payload={payload} renderDefinition={previewRenderDefinition} clinic={clinic} />
       </div>
 
-      {reviewing && activeDocument && (
-        <PrescriptionReview
-          patientName={patient.preferredName || patient.nome}
-          payload={payload}
-          issuing={issuing}
-          onBack={() => setReviewing(false)}
-          onIssue={() => void confirmIssue()}
-        />
-      )}
+      {reviewing && activeDocument && <PrescriptionReview patientName={patient.preferredName || patient.nome} payload={payload} issuing={issuing} onBack={() => setReviewing(false)} onIssue={() => void confirmIssue()} />}
 
-      {currentAppointmentDocuments.length > 0 && (
-        <DocumentHistory
-          title="Emitidas neste atendimento"
-          documents={currentAppointmentDocuments}
-          patientName={patient.preferredName || patient.nome}
-        />
-      )}
+      {currentAppointmentDocuments.length > 0 && <DocumentHistory title="Emitidas neste atendimento" documents={currentAppointmentDocuments} patientName={patient.preferredName || patient.nome} />}
 
-      <DocumentHistory
-        title="Histórico anterior"
-        documents={priorDocuments}
-        patientName={patient.preferredName || patient.nome}
-        empty="Ainda não há prescrições anteriores acessíveis no histórico deste paciente."
-      />
+      <DocumentHistory title="Histórico anterior" documents={priorDocuments} patientName={patient.preferredName || patient.nome} empty="Ainda não há prescrições anteriores acessíveis no histórico deste paciente." />
     </div>
   );
 }
 
-function MedicationRow({
-  index,
-  item,
-  onChange,
-  onRemove,
-}: {
-  index: number;
-  item: MedicationPrescriptionItem;
-  onChange: (field: keyof MedicationPrescriptionItem, value: string) => void;
-  onRemove: () => void;
-}) {
+function MedicationRow({ index, item, onChange, onRemove }: { index: number; item: MedicationPrescriptionItem; onChange: (field: keyof MedicationPrescriptionItem, value: string) => void; onRemove: () => void }) {
   const inputClass = 'min-h-9 rounded-lg border border-line bg-panel px-2.5 text-[11.5px] text-paper outline-none focus:border-aqua/60';
   return (
     <fieldset className="rounded-xl border border-line/65 bg-panel/65 p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <legend className="text-[11px] font-semibold text-paper">Medicamento {index + 1}</legend>
-        <button type="button" onClick={onRemove} className="text-[10.5px] font-semibold text-fog hover:text-pulse">Remover</button>
-      </div>
+      <div className="mb-2 flex items-center justify-between gap-3"><legend className="text-[11px] font-semibold text-paper">Medicamento {index + 1}</legend><button type="button" onClick={onRemove} className="text-[10.5px] font-semibold text-fog hover:text-pulse">Remover</button></div>
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         <label className="grid gap-1 text-[10px] font-semibold text-fog xl:col-span-2">Medicamento *<input className={inputClass} value={item.medicationName} onChange={(event) => onChange('medicationName', event.target.value)} placeholder="Nome / apresentação" /></label>
         <label className="grid gap-1 text-[10px] font-semibold text-fog">Dose<input className={inputClass} value={item.dose} onChange={(event) => onChange('dose', event.target.value)} placeholder="Ex.: 1 comprimido" /></label>
@@ -366,19 +355,7 @@ function MedicationRow({
   );
 }
 
-function PrescriptionReview({
-  patientName,
-  payload,
-  issuing,
-  onBack,
-  onIssue,
-}: {
-  patientName: string;
-  payload: MedicationPrescriptionPayload;
-  issuing: boolean;
-  onBack: () => void;
-  onIssue: () => void;
-}) {
+function PrescriptionReview({ patientName, payload, issuing, onBack, onIssue }: { patientName: string; payload: MedicationPrescriptionPayload; issuing: boolean; onBack: () => void; onIssue: () => void }) {
   return (
     <div className="rounded-2xl border border-aqua/35 bg-aqua/[0.035] p-4" role="dialog" aria-label="Revisão da prescrição">
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.11em] text-aqua">Revisão humana obrigatória</p>
@@ -394,36 +371,17 @@ function PrescriptionReview({
         ))}
       </ol>
       {payload.observations.trim() && <div className="mt-3 rounded-xl border border-line/65 bg-panel/75 p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-fog">Observações</p><p className="mt-1 whitespace-pre-wrap text-[11.5px] text-paper/85">{payload.observations.trim()}</p></div>}
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <Btn variant="subtle" disabled={issuing} onClick={onBack}>Voltar e editar</Btn>
-        <Btn disabled={issuing} onClick={onIssue}>{issuing ? 'Emitindo…' : 'Confirmar e emitir'}</Btn>
-      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2"><Btn variant="subtle" disabled={issuing} onClick={onBack}>Voltar e editar</Btn><Btn disabled={issuing} onClick={onIssue}>{issuing ? 'Emitindo…' : 'Confirmar e emitir'}</Btn></div>
     </div>
   );
 }
 
-function DocumentHistory({
-  title,
-  documents,
-  patientName,
-  empty,
-}: {
-  title: string;
-  documents: MedicationPrescriptionDocument[];
-  patientName: string;
-  empty?: string;
-}) {
+function DocumentHistory({ title, documents, patientName, empty }: { title: string; documents: MedicationPrescriptionDocument[]; patientName: string; empty?: string }) {
   const unique = documents.filter((document, index, all) => all.findIndex((candidate) => candidate.id === document.id) === index);
   return (
     <div className="rounded-2xl border border-line/65 bg-panel p-4">
       <div className="flex items-center justify-between gap-3"><h3 className="font-display text-[15px] font-semibold text-paper">{title}</h3><span className="text-[10px] text-fog">{unique.length}</span></div>
-      {unique.length === 0 ? (
-        <p className="mt-3 text-[11.5px] text-fog">{empty}</p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {unique.map((document) => <IssuedDocumentCard key={document.id} document={document} patientName={patientName} />)}
-        </div>
-      )}
+      {unique.length === 0 ? <p className="mt-3 text-[11.5px] text-fog">{empty}</p> : <div className="mt-3 space-y-2">{unique.map((document) => <IssuedDocumentCard key={document.id} document={document} patientName={patientName} />)}</div>}
     </div>
   );
 }
@@ -435,22 +393,13 @@ function IssuedDocumentCard({ document, patientName }: { document: MedicationPre
     <article className="rounded-xl border border-line/65 bg-deep/25 p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-mono text-[10.5px] text-paper">{document.documentIdentifier}</p>
-            <Chip className={document.status === 'canceled' ? 'border-pulse/30 text-pulse' : 'border-mint/30 text-mint'}>{document.status === 'canceled' ? 'Cancelada' : 'Emitida'}</Chip>
-          </div>
+          <div className="flex flex-wrap items-center gap-2"><p className="font-mono text-[10.5px] text-paper">{document.documentIdentifier}</p><Chip className={document.status === 'canceled' ? 'border-pulse/30 text-pulse' : 'border-mint/30 text-mint'}>{document.status === 'canceled' ? 'Cancelada' : 'Emitida'}</Chip></div>
           <p className="mt-1 text-[10.5px] text-fog">{issuedLabel}</p>
         </div>
         {document.status === 'issued' && <Btn variant="subtle" onClick={() => printIssuedPrescription(document, patientName)}>Imprimir</Btn>}
       </div>
       <div className="mt-3 space-y-2">
-        {snapshot.items.map((item, index) => (
-          <div key={`${document.id}:${index}`} className="text-[11px]">
-            <p className="font-semibold text-paper">{index + 1}. {item.medicationName}</p>
-            {prescriptionItemSummary(item) && <p className="mt-0.5 text-fog">{prescriptionItemSummary(item)}</p>}
-            {item.instructions && <p className="mt-0.5 text-paper/75">{item.instructions}</p>}
-          </div>
-        ))}
+        {snapshot.items.map((item, index) => <div key={`${document.id}:${index}`} className="text-[11px]"><p className="font-semibold text-paper">{index + 1}. {item.medicationName}</p>{prescriptionItemSummary(item) && <p className="mt-0.5 text-fog">{prescriptionItemSummary(item)}</p>}{item.instructions && <p className="mt-0.5 text-paper/75">{item.instructions}</p>}</div>)}
         {snapshot.observations && <p className="border-t border-line/50 pt-2 text-[11px] text-fog">{snapshot.observations}</p>}
         {document.status === 'canceled' && document.cancelReason && <p className="border-t border-pulse/20 pt-2 text-[10.5px] text-pulse">Motivo do cancelamento: {document.cancelReason}</p>}
       </div>
@@ -462,50 +411,17 @@ function PrescriptionState({ children, tone = 'muted' }: { children: string; ton
   return <div className={`rounded-xl border px-4 py-3 text-[11.5px] leading-relaxed ${tone === 'error' ? 'border-pulse/30 bg-pulse/[0.04] text-pulse' : 'border-line/65 bg-deep/30 text-fog'}`}>{children}</div>;
 }
 
-function snapshotObject(context: Record<string, unknown> | null, key: 'patient' | 'issuer'): Record<string, unknown> | null {
-  const value = context?.[key];
-  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
-}
-
-function snapshotName(context: Record<string, unknown> | null, key: 'patient' | 'issuer', fallback: string): string {
-  const value = snapshotObject(context, key);
-  const name = value?.name;
-  return typeof name === 'string' && name.trim() ? name.trim() : fallback;
-}
-
-function snapshotIssuerCredential(context: Record<string, unknown> | null): string {
-  const issuer = snapshotObject(context, 'issuer');
-  if (!issuer) return '';
-  const values = [issuer.council_type, issuer.council_state, issuer.registro]
-    .map((value) => typeof value === 'string' ? value.trim() : '')
-    .filter(Boolean);
-  return values.join(' ');
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
 function printIssuedPrescription(document: MedicationPrescriptionDocument, fallbackPatientName: string) {
   if (document.status !== 'issued' || !document.payloadSnapshot) return;
-  const patientName = snapshotName(document.contextSnapshot, 'patient', fallbackPatientName);
-  const issuerName = snapshotName(document.contextSnapshot, 'issuer', 'Profissional responsável');
-  const issuerCredential = snapshotIssuerCredential(document.contextSnapshot);
-  const items = document.payloadSnapshot.items.map((item) => {
-    const summary = prescriptionItemSummary(item);
-    return `<li><strong>${escapeHtml(item.medicationName)}</strong>${summary ? `<div>${escapeHtml(summary)}</div>` : ''}${item.instructions ? `<div>${escapeHtml(item.instructions)}</div>` : ''}</li>`;
-  }).join('');
-  const observations = document.payloadSnapshot.observations
-    ? `<section><h2>Observações</h2><p>${escapeHtml(document.payloadSnapshot.observations).replace(/\n/g, '<br>')}</p></section>`
-    : '';
-  const issuedAt = document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : '';
-  const credentialHtml = issuerCredential ? ` · ${escapeHtml(issuerCredential)}` : '';
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(document.documentIdentifier)}</title><style>body{font-family:Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 24px;color:#111}header{border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:24px}h1{font-size:22px;margin:0 0 8px}h2{font-size:14px;margin-top:24px}p,li{font-size:14px;line-height:1.55}li{margin-bottom:16px}.meta{color:#555;font-size:12px}@media print{body{margin:0;max-width:none}}</style></head><body><header><h1>Prescrição medicamentosa</h1><div class="meta">${escapeHtml(document.documentIdentifier)} · ${escapeHtml(issuedAt)}</div></header><p><strong>Paciente:</strong> ${escapeHtml(patientName)}</p><p><strong>Profissional:</strong> ${escapeHtml(issuerName)}${credentialHtml}</p><ol>${items}</ol>${observations}<script>window.addEventListener('load',()=>window.print())<\/script></body></html>`;
+  const context = buildPrescriptionRenderContextFromSnapshot(document.contextSnapshot, fallbackPatientName, document.documentIdentifier);
+  context.issuedAt = document.issuedAt ?? context.issuedAt;
+  const html = buildPrescriptionDocumentHtml({
+    payload: document.payloadSnapshot,
+    context,
+    renderDefinition: prescriptionDocumentRenderDefinition(document),
+    mode: 'issued',
+    autoPrint: true,
+  });
   const target = window.open('', '_blank', 'width=900,height=760');
   if (!target) return;
   target.opener = null;
