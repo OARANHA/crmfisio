@@ -91,35 +91,26 @@ const asObject = (value: unknown): Record<string, unknown> => (
 );
 
 export const emptyReferralRecipient = (): ReferralRecipient => ({
-  scope: 'external',
-  targetProfileId: '',
-  professionalName: '',
-  professionalType: '',
-  specialty: '',
-  service: '',
-  facility: '',
-  contact: '',
+  scope: 'external', targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '', facility: '', contact: '',
 });
 
 export const emptyReferralPayload = (): ReferralPayload => ({
-  recipient: emptyReferralRecipient(),
-  reason: '', clinicalSummary: '', requestedAction: '', priority: 'routine', observations: '',
+  recipient: emptyReferralRecipient(), reason: '', clinicalSummary: '', requestedAction: '', priority: 'routine', observations: '',
 });
 
 export function normalizeReferralPayload(value: unknown): ReferralPayload {
   const source = asObject(value);
   const recipientSource = asObject(source.recipient);
-  const rawScope = trim(recipientSource.scope);
+  const rawScope = trim(source.destination_scope ?? recipientSource.scope);
   const scope: ReferralRecipientScope = rawScope === 'internal_professional' || rawScope === 'internal_service' ? rawScope : 'external';
   const priority = source.priority === 'high' || source.priority === 'urgent' ? source.priority : 'routine';
   return {
     recipient: {
       scope,
-      targetProfileId: trim(recipientSource.target_profile_id ?? recipientSource.targetProfileId),
+      targetProfileId: trim(source.target_profile_id ?? recipientSource.target_profile_id ?? recipientSource.targetProfileId),
       professionalName: trim(recipientSource.professional_name ?? recipientSource.professionalName),
       professionalType: trim(recipientSource.professional_type ?? recipientSource.professionalType),
-      specialty: trim(recipientSource.specialty), service: trim(recipientSource.service),
-      facility: trim(recipientSource.facility), contact: trim(recipientSource.contact),
+      specialty: trim(recipientSource.specialty), service: trim(recipientSource.service), facility: trim(recipientSource.facility), contact: trim(recipientSource.contact),
     },
     reason: trim(source.reason), clinicalSummary: trim(source.clinical_summary ?? source.clinicalSummary),
     requestedAction: trim(source.requested_action ?? source.requestedAction), priority, observations: trim(source.observations),
@@ -128,9 +119,9 @@ export function normalizeReferralPayload(value: unknown): ReferralPayload {
 
 export function serializeReferralPayload(payload: ReferralPayload): Record<string, unknown> {
   return {
+    destination_scope: payload.recipient.scope,
+    target_profile_id: payload.recipient.targetProfileId.trim(),
     recipient: {
-      scope: payload.recipient.scope,
-      target_profile_id: payload.recipient.targetProfileId.trim(),
       professional_name: payload.recipient.professionalName.trim(),
       professional_type: payload.recipient.professionalType.trim(),
       specialty: payload.recipient.specialty.trim(), service: payload.recipient.service.trim(),
@@ -144,14 +135,9 @@ export function serializeReferralPayload(payload: ReferralPayload): Record<strin
 export function referralReadyToIssue(payload: ReferralPayload): boolean {
   const recipient = payload.recipient;
   if (!payload.reason.trim()) return false;
-  if (recipient.scope === 'internal_professional') {
-    return Boolean(recipient.targetProfileId.trim() && recipient.professionalName.trim());
-  }
-  if (recipient.scope === 'internal_service') {
-    return Boolean(recipient.specialty.trim() || recipient.service.trim() || recipient.professionalType.trim());
-  }
-  return [recipient.professionalName, recipient.professionalType, recipient.specialty, recipient.service, recipient.facility]
-    .some((item) => item.trim().length > 0);
+  if (recipient.scope === 'internal_professional') return Boolean(recipient.targetProfileId.trim() && recipient.professionalName.trim());
+  if (recipient.scope === 'internal_service') return Boolean(recipient.specialty.trim() || recipient.service.trim() || recipient.professionalType.trim());
+  return [recipient.professionalName, recipient.professionalType, recipient.specialty, recipient.service, recipient.facility].some((item) => item.trim().length > 0);
 }
 
 const mapTemplate = (row: TemplateRow, renderDefinition: Record<string, unknown>): ReferralTemplate | null => row.current_version_id ? ({
@@ -177,31 +163,24 @@ export async function loadReferralInternalTargets(): Promise<ReferralInternalTar
   const { data, error } = await db.rpc('list_clinical_referral_internal_targets');
   if (error) throw error;
   return ((data ?? []) as InternalTargetRow[]).map((row) => ({
-    profileId: row.profile_id,
-    name: row.name,
-    professionalType: trim(row.professional_type),
-    specialty: trim(row.specialty),
-    councilType: trim(row.council_type),
-    councilState: trim(row.council_state),
-    registration: trim(row.registration),
+    profileId: row.profile_id, name: row.name, professionalType: trim(row.professional_type), specialty: trim(row.specialty),
+    councilType: trim(row.council_type), councilState: trim(row.council_state), registration: trim(row.registration),
   }));
 }
 
 export async function loadReferralTemplates(): Promise<ReferralTemplate[]> {
-  const { data, error } = await db.from('clinical_document_templates')
-    .select('id,name,description,current_version_id').eq('document_type', 'referral').eq('status', 'active').order('name', { ascending: true });
+  const { data, error } = await db.from('clinical_document_templates').select('id,name,description,current_version_id')
+    .eq('document_type', 'referral').eq('status', 'active').order('name', { ascending: true });
   if (error) throw error;
   const rows = (data ?? []) as TemplateRow[];
   const versionIds = rows.map((row) => row.current_version_id).filter((value): value is string => Boolean(value));
   const renderByVersion = new Map<string, Record<string, unknown>>();
   if (versionIds.length > 0) {
-    const { data: versions, error: versionError } = await db.from('clinical_document_template_versions')
-      .select('id,render_definition').in('id', versionIds);
+    const { data: versions, error: versionError } = await db.from('clinical_document_template_versions').select('id,render_definition').in('id', versionIds);
     if (versionError) throw versionError;
     for (const version of (versions ?? []) as TemplateVersionRow[]) renderByVersion.set(version.id, asObject(version.render_definition));
   }
-  return rows.map((row) => mapTemplate(row, row.current_version_id ? renderByVersion.get(row.current_version_id) ?? {} : {}))
-    .filter((value): value is ReferralTemplate => Boolean(value));
+  return rows.map((row) => mapTemplate(row, row.current_version_id ? renderByVersion.get(row.current_version_id) ?? {} : {})).filter((value): value is ReferralTemplate => Boolean(value));
 }
 
 export async function loadReferralTemplateRenderDefinition(versionId: string): Promise<Record<string, unknown>> {
@@ -219,9 +198,7 @@ export async function loadReferralDocuments(patientId: string): Promise<Referral
 }
 
 export async function createReferralDraft(appointmentId: string, templateVersionId: string, payload: ReferralPayload = emptyReferralPayload()): Promise<ReferralDocument> {
-  const { data, error } = await db.rpc('create_clinical_document_draft', {
-    p_appointment_id: appointmentId, p_template_version_id: templateVersionId, p_payload: serializeReferralPayload(payload),
-  });
+  const { data, error } = await db.rpc('create_clinical_document_draft', { p_appointment_id: appointmentId, p_template_version_id: templateVersionId, p_payload: serializeReferralPayload(payload) });
   if (error || !data) throw error ?? new Error('Rascunho de encaminhamento sem confirmação do servidor.');
   return mapDocument(data as DocumentRow);
 }
@@ -250,7 +227,6 @@ export function referralDocumentRenderDefinition(document: ReferralDocument): un
 }
 
 export type ReferralErrorKind = 'eligibility' | 'active_encounter' | 'payload' | 'draft' | 'target' | 'unknown';
-
 export function classifyReferralError(error: unknown): ReferralErrorKind {
   const value = String(typeof error === 'object' && error !== null && 'message' in error ? (error as { message?: unknown }).message : error).toLowerCase();
   if (value.includes('clinical_referral_target_invalid')) return 'target';
