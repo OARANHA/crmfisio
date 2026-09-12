@@ -1,20 +1,18 @@
 import { prescriptionItemSummary, type MedicationPrescriptionPayload } from '../lib/clinicalPrescription';
+import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import type { Patient } from '../lib/types';
 
 type PrescriptionDocumentPreviewProps = {
   patient: Patient;
   payload: MedicationPrescriptionPayload;
-  professionalName: string;
-  professionalRegistration: string;
 };
 
-export function PrescriptionDocumentPreview({
-  patient,
-  payload,
-  professionalName,
-  professionalRegistration,
-}: PrescriptionDocumentPreviewProps) {
+export function PrescriptionDocumentPreview({ patient, payload }: PrescriptionDocumentPreviewProps) {
+  const { user } = useCurrentUserAccess();
   const patientName = patient.preferredName || patient.nome;
+  const professionalName = user?.nome || 'Profissional responsável';
+  const professionalRegistration = user?.registro || '';
+  const previewDate = new Date().toLocaleDateString('pt-BR');
   const visibleItems = payload.items.filter((item) => (
     item.medicationName.trim()
     || item.dose.trim()
@@ -39,11 +37,11 @@ export function PrescriptionDocumentPreview({
           <header className="border-b border-slate-300 pb-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-[15px] font-semibold text-slate-950">{professionalName || 'Profissional responsável'}</p>
+                <p className="text-[15px] font-semibold text-slate-950">{professionalName}</p>
                 <p className="mt-1 text-[11px] text-slate-600">CRM: {professionalRegistration || 'identificação disponível na emissão'}</p>
               </div>
               <div className="text-right text-[10px] leading-relaxed text-slate-500">
-                <p>Prévia em {new Date().toLocaleDateString('pt-BR')}</p>
+                <p>Prévia em {previewDate}</p>
                 <p>Sem validade até a emissão</p>
               </div>
             </div>
@@ -55,7 +53,7 @@ export function PrescriptionDocumentPreview({
             <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] leading-6 text-slate-700">
               <p><span className="font-semibold text-slate-950">Paciente:</span> {patientName}</p>
               <p><span className="font-semibold text-slate-950">Data de nascimento:</span> {formatDateOnly(patient.nascimento)}</p>
-              <p><span className="font-semibold text-slate-950">Data:</span> {new Date().toLocaleDateString('pt-BR')}</p>
+              <p><span className="font-semibold text-slate-950">Data:</span> {previewDate}</p>
             </div>
 
             <div className="mt-7">
