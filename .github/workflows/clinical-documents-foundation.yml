@@ -1,0 +1,84 @@
+name: Clinical Documents Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260912_clinical_documents_foundation.sql'
+      - 'supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql'
+      - 'tests/sql/clinical_documents_foundation_*.sql'
+      - 'scripts/test-clinical-documents-foundation.sh'
+      - 'docs/CLINICAL_DOCUMENTS_FOUNDATION.md'
+      - 'supabase-migrations/20260912_clinical_care_relationship_read_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260912_CLINICAL_CARE_RELATIONSHIP_READ_RECONCILIATION.sql'
+      - 'scripts/build-clinical-care-read-test.py'
+      - 'scripts/build-nexus-c06-sql-test.py'
+      - '.github/workflows/clinical-documents-foundation.yml'
+  workflow_dispatch:
+
+jobs:
+  application-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  postgres16-regressions:
+    name: PostgreSQL 16 — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: D2-A documents canonical runtime
+            database: clinical_documents_foundation_test
+            script: scripts/test-clinical-documents-foundation.sh
+          - name: care relationship read #426
+            database: clinical_care_read_test
+            script: scripts/test-clinical-care-relationship-read-reconciliation.sh
+          - name: clinical authorization reconciliation
+            database: clinical_authorization_reconciliation_test
+            script: scripts/test-clinical-authorization-reconciliation.sh
+          - name: clinical foundation reconciliation
+            database: clinical_foundation_reconciliation_test
+            script: scripts/test-clinical-foundation-reconciliation.sh
+          - name: encounter record foundation
+            database: clinical_encounter_record_foundation_test
+            script: scripts/test-clinical-encounter-record-foundation.sh
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: ${{ matrix.database }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated database
+        env:
+          PGDATABASE: postgres
+        run: createdb '${{ matrix.database }}'
+      - name: Run regression
+        run: bash '${{ matrix.script }}'
