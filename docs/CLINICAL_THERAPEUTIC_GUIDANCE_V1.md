@@ -2,9 +2,9 @@
 
 > Primeira superfície funcional de `therapeutic_guidance` sobre a Clinical Documents Foundation D2-A.
 
-**Estado:** PR #435 MERGEADA / NÃO VALIDADO EM PRODUÇÃO  
-**Merge canônico:** `33da15230cd35179681406b212e87305618a4976`  
-**Evolução visual atual:** D2-C.1 / PR #436 / EM ANDAMENTO
+**Estado:** VALIDADO EM PRODUÇÃO  
+**PR funcional:** #435 → `33da15230cd35179681406b212e87305618a4976`  
+**Evolução visual:** D2-C.1 / PR #436 → `af53bf2d7229c238335ab201f3438f44543f7f89` / VALIDADO EM PRODUÇÃO
 
 ## Objetivo
 
@@ -73,7 +73,7 @@ A D2-A criou dois templates platform:
 - `Orientação terapêutica geral`;
 - `Orientações pós-atendimento`.
 
-A D2-C consome esses templates. A D2-C.1 publica versões visuais novas dos mesmos templates sem alterar as versões históricas.
+A D2-C consome esses templates. A D2-C.1 publicou versões visuais novas dos mesmos templates sem alterar as versões históricas.
 
 ## Persistência e lifecycle
 
@@ -95,13 +95,13 @@ A UI V1 entrega criar, salvar/retomar, revisar, emitir, histórico e imprimir. O
 
 A PR #435 nasceu com preview simples de conteúdo e impressão do `rendered_snapshot` congelado.
 
-A evolução D2-C.1 / PR #436 passa a adotar um renderer visual próprio e versionado:
+A D2-C.1 / PR #436 fechou a apresentação com renderer visual próprio e versionado:
 
 ```text
 clinical-document/therapeutic-guidance-v1
 ```
 
-A regra histórica permanece a mesma:
+A regra histórica permanece:
 
 ```text
 documento emitido
@@ -113,7 +113,7 @@ Documentos antigos `plain-text-v1` continuam em fallback seguro. Detalhes: `docs
 
 ## Clinical Cockpit
 
-A PR #435 adicionou o workspace:
+O workspace validado é:
 
 ```text
 Orientações
@@ -146,20 +146,23 @@ D2-C/D2-C.1 não implementam:
 - auto-geração por Nexus/IA;
 - expansão de autorização clínica.
 
-## Produção
+## Produção — 2026-09-12
 
-A PR #435 está mergeada, mas ainda não deve ser chamada de `VALIDADO EM PRODUÇÃO` sem smoke real.
+A PR #435 foi mergeada e o fluxo funcional foi testado em produção. O smoke inicial revelou um blocker exclusivamente de apresentação: impressão plain-text com rótulo técnico e sem composição clínica adequada.
 
-A D2-C.1 adiciona uma migration visual versionada. Após eventual merge da #436, o rollout deve seguir `backup → migration pinada → verifier → redeploy → smoke`.
+Esse blocker foi fechado pela D2-C.1 / PR #436. A migration visual foi aplicada com `COMMIT`, o verifier oficial terminou verde e o frontend foi redeployado.
 
-Smoke final deve provar:
+O smoke final confirmou:
 
-1. profissional elegível abre `Orientações` em Encounter próprio ativo;
-2. cria, salva e retoma draft;
-3. revisa e emite;
-4. documento aparece no histórico;
-5. nova orientação imprime com a composição A4 congelada;
-6. orientação histórica `plain-text-v1` continua imprimível por fallback seguro;
-7. profissional inelegível continua fail-closed.
+1. workspace `Orientações` no Encounter ativo;
+2. draft e live preview A4 seguro;
+3. título humano do documento;
+4. clínica, paciente e identidade profissional;
+5. orientações e instruções formatadas;
+6. revisão/emissão e histórico;
+7. impressão profissional com bloco de assinatura e identificador;
+8. ausência do rótulo técnico `therapeutic_guidance` na saída ao paciente.
 
-Somente então D2-C/D2-C.1 podem virar `VALIDADO EM PRODUÇÃO`.
+```text
+D2-C / D2-C.1 — VALIDADO EM PRODUÇÃO
+```
