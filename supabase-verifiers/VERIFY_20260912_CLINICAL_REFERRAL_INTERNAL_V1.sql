@@ -60,18 +60,13 @@ BEGIN
 END $$;
 RESET ROLE;
 
--- Trigger-level tenant/activity/self fail-closed probes use direct INSERT under
+-- Trigger-level tenant/activity fail-closed probes use direct INSERT under
 -- postgres inside this transaction; no business state survives ROLLBACK.
 DO $$
 DECLARE
   v_base jsonb := '{"destination_scope":"internal_professional","target_profile_id":"d2100000-0000-4000-8000-000000000004","recipient":{"professional_name":"Psicóloga D2","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_ok boolean := false;
 BEGIN
-  BEGIN
-    PERFORM public.guard_clinical_referral_internal_target() WHERE false;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  -- Invoke guard through a temporary draft row using the canonical table.
   INSERT INTO public.clinical_documents(
     id, clinic_id, patient_id, appointment_id, document_type, template_id,
     template_version_id, issuer_id, status, payload, document_identifier
