@@ -34,6 +34,14 @@ INSERT INTO d2e0_results VALUES
   ('physician_prescription_preserved', public.current_user_can_issue_clinical_document('medication_prescription')),
   ('physician_guidance_preserved', public.current_user_can_issue_clinical_document('therapeutic_guidance')),
   ('unknown_type_fail_closed', NOT public.current_user_can_issue_clinical_document('unknown_document'));
+
+-- Appointment 7 deliberately contains this physician only in professional_id;
+-- the current D2-A authorship boundary is still appointments.fisio_id.
+SELECT pg_temp.d2e0_expect_error(
+  'professional_id_only_not_referral_owner',
+  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000007','{}'::jsonb)$$,
+  'clinical_document_own_active_encounter_required'
+);
 COMMIT;
 
 -- A non-medical clinical professional with clinical.documents can author a
@@ -55,12 +63,6 @@ INSERT INTO d2e0_results VALUES
   ('physio_guidance_still_allowed', public.current_user_can_issue_clinical_document('therapeutic_guidance')),
   ('physio_exam_order_still_denied', NOT public.current_user_can_issue_clinical_document('exam_order')),
   ('physio_prescription_still_denied', NOT public.current_user_can_issue_clinical_document('medication_prescription'));
-
-SELECT pg_temp.d2e0_expect_error(
-  'professional_id_only_not_referral_owner',
-  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000007','12100000-0000-4000-8000-000000000007','{}'::jsonb)$$,
-  'clinical_document_own_active_encounter_required'
-);
 
 SELECT pg_temp.d2e0_expect_error(
   'terminal_encounter_referral_draft_denied',
