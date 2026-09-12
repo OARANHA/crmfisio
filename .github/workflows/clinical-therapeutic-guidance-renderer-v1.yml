@@ -1,0 +1,84 @@
+name: Clinical Therapeutic Guidance Renderer V1
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260912_clinical_therapeutic_guidance_renderer_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260912_CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.sql'
+      - 'scripts/test-clinical-therapeutic-guidance-renderer-v1.sh'
+      - 'src/lib/clinicalTherapeuticGuidance.ts'
+      - 'src/lib/clinicalTherapeuticGuidance.test.ts'
+      - 'src/lib/clinicalTherapeuticGuidanceBoundary.test.js'
+      - 'src/lib/therapeuticGuidancePrintRenderer.ts'
+      - 'src/lib/therapeuticGuidancePrintRenderer.test.ts'
+      - 'src/components/ClinicalTherapeuticGuidanceWorkspace.tsx'
+      - 'src/components/TherapeuticGuidanceDocumentPreview.tsx'
+      - 'docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md'
+      - 'docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md'
+      - 'docs/CLINICAL_DOCUMENTS_ROADMAP.md'
+      - 'docs/CURRENT_STATE.md'
+      - 'docs/MANUAL_SOURCE_MAP.md'
+      - '.github/workflows/clinical-therapeutic-guidance-renderer-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  application-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  postgres16-regressions:
+    name: PostgreSQL 16 — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: D2-C.1 therapeutic guidance renderer v1
+            database: clinical_therapeutic_guidance_renderer_v1_test
+            script: scripts/test-clinical-therapeutic-guidance-renderer-v1.sh
+          - name: D2-B.2C prescription renderer v2
+            database: clinical_prescription_renderer_v2_test
+            script: scripts/test-clinical-prescription-renderer-v2.sh
+          - name: clinical authorization reconciliation
+            database: clinical_authorization_reconciliation_test
+            script: scripts/test-clinical-authorization-reconciliation.sh
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: ${{ matrix.database }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated database
+        env:
+          PGDATABASE: postgres
+        run: createdb '${{ matrix.database }}'
+      - name: Run regression
+        run: bash '${{ matrix.script }}'

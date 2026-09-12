@@ -3,14 +3,11 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `655f535a453493052bcd175a9209418d86eaffd0`  
+**Main canônica:** `33da15230cd35179681406b212e87305618a4976`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.1 Live Preview:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.2A Template Admin backend:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.2B Admin UI:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.2C Professional Print / Safe Presets:** VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C:** PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO  
+**Prescription D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
+**Therapeutic Guidance D2-C:** MERGEADO / NÃO VALIDADO EM PRODUÇÃO  
+**Therapeutic Guidance D2-C.1 Professional Print:** PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -20,7 +17,7 @@
 1. `AGENTS.md`
 2. este arquivo
 3. documento do domínio da tarefa
-4. `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível ao usuário
+4. `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível
 5. `docs/CLINICAL_TOOLING_REUSE_PLAN.md` para Nexus/reuso clínico
 
 Referências principais:
@@ -34,6 +31,7 @@ Referências principais:
 - `docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md`
 - `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`
 - `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`
+- `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`
 - `docs/NEXUS_GAP_MAP.md`
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
@@ -55,8 +53,6 @@ Papéis operacionais: `owner`, `admin`, `professional`, `recep`, `financeiro`.
 
 `role` não é profissão. Autorização clínica combina tenant, profile ativo, identidade profissional, conselho/registro quando aplicável, capability e autoria/relação assistencial.
 
-Princípios obrigatórios:
-
 ```text
 ENGINE != AUTHORIZATION != RELEVANCE
 TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
@@ -77,20 +73,21 @@ Clinical Cockpit = composição da experiência no Encounter
 
 # Clinical Cockpit / Encounter
 
-Workspaces canônicos em produção:
+Workspaces canônicos na `main`:
 
 ```text
 Registro
 Anamneses & Avaliações
 Prescrição
+Orientações
 Nexus
 ```
 
-A PR #435 propõe adicionar `Orientações` ao mesmo Clinical Cockpit; esse workspace ainda não deve ser tratado como produção até merge/redeploy/smoke.
+`Orientações` entrou pela PR #435, mas o fluxo ainda não deve ser marcado como validado em produção até redeploy/smoke real.
 
-Prescrição pertence ao mesmo Encounter; não cria segundo atendimento/prontuário. D2-C segue o mesmo princípio para `therapeutic_guidance`.
+Prescrição e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
-No boundary D2-A/#426 atualmente comprovado para autoria clínica de documentos, `appointments.fisio_id` permanece a referência efetivamente testada. Não introduzir fallback para `professional_id` sem reconciliação explícita.
+No boundary D2-A/#426 efetivamente testado para autoria de documentos, `appointments.fisio_id` permanece a referência canônica atual. Não introduzir fallback para `professional_id` sem reconciliação explícita.
 
 O guard temporal #399/#400 continua vigente.
 
@@ -123,7 +120,7 @@ Nexus permanece domínio clínico especializado, não segundo prontuário.
 
 ---
 
-# Clinical Documents / Prescrição
+# Clinical Documents
 
 ## D2-A — Clinical Documents Foundation
 
@@ -133,92 +130,25 @@ PR #425 → `0459e5908c942ac63c0dec87d517aa2131936204`.
 
 Entrega `medication_prescription` e `therapeutic_guidance`, lifecycle `draft → issued → canceled`, snapshots imutáveis, validação tipada, cancelamento auditável e authorization/RLS/RPC fail-closed.
 
-## D2-B — Prescription V1
+## D2-B — Prescription family
 
 **VALIDADO EM PRODUÇÃO.**
 
-PR #429 → `15692b47fc5bca577948a03de2a686f58d5c7dd9`.
-
-Smoke real confirmou criação/salvamento/resume de draft, revisão/emissão, read-only/histórico e impressão do documento emitido.
-
-## D2-B.1 — Prescription Live Preview
-
-**VALIDADO EM PRODUÇÃO.**
-
-PR #430 → `db046f0f8b88864b18a5181b320ae346c59a4419`.
-
-Editor + folha ao vivo funcionam no mesmo Encounter. Prévia é explicitamente sem validade; documento emitido vem do snapshot D2-A.
-
-## D2-B.2A — Prescription Template Admin backend
-
-**VALIDADO EM PRODUÇÃO.**
-
-PR #431 → `af7b87725a62985c0f6a38dc753b737de40b48af`.
-
-Produção confirmada:
+Marcos:
 
 ```text
-20260912_clinical_document_template_admin.sql
-→ COMMIT / MIGRATION_EXIT=0
-
-VERIFY_20260912_CLINICAL_DOCUMENT_TEMPLATE_ADMIN.sql
-→ CLINICAL DOCUMENT TEMPLATE ADMIN VERIFY PASSED
-→ VERIFIER_EXIT=0
+#429 Prescription V1
+#430 Live Preview
+#431 Template Admin backend
+#432 Admin UI
+#433 Professional Print / Safe Presets
 ```
 
-Owner/admin ativos administram templates clinic-owned via RPC sem receber autoria clínica; platform templates permanecem read-only; clone/publicação são tenant-scoped; direct table mutation e cross-tenant seguem fail-closed; versões publicadas/documentos emitidos continuam imutáveis.
+D2-B.2C merge canônico: `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
-## D2-B.2B — Admin UI / Template Library
+Produção confirmou migration base + hardening, verifier oficial, editor visual, presets seguros, emissão/impressão profissional e imutabilidade histórica do layout.
 
-**VALIDADO EM PRODUÇÃO.**
-
-PR #432 → `8247f91ec5c35c6cf409b7356ed1c1601b961623`.
-
-Smoke real em 2026-09-12 confirmou:
-
-```text
-Configurações
-→ Documentos clínicos
-→ Modelos de prescrição
-→ Visualizar / Duplicar / Editar / Arquivar
-```
-
-Biblioteca administrativa funcional com modelos MedicsPro read-only e modelos clinic-owned, preservando a separação entre administração do template e autoria clínica.
-
-## D2-B.2C — Professional Print Layout + Safe Presets
-
-**VALIDADO EM PRODUÇÃO.**
-
-PR #433 → `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
-
-Produção confirmada em 2026-09-12:
-
-```text
-20260912_clinical_prescription_renderer_v2.sql
-→ COMMIT / MIGRATION_1_EXIT=0
-
-20260912_clinical_prescription_renderer_v2_hardening.sql
-→ COMMIT / MIGRATION_2_EXIT=0
-
-VERIFY_20260912_CLINICAL_PRESCRIPTION_RENDERER_V2.sql
-→ CLINICAL PRESCRIPTION RENDERER V2 VERIFY PASSED
-→ VERIFIER_EXIT=0
-```
-
-Smoke real confirmou:
-
-- edição visual de template clinic-owned no admin;
-- publicação de nova versão visual imutável;
-- presets seguros `classic`, `institutional`, `compact`;
-- acentos fechados `monochrome`, `navy`, `emerald`;
-- preview administrativo e impressão com renderer compartilhado;
-- nova emissão usando a versão visual publicada;
-- impressão profissional do documento emitido;
-- receita emitida preservando o layout/version snapshot mesmo após publicação posterior do template;
-- HTML/CSS/JS arbitrário continua fora do contrato;
-- `plain-text-v1` permanece compatível para histórico.
-
-Contrato canônico:
+Contrato:
 
 ```text
 Admin preview
@@ -234,36 +164,28 @@ template_definition_snapshot
 Issued print
 ```
 
-Documento canônico: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
-
-**D2-B / Prescrição está fechada para o escopo atual.** Não reabrir por polimento visual sem blocker reproduzido.
+**D2-B está fechada no escopo atual.** Não reabrir por polimento sem blocker reproduzido.
 
 ## D2-C — Therapeutic Guidance V1
 
-**PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**MERGEADO / NÃO VALIDADO EM PRODUÇÃO.**
 
-Base:
+PR #435 → `33da15230cd35179681406b212e87305618a4976`.
 
-```text
-main@655f535a453493052bcd175a9209418d86eaffd0
-```
-
-A slice reutiliza o document type `therapeutic_guidance` já existente na D2-A e não adiciona migration, RPC, RLS, grant ou capability.
-
-Contrato funcional proposto:
+Contrato funcional:
 
 ```text
 Encounter próprio ativo
 → Orientações
-→ template publicado
+→ template published
 → draft / save / resume
 → revisão humana explícita
 → issue D2-A
-→ snapshot imutável
-→ histórico / impressão do rendered_snapshot emitido
+→ snapshots imutáveis
+→ histórico / impressão
 ```
 
-O payload V1 permanece no contrato D2-A:
+Payload:
 
 ```text
 items[].guidance
@@ -271,19 +193,41 @@ patient_instructions
 observations
 ```
 
-Ao contrário de `medication_prescription`, `therapeutic_guidance` não exige hardcode médico/CRM no contrato D2-A. Identidade clínica válida + `clinical.documents` + próprio Encounter ativo continuam obrigatórios e server-authoritative.
+`therapeutic_guidance` não exige hardcode médico/CRM; a autoridade continua server-side por identidade clínica válida + `clinical.documents` + próprio Encounter ativo.
 
-A prévia V1 é apenas prévia de conteúdo sem validade; a impressão histórica usa o `rendered_snapshot` emitido e não reconstrói o documento a partir do template corrente.
+## D2-C.1 — Therapeutic Guidance Professional Print Renderer V1
 
-Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`.
+**PR #436 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+
+Base da slice: `main@33da15230cd35179681406b212e87305618a4976`.
+
+Objetivo:
+
+```text
+clinical-document/therapeutic-guidance-v1
+```
+
+A slice entrega:
+
+- preview A4 real no workspace;
+- mesma composição segura no draft e no print emitido;
+- clínica/paciente/profissional/conselho/registro/data/assinatura;
+- itens, instruções e observações estruturados;
+- novas versões imutáveis dos dois templates platform de guidance;
+- impressão nova baseada em `payload_snapshot + context_snapshot + template_definition_snapshot`;
+- fallback seguro para documentos históricos `plain-text-v1`;
+- nenhuma expansão de RLS/RPC/grants/capabilities/autoria;
+- nenhum HTML/CSS/JS administrável.
+
+O campo genérico `renderer_version` não é reescrito nesta slice; a versão visual efetiva está congelada em `template_definition_snapshot.render_definition.layout`.
+
+Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
 Não incluir `Pedido de Exames` até existir `exam_order` canônico próprio.
 
 ---
 
 # Plataforma / tenants / configuração
-
-Separação obrigatória:
 
 ```text
 PLATFORM ENTITLEMENT
@@ -318,9 +262,7 @@ Frontend: React + TypeScript + Vite em Docker/Nginx/Portainer.
 
 Supabase é stack separada. Merge não significa migration aplicada.
 
-Migrations/Edge Functions de produção são controladas manualmente, com revisão pinada, backup conforme risco e verifier canônico.
-
-Estados editoriais:
+Migrations de produção são controladas manualmente, pinadas ao SHA mergeado, com backup/verifier quando aplicável.
 
 ```text
 VALIDADO EM PRODUÇÃO
@@ -337,14 +279,15 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Fechar tecnicamente a **PR #435 — D2-C Therapeutic Guidance V1** antes de qualquer merge:
+Fechar tecnicamente a **PR #436 — D2-C.1 Therapeutic Guidance Professional Print Renderer V1**:
 
-1. validar testes do payload D2-C;
-2. validar boundary do Clinical Cockpit/Encounter;
-3. rodar `npm test`, typecheck, lint e build;
-4. dependency audit;
-5. Clinical Foundation/Auth/Encounter regressions;
-6. Nexus C-01/C-02/C-03/C-04/C-06 sem relaxamento;
-7. revisar o diff final e a ausência de backend/schema novo;
-8. remover draft somente após tudo verde;
-9. parar para revisão antes de merge/produção.
+1. renderer fechado + testes;
+2. migration aditiva de versões visuais;
+3. verifier production-safe;
+4. PostgreSQL 16 + regressão D2-B.2C/Auth;
+5. `npm test`, typecheck, lint e build;
+6. demais workflows canônicos sem relaxamento;
+7. revisar diff final e CI;
+8. merge apenas com gates verdes;
+9. após merge: backup → migration pinada → verifier → redeploy → smoke real;
+10. somente depois promover D2-C/D2-C.1 a produção validada.
