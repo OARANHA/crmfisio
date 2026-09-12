@@ -1,4 +1,10 @@
 import { supabase } from './supabaseClient';
+import {
+  DEFAULT_PRESCRIPTION_RENDER_DEFINITION,
+  normalizePrescriptionRenderDefinition,
+  serializePrescriptionRenderDefinition,
+  type PrescriptionRenderDefinition,
+} from './prescriptionPrintRenderer';
 
 export type PrescriptionTemplateOwner = 'platform' | 'clinic';
 export type PrescriptionTemplateStatus = 'active' | 'archived';
@@ -49,15 +55,20 @@ const DEFAULT_DEFINITION = {
   fields: ['items', 'observations'],
 };
 
-const DEFAULT_RENDER_DEFINITION = {
-  layout: 'clinical-document/plain-text-v1',
-};
-
 const DEFAULT_VARIABLES_CONTRACT = [
   'patient.name',
+  'patient.birth_date',
+  'clinic.name',
+  'clinic.address',
+  'clinic.phone',
   'issuer.name',
+  'issuer.professional_type',
+  'issuer.specialty',
+  'issuer.council_type',
+  'issuer.council_state',
   'issuer.registro',
   'appointment.id',
+  'issued_at',
 ];
 
 const asObject = (value: unknown): Record<string, unknown> => (
@@ -92,6 +103,12 @@ export function prescriptionTemplateSpecialty(template: Pick<PrescriptionTemplat
   return typeof value === 'string' && value.trim() ? value.trim() : 'geral';
 }
 
+export function prescriptionTemplateRenderDefinition(
+  template: Pick<PrescriptionTemplateAdmin, 'renderDefinition'>,
+): PrescriptionRenderDefinition {
+  return normalizePrescriptionRenderDefinition(template.renderDefinition);
+}
+
 export async function listPrescriptionTemplatesForManagement(): Promise<PrescriptionTemplateAdmin[]> {
   const { data, error } = await db.rpc('list_clinical_document_templates_for_management', {
     p_document_type: 'medication_prescription',
@@ -104,13 +121,15 @@ export async function createClinicPrescriptionTemplate(input: {
   name: string;
   description?: string;
   specialty?: string;
+  renderDefinition?: PrescriptionRenderDefinition;
 }): Promise<string> {
+  const renderDefinition = input.renderDefinition ?? DEFAULT_PRESCRIPTION_RENDER_DEFINITION;
   const { data, error } = await db.rpc('create_clinic_clinical_document_template', {
     p_name: input.name.trim(),
     p_description: input.description?.trim() ?? '',
     p_relevance_metadata: { specialty: input.specialty?.trim() || 'geral' },
     p_definition: DEFAULT_DEFINITION,
-    p_render_definition: DEFAULT_RENDER_DEFINITION,
+    p_render_definition: serializePrescriptionRenderDefinition(renderDefinition),
     p_variables_contract: DEFAULT_VARIABLES_CONTRACT,
   });
   if (error || !data?.id) throw error ?? new Error('Modelo criado sem confirmação do servidor.');
@@ -128,6 +147,23 @@ export async function clonePrescriptionTemplateToClinic(
   });
   if (error || !data?.id) throw error ?? new Error('Modelo duplicado sem confirmação do servidor.');
   return String(data.id);
+}
+
+export async function saveClinicPrescriptionTemplatePresentation(input: {
+  templateId: string;
+  name: string;
+  description?: string;
+  specialty?: string;
+  renderDefinition: PrescriptionRenderDefinition;
+}): Promise<void> {
+  const { error } = await db.rpc('save_clinic_prescription_template_presentation', {
+    p_template_id: input.templateId,
+    p_name: input.name.trim(),
+    p_description: input.description?.trim() ?? '',
+    p_relevance_metadata: { specialty: input.specialty?.trim() || 'geral' },
+    p_render_definition: serializePrescriptionRenderDefinition(input.renderDefinition),
+  });
+  if (error) throw error;
 }
 
 export async function updateClinicPrescriptionTemplate(input: {

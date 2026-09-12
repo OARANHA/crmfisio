@@ -2,6 +2,7 @@ export type ProfessionalIdentity = {
   professionalType: string | null;
   specialty: string | null;
   councilType: string | null;
+  councilState?: string | null;
 };
 
 export type ProfessionalType = 'fisioterapeuta' | 'medico' | 'psicologo' | 'quiropraxista';

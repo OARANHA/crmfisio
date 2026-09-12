@@ -18,7 +18,7 @@ export function useProfessionalIdentity(userId: string | null | undefined) {
     setLoading(true);
     const db = supabase as any;
     db.from('profiles')
-      .select('professional_type, especialidade, council_type')
+      .select('professional_type, especialidade, council_type, council_state')
       .eq('id', userId)
       .eq('ativo', true)
       .maybeSingle()
@@ -32,6 +32,7 @@ export function useProfessionalIdentity(userId: string | null | undefined) {
             professionalType: data?.professional_type ?? null,
             specialty: data?.especialidade ?? null,
             councilType: data?.council_type ?? null,
+            councilState: data?.council_state ?? null,
           });
         }
         setLoading(false);

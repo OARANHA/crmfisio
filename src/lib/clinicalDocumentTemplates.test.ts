@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   normalizePrescriptionTemplateAdminRow,
+  prescriptionTemplateRenderDefinition,
   prescriptionTemplateSpecialty,
 } from './clinicalDocumentTemplates';
 
 describe('Prescription Template Admin client', () => {
-  it('maps the D2-B.2A management RPC row without inventing clinical state', () => {
+  it('maps the management RPC row without inventing clinical state', () => {
     const template = normalizePrescriptionTemplateAdminRow({
       template_id: 'template-1',
       owner_type: 'platform',
@@ -18,7 +19,17 @@ describe('Prescription Template Admin client', () => {
       current_version_id: 'version-1',
       current_version: 2,
       definition: { kind: 'medication_prescription', fields: ['items', 'observations'] },
-      render_definition: { layout: 'clinical-document/plain-text-v1' },
+      render_definition: {
+        layout: 'clinical-document/prescription-v2',
+        preset: 'institutional',
+        accent: 'navy',
+        title: 'Receita médica',
+        medication_style: 'cards',
+        show_clinic_address: true,
+        show_clinic_phone: true,
+        show_patient_birth_date: true,
+        show_specialty: true,
+      },
       variables_contract: ['patient.name'],
       published_at: '2026-09-12T00:00:00Z',
       read_only: true,
@@ -29,8 +40,40 @@ describe('Prescription Template Admin client', () => {
     expect(template.ownerType).toBe('platform');
     expect(template.readOnly).toBe(true);
     expect(template.currentVersion).toBe(2);
-    expect(template.renderDefinition).toEqual({ layout: 'clinical-document/plain-text-v1' });
     expect(prescriptionTemplateSpecialty(template)).toBe('clinica_medica');
+    expect(prescriptionTemplateRenderDefinition(template)).toMatchObject({
+      preset: 'institutional',
+      accent: 'navy',
+      medicationStyle: 'cards',
+    });
+  });
+
+  it('maps legacy plain-text versions to a safe classic presentation fallback', () => {
+    const template = normalizePrescriptionTemplateAdminRow({
+      template_id: 'template-old',
+      owner_type: 'clinic',
+      clinic_id: 'clinic-1',
+      document_type: 'medication_prescription',
+      name: 'Modelo antigo',
+      description: '',
+      relevance_metadata: {},
+      status: 'active',
+      current_version_id: 'version-old',
+      current_version: 1,
+      definition: { kind: 'medication_prescription', fields: ['items'] },
+      render_definition: { layout: 'clinical-document/plain-text-v1' },
+      variables_contract: ['patient.name'],
+      published_at: '2026-09-12T00:00:00Z',
+      read_only: false,
+      created_at: '2026-09-12T00:00:00Z',
+      updated_at: '2026-09-12T00:00:00Z',
+    });
+
+    expect(prescriptionTemplateRenderDefinition(template)).toMatchObject({
+      preset: 'classic',
+      accent: 'monochrome',
+      medicationStyle: 'numbered',
+    });
   });
 
   it('fails soft for malformed optional JSON returned by the management projection', () => {

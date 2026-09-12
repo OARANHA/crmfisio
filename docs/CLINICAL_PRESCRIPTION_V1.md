@@ -1,10 +1,10 @@
 # MedicsPro — Clinical Prescription V1 (D2-B)
 
-> **Estado:** D2-B e D2-B.1 estão **VALIDADOS EM PRODUÇÃO** em 2026-09-12. D2-B entrou pela PR #429; D2-B.1 Live Preview pela PR #430. A evolução atual é D2-B.2A (PR #431), backend de administração segura de templates.
+> **Estado:** D2-B, D2-B.1, D2-B.2A e D2-B.2B estão **VALIDADOS EM PRODUÇÃO** em 2026-09-12. A evolução atual é D2-B.2C (PR #433), renderer profissional seguro/versionado.
 
 ## Objetivo
 
-Entregar a primeira superfície de prescrição medicamentosa do Clinical Encounter sem criar um Prescription Engine paralelo e sem reabrir o lifecycle D2-A.
+Entregar prescrição medicamentosa dentro do Clinical Encounter sem criar Prescription Engine paralelo e sem reabrir o lifecycle D2-A.
 
 Fluxo validado:
 
@@ -24,57 +24,18 @@ Encounter ativo do profissional
 → impressão do documento emitido
 ```
 
-## Arquitetura
-
-D2-B é consumidor frontend/application da D2-A.
-
-Não criou:
-
-- migration;
-- novo `document_type`;
-- RLS própria;
-- RPC própria;
-- regra de autorização paralela;
-- catálogo farmacológico;
-- recomendação automática;
-- PDF/assinatura digital;
-- engine Nexus paralela.
-
-RPCs canônicos reutilizados:
-
-```text
-current_user_can_issue_clinical_document('medication_prescription')
-create_clinical_document_draft(...)
-save_clinical_document_draft(...)
-issue_clinical_document(...)
-cancel_clinical_document(...)
-```
-
-A UI nunca grava diretamente `clinical_documents`.
-
 ## Authorization / relevance
 
-O workspace `Prescrição` é apresentado no Encounter quando a identidade de apresentação é médica. Isso é somente **relevância de UI**.
-
-A autorização efetiva continua server-side e exige o contrato D2-A, incluindo:
-
-- usuário autenticado e profile ativo;
-- tenant correto;
-- identidade clínica válida;
-- `clinical.documents`;
-- identidade médica válida para `medication_prescription`;
-- CRM/UF/registro;
-- próprio Encounter ativo.
+A apresentação da aba pode usar profissão/especialidade apenas como relevância. A autorização efetiva continua server-side e exige o contrato D2-A: sessão/profile/tenant ativos, identity clínica, `clinical.documents`, identidade médica válida, CRM/UF/registro e próprio Encounter ativo.
 
 ```text
 profession relevance != authorization
+TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
 ```
-
-Esconder ou mostrar a aba nunca concede o ato documental.
 
 ## Payload V1
 
-Cada medicamento é estruturado como:
+Cada medicamento:
 
 ```text
 medication_name   obrigatório para emissão
@@ -92,9 +53,7 @@ items[]
 observations
 ```
 
-Rascunhos podem permanecer incompletos. A emissão exige pelo menos um item e `medication_name` não vazio em todos os itens, conforme o boundary D2-A.
-
-D2-B não infere dose, via, duração, frequência, diagnóstico ou conduta.
+Rascunhos podem permanecer incompletos. A emissão exige pelo menos um item e `medication_name` não vazio em todos os itens. D2-B não infere dose, via, duração, frequência, diagnóstico ou conduta.
 
 ## Persistência / resume
 
@@ -110,143 +69,150 @@ rascunho criado
 
 `Salvar rascunho` nunca emite. `Confirmar e emitir` é ação humana separada.
 
-Ao abrir o mesmo Encounter, D2-B procura o rascunho `medication_prescription` do próprio emissor e do mesmo `appointment_id` e o retoma. Rascunhos de outro profissional/appointment não são usados como documento editável atual.
+O smoke confirmou salvar, sair, retornar e retomar o rascunho do mesmo emissor/Encounter.
 
-O smoke de produção confirmou salvar, sair da tela, retornar e retomar o rascunho corretamente.
+## D2-B.1 — Live Preview
 
-## D2-B.1 — Live document preview
+**VALIDADO EM PRODUÇÃO.** PR #430 → `db046f0f8b88864b18a5181b320ae346c59a4419`.
 
-PR #430 recuperou a boa ergonomia de `Visualização` do MedicsPro histórico sem transformar HTML/UI em fonte clínica.
-
-Desktop largo:
-
-```text
-Editor estruturado | Folha de receita ao vivo
-```
-
-Viewport menor: superfícies empilhadas.
-
-A prévia usa somente estado já disponível no frontend:
-
-- usuário autenticado: nome e registro;
-- paciente: nome e data de nascimento;
-- data da visualização;
-- `payload.items` local;
-- `payload.observations` local.
-
-Ela é marcada como:
-
-```text
-Rascunho · não emitida
-Sem validade até a emissão
-Pré-visualização de rascunho · documento não emitido
-```
-
-A prévia:
-
-- não chama RPC;
-- não persiste;
-- não concede autorização;
-- não é imprimível;
-- não gera document identifier;
-- não substitui a revisão humana;
-- não altera o lifecycle D2-A.
+A prévia é explicitamente marcada como rascunho sem validade. Antes da D2-B.2C ela usava uma composição visual frontend própria; a evolução em curso converge preview e print para um renderer único versionado.
 
 ```text
 live preview = apresentação do estado local
 issued document = snapshot clínico imutável
 ```
 
-O smoke de produção confirmou a visualização ao vivo dentro do fluxo real de prescrição.
+## D2-B.2A — Template Management backend
 
-## Pós-emissão
+**VALIDADO EM PRODUÇÃO.** PR #431 → `af7b87725a62985c0f6a38dc753b737de40b48af`.
 
-Documento `issued` não volta ao editor.
-
-Histórico e impressão usam `payload_snapshot`/`context_snapshot` preservados na D2-A. Nenhum template atual é recalculado para alterar uma receita histórica.
-
-Cancelamento continua auditável na foundation; D2-B V1 não adicionou sua UI.
-
-## Impressão
-
-V1 usa impressão nativa do navegador sobre uma visão derivada do snapshot emitido. O smoke confirmou a abertura da impressão do documento emitido.
-
-A saída é funcional e clinicamente vinculada ao snapshot, porém o teste visual mostrou que o layout atual ainda é simples para o padrão de documento profissional desejado. Isso é uma **lacuna de apresentação**, não de lifecycle ou persistência.
-
-Direção aprovada:
-
-```text
-D2-B.2A → backend seguro de Template Admin
-D2-B.2B → Configurações / biblioteca e preview de templates
-D2-B.2C → renderer/presets profissionais versionados
-```
-
-Não resolver a aparência com HTML/CSS/JS arbitrário como fonte clínica.
-
-Não é PDF assinado e não deve ser descrito como assinatura digital ou receita eletrônica certificada.
-
-## D2-B.2A — Template Management
-
-PR #431 cria o boundary administrativo separado:
-
-```text
-TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
-```
-
-Owner/admin poderão administrar modelos da própria clínica sem que isso lhes conceda autoridade para emitir prescrição. O médico continua submetido integralmente à eligibility D2-A.
+Owner/admin administram modelos da própria clínica por RPC sem receber autoridade para prescrever. Platform templates são read-only; versões publicadas são imutáveis; clone/publicação são tenant-scoped.
 
 Documento: `docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md`.
 
+## D2-B.2B — Admin UI / Template Library
+
+**VALIDADO EM PRODUÇÃO.** PR #432 → `8247f91ec5c35c6cf409b7356ed1c1601b961623`.
+
+Smoke real confirmou:
+
+```text
+Configurações
+→ Documentos clínicos
+→ Modelos de prescrição
+→ Visualizar
+```
+
+A biblioteca administrativa funciona. O teste visual confirmou que a próxima evolução deve aproximar a experiência do MedicsPro histórico: edição visual com preview fiel e documento profissional, sem copiar seu HTML livre.
+
+## D2-B.2C — Professional Print Layout / Safe Presets
+
+**PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+
+Documento específico: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
+
+Contrato visual:
+
+```text
+clinical-document/prescription-v2
+```
+
+Presets fechados:
+
+- `classic`;
+- `institutional`;
+- `compact`.
+
+Acentos fechados:
+
+- `monochrome`;
+- `navy`;
+- `emerald`.
+
+Medicamentos:
+
+- `numbered`;
+- `cards`.
+
+Arquitetura:
+
+```text
+Admin preview
+      ↓
+render_definition publicado
+      ↓
+Draft live preview
+      ↓
+issue
+      ↓
+template_definition_snapshot
+      ↓
+Issued print
+```
+
+O mesmo `src/lib/prescriptionPrintRenderer.ts` compõe as três superfícies. Todo texto dinâmico é escapado. O admin configura presets/blocos tipados; não fornece HTML, CSS ou JavaScript.
+
+Novas emissões congelam no `context_snapshot` os dados necessários à apresentação: paciente, clínica e identidade profissional. O `template_definition_snapshot` congela a `render_definition` usada na emissão.
+
+Documento histórico nunca consulta o template corrente para reconstruir aparência.
+
+## Impressão e histórico
+
+Documento `issued` não volta ao editor.
+
+Na D2-B.2C, a impressão passa a consumir:
+
+- `payload_snapshot`;
+- `context_snapshot`;
+- `template_definition_snapshot.render_definition`;
+- `document_identifier`.
+
+Versões antigas `plain-text-v1` permanecem válidas e recebem fallback visual seguro no frontend; `rendered_snapshot` textual segue preservado para auditoria/compatibilidade.
+
+Não é PDF assinado e não deve ser descrito como assinatura digital ou receita eletrônica certificada.
+
 ## Nexus
 
-D2-B/D2-B.1 não consomem Nexus.
+Prescrição não consome Nexus para decidir ou emitir automaticamente.
 
 ```text
 Nexus = conhecimento / cálculo / apoio à decisão
 Clinical Documents = ato documental explícito do profissional
 ```
 
-Catálogo, equivalências, função renal, interações ou switching podem ser integrados posteriormente somente como assistência, nunca como autor automático da prescrição.
+Integrações futuras de farmacologia podem assistir o médico, nunca se tornar autor automático da prescrição.
 
 ## Referência histórica
 
-`OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83` continua útil como referência de produto para:
+`OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83` foi revisado para D2-B.2C.
 
+Reaproveitar UX madura:
+
+- modelos;
+- clínica/profissional/paciente no documento;
 - medicamentos estruturados;
-- templates;
 - observações;
 - preview;
 - impressão;
-- histórico.
+- assinatura visual.
 
-Preservar a ideia de experiência; rejeitar Vue/Pinia/Mongo/Express, autorização frontend, edição/apagamento de emitidos, HTML arbitrário como verdade clínica e autosave que confunda salvar com emitir.
+Rejeitar:
 
-## Arquivos principais D2-B/D2-B.1
+- `v-html` como renderer;
+- substituição livre de `{{variáveis}}` em HTML;
+- autorização frontend;
+- edição/apagamento de emitidos;
+- template atual alterando documento histórico.
 
-```text
-src/lib/clinicalPrescription.ts
-src/components/ClinicalPrescriptionWorkspace.tsx
-src/components/PrescriptionDocumentPreview.tsx
-src/components/ClinicalEncounterWorkspaceV4.tsx
-src/lib/clinicalPrescription.test.ts
-src/lib/clinicalPrescriptionBoundary.test.js
-```
-
-## Evidência de rollout
+## Evidência de rollout já concluída
 
 ```text
-D2-A   VALIDADO EM PRODUÇÃO
-D2-B   VALIDADO EM PRODUÇÃO
-D2-B.1 VALIDADO EM PRODUÇÃO
+D2-A    VALIDADO EM PRODUÇÃO
+D2-B    VALIDADO EM PRODUÇÃO
+D2-B.1  VALIDADO EM PRODUÇÃO
+D2-B.2A VALIDADO EM PRODUÇÃO
+D2-B.2B VALIDADO EM PRODUÇÃO
+D2-B.2C EM ANDAMENTO / NÃO PRODUÇÃO
 ```
 
-Em 2026-09-12 o usuário confirmou no ambiente implantado:
-
-- draft salvo;
-- saída/retorno com resume correto;
-- live preview funcionando;
-- emissão concluída;
-- documento pós-emissão em histórico/read-only;
-- impressão aberta a partir do documento emitido.
-
-A próxima validação de produção pertence à D2-B.2A somente depois de merge autorizado + migration/verifier controlados.
+A D2-B.2C só muda para `VALIDADO EM PRODUÇÃO` depois de merge autorizado, migrations/verifier controlados, redeploy frontend e smoke real de admin + médico + impressão.
