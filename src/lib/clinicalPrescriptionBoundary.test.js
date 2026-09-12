@@ -35,10 +35,25 @@ describe('Clinical Prescription V1 boundary', () => {
     expect(workspaceSource).not.toContain('setInterval(');
   });
 
-  it('prints only the immutable issued snapshot', () => {
+  it('prints only the immutable issued snapshot and its frozen professional identity', () => {
     expect(workspaceSource).toContain("document.status !== 'issued' || !document.payloadSnapshot");
     expect(workspaceSource).toContain('document.payloadSnapshot.items');
+    expect(workspaceSource).toContain("const issuerCredential = snapshotIssuerCredential(document.contextSnapshot)");
+    expect(workspaceSource).toContain('issuer.council_type');
+    expect(workspaceSource).toContain('issuer.council_state');
+    expect(workspaceSource).toContain('issuer.registro');
     expect(workspaceSource).not.toContain('template.definition');
+  });
+
+  it('isolates local draft state by patient, canonical encounter and authenticated user', () => {
+    expect(workspaceSource).toContain('const contextKey = `${props.patient.id}:${props.encounter.id}:${props.userId}`');
+    expect(workspaceSource).toContain('<ClinicalPrescriptionWorkspaceContext key={contextKey} {...props} />');
+  });
+
+  it('separates documents from this encounter from prior longitudinal history', () => {
+    expect(workspaceSource).toContain('document.appointmentId === encounter.id');
+    expect(workspaceSource).toContain('document.appointmentId !== encounter.id');
+    expect(workspaceSource).toContain('title="Histórico anterior"');
   });
 
   it('integrates prescription as navigation inside the same canonical Encounter', () => {
