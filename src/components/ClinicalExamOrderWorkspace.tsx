@@ -60,10 +60,6 @@ function ClinicalExamOrderWorkspaceContext({ patient, encounter, userId }: Clini
     () => documents.find((document) => document.id === activeDocumentId) ?? null,
     [activeDocumentId, documents],
   );
-  const selectedTemplate = useMemo(
-    () => templates.find((template) => template.currentVersionId === selectedTemplateVersionId) ?? templates[0] ?? null,
-    [selectedTemplateVersionId, templates],
-  );
   const history = useMemo(() => documents.filter((document) => document.status !== 'draft'), [documents]);
   const currentEncounterHistory = useMemo(
     () => history.filter((document) => document.appointmentId === encounter.id),
