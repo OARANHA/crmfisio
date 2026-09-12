@@ -55,6 +55,8 @@ BEGIN
   END IF;
 END $$;
 
+-- Promote only from the canonical D2-D0 version. On replay the pointer is already
+-- v2, so this UPDATE is intentionally a no-op and does not churn updated_at.
 UPDATE public.clinical_document_templates t
 SET current_version_id = v.id
 FROM public.clinical_document_template_versions v
@@ -67,9 +69,6 @@ WHERE t.id = '12000000-0000-4000-8000-000000000006'::uuid
   AND v.version = 2
   AND v.published_at IS NOT NULL
   AND v.render_definition->>'layout' = 'clinical-document/exam-order-v1'
-  AND (
-    t.current_version_id = '12100000-0000-4000-8000-000000000006'::uuid
-    OR t.current_version_id = v.id
-  );
+  AND t.current_version_id = '12100000-0000-4000-8000-000000000006'::uuid;
 
 COMMIT;
