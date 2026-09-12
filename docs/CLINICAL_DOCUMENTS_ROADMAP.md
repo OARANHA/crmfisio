@@ -226,7 +226,48 @@ template_definition_snapshot
 issued print pelo mesmo renderer
 ```
 
-Produção confirmou título humano, cabeçalho clínico, paciente/profissional/conselho/registro, assinatura visual, conteúdo estruturado, fallback histórico `plain-text-v1` e ausência de expansão de autorização.
+Produção confirmou:
+
+- título humano;
+- clínica/endereço/telefone;
+- paciente/nascimento;
+- profissional/tipo/conselho/UF/registro/especialidade;
+- data e assinatura visual;
+- orientações, instruções e observações estruturadas;
+- renderer seguro compartilhado;
+- conteúdo dinâmico escapado;
+- legacy `plain-text-v1` preservado como fallback histórico;
+- retomada de draft vinculada à versão exata de template/render_definition;
+- nenhuma expansão de authorization, RLS, capability ou autoria;
+- ausência de editor HTML/CSS/JS;
+- ausência de `therapeutic_guidance` como texto técnico na saída para paciente.
+
+Evidência de rollout:
+
+```text
+backup
+→ /root/medicspro_before_d2c1_20260912_194049.dump
+
+migration pinada a af53bf2d7229c238335ab201f3438f44543f7f89
+→ COMMIT
+→ MIGRATION_EXIT=0
+
+verifier
+→ CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+→ VERIFIER_EXIT=0
+
+frontend
+→ redeploy concluído
+
+smoke
+→ live preview A4 + emissão/histórico/impressão profissional confirmados
+```
+
+D2-C.1 não substitui o RPC genérico de emissão apenas para alterar o campo `renderer_version`. A versão visual efetiva continua o layout congelado em:
+
+```text
+template_definition_snapshot.render_definition.layout
+```
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
@@ -288,5 +329,5 @@ Próxima slice funcional após merge + rollout/verifier de D2-D0: **D2-D1 — Ex
 8. Após cada slice, revisar `docs/CURRENT_STATE.md`, documento de domínio e `docs/MANUAL_SOURCE_MAP.md` quando houver mudança visível.
 9. Migrations de produção são controladas; merge não significa aplicação.
 10. Consultar `docs/MEDICSPRO_LEGACY_REUSE_MAP.md` e `docs/CLINICAL_TOOLING_REUSE_PLAN.md` antes de reinventar ferramenta clínica existente.
-11. Prescrição e Orientações estão fechadas no escopo atual.
+11. Prescrição e Orientações estão fechadas no escopo atual; a próxima evolução documental deve nascer de um novo gap canônico, não de polimento sem blocker reproduzido.
 12. Não acoplar `exam_order` documental a futuro domínio de fulfillment/resultados sem contrato explícito.
