@@ -37,12 +37,12 @@ INSERT INTO d2d0_results VALUES
     SELECT count(*) = 1
     FROM public.clinical_document_templates
     WHERE document_type = 'exam_order'
-      AND id = '12000000-0000-4000-8000-000000000005'::uuid
+      AND id = '12000000-0000-4000-8000-000000000006'::uuid
   ));
 
 SELECT (public.create_clinical_document_draft(
   'd2300000-0000-4000-8000-000000000001',
-  '12100000-0000-4000-8000-000000000005',
+  '12100000-0000-4000-8000-000000000006',
   '{}'::jsonb
 )).id AS exam_doc \gset
 
@@ -126,7 +126,7 @@ INSERT INTO d2d0_results VALUES
   ));
 SELECT pg_temp.d2d0_expect_error(
   'physio_exam_draft_denied',
-  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000002','12100000-0000-4000-8000-000000000005','{}'::jsonb)$$,
+  $$SELECT public.create_clinical_document_draft('d2300000-0000-4000-8000-000000000002','12100000-0000-4000-8000-000000000006','{}'::jsonb)$$,
   'clinical_document_eligibility_required'
 );
 COMMIT;
