@@ -11,6 +11,9 @@ const encounterMigration = read('../../supabase-migrations/20260910_clinical_enc
 const encounterUx = read('./clinicalEncounterUx.ts');
 const workspace = read('../components/ClinicalWorkspace.tsx');
 const assessment = read('../components/ClinicalAssessmentRunner.tsx');
+const prescription = read('../components/ClinicalPrescriptionWorkspace.tsx');
+const guidance = read('../components/ClinicalTherapeuticGuidanceWorkspace.tsx');
+const guidanceClient = read('./clinicalTherapeuticGuidance.ts');
 const eem = read('../components/NexusEemPanel.tsx');
 const tools = read('../components/ActiveEncounterClinicalTools.tsx');
 const toolRegistry = read('./nexus/clinicalToolRegistry.ts');
@@ -60,13 +63,29 @@ describe('Active Clinical Encounter workspace boundary', () => {
   });
 
   it('renders the V5 cockpit as a single active workspace with only approved clinical workspaces', () => {
-    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'nexus'>('record')");
+    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'guidance' | 'nexus'>('record')");
     expect(encounterWorkspace).toContain("workspace === 'assessment'");
     expect(encounterWorkspace).toContain("workspace === 'prescription'");
+    expect(encounterWorkspace).toContain("workspace === 'guidance'");
     expect(encounterWorkspace).toContain("workspace === 'nexus'");
     expect(encounterWorkspace).toContain("['prescription', 'Prescrição']");
+    expect(encounterWorkspace).toContain("['guidance', 'Orientações']");
+    expect(encounterWorkspace).toContain('<ClinicalTherapeuticGuidanceWorkspace');
     expect(encounterWorkspace).not.toContain('Exames');
     expect(encounterWorkspace).not.toContain('Instrumentos');
+  });
+
+  it('keeps therapeutic guidance on the D2-A document engine instead of creating a Nexus or parallel engine path', () => {
+    expect(guidanceClient).toContain("p_document_type: 'therapeutic_guidance'");
+    expect(guidanceClient).toContain(".eq('document_type', 'therapeutic_guidance')");
+    expect(guidanceClient).toContain("db.rpc('create_clinical_document_draft'");
+    expect(guidanceClient).toContain("db.rpc('save_clinical_document_draft'");
+    expect(guidanceClient).toContain("db.rpc('issue_clinical_document'");
+    expect(guidanceClient).not.toContain('nexus.');
+    expect(guidance).toContain('createTherapeuticGuidanceDraft(\n        encounter.id,');
+    expect(guidance).toContain('Revisão humana obrigatória');
+    expect(guidance).toContain('snapshot congelado pelo servidor');
+    expect(prescription).toContain('ClinicalPrescriptionWorkspace');
   });
 
   it('keeps the workspace first on mobile and moves patient context to the left rail on xl desktop', () => {
