@@ -16,15 +16,13 @@ DECLARE
   v_version_count integer;
   v_current uuid;
 BEGIN
-  SELECT pg_get_constraintdef(c.oid)
-    INTO v_templates_check
+  SELECT pg_get_constraintdef(c.oid) INTO v_templates_check
   FROM pg_constraint c
   WHERE c.conrelid = 'public.clinical_document_templates'::regclass
     AND c.conname = 'clinical_document_templates_document_type_check'
     AND c.contype = 'c';
 
-  SELECT pg_get_constraintdef(c.oid)
-    INTO v_documents_check
+  SELECT pg_get_constraintdef(c.oid) INTO v_documents_check
   FROM pg_constraint c
   WHERE c.conrelid = 'public.clinical_documents'::regclass
     AND c.conname = 'clinical_documents_document_type_check'
@@ -62,26 +60,28 @@ BEGIN
     RAISE EXCEPTION 'exam_order renderer contract missing';
   END IF;
 
-  SELECT count(*), max(current_version_id)
-    INTO v_template_count, v_current
+  SELECT count(*) INTO v_template_count
   FROM public.clinical_document_templates
-  WHERE id = '12000000-0000-4000-8000-000000000005'::uuid
+  WHERE id = '12000000-0000-4000-8000-000000000006'::uuid
     AND owner_type = 'platform'
     AND clinic_id IS NULL
     AND document_type = 'exam_order'
     AND name = 'Pedido de exames'
     AND status = 'active';
 
+  SELECT current_version_id INTO v_current
+  FROM public.clinical_document_templates
+  WHERE id = '12000000-0000-4000-8000-000000000006'::uuid;
+
   IF v_template_count <> 1
-     OR v_current IS DISTINCT FROM '12100000-0000-4000-8000-000000000005'::uuid THEN
+     OR v_current IS DISTINCT FROM '12100000-0000-4000-8000-000000000006'::uuid THEN
     RAISE EXCEPTION 'exam_order platform template drift';
   END IF;
 
-  SELECT count(*)
-    INTO v_version_count
+  SELECT count(*) INTO v_version_count
   FROM public.clinical_document_template_versions
-  WHERE id = '12100000-0000-4000-8000-000000000005'::uuid
-    AND template_id = '12000000-0000-4000-8000-000000000005'::uuid
+  WHERE id = '12100000-0000-4000-8000-000000000006'::uuid
+    AND template_id = '12000000-0000-4000-8000-000000000006'::uuid
     AND version = 1
     AND published_at IS NOT NULL
     AND definition->>'kind' = 'exam_order'
