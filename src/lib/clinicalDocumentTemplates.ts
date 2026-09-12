@@ -63,6 +63,7 @@ const DEFAULT_VARIABLES_CONTRACT = [
   'clinic.phone',
   'issuer.name',
   'issuer.professional_type',
+  'issuer.specialty',
   'issuer.council_type',
   'issuer.council_state',
   'issuer.registro',
