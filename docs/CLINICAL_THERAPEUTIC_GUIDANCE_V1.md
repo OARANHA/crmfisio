@@ -2,14 +2,15 @@
 
 > Primeira superfície funcional de `therapeutic_guidance` sobre a Clinical Documents Foundation D2-A.
 
-**Estado:** PR #435 / EM ANDAMENTO / NÃO PRODUÇÃO  
-**Base:** `main@655f535a453493052bcd175a9209418d86eaffd0`
+**Estado:** PR #435 MERGEADA / NÃO VALIDADO EM PRODUÇÃO  
+**Merge canônico:** `33da15230cd35179681406b212e87305618a4976`  
+**Evolução visual atual:** D2-C.1 / PR #436 / EM ANDAMENTO
 
 ## Objetivo
 
 Disponibilizar no Encounter um ato documental multiprofissional para orientações terapêuticas autorais, sem criar outro Clinical Documents Engine e sem transformar Nexus em emissor automático de conduta.
 
-Fluxo V1:
+Fluxo funcional:
 
 ```text
 Encounter próprio ativo
@@ -32,14 +33,12 @@ emitir
       ↓
 snapshots imutáveis D2-A
       ↓
-histórico / impressão do snapshot emitido
+histórico / impressão
 ```
 
 ## Autoridade e elegibilidade
 
-A UI não concede autoria.
-
-A autoridade continua sendo:
+A UI não concede autoria. A autoridade continua sendo:
 
 ```text
 current_user_can_issue_clinical_document('therapeutic_guidance')
@@ -47,23 +46,11 @@ current_user_can_issue_clinical_document('therapeutic_guidance')
 assert_clinical_document_actor(...)
 ```
 
-O contrato D2-A exige, entre outros invariantes já existentes:
+O contrato D2-A exige perfil/tenant coerentes, identidade clínica válida, `clinical.documents`, próprio Encounter ativo e paciente válido no tenant.
 
-- usuário autenticado;
-- profile ativo;
-- tenant corrente coerente;
-- identidade clínica válida;
-- `clinical.documents`;
-- próprio Encounter ativo no boundary D2-A;
-- paciente válido no tenant.
-
-`therapeutic_guidance` não possui o requisito adicional de identidade médica/CRM usado por `medication_prescription`. Portanto, a D2-C não deve introduzir hardcode de médico na apresentação ou no client.
-
-Especialidade não concede acesso. Owner/admin não recebem autoria clínica por papel administrativo.
+`therapeutic_guidance` não possui o requisito adicional médico/CRM de `medication_prescription`. Especialidade não concede acesso. Owner/admin não recebem autoria clínica por papel administrativo.
 
 ## Payload canônico
-
-A D2-C utiliza exatamente o contrato já validado pela D2-A:
 
 ```json
 {
@@ -75,28 +62,22 @@ A D2-C utiliza exatamente o contrato já validado pela D2-A:
 }
 ```
 
-Draft pode estar incompleto. Para emissão:
-
-- `items` deve ser array não vazio;
-- cada item deve ser objeto;
-- cada `guidance` deve possuir conteúdo não vazio.
-
-`patient_instructions` e `observations` permanecem opcionais nesta versão.
+Draft pode estar incompleto. Para emissão, `items` deve ser array não vazio e cada `guidance` deve possuir conteúdo. `patient_instructions` e `observations` permanecem opcionais.
 
 A aplicação não inventa conteúdo clínico, não completa orientação por IA e não converte resultado Nexus em documento automaticamente.
 
 ## Templates existentes
 
-A D2-A já publica dois templates platform para este document type:
+A D2-A criou dois templates platform:
 
 - `Orientação terapêutica geral`;
 - `Orientações pós-atendimento`.
 
-D2-C V1 apenas consome esses templates elegíveis. Administração visual específica para templates de guidance está fora desta slice.
+A D2-C consome esses templates. A D2-C.1 publica versões visuais novas dos mesmos templates sem alterar as versões históricas.
 
 ## Persistência e lifecycle
 
-A implementação reutiliza exclusivamente os RPCs genéricos D2-A:
+A D2-C reutiliza exclusivamente os RPCs genéricos D2-A:
 
 - `create_clinical_document_draft(...)`;
 - `save_clinical_document_draft(...)`;
@@ -108,41 +89,37 @@ Lifecycle:
 draft → issued → optional audited cancellation
 ```
 
-A UI V1 entrega criar, salvar/retomar, revisar, emitir, histórico e imprimir. O cancelamento já existe no backend D2-A, mas não é ampliado por esta primeira superfície.
+A UI V1 entrega criar, salvar/retomar, revisar, emitir, histórico e imprimir. O cancelamento existe no backend D2-A, mas não ganhou nova superfície nesta slice.
 
-## Impressão V1
+## Apresentação documental
 
-D2-C não cria um renderer paralelo nem reutiliza indevidamente o Prescription Renderer V2.
+A PR #435 nasceu com preview simples de conteúdo e impressão do `rendered_snapshot` congelado.
 
-A prévia de edição é explicitamente:
+A evolução D2-C.1 / PR #436 passa a adotar um renderer visual próprio e versionado:
 
 ```text
-Prévia de conteúdo · sem validade
+clinical-document/therapeutic-guidance-v1
 ```
 
-Depois da emissão, a impressão usa o `rendered_snapshot` congelado pelo servidor. Conteúdo dinâmico é escapado antes de entrar no HTML estático de impressão.
-
-Consequência:
+A regra histórica permanece a mesma:
 
 ```text
 documento emitido
-→ imprime snapshot emitido
-→ nunca reconstrói conteúdo histórico a partir do template corrente
+→ usa snapshots congelados na emissão
+→ nunca usa o template corrente para alterar o passado
 ```
 
-Uma futura evolução visual de Therapeutic Guidance pode ganhar contrato de renderer próprio e versionado, mas não é requisito da D2-C V1.
+Documentos antigos `plain-text-v1` continuam em fallback seguro. Detalhes: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
 ## Clinical Cockpit
 
-A PR adiciona o workspace:
+A PR #435 adicionou o workspace:
 
 ```text
 Orientações
 ```
 
-junto aos workspaces clínicos existentes. Diferentemente de `Prescrição`, a apresentação não é limitada por `isPhysicianProfessionalType`; a elegibilidade efetiva continua sendo resolvida pelo servidor.
-
-O workspace permanece vinculado ao mesmo `appointment_id`/Encounter canônico do profissional atual.
+no mesmo Clinical Cockpit/Encounter. Diferentemente de `Prescrição`, sua apresentação não é limitada por `isPhysicianProfessionalType`; a eligibility efetiva continua server-side.
 
 ## Nexus
 
@@ -153,11 +130,11 @@ Nexus = apoio à decisão / instrumento / cálculo / evidência
 Therapeutic Guidance = ato documental explícito do profissional
 ```
 
-A D2-C não lê `nexus.*` para conceder autoria e não transforma resultado clínico em orientação emitida automaticamente.
+Nexus não concede autoria e não transforma resultado clínico em orientação emitida automaticamente.
 
 ## Escopo negativo
 
-Esta slice não implementa:
+D2-C/D2-C.1 não implementam:
 
 - `exam_order`;
 - atestado;
@@ -165,45 +142,24 @@ Esta slice não implementa:
 - relatório clínico;
 - assinatura digital;
 - PDF certificado;
-- renderer visual avançado de guidance;
 - editor HTML/CSS/JS;
-- administração de templates de guidance;
 - auto-geração por Nexus/IA;
-- mudança em D2-A/RLS/RPC/grants/capabilities;
-- migration de banco.
-
-## Gates esperados
-
-Antes de sair de draft, provar no head final:
-
-- testes unitários do payload D2-C;
-- boundary do Clinical Cockpit;
-- `npm test`;
-- `npm run typecheck`;
-- `npm run lint`;
-- `npm run build`;
-- dependency audit;
-- Clinical Foundation Reconciliation;
-- Clinical Authorization Reconciliation;
-- Clinical Encounter Record Foundation;
-- Nexus C-01/C-02/C-03/C-04/C-06.
-
-Nenhum gate existente deve ser relaxado para acomodar D2-C.
+- expansão de autorização clínica.
 
 ## Produção
 
-Não há migration nova prevista para D2-C V1.
+A PR #435 está mergeada, mas ainda não deve ser chamada de `VALIDADO EM PRODUÇÃO` sem smoke real.
 
-Depois de merge/redeploy, o smoke real deverá provar:
+A D2-C.1 adiciona uma migration visual versionada. Após eventual merge da #436, o rollout deve seguir `backup → migration pinada → verifier → redeploy → smoke`.
+
+Smoke final deve provar:
 
 1. profissional elegível abre `Orientações` em Encounter próprio ativo;
-2. cria um draft usando template publicado;
-3. salva e retoma;
-4. adiciona múltiplas orientações;
-5. revisa explicitamente;
-6. emite;
-7. documento aparece no histórico;
-8. impressão usa o snapshot emitido;
-9. profissional sem elegibilidade continua fail-closed.
+2. cria, salva e retoma draft;
+3. revisa e emite;
+4. documento aparece no histórico;
+5. nova orientação imprime com a composição A4 congelada;
+6. orientação histórica `plain-text-v1` continua imprimível por fallback seguro;
+7. profissional inelegível continua fail-closed.
 
-Somente depois desse smoke o estado pode virar `VALIDADO EM PRODUÇÃO`.
+Somente então D2-C/D2-C.1 podem virar `VALIDADO EM PRODUÇÃO`.
