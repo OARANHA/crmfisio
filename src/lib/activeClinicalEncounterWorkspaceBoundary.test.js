@@ -62,16 +62,18 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(assessment).toContain('autosave.setContext(contextKey, ownDraft.id)');
   });
 
-  it('renders the V5 cockpit as a single active workspace with only approved clinical workspaces', () => {
-    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'guidance' | 'nexus'>('record')");
+  it('renders the V6 cockpit as a single active workspace with the approved clinical workspaces', () => {
+    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'nexus'>('record')");
     expect(encounterWorkspace).toContain("workspace === 'assessment'");
     expect(encounterWorkspace).toContain("workspace === 'prescription'");
+    expect(encounterWorkspace).toContain("workspace === 'exams'");
     expect(encounterWorkspace).toContain("workspace === 'guidance'");
     expect(encounterWorkspace).toContain("workspace === 'nexus'");
     expect(encounterWorkspace).toContain("['prescription', 'Prescrição']");
+    expect(encounterWorkspace).toContain("['exams', 'Exames']");
     expect(encounterWorkspace).toContain("['guidance', 'Orientações']");
+    expect(encounterWorkspace).toContain('<ClinicalExamOrderWorkspace');
     expect(encounterWorkspace).toContain('<ClinicalTherapeuticGuidanceWorkspace');
-    expect(encounterWorkspace).not.toContain('Exames');
     expect(encounterWorkspace).not.toContain('Instrumentos');
   });
 

@@ -2,8 +2,8 @@
 
 > Continuidade canônica para Prescrição e Documentos Clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Base canônica desta slice:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 IMPLEMENTADO — NÃO PROD
+**Base canônica desta slice:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
+**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-B.1 PROD / D2-B.2A PROD / D2-B.2B PROD / D2-B.2C PROD / D2-C PROD / D2-C.1 PROD / D2-D0 PROD / D2-D1 IMPLEMENTADO — NÃO PROD
 
 ---
 
@@ -24,13 +24,10 @@ Especialidade pode influenciar relevância/ordenação, nunca autorização. Adm
 
 ## Document types canônicos
 
-Produção antes da D2-D0 contém:
+Produção contém:
 
 - `medication_prescription`
 - `therapeutic_guidance`
-
-D2-D0 adiciona, após merge + migration controlada:
-
 - `exam_order`
 
 Candidatos posteriores, cada um com contrato próprio:
@@ -88,6 +85,8 @@ D2-A permanece autoridade de eligibility, lifecycle, persistência, versions/sna
 `medication_prescription` exige médico elegível + CRM/UF/registro + `clinical.documents` + próprio Encounter ativo no boundary canônico.
 
 `therapeutic_guidance` reutiliza o mesmo boundary-base clínico, sem o requisito adicional médico/CRM da prescrição medicamentosa.
+
+`exam_order` reutiliza a mesma fundação e, no V1, adota requisito médico/CRM conservador equivalente ao de `medication_prescription`.
 
 ---
 
@@ -275,9 +274,9 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
 # D2-D0 — Exam Order Canonical Foundation
 
-**IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base: `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`.
+Merge: `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`.
 
 Decisão:
 
@@ -286,7 +285,7 @@ Pedido de Exames != template de Orientação
 Pedido de Exames = exam_order canônico próprio
 ```
 
-Esta micro-slice é backend-only. Ela estende a Clinical Documents Foundation com:
+Foundation entregue:
 
 - `exam_order` no conjunto fechado de `document_type`;
 - template platform `Pedido de exames` com versão publicada imutável;
@@ -297,23 +296,100 @@ Esta micro-slice é backend-only. Ela estende a Clinical Documents Foundation co
 - verifier production-safe + comportamento PostgreSQL 16;
 - regressão explícita dos renderers de Prescrição e Orientação.
 
-V1 é conservadora: `exam_order` usa o mesmo requisito de identidade médica ativa + CRM/UF/registro já aplicado a `medication_prescription`, além de identidade clínica válida, `clinical.documents` e próprio Encounter ativo. Não existe auto-grant por especialidade nem bypass owner/admin.
+V1 é conservadora: `exam_order` usa identidade médica ativa + CRM/UF/registro, além de identidade clínica válida, `clinical.documents` e próprio Encounter ativo. Não existe auto-grant por especialidade nem bypass owner/admin.
 
 Esse recorte não afirma que somente médicos podem solicitar exames em todo contexto regulatório. Qualquer expansão para outras profissões deve nascer em slice própria, com regra de autorização explícita, em vez de transformar profissão/especialidade em ACL implícita.
 
-Fora desta micro-slice:
+Rollout validado em 2026-09-12:
 
-- aba/workspace `Exames` no Encounter;
+```text
+backup
+→ /root/medicspro_before_d2d0_20260912_213628.dump
+
+migration
+→ COMMIT
+
+verifier
+→ CLINICAL EXAM ORDER FOUNDATION VERIFY PASSED
+→ VERIFIER_EXIT=0
+```
+
+Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
+
+---
+
+# D2-D1 — Exam Order Encounter UX V1
+
+**IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO.**
+
+Base: `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`.
+
+Fluxo:
+
+```text
+Encounter próprio ativo
+→ Exames
+→ template exam_order publicado
+→ draft estruturado
+→ múltiplos exames
+→ prioridade / indicação / impressão / observações
+→ save / resume
+→ revisão humana explícita
+→ issue D2-A
+→ snapshots imutáveis
+→ histórico
+```
+
+UX entregue:
+
+- aba `Exames` no mesmo Clinical Cockpit;
+- múltiplos itens por pedido;
+- categoria/código/instruções opcionais;
+- atalhos de categoria;
+- urgência por item;
+- prioridade global `routine|high|urgent` apresentada como `Rotina|Alta|Urgente`;
+- indicação clínica;
+- hipótese/impressão;
+- observações;
+- prévia de conteúdo marcada `Sem validade`;
+- revisão humana explícita;
+- histórico do Encounter e histórico anterior.
+
+A UI usa eligibility server-side `current_user_can_issue_clinical_document('exam_order')`; capability/relevância no frontend não substituem o servidor.
+
+D2-D1 não cria migration, não altera RLS/RPC/grants e não adiciona engine documental paralelo.
+
+Fora de D2-D1:
+
 - renderer A4 profissional;
 - admin de templates de exam order;
-- catálogo/autocomplete;
+- catálogo externo/autocomplete;
 - laboratórios/integrações;
 - fulfillment/status/resultados/laudos;
 - Nexus emitindo pedido automaticamente.
 
-Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
+Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
 
-Próxima slice funcional após merge + rollout/verifier de D2-D0: **D2-D1 — Exam Order Encounter UX V1**.
+Após merge + redeploy + smoke real, D2-D1 pode virar `VALIDADO EM PRODUÇÃO`.
+
+---
+
+# D2-D2 — Exam Order Professional Print Renderer
+
+**PRÓXIMO APÓS D2-D1.**
+
+Objetivo:
+
+- publicar nova versão imutável do template `Pedido de exames`;
+- renderer code-owned, seguro e versionado;
+- preview A4 real;
+- cabeçalho com clínica/paciente/profissional;
+- título humano `Pedido de exames`;
+- prioridade, itens, indicação, impressão e observações;
+- área de assinatura;
+- mesma composição para draft preview e issued print;
+- compatibilidade/fallback para `plain-text-v1` histórico;
+- documentos já emitidos permanecem no layout/snapshot original.
 
 ---
 

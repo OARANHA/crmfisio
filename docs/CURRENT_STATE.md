@@ -3,11 +3,12 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Base canônica desta slice:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
+**Base canônica desta slice:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
 **Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
-**Exam Order D2-D0 Foundation:** IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO  
+**Exam Order D2-D0 Foundation:** VALIDADO EM PRODUÇÃO  
+**Exam Order D2-D1 Encounter UX V1:** IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -33,6 +34,7 @@ Referências principais:
 - `docs/CLINICAL_THERAPEUTIC_GUIDANCE_V1.md`
 - `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`
 - `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`
+- `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`
 - `docs/NEXUS_GAP_MAP.md`
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
@@ -84,9 +86,15 @@ Orientações
 Nexus
 ```
 
-`Exames` ainda **não** é workspace entregue. D2-D0 cria somente a autoridade backend `exam_order`; a futura D2-D1 deve consumir esse contrato no mesmo Encounter.
+D2-D1 adiciona na branch o workspace:
 
-Prescrição e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
+```text
+Exames
+```
+
+Ele consome `exam_order` D2-D0 e não cria engine paralelo. Até merge/redeploy/smoke real, `Exames` permanece **NÃO PRODUÇÃO**.
+
+Prescrição, Pedido de Exames e Orientações pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
 No boundary D2-A/#426 efetivamente testado para autoria de documentos, `appointments.fisio_id` permanece a referência canônica atual. Não introduzir fallback para `professional_id` sem reconciliação explícita.
 
@@ -238,9 +246,9 @@ Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
 ## D2-D0 — Exam Order Canonical Foundation
 
-**IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Base da implementação: `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`.
+Merge canônico: `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`.
 
 Decisão canônica:
 
@@ -249,7 +257,7 @@ Pedido de Exames != template de Orientação
 Pedido de Exames = exam_order próprio
 ```
 
-A micro-slice adiciona somente o foundation backend:
+Entregue:
 
 - `exam_order` no conjunto fechado de tipos;
 - template platform `Pedido de exames` + versão publicada;
@@ -261,18 +269,42 @@ A micro-slice adiciona somente o foundation backend:
 
 V1 mantém autoria conservadora: identidade médica ativa com CRM/UF/registro + identidade clínica válida + `clinical.documents` + próprio Encounter ativo. Especialidade não concede autoria. Owner/admin não recebem bypass.
 
-O MedicsPro histórico é referência de ergonomia (lista estruturada, indicação clínica, prioridade, histórico), mas agendamento/execução/resultados/laudos não foram acoplados ao documento.
+Produção em 2026-09-12:
 
-Ainda não entregue:
-
-- workspace `Exames` no Encounter;
-- renderer A4 profissional;
-- catálogo/autocomplete;
-- admin de templates de exam order;
-- integrações laboratoriais/imagem;
-- fulfillment/resultados.
+```text
+backup: /root/medicspro_before_d2d0_20260912_213628.dump
+migration: COMMIT
+verifier: CLINICAL EXAM ORDER FOUNDATION VERIFY PASSED
+VERIFIER_EXIT=0
+```
 
 Documento: `docs/CLINICAL_EXAM_ORDER_FOUNDATION.md`.
+
+## D2-D1 — Exam Order Encounter UX V1
+
+**IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO.**
+
+Base: `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`.
+
+A slice adiciona `Exames` ao Encounter médico e consome exclusivamente o backend D2-D0:
+
+- server eligibility `exam_order` antes de operar;
+- template publicado;
+- draft/save/resume;
+- múltiplos exames;
+- prioridade global e urgência por item;
+- categoria/código/instruções opcionais;
+- indicação clínica, hipótese/impressão e observações;
+- prévia de conteúdo explicitamente sem validade;
+- revisão humana antes da emissão;
+- issue D2-A;
+- histórico a partir de snapshot emitido.
+
+Não há migration nesta slice. Não há fulfillment/resultados/laboratórios/Nexus auto-ordering.
+
+Documento: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
+
+Próximo recorte após merge/redeploy/smoke de D2-D1: **D2-D2 — Exam Order Professional Print Renderer**, alinhado ao padrão A4 já aprovado em Prescrição e Orientações.
 
 ---
 
@@ -328,4 +360,4 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Revisar D2-D0 no PR e exigir CI/PostgreSQL 16 verde. Não abrir D2-D1 visual antes de fechar a fundação e seu rollout controlado. Após merge + migration + verifier de D2-D0, seguir para **D2-D1 — Exam Order Encounter UX V1**, reutilizando a mesma Clinical Documents Foundation e sem criar engine paralelo.
+Fechar D2-D1 com CI completo, revisão do diff e merge. Como não há migration nova, depois do merge o passo operacional será redeploy do frontend e smoke real do fluxo `Exames`. Somente após esse smoke D2-D1 poderá ser marcado `VALIDADO EM PRODUÇÃO`.

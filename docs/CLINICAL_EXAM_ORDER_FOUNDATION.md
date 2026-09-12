@@ -1,9 +1,9 @@
 # Clinical Exam Order Foundation — D2-D0
 
-> Backend foundation for a canonical `exam_order` document type. This slice does not add the Encounter UI, exam fulfillment/results, scheduling, integrations, or production rollout.
+> Backend foundation for a canonical `exam_order` document type. This slice itself did not add the Encounter UI, exam fulfillment/results, scheduling or integrations.
 
-**Base canônica:** `main@279dfb33af5cf6e2117d3fbd823175aa75ed6006`  
-**Estado:** IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
+**Merge canônico:** `main@2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db`  
+**Estado:** VALIDADO EM PRODUÇÃO
 
 ## Why this is a document type
 
@@ -108,7 +108,7 @@ D2-D0 seeds one stable platform template:
 
 - `Pedido de exames`
 
-The first published version uses `clinical-document/plain-text-v1` only as a safe foundation renderer. A future D2-D1/D2-D2 may add the Encounter editor and a professional A4 renderer through new immutable template versions. Historical versions must remain pinned.
+The first published version uses `clinical-document/plain-text-v1` only as a safe foundation renderer. D2-D1 consumes that immutable version for the first Encounter UX; D2-D2 may publish a new professional A4 version without altering historical documents.
 
 ## Database delta
 
@@ -143,7 +143,30 @@ Behavior matrix:
 
 The harness reconstructs the effective Clinical Documents stack through D2-C.1, applies D2-D0, proves positive and negative authorship/payload cases, reruns the Prescription and Therapeutic Guidance renderer verifiers, and replays the new migration to ensure it does not mutate existing exam-order state.
 
-## Explicitly not delivered
+## Produção
+
+D2-D0 foi mergeado e aplicado em produção em 2026-09-12.
+
+Evidência operacional:
+
+```text
+main
+→ 2f4fea83dbb1085c7bea2309ccd4dd1b8bc846db
+
+backup
+→ /root/medicspro_before_d2d0_20260912_213628.dump
+
+migration
+→ COMMIT
+
+verifier
+→ CLINICAL EXAM ORDER FOUNDATION VERIFY PASSED
+→ VERIFIER_EXIT=0
+```
+
+O `ROLLBACK` observado ao fim do verifier pertence somente à transação de verificação e não desfaz a migration já commitada.
+
+## Explicitly not delivered by D2-D0
 
 - Encounter tab/workspace `Exames`;
 - live preview or professional A4 renderer;
@@ -153,9 +176,10 @@ The harness reconstructs the effective Clinical Documents stack through D2-C.1, 
 - authorization/payment workflows;
 - scheduling/fulfillment/status tracking;
 - result/report storage;
-- Nexus automatic ordering;
-- production migration/deploy.
+- Nexus automatic ordering.
 
-## Next slice after rollout
+## Successor slice
 
-After D2-D0 is merged, migration-applied and verified in production, the next functional slice should be **D2-D1 — Exam Order Encounter UX V1**, consuming this exact server contract rather than introducing a parallel engine.
+**D2-D1 — Exam Order Encounter UX V1** consumes this exact server contract and does not introduce a parallel engine.
+
+Document: `docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md`.
