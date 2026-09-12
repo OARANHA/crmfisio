@@ -14,6 +14,8 @@ const assessment = read('../components/ClinicalAssessmentRunner.tsx');
 const prescription = read('../components/ClinicalPrescriptionWorkspace.tsx');
 const guidance = read('../components/ClinicalTherapeuticGuidanceWorkspace.tsx');
 const guidanceClient = read('./clinicalTherapeuticGuidance.ts');
+const referral = read('../components/ClinicalReferralWorkspace.tsx');
+const referralClient = read('./clinicalReferral.ts');
 const eem = read('../components/NexusEemPanel.tsx');
 const tools = read('../components/ActiveEncounterClinicalTools.tsx');
 const toolRegistry = read('./nexus/clinicalToolRegistry.ts');
@@ -62,22 +64,25 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(assessment).toContain('autosave.setContext(contextKey, ownDraft.id)');
   });
 
-  it('renders the V6 cockpit as a single active workspace with the approved clinical workspaces', () => {
-    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'nexus'>('record')");
+  it('renders the V7 cockpit as a single active workspace with the approved clinical workspaces', () => {
+    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'referral' | 'nexus'>('record')");
     expect(encounterWorkspace).toContain("workspace === 'assessment'");
     expect(encounterWorkspace).toContain("workspace === 'prescription'");
     expect(encounterWorkspace).toContain("workspace === 'exams'");
     expect(encounterWorkspace).toContain("workspace === 'guidance'");
+    expect(encounterWorkspace).toContain("workspace === 'referral'");
     expect(encounterWorkspace).toContain("workspace === 'nexus'");
     expect(encounterWorkspace).toContain("['prescription', 'Prescrição']");
     expect(encounterWorkspace).toContain("['exams', 'Exames']");
     expect(encounterWorkspace).toContain("['guidance', 'Orientações']");
+    expect(encounterWorkspace).toContain("['referral', 'Encaminhamento']");
     expect(encounterWorkspace).toContain('<ClinicalExamOrderWorkspace');
     expect(encounterWorkspace).toContain('<ClinicalTherapeuticGuidanceWorkspace');
+    expect(encounterWorkspace).toContain('<ClinicalReferralWorkspace');
     expect(encounterWorkspace).not.toContain('Instrumentos');
   });
 
-  it('keeps therapeutic guidance on the D2-A document engine instead of creating a Nexus or parallel engine path', () => {
+  it('keeps therapeutic guidance and referral on the D2-A document engine instead of creating parallel paths', () => {
     expect(guidanceClient).toContain("p_document_type: 'therapeutic_guidance'");
     expect(guidanceClient).toContain(".eq('document_type', 'therapeutic_guidance')");
     expect(guidanceClient).toContain("db.rpc('create_clinical_document_draft'");
@@ -87,6 +92,11 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(guidance).toContain('createTherapeuticGuidanceDraft(\n        encounter.id,');
     expect(guidance).toContain('Revisão humana obrigatória');
     expect(guidance).toContain('snapshot congelado pelo servidor');
+    expect(referralClient).toContain("p_document_type: 'referral'");
+    expect(referralClient).toContain(".eq('document_type', 'referral')");
+    expect(referralClient).toContain("db.rpc('create_clinical_document_draft'");
+    expect(referralClient).toContain("db.rpc('issue_clinical_document'");
+    expect(referral).toContain('Revisão humana obrigatória');
     expect(prescription).toContain('ClinicalPrescriptionWorkspace');
   });
 

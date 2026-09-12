@@ -2,8 +2,9 @@
 
 > Fundação backend canônica para encaminhamento clínico multiprofissional. Não cria UI, renderer A4 final nem integração externa.
 
-**Base:** `main@baa505c678db63aa4a01bf95cd0a9d32876a69db`  
-**Estado:** IMPLEMENTADO NA BRANCH / NÃO PRODUÇÃO
+**Base de implementação:** `main@baa505c678db63aa4a01bf95cd0a9d32876a69db`  
+**Merge canônico:** `main@be1fb4696dc285637c2c3e8d0f7bf857238b0926`  
+**Estado:** VALIDADO EM PRODUÇÃO
 
 ## Decisão canônica
 
@@ -22,7 +23,7 @@ O repositório histórico `OARANHA/medicspro` foi consultado como referência ob
 published template version
 → draft
 → save/resume pelos RPCs D2-A
-→ explicit human review em futura UX
+→ explicit human review na UX
 → issue
 → payload/context/template snapshots imutáveis
 → history
@@ -91,7 +92,7 @@ Draft pode permanecer incompleto. Emissão exige um destino identificável e mot
 - `clinical_summary`, `requested_action` e `observations` são textos opcionais;
 - `priority`, quando informado, pertence ao conjunto fechado `routine | high | urgent`.
 
-A validação é server-side em `assert_clinical_document_payload_ready()`; futura UI pode antecipar erros, mas não vira autoridade.
+A validação é server-side em `assert_clinical_document_payload_ready()`; a UI pode antecipar erros, mas não vira autoridade.
 
 ## Template platform V1
 
@@ -102,7 +103,7 @@ version: 1
 layout: clinical-document/plain-text-v1
 ```
 
-A versão V1 existe para fundar o contrato documental e permitir testes completos do lifecycle. Renderer profissional A4 deve ser uma slice posterior, publicando nova versão imutável sem reescrever documentos históricos.
+A versão V1 funda o contrato documental e permite o lifecycle completo. O renderer profissional A4 deve publicar nova versão imutável sem reescrever documentos históricos.
 
 ## Saída legada segura
 
@@ -114,7 +115,7 @@ Documento: Encaminhamento clínico
 
 O código interno `referral` não é usado como rótulo do documento para o paciente.
 
-## Escopo negativo
+## Escopo negativo D2-E0
 
 D2-E0 não implementa:
 
@@ -150,15 +151,21 @@ A slice inclui verifier production-safe e harness PostgreSQL 16 que comprovam:
 - replay da migration sem mutar estado de negócio;
 - regressões dos renderers de Prescrição, Orientações e Pedido de Exames.
 
-## Rollout futuro
-
-Somente após merge e CI completo:
+## Rollout validado em produção — 2026-09-12
 
 ```text
-backup
-→ migration pinada ao merge SHA
-→ verifier oficial
-→ nenhum redeploy frontend necessário em D2-E0
+merge
+→ be1fb4696dc285637c2c3e8d0f7bf857238b0926
+
+migration
+→ MIGRATION_EXIT=0
+
+verifier
+→ CLINICAL REFERRAL FOUNDATION VERIFY PASSED
+→ VERIFIER_EXIT=0
+
+frontend
+→ nenhum redeploy necessário em D2-E0
 ```
 
-D2-E0 só vira `VALIDADO EM PRODUÇÃO` após migration/verifier reais. A slice seguinte recomendada é **D2-E1 — Referral Encounter UX V1**, seguida por renderer profissional A4 em recorte próprio.
+D2-E0 está fechado. A sequência canônica é **D2-E1 — Referral Encounter UX V1**, seguida por **D2-E2 — Referral Professional Print Renderer V1**.
