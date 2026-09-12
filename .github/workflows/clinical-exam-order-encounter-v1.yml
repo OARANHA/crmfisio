@@ -1,0 +1,76 @@
+name: Clinical Exam Order Encounter V1
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/clinicalExamOrder.ts'
+      - 'src/lib/clinicalExamOrder.test.ts'
+      - 'src/lib/clinicalExamOrderBoundary.test.js'
+      - 'src/components/ClinicalExamOrderWorkspace.tsx'
+      - 'src/components/ClinicalEncounterWorkspaceV4.tsx'
+      - 'docs/CLINICAL_EXAM_ORDER_ENCOUNTER_V1.md'
+      - 'docs/CLINICAL_EXAM_ORDER_FOUNDATION.md'
+      - 'docs/CLINICAL_DOCUMENTS_ROADMAP.md'
+      - 'docs/CURRENT_STATE.md'
+      - '.github/workflows/clinical-exam-order-encounter-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  application-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npm audit --audit-level=critical
+
+  postgres16-regressions:
+    name: PostgreSQL 16 — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: D2-D0 Exam Order foundation
+            database: clinical_exam_order_foundation_test
+            script: scripts/test-clinical-exam-order-foundation.sh
+          - name: clinical authorization reconciliation
+            database: clinical_authorization_reconciliation_test
+            script: scripts/test-clinical-authorization-reconciliation.sh
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: ${{ matrix.database }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated database
+        env:
+          PGDATABASE: postgres
+        run: createdb '${{ matrix.database }}'
+      - name: Run regression
+        run: bash '${{ matrix.script }}'
