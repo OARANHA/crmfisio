@@ -3,12 +3,13 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes históricos ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-12  
-**Main canônica:** `af7b87725a62985c0f6a38dc753b737de40b48af`  
+**Main canônica:** `8247f91ec5c35c6cf409b7356ed1c1601b961623`  
 **Clinical Documents D2-A:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.1 Live Preview:** VALIDADO EM PRODUÇÃO  
 **Prescription D2-B.2A Template Admin backend:** VALIDADO EM PRODUÇÃO  
-**Prescription D2-B.2B Admin UI:** PR #432 / EM ANDAMENTO / NÃO PRODUÇÃO  
+**Prescription D2-B.2B Admin UI:** VALIDADO EM PRODUÇÃO  
+**Prescription D2-B.2C Professional Print / Safe Presets:** PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO  
 **Clinical Encounter visual:** VALIDADO EM PRODUÇÃO
 
 ---
@@ -26,11 +27,11 @@ Referências principais:
 - `docs/ASSESSMENT_ENGINE.md`
 - `docs/MEDICSPRO_ASSESSMENT_LIBRARY_V1.md`
 - `docs/CLINICAL_ENCOUNTER_RECORD.md`
-- `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
 - `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 - `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
 - `docs/CLINICAL_PRESCRIPTION_V1.md`
 - `docs/CLINICAL_DOCUMENT_TEMPLATE_ADMIN.md`
+- `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`
 - `docs/NEXUS_GAP_MAP.md`
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 
@@ -57,9 +58,11 @@ Princípios obrigatórios:
 ```text
 ENGINE != AUTHORIZATION != RELEVANCE
 TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
+PREVIEW == PRINT CONTRACT
+ISSUED DOCUMENT != CURRENT TEMPLATE
 ```
 
-Especialidade pode alterar relevância/ordenação. Não concede ACL.
+Especialidade altera relevância/organização, nunca ACL.
 
 ```text
 Nexus = cálculo/instrumento/evidência/farmacologia/apoio à decisão
@@ -124,15 +127,6 @@ Nexus permanece domínio clínico especializado, não segundo prontuário.
 
 PR #425 → `0459e5908c942ac63c0dec87d517aa2131936204`.
 
-```text
-20260912_clinical_documents_foundation.sql
-→ COMMIT / MIGRATION_EXIT=0
-
-VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql
-→ CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED
-→ VERIFIER_EXIT=0
-```
-
 Entrega `medication_prescription` e `therapeutic_guidance`, lifecycle `draft → issued → canceled`, snapshots imutáveis, validação tipada, cancelamento auditável e authorization/RLS/RPC fail-closed.
 
 ## D2-B — Prescription V1
@@ -149,89 +143,97 @@ Smoke real confirmou criação/salvamento/resume de draft, revisão/emissão, re
 
 PR #430 → `db046f0f8b88864b18a5181b320ae346c59a4419`.
 
-Editor + folha ao vivo funcionam no mesmo Encounter. Prévia permanece explicitamente sem validade e não imprime; documento emitido continua vindo do snapshot D2-A.
-
-Observação confirmada no smoke: a impressão atual é funcional, porém simples demais para o padrão desejado. Melhorias devem vir por renderer/presets seguros, nunca HTML arbitrário.
+Editor + folha ao vivo funcionam no mesmo Encounter. Prévia é explicitamente sem validade; documento emitido vem do snapshot D2-A.
 
 ## D2-B.2A — Prescription Template Admin backend
 
 **VALIDADO EM PRODUÇÃO.**
 
-PR #431 squash-mergeada em:
+PR #431 → `af7b87725a62985c0f6a38dc753b737de40b48af`.
 
-```text
-af7b87725a62985c0f6a38dc753b737de40b48af
-```
-
-Produção confirmada em 2026-09-12:
+Produção confirmada:
 
 ```text
 20260912_clinical_document_template_admin.sql
-→ COMMIT
-→ MIGRATION_EXIT=0
+→ COMMIT / MIGRATION_EXIT=0
 
 VERIFY_20260912_CLINICAL_DOCUMENT_TEMPLATE_ADMIN.sql
 → CLINICAL DOCUMENT TEMPLATE ADMIN VERIFY PASSED
-→ ROLLBACK intencional do verifier
 → VERIFIER_EXIT=0
 ```
 
-Contrato entregue:
-
-- owner/admin ativos administram templates `medication_prescription` da própria clínica por RPC;
-- gestão não exige CRM/capability clínica e não concede emissão;
-- platform templates read-only;
-- clone platform → cópia independente clinic-owned;
-- publicação append-only;
-- metadados + `active|archived`;
-- direct table mutation continua revogada;
-- cross-tenant fail-closed;
-- published versions e documentos emitidos permanecem historicamente imutáveis;
-- renderer segue fechado em `clinical-document/plain-text-v1`.
+Owner/admin ativos administram templates clinic-owned via RPC sem receber autoria clínica; platform templates permanecem read-only; clone/publicação são tenant-scoped; direct table mutation e cross-tenant seguem fail-closed; versões publicadas/documentos emitidos continuam imutáveis.
 
 ## D2-B.2B — Admin UI / Template Library
 
-**PR #432 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
-Branch:
+PR #432 → `8247f91ec5c35c6cf409b7356ed1c1601b961623`.
 
-```text
-feat/clinical-prescription-template-admin-d2b2b
-```
-
-Base:
-
-```text
-main@af7b87725a62985c0f6a38dc753b737de40b48af
-```
-
-Alvo visível:
+Smoke real em 2026-09-12 confirmou:
 
 ```text
 Configurações
 → Documentos clínicos
 → Modelos de prescrição
+→ Visualizar
 ```
 
-Escopo:
+Biblioteca administrativa funcional com modelos MedicsPro read-only, modelos da clínica, criar/duplicar/editar metadados, arquivar/reativar e preview estrutural.
 
-- listar modelos MedicsPro e clinic-owned;
-- visualizar exemplo estrutural sem dados reais de paciente;
-- criar modelo da clínica;
-- duplicar platform → clinic-owned;
-- editar nome/descrição/especialidade-relevância;
-- arquivar/reativar;
-- usar exclusivamente os RPCs D2-B.2A;
-- nenhuma migration/RLS/RPC nova;
-- sem editor HTML/CSS;
-- especialidade continua relevância, nunca autorização.
+O smoke também confirmou o próximo gap: a experiência administrativa deve se aproximar da referência histórica madura e a impressão precisa usar um layout profissional configurável, mas sem retornar ao renderer HTML livre do sistema antigo.
 
-Não confundir a prévia administrativa B.2B com o futuro Professional Print Layout. O renderer publicado continua `plain-text-v1` até slice explícita de presets seguros.
+## D2-B.2C — Professional Print Layout + Safe Presets
 
-Próxima slice após B.2B estabilizada:
+**PR #433 / EM ANDAMENTO / NÃO PRODUÇÃO.**
 
-1. D2-B.2C — Professional Print Layout + safe presets versionados;
-2. D2-C — Therapeutic Guidance V1.
+Branch:
+
+```text
+feat/clinical-prescription-print-presets-d2b2c
+```
+
+Base:
+
+```text
+main@8247f91ec5c35c6cf409b7356ed1c1601b961623
+```
+
+Decisão arquitetural:
+
+```text
+Admin preview
+      ↓
+render_definition publicado
+      ↓
+Draft live preview
+      ↓
+issue
+      ↓
+template_definition_snapshot
+      ↓
+Issued print
+```
+
+Escopo da #433:
+
+- contrato fechado `clinical-document/prescription-v2`;
+- presets `classic`, `institutional`, `compact`;
+- acentos fixos `monochrome`, `navy`, `emerald`;
+- medicamentos em `numbered|cards`;
+- toggles seguros de clínica/paciente/especialidade;
+- drawer de edição visual no admin;
+- shared renderer para admin preview, draft preview e issued print;
+- publicação visual clinic-owned gera nova versão imutável;
+- novas emissões congelam contexto necessário à impressão;
+- histórico usa `template_definition_snapshot`, nunca template atual;
+- HTML/CSS/JS arbitrário continua proibido;
+- versões `plain-text-v1` permanecem válidas com fallback visual seguro;
+- nenhum novo `document_type`.
+
+Documento canônico: `docs/CLINICAL_PRESCRIPTION_RENDERER_V2.md`.
+
+Após #433 estabilizada/validada, retomar **D2-C — Therapeutic Guidance V1**.
 
 Não incluir `Pedido de Exames` até existir `exam_order` canônico próprio.
 
@@ -270,7 +272,7 @@ A fundação financeira já é extensa. Não reabrir sem evidência/escopo fresc
 
 # Deploy / produção
 
-Frontend: React + TypeScript + Vite em Docker/Nginx/Portainer. `main` pode resultar em deploy do app.
+Frontend: React + TypeScript + Vite em Docker/Nginx/Portainer.
 
 Supabase é stack separada. Merge não significa migration aplicada.
 
@@ -293,13 +295,13 @@ Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
 
 ## Próximo passo imediato
 
-Fechar tecnicamente a **PR #432 — D2-B.2B Prescription Template Admin UI**:
+Fechar tecnicamente a **PR #433 — D2-B.2C Prescription Professional Print / Safe Presets**:
 
-1. testes de client/mapping e boundary;
-2. validar ConfigPremium;
-3. typecheck/lint/build;
-4. revisar que não existe escrita direta em tabelas clínicas;
-5. atualizar documentação/PR com head final;
-6. somente então Ready for Review.
+1. PostgreSQL 16 do renderer V2;
+2. regressões D2-B.2A/D2-A/care/auth;
+3. unit/boundary tests do shared renderer;
+4. typecheck/lint/build;
+5. revisão de snapshot/ACL/diff;
+6. Ready for Review somente após tudo verde.
 
-Nenhuma ação de servidor é necessária nesta slice frontend-only.
+Nenhuma ação de produção deve ocorrer antes do merge explícito da #433.
