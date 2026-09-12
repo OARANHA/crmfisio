@@ -1,12 +1,8 @@
-# MedicsPro — Clinical Document Template Admin (D2-B.2A)
+# MedicsPro — Clinical Document Template Admin
 
-> Boundary backend para administração tenant-scoped de modelos de prescrição. O ato administrativo de configurar um modelo **não** concede autoridade clínica para prescrever.
+> Administração tenant-scoped de modelos de prescrição. O ato administrativo de configurar um modelo **não** concede autoridade clínica para prescrever.
 
-## Objetivo
-
-Permitir que `owner`/`admin` ativos da clínica preparem a futura biblioteca visual de modelos de prescrição sem reabrir a Clinical Documents Foundation e sem permitir escrita direta nas tabelas protegidas.
-
-Princípio:
+## Princípio central
 
 ```text
 TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
@@ -14,29 +10,31 @@ TEMPLATE MANAGEMENT != CLINICAL AUTHORSHIP
 
 Como admin da clínica:
 
-- posso listar modelos MedicsPro e os modelos da minha clínica;
+- posso listar modelos MedicsPro e modelos da minha clínica;
 - modelos MedicsPro são somente leitura;
 - posso criar um modelo da clínica;
 - posso clonar um modelo MedicsPro para minha clínica;
 - posso publicar uma nova versão imutável de um modelo da clínica;
-- posso alterar metadados e arquivar o modelo da clínica;
+- posso alterar metadados e arquivar/reativar o modelo da clínica;
 - não posso administrar modelo de outro tenant.
 
 Como médico:
 
 - continuo vendo/usando somente templates ativos elegíveis pelo boundary D2-A;
-- administrar modelos não substitui identidade médica, CRM, capability ou autoria do Encounter;
-- uma prescrição emitida mantém seus snapshots históricos mesmo após nova versão/arquivamento do template.
+- administrar modelos não substitui identidade médica, CRM, capability nem autoria do Encounter;
+- uma receita emitida mantém seus snapshots históricos mesmo após nova versão/arquivamento do template.
 
-## Contrato D2-B.2A
+---
 
-A slice é backend-only e gerencia apenas:
+# D2-B.2A — Backend canônico
+
+**VALIDADO EM PRODUÇÃO em 2026-09-12.**
+
+PR #431 → squash merge:
 
 ```text
-medication_prescription
+af7b87725a62985c0f6a38dc753b737de40b48af
 ```
-
-Não adiciona `exam_order`, atestado, relatório, assinatura digital, PDF, catálogo de medicamentos ou automação Nexus.
 
 RPCs:
 
@@ -53,7 +51,7 @@ Helpers internos:
 
 ## Autorização
 
-V1 de administração exige:
+Administração exige:
 
 - sessão autenticada;
 - profile ativo;
@@ -79,55 +77,104 @@ issued document from v1
   └── payload_snapshot/context_snapshot/rendered_snapshot preservados
 ```
 
-Versões publicadas continuam protegidas pelo trigger D2-A. Não há hard delete administrativo nesta slice.
+Versões publicadas continuam protegidas pelo trigger D2-A. Não há hard delete administrativo.
 
-## Renderer seguro
+## Renderer seguro atual
 
-D2-B.2A não cria editor HTML. O contrato continua fechado:
+D2-B.2A não criou editor HTML. O contrato permanece fechado:
 
 - `definition.kind = medication_prescription`;
 - campos permitidos: `items`, `observations`;
 - `items` obrigatório;
-- renderer permitido nesta etapa: `clinical-document/plain-text-v1`;
+- renderer atual: `clinical-document/plain-text-v1`;
 - variables contract limitado ao conjunto canônico atual.
 
-Layouts profissionais configuráveis serão uma evolução aditiva posterior. HTML/CSS/JS arbitrário não será fonte clínica.
+HTML/CSS/JS arbitrário não é fonte clínica.
 
-## Validação
+## Evidência PostgreSQL 16 / produção
 
-A suite D2-B.2A deve provar, em PostgreSQL 16:
+Antes do merge:
 
-- owner/admin gerenciam templates do próprio tenant sem identidade médica;
-- gestão não concede emissão;
-- profissionais/recepção/financeiro são negados;
-- cross-tenant é negado;
-- template platform não é mutável;
-- clone platform vira cópia independente da clínica;
-- publicação cria versão append-only e avança `current_version_id`;
-- versões publicadas permanecem imutáveis;
-- snapshots de documento emitido permanecem idênticos depois de v2;
-- archive não apaga documento histórico;
-- INSERT/UPDATE/DELETE direto por `authenticated` continua negado;
-- renderer/fields fora do contrato fail closed.
+- verifier oficial verde;
+- behavior matrix **22/22**;
+- D2-A canonical runtime verde;
+- care relationship/auth regressions verdes;
+- 422/422 testes de aplicação + typecheck/lint/build;
+- 10/10 workflows no head final.
 
-Arquivos de rollout:
-
-- migration: `supabase-migrations/20260912_clinical_document_template_admin.sql`
-- verifier production-safe: `supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENT_TEMPLATE_ADMIN.sql`
-- behavior cases: `tests/sql/clinical_document_template_admin_cases.sql`
-- harness: `scripts/test-clinical-document-template-admin.sh`
-
-## Rollout
-
-Migration de produção é manual/controlada. Merge de PR não equivale a migration aplicada.
-
-Estados editoriais:
+Rollout real:
 
 ```text
-IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
-→ MERGEADO / NÃO VALIDADO EM PRODUÇÃO
-→ migration + verifier reais
-→ VALIDADO EM PRODUÇÃO
+20260912_clinical_document_template_admin.sql
+→ COMMIT
+→ MIGRATION_EXIT=0
+
+VERIFY_20260912_CLINICAL_DOCUMENT_TEMPLATE_ADMIN.sql
+→ CLINICAL DOCUMENT TEMPLATE ADMIN VERIFY PASSED
+→ ROLLBACK intencional do verifier
+→ VERIFIER_EXIT=0
 ```
 
-A futura UI de `Configurações → Modelos de Prescrição` deve consumir os RPCs desta slice; não deve receber grants de mutação direta nas tabelas clínicas.
+Arquivos:
+
+- `supabase-migrations/20260912_clinical_document_template_admin.sql`
+- `supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENT_TEMPLATE_ADMIN.sql`
+- `tests/sql/clinical_document_template_admin_cases.sql`
+- `scripts/test-clinical-document-template-admin.sh`
+
+---
+
+# D2-B.2B — Admin UI / Template Library
+
+**PR #432 / EM ANDAMENTO / NÃO PRODUÇÃO.**
+
+A UI deve consumir somente os RPCs D2-B.2A; não recebe grants de mutação direta nas tabelas clínicas.
+
+Superfície:
+
+```text
+Configurações
+→ Documentos clínicos
+→ Modelos de prescrição
+```
+
+Funcionalidades desta slice:
+
+- biblioteca de modelos MedicsPro read-only;
+- biblioteca de modelos clinic-owned;
+- visualização administrativa com dados fictícios;
+- criar modelo da clínica;
+- duplicar modelo MedicsPro para cópia independente do tenant;
+- editar nome, descrição e especialidade/relevância;
+- arquivar/reativar modelos clinic-owned.
+
+Boundary:
+
+```text
+ADMIN UI
+→ D2-B.2A RPCs
+→ protected tables
+
+ADMIN UI != clinical issue authority
+```
+
+Especialidade/relevância não concede autorização clínica.
+
+A visualização B.2B representa a estrutura administrativa do modelo e não deve ser confundida com um novo renderer de impressão. O layout profissional será tratado por contrato versionado próprio.
+
+---
+
+# Próxima evolução — Professional Print Layout / Safe Presets
+
+A impressão atual da Prescrição V1 foi validada funcionalmente, mas o smoke mostrou que o acabamento ainda é simples.
+
+A evolução deve:
+
+- usar presets versionados e fechados;
+- preservar snapshots históricos;
+- permitir preview fiel do layout publicado;
+- reaproveitar nome/endereço/contato da clínica quando congelados no contexto emitido;
+- jamais recalcular documento histórico a partir do template corrente;
+- evitar HTML/CSS/JS arbitrário fornecido pelo admin.
+
+Possíveis presets são produto/UX, não novos tipos documentais. `Pedido de Exames`, atestado e relatório permanecem fora até seus `document_type` canônicos existirem.

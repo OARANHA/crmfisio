@@ -13,6 +13,7 @@ vi.mock('../components/InfrastructureAdmin', () => ({
 }));
 vi.mock('../components/StorageAdmin', () => ({ StorageAdmin: () => <div data-testid="storage-admin">storage-admin</div> }));
 vi.mock('../components/AssessmentTemplatesAdmin', () => ({ AssessmentTemplatesAdmin: () => <div data-testid="assessment-admin">assessment-admin</div> }));
+vi.mock('../components/PrescriptionTemplatesAdmin', () => ({ PrescriptionTemplatesAdmin: () => <div data-testid="prescription-templates-admin">prescription-templates-admin</div> }));
 vi.mock('../components/ConsentTemplatesAdmin', () => ({ ConsentTemplatesAdmin: () => <div data-testid="consent-admin">consent-admin</div> }));
 vi.mock('./Config', () => ({ Config: () => <div data-testid="governance">governance</div> }));
 
@@ -36,9 +37,9 @@ describe('ConfigPremium', () => {
     expect(labels).toContain('Equipe & Acessos');
     expect(labels).toContain('Agenda & Atendimento');
     expect(labels).toContain('Anamneses & Avaliações');
+    expect(labels).toContain('Documentos clínicos');
     expect(labels).toContain('Termos');
     expect(labels).toContain('Governança');
-    expect(labels).not.toContain('Prescrições');
     expect(labels).not.toContain('Comunicação');
     expect(labels).not.toContain('Financeiro');
     expect(labels).not.toContain('Integrações');
@@ -55,6 +56,11 @@ describe('ConfigPremium', () => {
 
     clickSection(renderer, 'Anamneses & Avaliações');
     expect(renderer.root.findByProps({ 'data-testid': 'assessment-admin' })).toBeTruthy();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'prescription-templates-admin' })).toHaveLength(0);
+
+    clickSection(renderer, 'Documentos clínicos');
+    expect(renderer.root.findByProps({ 'data-testid': 'prescription-templates-admin' })).toBeTruthy();
+    expect(renderer.root.findAllByProps({ 'data-testid': 'assessment-admin' })).toHaveLength(0);
     expect(renderer.root.findAllByProps({ 'data-testid': 'consent-admin' })).toHaveLength(0);
 
     clickSection(renderer, 'Termos');

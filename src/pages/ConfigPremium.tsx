@@ -3,11 +3,12 @@ import { AssessmentTemplatesAdmin } from '../components/AssessmentTemplatesAdmin
 import { ClinicGeneralAdmin } from '../components/configuration/ClinicGeneralAdmin';
 import { ConsentTemplatesAdmin } from '../components/ConsentTemplatesAdmin';
 import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
+import { PrescriptionTemplatesAdmin } from '../components/PrescriptionTemplatesAdmin';
 import { StorageAdmin } from '../components/StorageAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
 import { Config } from './Config';
 
-type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'avaliacoes' | 'termos' | 'governanca';
+type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'avaliacoes' | 'documentos' | 'termos' | 'governanca';
 
 const SECTION_META: Array<{
   key: ConfigSection;
@@ -18,6 +19,7 @@ const SECTION_META: Array<{
   { key: 'equipe', title: 'Equipe & Acessos', description: 'Pessoas e permissões operacionais' },
   { key: 'agenda', title: 'Agenda & Atendimento', description: 'Salas e recursos físicos' },
   { key: 'avaliacoes', title: 'Anamneses & Avaliações', description: 'Biblioteca clínica versionada' },
+  { key: 'documentos', title: 'Documentos clínicos', description: 'Modelos de prescrição da clínica' },
   { key: 'termos', title: 'Termos', description: 'Modelos de consentimento' },
   { key: 'governanca', title: 'Governança', description: 'Storage, RBAC, LGPD e auditoria' },
 ];
@@ -69,6 +71,7 @@ export function ConfigPremium() {
         {section === 'equipe' && <TeamAdmin />}
         {section === 'agenda' && <InfrastructureAdmin mode="rooms" />}
         {section === 'avaliacoes' && <AssessmentTemplatesAdmin />}
+        {section === 'documentos' && <PrescriptionTemplatesAdmin />}
         {section === 'termos' && <ConsentTemplatesAdmin />}
         {section === 'governanca' && (
           <div className="space-y-4">
