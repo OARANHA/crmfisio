@@ -149,13 +149,42 @@ D2-B.2C merge canônico: `db364e17a158b2f1f13229ca595f6e7b24cfcab8`.
 
 Produção confirmou migration base + hardening, verifier oficial, editor visual, presets seguros, emissão/impressão profissional e imutabilidade histórica do layout.
 
-**D2-B está fechada no escopo atual.**
+Contrato:
+
+```text
+Admin preview
+      ↓
+render_definition publicado
+      ↓
+Draft live preview
+      ↓
+issue
+      ↓
+template_definition_snapshot
+      ↓
+Issued print
+```
+
+**D2-B está fechada no escopo atual.** Não reabrir por polimento sem blocker reproduzido.
 
 ## D2-C — Therapeutic Guidance V1
 
 **VALIDADO EM PRODUÇÃO.**
 
 PR #435 → `33da15230cd35179681406b212e87305618a4976`.
+
+Contrato funcional:
+
+```text
+Encounter próprio ativo
+→ Orientações
+→ template published
+→ draft / save / resume
+→ revisão humana explícita
+→ issue D2-A
+→ snapshots imutáveis
+→ histórico / impressão
+```
 
 Payload:
 
@@ -179,7 +208,31 @@ Layout:
 clinical-document/therapeutic-guidance-v1
 ```
 
-Produção confirmou preview A4, emissão/histórico/impressão profissional, cabeçalho, identidade profissional, assinatura e snapshots imutáveis. O rótulo técnico `therapeutic_guidance` não aparece na saída destinada ao paciente.
+Entrega validada:
+
+- preview A4 real no workspace;
+- mesma composição segura no draft e no print emitido;
+- clínica/paciente/profissional/conselho/registro/data/assinatura;
+- itens, instruções e observações estruturados;
+- novas versões imutáveis dos dois templates platform de guidance;
+- impressão nova baseada em `payload_snapshot + context_snapshot + template_definition_snapshot`;
+- fallback seguro para documentos históricos `plain-text-v1`;
+- nenhuma expansão de RLS/RPC/grants/capabilities/autoria;
+- nenhum HTML/CSS/JS administrável;
+- ausência do rótulo técnico `therapeutic_guidance` na saída para o paciente.
+
+Produção em 2026-09-12:
+
+```text
+backup: /root/medicspro_before_d2c1_20260912_194049.dump
+migration: COMMIT / MIGRATION_EXIT=0
+verifier: CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
+VERIFIER_EXIT=0
+frontend: redeploy concluído
+smoke: preview A4 + emissão/histórico/impressão profissional confirmados
+```
+
+O campo genérico `renderer_version` não foi reescrito nesta slice; a versão visual efetiva fica congelada em `template_definition_snapshot.render_definition.layout`.
 
 Documento: `docs/CLINICAL_THERAPEUTIC_GUIDANCE_RENDERER_V1.md`.
 
