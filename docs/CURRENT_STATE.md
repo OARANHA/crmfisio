@@ -3,7 +3,7 @@
 > **Snapshot de continuidade. `AGENTS.md` contém as regras operacionais; código, schema e runtime atuais prevalecem se este arquivo envelhecer.**
 
 **Data do snapshot:** 2026-09-11  
-**Base observada ao fechar este snapshot:** `main@8414cdf5350e625c91f53e7ba96f7b226d4ce7a0`  
+**Base observada ao fechar este snapshot:** `main@f65f399c503c03d2ae9e0ebf6630b8c1ed639cf3`  
 **Runtime funcional do Clinical Encounter validado:** pós-PR #420 (`39b78ada205a7237341847edcda6a8592d0b0c14`)
 
 ## Leitura obrigatória para qualquer agente
@@ -21,6 +21,7 @@ Referências clínicas principais:
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
 - `docs/CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`
 - `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`
+- `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
 
 A regra institucional permanece: **`OARANHA/crmfisio` é o runtime canônico; `OARANHA/medicspro` é referência histórica de produto/UX/workflow, nunca de arquitetura/autorização; `OARANHA/nexus` é upstream/laboratório de inteligência clínica, não um segundo runtime do produto.**
 
@@ -67,13 +68,15 @@ ENGINE != AUTHORIZATION != RELEVANCE
 **Estado funcional:** VALIDADO EM PRODUÇÃO.  
 **Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
 
-Superfícies principais:
+Superfícies principais atuais:
 
 ```text
 Registro
 Anamneses & Avaliações
 Nexus
 ```
+
+A inclusão de `Prescrição` é roadmap D2-B e ainda **não está implementada**.
 
 ## Composição visual canônica atual
 
@@ -221,6 +224,61 @@ ASSESSMENT LIBRARY READ AUTHORIZATION RECONCILIATION VERIFY PASSED
 
 ---
 
+# Prescrição e Documentos Clínicos
+
+**Estado:** D1 CONCLUÍDO / D2 DECOMPOSTO / NÃO IMPLEMENTADO.
+
+O inventário D1 confirmou que o runtime atual não possui um Clinical Documents Engine transversal. `clinical.documents` existe apenas como capability-base genérica e **não equivale** a autorização para prescrição medicamentosa ou qualquer ato documental específico.
+
+Decisão arquitetural aprovada:
+
+```text
+Clinical Documents Foundation pequena
++
+contratos tipados por document_type
+```
+
+Não criar:
+
+- Prescription Engine isolado;
+- documento genérico baseado em HTML/CSS arbitrário;
+- segundo Assessment Engine;
+- autorização baseada apenas em profissão/especialidade textual;
+- mutação silenciosa ou hard delete de documento emitido.
+
+Roadmap aprovado:
+
+1. **D2-A — Clinical Documents Foundation**: schema, templates/versionamento, snapshots, lifecycle `draft → issued → canceled`, RLS/RPCs, eligibility por tipo, seeds platform, PostgreSQL 16 behavior matrix e idempotência; sem UI clínica completa.
+2. **D2-B — Prescription V1**: workspace `Prescrição` no Encounter, `medication_prescription`, editor tipado, preview, draft/resume, emissão, impressão e histórico.
+3. **D2-C — Therapeutic Guidance V1**: `therapeutic_guidance` sobre a mesma foundation, sem expandir para exames/atestados/relatórios.
+
+Document types iniciais planejados:
+
+- `medication_prescription`
+- `therapeutic_guidance`
+
+Tipos posteriores somente após foundation estável:
+
+- `exam_order`
+- `referral`
+- declarações/atestados aprovados
+- `clinical_report`
+
+Princípios obrigatórios:
+
+- `ENGINE != AUTHORIZATION != RELEVANCE`;
+- `clinical.documents != medication prescribing permission`;
+- versão publicada de template imutável;
+- documento emitido como snapshot imutável;
+- mudanças futuras em paciente/profissional/clínica/template/renderer não alteram documento já emitido;
+- cancelamento auditável e sem hard delete;
+- `platform_admin` sem acesso clínico implícito;
+- administração de templates não deriva de `clinical.documents`.
+
+Documento de continuidade: `docs/CLINICAL_DOCUMENTS_ROADMAP.md`.
+
+---
+
 # Nexus
 
 Nexus permanece domínio clínico especializado, separado do Assessment Engine, sob boundaries C-01–C-06 e `nexus.*` fail-closed.
@@ -306,6 +364,6 @@ O futuro manual deve ser gerado a partir do comportamento **validado** e das tel
 
 ## Próximo passo imediato
 
-A slice visual do Clinical Encounter está fechada.
+Executar **D2-A — Clinical Documents Foundation** em PR própria, sem UI clínica completa e sem tocar em produção durante desenvolvimento.
 
-Ao iniciar a próxima frente, não reabrir #417/#420 sem uma regressão concreta. Partir deste estado canônico e escolher a próxima slice por impacto de produto/fundação.
+D2-B e D2-C só devem partir depois que a foundation estiver revisada, mergeada e com PostgreSQL 16 behavior matrix/idempotência verdes.
