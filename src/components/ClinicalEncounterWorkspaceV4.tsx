@@ -24,6 +24,7 @@ import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
+import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';
 import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
 import { ClinicalTherapeuticGuidanceWorkspace } from './ClinicalTherapeuticGuidanceWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
@@ -50,7 +51,7 @@ export function ClinicalEncounterWorkspaceV4({
   const assessmentCapability = useClinicalCapability('clinical.assessment.apply', user?.id);
   const documentsCapability = useClinicalCapability('clinical.documents', user?.id);
   const [finishing, setFinishing] = useState(false);
-  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'guidance' | 'nexus'>('record');
+  const [workspace, setWorkspace] = useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'nexus'>('record');
   const evolutionRef = useRef<HTMLElement | null>(null);
 
   const canonicalEncounter = useMemo(
@@ -85,6 +86,10 @@ export function ClinicalEncounterWorkspaceV4({
     && professionalIdOf(evolution) === user?.id
   ));
   const prescriptionRelevant = isPhysicianProfessionalType(identity?.professionalType);
+  // V1 presents Exam Order with the same conservative medical relevance as the
+  // D2-D0 server contract. This is presentation only; the workspace rechecks
+  // current_user_can_issue_clinical_document('exam_order') before any operation.
+  const examOrderRelevant = prescriptionRelevant;
 
   if (!isCurrentEncounter || !canonicalEncounter || !user) {
     return <>{historicalWorkspace}</>;
@@ -158,7 +163,7 @@ export function ClinicalEncounterWorkspaceV4({
   );
 
   return (
-    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="5" className="space-y-3">
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="6" className="space-y-3">
       <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
 
       <div className="grid items-start gap-3 xl:grid-cols-[238px_minmax(0,1fr)]">
@@ -179,6 +184,7 @@ export function ClinicalEncounterWorkspaceV4({
                   ['record', 'Registro'],
                   ['assessment', 'Anamneses & Avaliações'],
                   ...(prescriptionRelevant ? [['prescription', 'Prescrição']] : []),
+                  ...(examOrderRelevant ? [['exams', 'Exames']] : []),
                   ['guidance', 'Orientações'],
                   ['nexus', 'Nexus'],
                 ].map(([id, label]) => (
@@ -260,6 +266,18 @@ export function ClinicalEncounterWorkspaceV4({
               <ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
             ) : (
               <BlockedState title="Prescrição indisponível">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
+            )}
+          </EncounterSection>}
+
+          {workspace === 'exams' && examOrderRelevant && <EncounterSection id="encounter-exams" eyebrow="Documento clínico" title="Pedido de exames" detail="Monte, revise e emita pedidos de exames vinculados ao atendimento atual.">
+            {documentsCapability.loading ? (
+              <NeutralState>Verificando acesso aos documentos clínicos…</NeutralState>
+            ) : documentsCapability.error ? (
+              <BlockedState title="Não foi possível verificar o acesso ao pedido de exames">Atualize a página antes de criar ou emitir um documento clínico.</BlockedState>
+            ) : documentsCapability.allowed ? (
+              <ClinicalExamOrderWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />
+            ) : (
+              <BlockedState title="Pedido de exames indisponível">Seu acesso atual não permite operar documentos clínicos.</BlockedState>
             )}
           </EncounterSection>}
 
