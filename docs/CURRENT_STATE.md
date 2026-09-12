@@ -2,9 +2,10 @@
 
 > **Snapshot de continuidade. `AGENTS.md` contém as regras operacionais; código, schema e runtime atuais prevalecem se este arquivo envelhecer.**
 
-**Data do snapshot:** 2026-09-11  
-**Base observada ao fechar este snapshot:** `main@f65f399c503c03d2ae9e0ebf6630b8c1ed639cf3`  
-**Runtime funcional do Clinical Encounter validado:** pós-PR #420 (`39b78ada205a7237341847edcda6a8592d0b0c14`)
+**Data do snapshot:** 2026-09-12  
+**Base canônica observada:** `main@0459e5908c942ac63c0dec87d517aa2131936204`  
+**Clinical Documents D2-A:** mergeada e migration aplicada/verificada em produção em 2026-09-12  
+**Clinical Encounter visual:** pós-PR #420, validado em produção
 
 ## Leitura obrigatória para qualquer agente
 
@@ -12,6 +13,7 @@
 2. este arquivo
 3. o documento do domínio em que a tarefa atua
 4. `docs/MANUAL_SOURCE_MAP.md` quando a mudança alterar comportamento visível ao usuário
+5. `docs/CLINICAL_TOOLING_REUSE_PLAN.md` para trabalho que envolva Nexus, ferramentas clínicas ou reaproveitamento do MedicsPro histórico
 
 Referências clínicas principais:
 
@@ -20,10 +22,20 @@ Referências clínicas principais:
 - `docs/CLINICAL_ENCOUNTER_RECORD.md`
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
 - `docs/CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`
+- `docs/NEXUS_GAP_MAP.md`
 - `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`
+- `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
+- `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 - `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
 
 A regra institucional permanece: **`OARANHA/crmfisio` é o runtime canônico; `OARANHA/medicspro` é referência histórica de produto/UX/workflow, nunca de arquitetura/autorização; `OARANHA/nexus` é upstream/laboratório de inteligência clínica, não um segundo runtime do produto.**
+
+As revisões de referência continuam estáveis:
+
+- `OARANHA/nexus@427174dd909f7aedae52406f2a5d0cfc0314ce22`;
+- `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83`.
+
+Portanto os inventários já produzidos continuam úteis e não devem ser refeitos do zero sem mudança dessas fontes ou evidência de lacuna.
 
 ---
 
@@ -37,7 +49,7 @@ Fluxo central:
 Paciente
 → Agenda
 → Atendimento / Encounter
-→ Registro clínico / avaliações / documentos / Nexus
+→ Registro clínico / avaliações / Nexus / documentos
 → Finalização
 → Financeiro
 → Comunicação / acompanhamento
@@ -68,7 +80,7 @@ ENGINE != AUTHORIZATION != RELEVANCE
 **Estado funcional:** VALIDADO EM PRODUÇÃO.  
 **Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
 
-Superfícies principais atuais:
+Superfícies visíveis atuais:
 
 ```text
 Registro
@@ -76,7 +88,7 @@ Anamneses & Avaliações
 Nexus
 ```
 
-A inclusão de `Prescrição` é roadmap D2-B e ainda **não está implementada**.
+A infraestrutura de documentos clínicos agora existe no backend, mas **`Prescrição` ainda não é uma superfície de usuário disponível**. A inclusão visual/funcional é D2-B.
 
 ## Composição visual canônica atual
 
@@ -95,20 +107,6 @@ Contrato atual:
 - mobile/tablet preservam header compacto;
 - ajuda contextual fica flutuante no canto inferior;
 - breadcrumb redundante `‹ Pacientes` permanece oculto durante Encounter ativo.
-
-## Evidência visual de produção
-
-Confirmado em produção em 2026-09-11:
-
-- header global desktop ausente;
-- conteúdo clínico começa mais alto;
-- hero compacto e legível;
-- rail esquerdo estável;
-- toolbar clínica separada do hero;
-- `Registro`, `Anamneses & Avaliações` e `Nexus` visualmente coerentes;
-- sidebar expandida concentra modo, unidade, tema, notificações, identidade e logout no rodapé;
-- durante scroll real, rail esquerdo e toolbar sticky permanecem visíveis sem sobreposição/clipping relevante;
-- com sidebar recolhida, não há overflow horizontal perceptível e avatar/logout ficam empilhados/centralizados.
 
 Registro detalhado: `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
 
@@ -130,38 +128,26 @@ O Assessment Engine é a única fundação para anamneses e avaliações estrutu
 
 Conceitos canônicos:
 
-- `assessment_templates`
-- `assessment_template_versions`
-- ownership platform ou clinic
-- templates ativos/inativos
-- versão publicada imutável
-- draft/resume
-- finalização/histórico
-- seções, ordem, required, opções e tipos de resposta
-- Runner reutilizado no Encounter e em contexto longitudinal
+- `assessment_templates`;
+- `assessment_template_versions`;
+- ownership platform ou clinic;
+- templates ativos/inativos;
+- versão publicada imutável;
+- draft/resume;
+- finalização/histórico;
+- seções, ordem, required, opções e tipos de resposta;
+- Runner reutilizado no Encounter e em contexto longitudinal.
 
 Não criar segundo forms engine.
 
 ## Biblioteca MedicsPro V1
 
-PR #413, aplicada e validada em produção.
+PR #413 aplicada e validada em produção.
 
 Modelos publicados:
 
 1. **Anamnese Médica Geral**
 2. **Anamnese Psiquiátrica**
-
-IDs estáveis:
-
-```text
-Anamnese Médica Geral
-10000000-0000-4000-8000-000000000003
-version 1: 11000000-0000-4000-8000-000000000003
-
-Anamnese Psiquiátrica
-10000000-0000-4000-8000-000000000004
-version 1: 11000000-0000-4000-8000-000000000004
-```
 
 Diretriz de UX:
 
@@ -175,115 +161,133 @@ Não duplicar PHQ-9/GAD-7, medicamentos, alergias, problemas ou diagnósticos qu
 
 Backlog histórico catalogado, ainda não implementado em massa: Ginecologia, Dermatologia, Pediatria, Cardiologia, Ortopedia e Oftalmologia.
 
-## Persistência validada
-
-Em produção:
-
-- profissional clínico acessa `Anamneses & Avaliações`;
-- biblioteca é carregada por RLS corretamente;
-- modelo pode ser iniciado dentro do Encounter;
-- draft persiste;
-- sair e retornar reabre o mesmo draft do appointment;
-- respostas persistidas permanecem presentes.
-
-Quando existe draft do Encounter atual, o sistema prioriza retomá-lo. Uma UX futura pode tornar o estado “rascunho em andamento” mais explícito sem criar outro engine.
+Persistência de draft/resume foi validada em produção.
 
 ---
 
-# Reconciliação de leitura da biblioteca — #414 / #415
+# Clinical Instruments / Nexus
 
-Produção revelou drift de RLS: professional ativo, com tenant e identidade clínica válidos, resolvia capabilities mas recebia 0 linhas de `assessment_templates` e `assessment_template_versions`.
+Nexus permanece domínio clínico especializado, separado do Assessment Engine e do Clinical Documents Engine.
 
-A causa efetiva era policy legacy presa ao gate histórico `owner/admin/fisio`.
+Estado canônico:
 
-## #414
+- hardening C-01–C-06 integrado ao runtime;
+- PHQ-9/GAD-7 mantêm identidade/versionamento/scoring na engine Nexus;
+- Clinical Instrument Authorization Foundation (#399) separa exposição multiprofissional de membership do registry Nexus;
+- `nexus.*` permanece fail-closed;
+- especialidade pode influenciar relevância/apresentação, nunca capability;
+- resultado Nexus não gera prescrição/conduta automaticamente.
 
-Reassertou apenas policies de SELECT da biblioteca:
-
-- platform visível;
-- própria clínica visível;
-- zero cross-tenant;
-- usuário sem clinic ativa fail-closed;
-- nenhuma ampliação de authoring/administração;
-- nenhuma mudança em `clinical_assessments`, Body Map, capabilities, frontend ou conteúdo dos templates.
-
-Migration aplicada e validada em produção.
-
-## #415
-
-Endureceu o verifier para probes opcionais sem alterar runtime/RLS.
-
-Validação final:
-
-```text
-active professional read probe: PASS
-cross-tenant isolation: PASS
-optional disabled professional probe: safely skipped when absent
-ASSESSMENT LIBRARY READ AUTHORIZATION RECONCILIATION VERIFY PASSED
-```
+O upstream auditado também possui ativos ainda não absorvidos em massa — escalas adicionais, função renal, risco cardiovascular, psicofarmacologia, equivalências, base de antidepressivos e switching. Eles ficam registrados no `docs/CLINICAL_TOOLING_REUSE_PLAN.md` e devem ser portados seletivamente, com validação clínica e contratos próprios.
 
 ---
 
 # Prescrição e Documentos Clínicos
 
-**Estado:** D1 CONCLUÍDO / D2 DECOMPOSTO / NÃO IMPLEMENTADO.
+**Estado:** D1 CONCLUÍDO / D2-A VALIDADO EM PRODUÇÃO / D2-B PRÓXIMA SLICE.
 
-O inventário D1 confirmou que o runtime atual não possui um Clinical Documents Engine transversal. `clinical.documents` existe apenas como capability-base genérica e **não equivale** a autorização para prescrição medicamentosa ou qualquer ato documental específico.
+## D2-A — Clinical Documents Foundation
 
-Decisão arquitetural aprovada:
+PR #425 foi mergeada por squash na `main` como:
 
 ```text
-Clinical Documents Foundation pequena
-+
-contratos tipados por document_type
+0459e5908c942ac63c0dec87d517aa2131936204
 ```
 
-Não criar:
+Em 2026-09-12 foi aplicada em produção:
 
-- Prescription Engine isolado;
-- documento genérico baseado em HTML/CSS arbitrário;
-- segundo Assessment Engine;
-- autorização baseada apenas em profissão/especialidade textual;
-- mutação silenciosa ou hard delete de documento emitido.
+```text
+supabase-migrations/20260912_clinical_documents_foundation.sql
+```
 
-Roadmap aprovado:
+Resultado operacional observado:
 
-1. **D2-A — Clinical Documents Foundation**: schema, templates/versionamento, snapshots, lifecycle `draft → issued → canceled`, RLS/RPCs, eligibility por tipo, seeds platform, PostgreSQL 16 behavior matrix e idempotência; sem UI clínica completa.
-2. **D2-B — Prescription V1**: workspace `Prescrição` no Encounter, `medication_prescription`, editor tipado, preview, draft/resume, emissão, impressão e histórico.
-3. **D2-C — Therapeutic Guidance V1**: `therapeutic_guidance` sobre a mesma foundation, sem expandir para exames/atestados/relatórios.
+```text
+COMMIT
+MIGRATION_EXIT=0
+```
 
-Document types iniciais planejados:
+Em seguida foi executado o verifier oficial:
 
-- `medication_prescription`
-- `therapeutic_guidance`
+```text
+supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql
+```
 
-Tipos posteriores somente após foundation estável:
+Resultado:
 
-- `exam_order`
-- `referral`
-- declarações/atestados aprovados
-- `clinical_report`
+```text
+CLINICAL DOCUMENTS FOUNDATION VERIFY PASSED
+ROLLBACK
+VERIFIER_EXIT=0
+```
 
-Princípios obrigatórios:
+O `ROLLBACK` pertence ao verifier read-only e não desfaz a migration.
 
-- `ENGINE != AUTHORIZATION != RELEVANCE`;
-- `clinical.documents != medication prescribing permission`;
-- versão publicada de template imutável;
-- documento emitido como snapshot imutável;
-- mudanças futuras em paciente/profissional/clínica/template/renderer não alteram documento já emitido;
-- cancelamento auditável e sem hard delete;
-- `platform_admin` sem acesso clínico implícito;
-- administração de templates não deriva de `clinical.documents`.
+A foundation entregue inclui:
+
+- `medication_prescription`;
+- `therapeutic_guidance`;
+- templates platform versionados;
+- draft → issued → canceled;
+- snapshots imutáveis na emissão;
+- eventos append-only;
+- identifier humano com UUID completo;
+- typed issue validation;
+- cancelamento auditável;
+- RLS/RPC/ACL fail-closed;
+- history read delegando ao boundary clínico canônico pós-#426.
+
+### Boundary de autoria/leitura específico da D2-A
+
+A D2-A e a reconciliação #426 foram verificadas contra o runtime efetivo que usa `appointments.fisio_id` no branch de relação assistencial/autoria coberto por essas slices, com negative control para `professional_id` divergente.
+
+Isso **não deve ser interpretado como autorização para renomear ou redesenhar globalmente o modelo de profissional**. Qualquer reconciliação futura desses aliases deve ser uma slice explícita, com migrations/verifiers/consumidores atualizados em conjunto.
+
+## D2-B — Prescription V1
+
+**Próxima implementação funcional aprovada.**
+
+Escopo mínimo:
+
+- workspace `Prescrição` no Encounter;
+- somente `medication_prescription`;
+- seleção de template elegível;
+- editor tipado de medicamentos;
+- draft/resume no Encounter correto;
+- preview determinístico;
+- emissão explícita;
+- read-only pós-emissão;
+- impressão;
+- histórico do Encounter/paciente.
+
+Não reabrir schema/lifecycle D2-A sem blocker comprovado. Nexus pode futuramente fornecer conhecimento/apoio farmacológico, mas não deve ser autor da prescrição.
+
+## D2-C — Therapeutic Guidance V1
+
+Permanece após D2-B, reutilizando a mesma foundation, renderer e histórico e sem abrir Exam Order/Atestados/Relatórios na mesma slice.
 
 Documento de continuidade: `docs/CLINICAL_DOCUMENTS_ROADMAP.md`.
 
 ---
 
-# Nexus
+# Reaproveitamento Nexus + MedicsPro histórico
 
-Nexus permanece domínio clínico especializado, separado do Assessment Engine, sob boundaries C-01–C-06 e `nexus.*` fail-closed.
+O trabalho não deve começar por “inventar ferramenta”. Antes de criar nova superfície clínica, consultar:
 
-Não transformar PHQ-9/GAD-7 ou instrumentos validados em templates comuns apenas para contornar autorização.
+- `docs/NEXUS_GAP_MAP.md`;
+- `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`;
+- `docs/CLINICAL_TOOLING_REUSE_PLAN.md`.
+
+Regra resumida:
+
+```text
+Nexus → cálculos, instrumentos, evidência, farmacologia, apoio à decisão
+Assessment Engine → anamneses e avaliações estruturadas
+Clinical Documents → prescrição/orientação/documentos emitidos
+Clinical Cockpit → composição da experiência para o profissional
+```
+
+O profissional não precisa conhecer essa separação técnica na UI.
 
 ---
 
@@ -340,13 +344,23 @@ Integrações futuras devem manter dois planos distintos:
 
 ---
 
-# Regra de continuidade e documentação
+# Continuidade e documentação
 
-Toda slice que alterar comportamento visível deve atualizar:
+O repositório possui continuidade explícita, não memória informal de chat:
 
-- este snapshot quando mudar estado atual relevante;
+- `AGENTS.md` manda qualquer agente ler este snapshot imediatamente;
+- cada domínio possui documentação especializada;
+- `.github/pull_request_template.md` exige checklist de continuidade nas novas PRs;
+- estado editorial deve separar implementação, produção e planejamento.
+
+Não existe nem deve existir um robô que marque automaticamente uma funcionalidade como `VALIDADO EM PRODUÇÃO`. Esse estado exige evidência real.
+
+Toda slice que alterar comportamento ou estado relevante deve revisar:
+
+- este snapshot;
 - documento do domínio;
-- `docs/MANUAL_SOURCE_MAP.md` quando impactar o futuro manual.
+- `docs/MANUAL_SOURCE_MAP.md` se houver mudança visível;
+- `TODO.md` / `PRODUCT_ROADMAP.md` quando o roadmap mudar.
 
 Estados editoriais permitidos:
 
@@ -358,12 +372,16 @@ PLANEJADO
 HISTÓRICO / DEPRECATED
 ```
 
-O futuro manual deve ser gerado a partir do comportamento **validado** e das telas reais, nunca de backlog/prompts/intenção.
-
 ---
 
 ## Próximo passo imediato
 
-Executar **D2-A — Clinical Documents Foundation** em PR própria, sem UI clínica completa e sem tocar em produção durante desenvolvimento.
+Executar **D2-B — Prescription V1** sobre a Clinical Documents Foundation já validada em produção.
 
-D2-B e D2-C só devem partir depois que a foundation estiver revisada, mergeada e com PostgreSQL 16 behavior matrix/idempotência verdes.
+Antes de implementar, comparar explicitamente:
+
+- foundation D2-A atual;
+- UX de prescrição do `OARANHA/medicspro` histórico;
+- ativos farmacológicos do Nexus que sejam apenas referência/apoio e não devam entrar no escopo D2-B.
+
+Objetivo: entregar o primeiro documento clínico real no Cockpit sem expandir simultaneamente para exames, atestados, relatórios ou switching farmacológico.
