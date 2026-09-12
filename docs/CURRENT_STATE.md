@@ -3,8 +3,9 @@
 > **Snapshot de continuidade. `AGENTS.md` contém as regras operacionais; código, schema e runtime atuais prevalecem se este arquivo envelhecer.**
 
 **Data do snapshot:** 2026-09-12  
-**Base canônica observada:** `main@0459e5908c942ac63c0dec87d517aa2131936204`  
+**Base canônica observada antes da D2-B:** `main@de24d63f643782ec6b4b2442b4bc68ee570d46b9`  
 **Clinical Documents D2-A:** mergeada e migration aplicada/verificada em produção em 2026-09-12  
+**Clinical Documents D2-B:** implementada na PR #429 / NÃO validada em produção  
 **Clinical Encounter visual:** pós-PR #420, validado em produção
 
 ## Leitura obrigatória para qualquer agente
@@ -27,6 +28,7 @@ Referências clínicas principais:
 - `docs/CLINICAL_TOOLING_REUSE_PLAN.md`
 - `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 - `docs/CLINICAL_DOCUMENTS_ROADMAP.md`
+- `docs/CLINICAL_PRESCRIPTION_V1.md`
 
 A regra institucional permanece: **`OARANHA/crmfisio` é o runtime canônico; `OARANHA/medicspro` é referência histórica de produto/UX/workflow, nunca de arquitetura/autorização; `OARANHA/nexus` é upstream/laboratório de inteligência clínica, não um segundo runtime do produto.**
 
@@ -77,10 +79,10 @@ ENGINE != AUTHORIZATION != RELEVANCE
 
 # Clinical Cockpit / Encounter
 
-**Estado funcional:** VALIDADO EM PRODUÇÃO.  
-**Estado visual pós-#420:** VALIDADO EM PRODUÇÃO.
+**Estado funcional em produção:** VALIDADO.  
+**Estado visual pós-#420 em produção:** VALIDADO.
 
-Superfícies visíveis atuais:
+Superfícies visíveis atuais em produção:
 
 ```text
 Registro
@@ -88,7 +90,13 @@ Anamneses & Avaliações
 Nexus
 ```
 
-A infraestrutura de documentos clínicos agora existe no backend, mas **`Prescrição` ainda não é uma superfície de usuário disponível**. A inclusão visual/funcional é D2-B.
+A PR #429 implementa, ainda fora de produção:
+
+```text
+Prescrição
+```
+
+Não descrever `Prescrição` como disponível ao usuário antes de merge/deploy/smoke reais.
 
 ## Composição visual canônica atual
 
@@ -98,7 +106,7 @@ Contrato atual:
 
 - `EncounterHero` não-sticky;
 - rail esquerdo (`Estado da consulta` + `Paciente em contexto`) sticky independente em desktop XL;
-- toolbar `Registro / Anamneses & Avaliações / Nexus` sticky apenas na coluna principal em desktop XL;
+- toolbar de workspaces sticky apenas na coluna principal em desktop XL;
 - rail e toolbar usam o mesmo offset de coluna sem competir entre si;
 - header global desktop não renderiza em `lg+`;
 - utilitários desktop ficam no footer da sidebar;
@@ -107,6 +115,8 @@ Contrato atual:
 - mobile/tablet preservam header compacto;
 - ajuda contextual fica flutuante no canto inferior;
 - breadcrumb redundante `‹ Pacientes` permanece oculto durante Encounter ativo.
+
+A PR #429 apenas acrescenta `Prescrição` como workspace do mesmo Encounter; não cria um segundo atendimento ou prontuário.
 
 Registro detalhado: `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
 
@@ -184,7 +194,7 @@ O upstream auditado também possui ativos ainda não absorvidos em massa — esc
 
 # Prescrição e Documentos Clínicos
 
-**Estado:** D1 CONCLUÍDO / D2-A VALIDADO EM PRODUÇÃO / D2-B PRÓXIMA SLICE.
+**Estado:** D1 CONCLUÍDO / D2-A VALIDADO EM PRODUÇÃO / D2-B IMPLEMENTADO NA PR #429 E NÃO VALIDADO EM PRODUÇÃO.
 
 ## D2-A — Clinical Documents Foundation
 
@@ -245,26 +255,63 @@ Isso **não deve ser interpretado como autorização para renomear ou redesenhar
 
 ## D2-B — Prescription V1
 
-**Próxima implementação funcional aprovada.**
+**Estado: IMPLEMENTADO NA PR #429 / CI EM VALIDAÇÃO / NÃO MERGEADO / NÃO VALIDADO EM PRODUÇÃO.**
 
-Escopo mínimo:
+Branch:
 
-- workspace `Prescrição` no Encounter;
+```text
+feat/clinical-prescription-v1-d2b
+```
+
+PR:
+
+```text
+#429 — feat(clinical): add Prescription V1 over D2-A foundation
+```
+
+Arquitetura efetivamente escolhida:
+
+```text
+Encounter ativo
+→ workspace Prescrição
+→ template D2-A elegível
+→ draft
+→ medicamentos estruturados
+→ salvar rascunho
+→ revisão humana
+→ issue_clinical_document
+→ payload/context snapshot imutáveis
+→ impressão / histórico
+```
+
+Entregue na PR:
+
+- workspace `Prescrição` no Encounter para relevância médica;
+- autorização real continua server-side;
 - somente `medication_prescription`;
-- seleção de template elegível;
-- editor tipado de medicamentos;
-- draft/resume no Encounter correto;
-- preview determinístico;
+- seleção de template publicado elegível;
+- editor com `medication_name`, dose, via, frequência, duração e instruções;
+- observações;
+- draft/resume do próprio emissor e Encounter;
+- salvar rascunho explicitamente, sem autosave genérico;
+- revisão humana obrigatória;
 - emissão explícita;
 - read-only pós-emissão;
-- impressão;
-- histórico do Encounter/paciente.
+- impressão construída de `payload_snapshot` + `context_snapshot`;
+- identificação profissional congelada na impressão;
+- histórico do Encounter separado do histórico anterior do paciente;
+- isolamento de estado local por paciente + Encounter + usuário;
+- testes de payload e boundary.
 
-Não reabrir schema/lifecycle D2-A sem blocker comprovado. Nexus pode futuramente fornecer conhecimento/apoio farmacológico, mas não deve ser autor da prescrição.
+Não foi necessário criar migration, RPC, RLS, grant, capability, `document_type` ou integração Nexus.
+
+Documento de implementação: `docs/CLINICAL_PRESCRIPTION_V1.md`.
+
+Até merge/deploy/smoke reais, o estado editorial deve continuar **IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO**.
 
 ## D2-C — Therapeutic Guidance V1
 
-Permanece após D2-B, reutilizando a mesma foundation, renderer e histórico e sem abrir Exam Order/Atestados/Relatórios na mesma slice.
+Permanece após estabilização da D2-B, reutilizando a mesma foundation, renderer e histórico e sem abrir Exam Order/Atestados/Relatórios na mesma slice.
 
 Documento de continuidade: `docs/CLINICAL_DOCUMENTS_ROADMAP.md`.
 
@@ -376,12 +423,16 @@ HISTÓRICO / DEPRECATED
 
 ## Próximo passo imediato
 
-Executar **D2-B — Prescription V1** sobre a Clinical Documents Foundation já validada em produção.
+Fechar a validação técnica da **PR #429 — D2-B Prescription V1** no head final:
 
-Antes de implementar, comparar explicitamente:
+1. todos os testes;
+2. TypeScript;
+3. lint;
+4. build;
+5. dependency audit;
+6. workflows clínicos/Nexus aplicáveis;
+7. revisão do diff e estado mergeable.
 
-- foundation D2-A atual;
-- UX de prescrição do `OARANHA/medicspro` histórico;
-- ativos farmacológicos do Nexus que sejam apenas referência/apoio e não devam entrar no escopo D2-B.
+Depois disso, **parar para decisão de merge**. Não aplicar mudança em produção como parte desta PR.
 
-Objetivo: entregar o primeiro documento clínico real no Cockpit sem expandir simultaneamente para exames, atestados, relatórios ou switching farmacológico.
+Após eventual merge/deploy, executar smoke controlado no Encounter real antes de promover D2-B para `VALIDADO EM PRODUÇÃO` e antes de iniciar D2-C.
