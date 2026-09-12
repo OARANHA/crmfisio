@@ -21,6 +21,7 @@ Referências clínicas principais:
 - `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`
 - `docs/CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.md`
 - `docs/MEDICSPRO_LEGACY_REUSE_MAP.md`
+- `docs/CLINICAL_DOCUMENTS_FOUNDATION.md`
 
 A regra institucional permanece: **`OARANHA/crmfisio` é o runtime canônico; `OARANHA/medicspro` é referência histórica de produto/UX/workflow, nunca de arquitetura/autorização; `OARANHA/nexus` é upstream/laboratório de inteligência clínica, não um segundo runtime do produto.**
 
@@ -116,6 +117,18 @@ Registro detalhado: `docs/CLINICAL_ENCOUNTER_UI_ACCEPTANCE.md`.
 O profissional registra o atendimento no Encounter atual. O desenho canônico evita obrigar o usuário a preencher uma segunda evolução universal paralela quando o Encounter já é a fonte clínica da consulta.
 
 A finalização deve preservar histórico e regras clínicas/financeiras existentes. Correções posteriores devem ser auditáveis, não mutações silenciosas de histórico.
+
+---
+
+# Documentos clínicos — foundation D2-A
+
+**Estado:** foundation backend versionada; ainda sem workspace/editor no Clinical Encounter.
+
+O domínio suporta somente `medication_prescription` e `therapeutic_guidance`.
+`clinical.documents` é o gate base e não equivale, por si só, a autorização
+para prescrição medicamentosa: esta exige identidade médica ativa com CRM,
+UF e registro. Documentos emitidos preservam snapshots e usam lifecycle
+`draft → issued → canceled`; documentos emitidos não são editados.
 
 ---
 

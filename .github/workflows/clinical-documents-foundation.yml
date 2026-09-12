@@ -1,0 +1,39 @@
+name: Clinical Documents Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260912_clinical_documents_foundation.sql'
+      - 'supabase-verifiers/VERIFY_20260912_CLINICAL_DOCUMENTS_FOUNDATION.sql'
+      - 'tests/sql/clinical_documents_foundation_*.sql'
+      - 'scripts/test-clinical-documents-foundation.sh'
+      - '.github/workflows/clinical-documents-foundation.yml'
+      - 'docs/CLINICAL_DOCUMENTS_FOUNDATION.md'
+  workflow_dispatch:
+
+jobs:
+  postgres16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinical_documents_foundation_test
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - env: { PGDATABASE: postgres }
+        run: createdb clinical_documents_foundation_test
+      - run: bash scripts/test-clinical-documents-foundation.sh

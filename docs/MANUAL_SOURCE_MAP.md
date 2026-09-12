@@ -214,7 +214,12 @@ PHQ-9/GAD-7 permanecem instrumentos versionados/validados no eixo Clinical Instr
 
 # 8. Documentos e consentimentos
 
-**Estado:** IMPLEMENTADO em partes; manual precisa de inventário da UI atual.
+**Estado:** foundation backend D2-A disponível; UI de documentos ainda não está exposta.
+
+O runtime possui foundation versionada para receita medicamentosa e orientação
+terapêutica. Não inferir que `clinical.documents` autoriza receita: a emissão
+medicamentosa requer identidade médica/CRM válida. Documentos emitidos são
+históricos por snapshot e não sofrem edição silenciosa.
 
 Mapear:
 
