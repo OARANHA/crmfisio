@@ -4,7 +4,8 @@
 
 **Atualizado em:** 2026-09-12  
 **Prescrição D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO
+**Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
+**Exam Order D2-D0 / D2-D1 / D2-D2 Professional Print:** VALIDADO EM PRODUÇÃO
 
 ## Regra editorial
 
@@ -59,11 +60,12 @@ Workspaces validados:
 Registro
 Anamneses & Avaliações
 Prescrição
+Exames
 Orientações
 Nexus
 ```
 
-Prescrição e Orientações pertencem ao mesmo Encounter e não criam segundo atendimento/prontuário.
+Prescrição, Pedido de Exames e Orientações pertencem ao mesmo Encounter e não criam segundo atendimento/prontuário.
 
 ---
 
@@ -84,7 +86,7 @@ Runner por seções, save/resume e persistência foram validados. Especialidade 
 
 **Estado:** IMPLEMENTADO em partes; documentar por capability/superfície realmente exposta.
 
-Nexus é motor de instrumentos, cálculo, evidência e apoio à decisão. Não é emissor de Clinical Documents e não gera prescrição/orientação automaticamente.
+Nexus é motor de instrumentos, cálculo, evidência e apoio à decisão. Não é emissor de Clinical Documents e não gera prescrição/orientação/pedido automaticamente.
 
 ---
 
@@ -98,6 +100,7 @@ Foundation entregue:
 
 - `medication_prescription`;
 - `therapeutic_guidance`;
+- `exam_order`;
 - templates versionados;
 - lifecycle draft/issued/canceled;
 - snapshots imutáveis;
@@ -230,6 +233,68 @@ smoke real
 → preview A4 + emissão/histórico/impressão profissional confirmados
 ```
 
+## Pedido de Exames — D2-D0 / D2-D1
+
+**Estado:** VALIDADO EM PRODUÇÃO.
+
+PR #439 → `49cee461f970a3630c4fd98ab93a1ac476798e74`.
+
+Manual pode ensinar:
+
+```text
+Encounter
+→ Exames
+→ escolher Pedido de exames
+→ criar/retomar rascunho
+→ adicionar um ou mais exames
+→ definir prioridade global
+→ categoria/código/instruções/urgência por item quando necessário
+→ indicação clínica / hipótese / observações
+→ salvar
+→ revisar
+→ emitir
+→ histórico
+```
+
+O recorte V1 de autoria é médico/CRM e a autorização efetiva é server-side. O manual não deve sugerir que owner/admin ou especialidade concedem autoria.
+
+## Pedido de Exames Professional Print — D2-D2
+
+**Estado:** VALIDADO EM PRODUÇÃO.
+
+PR #440 → `cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`.
+
+Manual pode documentar:
+
+- folha A4 ao vivo no workspace `Exames`;
+- selo de pré-visualização sem validade antes da emissão;
+- título humano `Pedido de exames`;
+- clínica e dados de contato quando disponíveis;
+- paciente e nascimento;
+- profissional solicitante, CRM/UF, registro e especialidade;
+- prioridade;
+- lista estruturada de exames;
+- categoria, código, instruções e urgência por item;
+- indicação clínica, hipótese/impressão e observações;
+- bloco de assinatura visual;
+- identificador do documento emitido;
+- ação `Imprimir` no histórico de documentos emitidos;
+- impressão a partir dos snapshots congelados;
+- preservação de pedidos históricos no layout/snapshot original;
+- ausência de HTML/CSS/JS livre.
+
+Produção validada em 2026-09-12:
+
+```text
+migration D2-D2 aplicada
+→ verifier oficial executado com sucesso
+→ frontend redeployado
+→ preview A4 visível em produção
+→ histórico emitido com ação Imprimir
+```
+
+Não documentar resultados, laudos, coleta, fulfillment ou integração laboratorial/imagem como parte de `Pedido de exames`; esses domínios ainda não existem como produto validado.
+
 ---
 
 # 8. Consentimentos
@@ -292,6 +357,8 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 - **2026-09-12 — Professional Print / Safe Presets D2-B.2C:** VALIDADO EM PRODUÇÃO, inclusive imutabilidade visual histórica.
 - **2026-09-12 — Therapeutic Guidance D2-C:** VALIDADO EM PRODUÇÃO após smoke funcional real.
 - **2026-09-12 — Therapeutic Guidance D2-C.1:** VALIDADO EM PRODUÇÃO após migration/verifier/redeploy e smoke de preview A4 + impressão profissional.
+- **2026-09-12 — Exam Order D2-D0 / D2-D1:** VALIDADO EM PRODUÇÃO após migration foundation, redeploy e smoke funcional real.
+- **2026-09-12 — Exam Order D2-D2:** VALIDADO EM PRODUÇÃO após migration/verifier/redeploy e evidência visual de preview A4 + histórico com impressão.
 
 ---
 
