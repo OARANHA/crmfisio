@@ -109,8 +109,8 @@ describe('Clinical Prescription V1 boundary', () => {
     expect(workspaceSource).toContain('title="Histórico anterior"');
   });
 
-  it('integrates prescription as navigation inside the same canonical Encounter', () => {
-    expect(encounterSource).toContain("'prescription' | 'guidance' | 'nexus'");
+  it('integrates prescription as navigation inside the same canonical Encounter without freezing adjacent workspaces', () => {
+    expect(encounterSource).toContain("workspace === 'prescription'");
     expect(encounterSource).toContain("['prescription', 'Prescrição']");
     expect(encounterSource).toContain("useClinicalCapability('clinical.documents'");
     expect(encounterSource).toContain('<ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />');
