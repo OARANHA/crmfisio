@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const clientSource = readFileSync(resolve(here, './clinicalPrescription.ts'), 'utf8');
+const rendererSource = readFileSync(resolve(here, './prescriptionPrintRenderer.ts'), 'utf8');
 const workspaceSource = readFileSync(resolve(here, '../components/ClinicalPrescriptionWorkspace.tsx'), 'utf8');
 const previewSource = readFileSync(resolve(here, '../components/PrescriptionDocumentPreview.tsx'), 'utf8');
 const encounterSource = readFileSync(resolve(here, '../components/ClinicalEncounterWorkspaceV4.tsx'), 'utf8');
@@ -36,34 +37,54 @@ describe('Clinical Prescription V1 boundary', () => {
     expect(workspaceSource).not.toContain('setInterval(');
   });
 
-  it('keeps the live preview presentation-only and explicitly non-issued', () => {
-    expect(workspaceSource).toContain('<PrescriptionDocumentPreview patient={patient} payload={payload} />');
+  it('uses the shared safe renderer for live preview without print or RPC side effects', () => {
+    expect(workspaceSource).toContain('renderDefinition={previewRenderDefinition} clinic={clinic}');
+    expect(previewSource).toContain("buildPrescriptionDocumentHtml({");
+    expect(previewSource).toContain("mode: 'draft'");
+    expect(previewSource).toContain('srcDoc={html}');
+    expect(previewSource).toContain('sandbox=""');
     expect(previewSource).toContain('data-prescription-live-preview="draft"');
     expect(previewSource).toContain('Rascunho · não emitida');
-    expect(previewSource).toContain('Sem validade até a emissão');
-    expect(previewSource).toContain('Pré-visualização de rascunho · documento não emitido');
-    expect(previewSource).toContain('payload.items.filter');
     expect(previewSource).not.toContain("db.rpc(");
     expect(previewSource).not.toContain('window.print');
     expect(previewSource).not.toContain('document.write');
   });
 
-  it('uses canonical patient and authenticated professional data in the live preview', () => {
+  it('feeds canonical patient, clinic and authenticated professional identity into the draft renderer', () => {
     expect(previewSource).toContain('patient.preferredName || patient.nome');
-    expect(previewSource).toContain('formatDateOnly(patient.nascimento)');
+    expect(previewSource).toContain('birthDate: patient.nascimento');
+    expect(previewSource).toContain("name: clinic.name || 'Clínica'");
+    expect(previewSource).toContain('address: clinic.address');
+    expect(previewSource).toContain('phone: clinic.phone');
     expect(previewSource).toContain('const { user } = useCurrentUserAccess()');
-    expect(previewSource).toContain("const professionalName = user?.nome || 'Profissional responsável'");
-    expect(previewSource).toContain("const professionalRegistration = user?.registro || ''");
+    expect(previewSource).toContain("name: user?.nome || 'Profissional responsável'");
+    expect(previewSource).toContain('registration: user?.registro');
   });
 
-  it('prints only the immutable issued snapshot and its frozen professional identity', () => {
+  it('prints only the immutable issued payload/context/template renderer snapshots', () => {
     expect(workspaceSource).toContain("document.status !== 'issued' || !document.payloadSnapshot");
-    expect(workspaceSource).toContain('document.payloadSnapshot.items');
-    expect(workspaceSource).toContain("const issuerCredential = snapshotIssuerCredential(document.contextSnapshot)");
-    expect(workspaceSource).toContain('issuer.council_type');
-    expect(workspaceSource).toContain('issuer.council_state');
-    expect(workspaceSource).toContain('issuer.registro');
+    expect(workspaceSource).toContain('payload: document.payloadSnapshot');
+    expect(workspaceSource).toContain('buildPrescriptionRenderContextFromSnapshot(document.contextSnapshot');
+    expect(workspaceSource).toContain('prescriptionDocumentRenderDefinition(document)');
+    expect(workspaceSource).toContain("mode: 'issued'");
+    expect(clientSource).toContain('template_definition_snapshot');
+    expect(clientSource).toContain('templateDefinitionSnapshot');
     expect(workspaceSource).not.toContain('template.definition');
+  });
+
+  it('keeps the renderer closed and escapes all dynamic text', () => {
+    expect(rendererSource).toContain("PRESCRIPTION_RENDER_LAYOUT_V2 = 'clinical-document/prescription-v2'");
+    expect(rendererSource).toContain("type PrescriptionPrintPreset = 'classic' | 'institutional' | 'compact'");
+    expect(rendererSource).toContain('escapeHtml(item.medicationName');
+    expect(rendererSource).toContain('escapeHtml(context.patient.name');
+    expect(rendererSource).not.toContain('dangerouslySetInnerHTML');
+    expect(rendererSource).not.toContain('eval(');
+  });
+
+  it('resumes an existing draft with its exact template-version renderer instead of the current template', () => {
+    expect(clientSource).toContain('loadMedicationPrescriptionTemplateRenderDefinition');
+    expect(workspaceSource).toContain('loadMedicationPrescriptionTemplateRenderDefinition(draft.templateVersionId)');
+    expect(workspaceSource).toContain('setActiveRenderDefinition(renderDefinition)');
   });
 
   it('isolates local draft state by patient, canonical encounter and authenticated user', () => {
