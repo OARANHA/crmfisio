@@ -15,7 +15,7 @@ Exam Order D2-D0 / D2-D1 / D2-D2                             PROD
 Referral D2-E0 / D2-E1 / D2-E2 / D2-E3 / D2-E3.1            PROD
 Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
-D2-E4 Referral Operational Continuity                         PRÓXIMO
+D2-E4 Referral Operational Continuity                         IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
 ```
 
 ---
@@ -202,9 +202,9 @@ O roteamento interno **não concede acesso ao prontuário nem care relationship 
 
 ---
 
-# Próximo passo — D2-E4 Referral Operational Continuity
+# D2-E4 — Referral Operational Continuity
 
-A próxima etapa não deve alterar o lifecycle do documento emitido. O desenho canônico é separar um workflow operacional vinculado ao `clinical_documents.id` emitido:
+A implementação não altera o lifecycle do documento emitido. O workflow operacional é separado e vinculado ao `clinical_documents.id` emitido:
 
 ```text
 referral emitido e imutável
@@ -225,6 +225,11 @@ Requisitos arquiteturais para D2-E4:
 - handoff para atendimento deve respeitar `clinical.attend`, profissional atribuído e guard temporal existentes;
 - conclusão deve ser auditável e referenciar o atendimento resultante quando houver;
 - especialidade/profissão continuam roteamento/relevância, nunca ACL.
+
+V1 cria uma operação única por referral interno, auditável e tenant-scoped. A
+Agenda continua dona de data/hora, status e remarcação; o RPC transacional só
+cria/recupera o appointment vinculado após revalidar os boundaries. Produção
+ainda exige migration, verifier e smoke manual após merge.
 
 ---
 

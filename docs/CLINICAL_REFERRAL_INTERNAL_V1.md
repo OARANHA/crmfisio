@@ -85,7 +85,7 @@ Smoke real:
 
 Fila de recebidos, aceite/recusa, agendamento, atendimento, conclusão e contrarreferência não pertencem ao lifecycle do documento. Esses estados são workflow operacional separado e formam a próxima etapa D2-E4.
 
-## Próxima etapa
+## Continuidade operacional D2-E4
 
 **D2-E4 — Continuidade Operacional do Encaminhamento Interno**:
 
@@ -98,4 +98,12 @@ encaminhamento interno emitido
 → conclusão
 ```
 
-O documento clínico permanece imutável durante todo esse fluxo.
+O documento clínico permanece imutável durante todo esse fluxo. D2-E4 usa
+`clinical_referral_operations`, separado do documento e com eventos append-only.
+Há uma única operação por referral interno; `schedule_clinical_referral_operation`
+revalida tenant, destino, paciente, profissional ativo e permissão antes de
+criar (ou retornar idempotentemente) o appointment canônico. A remarcação normal
+move apenas o vínculo operacional para o appointment substituto.
+
+Inbox do destinatário, aceite/recusa explícitos, mensageria, billing e
+contrarreferência continuam fora deste V1.
