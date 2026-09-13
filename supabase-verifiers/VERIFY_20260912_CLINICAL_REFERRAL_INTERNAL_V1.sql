@@ -53,8 +53,8 @@ SELECT set_config(
   CASE WHEN
     EXISTS (SELECT 1 FROM public.clinics WHERE id='d2000000-0000-4000-8000-000000000001'::uuid)
     AND EXISTS (SELECT 1 FROM public.clinics WHERE id='d2000000-0000-4000-8000-000000000002'::uuid)
-    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000001'::uuid)
-    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000004'::uuid)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000001'::uuid AND ativo IS TRUE)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000004'::uuid AND ativo IS TRUE)
     AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000007'::uuid)
     AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000008'::uuid)
     AND EXISTS (SELECT 1 FROM public.patients WHERE id='d2200000-0000-4000-8000-000000000001'::uuid)
@@ -82,12 +82,13 @@ BEGIN
       RAISE EXCEPTION 'clinical_referral_internal_directory_expected_target_missing';
     END IF;
   ELSE
-    -- On a real production database the synthetic subject does not exist. The
-    -- directory must fail closed rather than return tenant data for that JWT.
+    -- On production the synthetic subject is absent; CI also exercises this
+    -- branch with that subject made ineligible. Either way the directory must
+    -- fail closed rather than leak tenant data for the JWT.
     IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets()) THEN
       RAISE EXCEPTION 'clinical_referral_internal_directory_unknown_subject_leak';
     END IF;
-    RAISE NOTICE 'D2-E3 production verifier: disposable fixture absent; positive directory fixture probes skipped, fail-closed probe passed.';
+    RAISE NOTICE 'D2-E3 production verifier: disposable fixture absent/ineligible; positive directory fixture probes skipped, fail-closed probe passed.';
   END IF;
 END $$;
 RESET ROLE;
