@@ -1,4 +1,6 @@
--- D2-E3 Internal Referral V1 verifier. Safe to run in production: all behavior probes rollback.
+-- D2-E3 Internal Referral V1 verifier.
+-- Production-safe: structural/fail-closed probes always run; synthetic positive/
+-- negative behavior probes run only when the disposable D2-A fixture is present.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -42,26 +44,58 @@ BEGIN
   END IF;
 END $$;
 
+-- CI reconstructs the disposable D2-A fixture before invoking this verifier.
+-- Production intentionally does not contain these synthetic IDs. Persist the
+-- fixture presence in a transaction-local GUC so the same verifier can safely
+-- distinguish full fixture behavior probes from production fail-closed probes.
+SELECT set_config(
+  'medicspro.verify_d2e3_fixture_ready',
+  CASE WHEN
+    EXISTS (SELECT 1 FROM public.clinics WHERE id='d2000000-0000-4000-8000-000000000001'::uuid)
+    AND EXISTS (SELECT 1 FROM public.clinics WHERE id='d2000000-0000-4000-8000-000000000002'::uuid)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000001'::uuid AND ativo IS TRUE)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000004'::uuid AND ativo IS TRUE)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000007'::uuid)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000008'::uuid)
+    AND EXISTS (SELECT 1 FROM public.patients WHERE id='d2200000-0000-4000-8000-000000000001'::uuid)
+    AND EXISTS (SELECT 1 FROM public.appointments WHERE id='d2300000-0000-4000-8000-000000000001'::uuid)
+    THEN 'true' ELSE 'false' END,
+  true
+);
+
 SET LOCAL ROLE authenticated;
 SET LOCAL row_security = on;
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SELECT set_config('request.jwt.claim.sub','d2100000-0000-4000-8000-000000000001',true);
 DO $$
+DECLARE
+  v_fixture_ready boolean := current_setting('medicspro.verify_d2e3_fixture_ready', true)::boolean;
 BEGIN
-  IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000001'::uuid) THEN
-    RAISE EXCEPTION 'clinical_referral_internal_directory_self_leak';
-  END IF;
-  IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id IN ('d2100000-0000-4000-8000-000000000005'::uuid,'d2100000-0000-4000-8000-000000000006'::uuid,'d2100000-0000-4000-8000-000000000007'::uuid,'d2100000-0000-4000-8000-000000000008'::uuid)) THEN
-    RAISE EXCEPTION 'clinical_referral_internal_directory_scope_leak';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000004'::uuid AND professional_type <> '') THEN
-    RAISE EXCEPTION 'clinical_referral_internal_directory_expected_target_missing';
+  IF v_fixture_ready THEN
+    IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000001'::uuid) THEN
+      RAISE EXCEPTION 'clinical_referral_internal_directory_self_leak';
+    END IF;
+    IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id IN ('d2100000-0000-4000-8000-000000000005'::uuid,'d2100000-0000-4000-8000-000000000006'::uuid,'d2100000-0000-4000-8000-000000000007'::uuid,'d2100000-0000-4000-8000-000000000008'::uuid)) THEN
+      RAISE EXCEPTION 'clinical_referral_internal_directory_scope_leak';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000004'::uuid AND professional_type <> '') THEN
+      RAISE EXCEPTION 'clinical_referral_internal_directory_expected_target_missing';
+    END IF;
+  ELSE
+    -- On production the synthetic subject is absent; CI also exercises this
+    -- branch with that subject made ineligible. Either way the directory must
+    -- fail closed rather than leak tenant data for the JWT.
+    IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets()) THEN
+      RAISE EXCEPTION 'clinical_referral_internal_directory_unknown_subject_leak';
+    END IF;
+    RAISE NOTICE 'D2-E3 production verifier: disposable fixture absent/ineligible; positive directory fixture probes skipped, fail-closed probe passed.';
   END IF;
 END $$;
 RESET ROLE;
 
 DO $$
 DECLARE
+  v_fixture_ready boolean := current_setting('medicspro.verify_d2e3_fixture_ready', true)::boolean;
   v_base jsonb := '{"destination_scope":"internal_professional","target_profile_id":"d2100000-0000-4000-8000-000000000004","recipient":{"professional_name":"Psicóloga D2","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_service jsonb := '{"destination_scope":"internal_service","target_profile_id":"","recipient":{"professional_name":"","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_ok boolean := false;
@@ -71,6 +105,11 @@ BEGIN
   FROM public.clinical_document_templates
   WHERE id='12000000-0000-4000-8000-000000000007'::uuid;
   IF v_version_id IS NULL THEN RAISE EXCEPTION 'clinical_referral_current_version_missing'; END IF;
+
+  IF NOT v_fixture_ready THEN
+    RAISE NOTICE 'D2-E3 production verifier: mutation probes use disposable fixture and were skipped; trigger/function fingerprints and fail-closed runtime probe passed.';
+    RETURN;
+  END IF;
 
   INSERT INTO public.clinical_documents(
     id, clinic_id, patient_id, appointment_id, document_type, template_id,

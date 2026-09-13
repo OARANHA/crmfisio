@@ -34,4 +34,11 @@ python3 scripts/build-clinical-care-read-test.py | "${PSQL[@]}" >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_FOUNDATION.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_RENDERER_V1.sql
 
+# Exercise the production path too. Production does not contain the disposable
+# D2-A fixture. Making its synthetic issuer ineligible forces the verifier to
+# skip fixture-only positive/mutation probes while still proving the directory
+# fails closed and structural fingerprints/grants remain correct.
+"${PSQL[@]}" -c "UPDATE public.profiles SET ativo=false WHERE id='d2100000-0000-4000-8000-000000000001'::uuid"
+"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql
+
 echo 'CLINICAL REFERRAL INTERNAL V1 POSTGRESQL 16 PASS'
