@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const client = read('./clinicalReferral.ts');
 const workspace = read('../components/ClinicalReferralWorkspace.tsx');
+const preview = read('../components/ReferralDocumentPreview.tsx');
 const migration = read('../../supabase-migrations/20260912_clinical_referral_internal_v1.sql');
 const hardening = read('../../supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql');
 const renderer = read('./referralPrintRenderer.ts');
@@ -56,6 +57,10 @@ describe('D2-E3 Internal Referral V1 boundary', () => {
 
   it('does not display the clinic itself as a selected internal destination before a real choice', () => {
     expect(workspace).toContain("facility: '', contact: ''");
+    expect(preview).toContain('normalizeDraftPreviewPayload');
+    expect(preview).toContain("recipient.scope === 'internal_professional'");
+    expect(preview).toContain("recipient.scope === 'internal_service'");
+    expect(preview).toContain("recipient: { ...recipient, facility: '' }");
   });
 
   it('never exposes the stable internal target id in the patient-facing renderer', () => {
