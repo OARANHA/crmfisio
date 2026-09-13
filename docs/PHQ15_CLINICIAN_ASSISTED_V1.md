@@ -6,6 +6,10 @@
 
 Branch: `feat/phq15-clinician-assisted-v1`
 
+PR: `#461 — feat: add PHQ-15 clinician-assisted V1`
+
+Head: `c26a27764d400590c750fc784151e9b5827723eb`
+
 Base: `main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5`
 
 This slice adds PHQ-15 to the canonical MedicsPro clinician-assisted instrument path without widening the public self-assessment surface.
@@ -82,7 +86,9 @@ Local Node 22 validation before PR:
 - production build: green;
 - `git diff --check`: green.
 
-PostgreSQL 16 behavior is exercised by the dedicated disposable-database workflow `PHQ-15 Clinician-Assisted V1`. Production verification is intentionally deferred until after review/merge and an explicit production action.
+GitHub CI on PR #461 is fully green: `10/10` workflows completed successfully, including the dedicated disposable PostgreSQL 16 workflow `PHQ-15 Clinician-Assisted V1`, C-01/C-02/C-03/C-04/C-06, clinical foundation/authorization reconciliation, the general clinical workflow CI, and the existing clinician-assisted instrument gate.
+
+Production verification remains intentionally deferred until after an explicitly authorized merge and a separate explicit production action.
 
 ## Out of scope
 
@@ -93,3 +99,18 @@ PostgreSQL 16 behavior is exercised by the dedicated disposable-database workflo
 - longitudinal PHQ-15 dashboard;
 - module/plan packaging changes;
 - production migration/deploy.
+
+## Continuity / next safe action
+
+The implementation is PR-ready and all local/CI gates are green. It is **not production state**.
+
+Next sequence:
+
+1. merge PR #461 only after explicit authorization;
+2. treat production rollout as a separate controlled step;
+3. apply `supabase-migrations/20260913_phq15_clinician_assisted_v1.sql`;
+4. deploy the affected application/runtime surfaces;
+5. smoke the fail-closed clinic setting, authorized `Aplicar agora`, immutable/versioned administration snapshot, and the public rejection of PHQ-15;
+6. only then update `docs/CURRENT_STATE.md` and this document to `VALIDADO EM PRODUÇÃO`.
+
+If another chat/agent resumes this work before merge, start from `docs/CURRENT_STATE.md`, this document, and PR #461; do not recreate the PHQ-15 implementation or broaden public exposure.
