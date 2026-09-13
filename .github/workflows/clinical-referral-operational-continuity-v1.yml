@@ -3,6 +3,8 @@ name: Clinical Referral Operational Continuity V1
 on:
   pull_request:
     paths:
+      - 'supabase-migrations/20260907_appointment_mutation_boundary.sql'
+      - 'supabase-migrations/20260909_clinical_authorization_reconciliation.sql'
       - 'supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql'
       - 'supabase-migrations/20260913_d2e4_fixed_target_appointment_transaction_proof.sql'
       - 'supabase-migrations/20260913_clinical_referral_target_professional_fix.sql'
