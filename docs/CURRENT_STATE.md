@@ -27,13 +27,13 @@ PHQ-15 Clinician-Assisted V1                                  PR READY / NOT PRO
 Estado em 2026-09-13:
 
 ```text
-branch: feat/phq15-clinician-assisted-v1
-PR:     #461 — feat: add PHQ-15 clinician-assisted V1
-head:   c26a27764d400590c750fc784151e9b5827723eb
-base:   main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5
-CI:     10/10 workflows verdes
-prod:   NÃO aplicado / NÃO deployado
-merge:  NÃO executado
+branch:                feat/phq15-clinician-assisted-v1
+PR:                    #461 — feat: add PHQ-15 clinician-assisted V1
+implementation commit: c26a27764d400590c750fc784151e9b5827723eb
+base:                  main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5
+CI implementation:     10/10 workflows verdes
+prod:                  NÃO aplicado / NÃO deployado
+merge:                 NÃO executado
 ```
 
 A slice adiciona PHQ-15 somente ao fluxo clínico assistido `Aplicar agora`, reutilizando o ledger imutável e o writer server-side existentes. O self-assessment público permanece PHQ-9/GAD-7 e possui allowlist própria no processor para impedir exposição acidental por expansão da engine compartilhada.

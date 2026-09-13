@@ -8,7 +8,7 @@ Branch: `feat/phq15-clinician-assisted-v1`
 
 PR: `#461 — feat: add PHQ-15 clinician-assisted V1`
 
-Head: `c26a27764d400590c750fc784151e9b5827723eb`
+Implementation commit: `c26a27764d400590c750fc784151e9b5827723eb`
 
 Base: `main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5`
 
@@ -86,7 +86,7 @@ Local Node 22 validation before PR:
 - production build: green;
 - `git diff --check`: green.
 
-GitHub CI on PR #461 is fully green: `10/10` workflows completed successfully, including the dedicated disposable PostgreSQL 16 workflow `PHQ-15 Clinician-Assisted V1`, C-01/C-02/C-03/C-04/C-06, clinical foundation/authorization reconciliation, the general clinical workflow CI, and the existing clinician-assisted instrument gate.
+GitHub CI on implementation commit `c26a27764d400590c750fc784151e9b5827723eb` is fully green: `10/10` workflows completed successfully, including the dedicated disposable PostgreSQL 16 workflow `PHQ-15 Clinician-Assisted V1`, C-01/C-02/C-03/C-04/C-06, clinical foundation/authorization reconciliation, the general clinical workflow CI, and the existing clinician-assisted instrument gate.
 
 Production verification remains intentionally deferred until after an explicitly authorized merge and a separate explicit production action.
 
