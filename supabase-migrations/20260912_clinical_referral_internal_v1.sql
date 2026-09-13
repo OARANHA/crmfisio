@@ -60,6 +60,9 @@ DECLARE
   v_scope text;
   v_target_text text;
   v_target_id uuid;
+  v_service_specialty text;
+  v_service_name text;
+  v_service_professional_type text;
 BEGIN
   IF NEW.document_type IS DISTINCT FROM 'referral' THEN RETURN NEW; END IF;
 
@@ -78,15 +81,49 @@ BEGIN
   END IF;
 
   IF v_scope = 'internal_service' THEN
-    IF NEW.status = 'issued'
-       AND nullif(btrim(coalesce(NEW.payload->'recipient'->>'specialty', '')), '') IS NULL
-       AND nullif(btrim(coalesce(NEW.payload->'recipient'->>'service', '')), '') IS NULL
-       AND nullif(btrim(coalesce(NEW.payload->'recipient'->>'professional_type', '')), '') IS NULL THEN
-      RAISE EXCEPTION 'clinical_referral_internal_service_required' USING ERRCODE = '22023';
-    END IF;
     IF v_target_text <> '' THEN
       RAISE EXCEPTION 'clinical_referral_target_invalid' USING ERRCODE = '23514';
     END IF;
+
+    v_service_specialty := btrim(coalesce(NEW.payload->'recipient'->>'specialty', ''));
+    v_service_name := btrim(coalesce(NEW.payload->'recipient'->>'service', ''));
+    v_service_professional_type := btrim(coalesce(NEW.payload->'recipient'->>'professional_type', ''));
+
+    IF v_service_specialty = '' AND v_service_name = '' AND v_service_professional_type = '' THEN
+      IF NEW.status = 'issued' THEN
+        RAISE EXCEPTION 'clinical_referral_internal_service_required' USING ERRCODE = '22023';
+      END IF;
+      RETURN NEW;
+    END IF;
+
+    -- Once an internal area is selected, it must resolve to at least one active
+    -- clinical professional in the same tenant. This prevents a manipulated
+    -- client from labeling an arbitrary external destination as internal.
+    IF NOT EXISTS (
+      SELECT 1
+      FROM public.profiles p
+      WHERE p.clinic_id = NEW.clinic_id
+        AND p.ativo IS TRUE
+        AND p.id IS DISTINCT FROM NEW.issuer_id
+        AND nullif(btrim(coalesce(p.professional_type, '')), '') IS NOT NULL
+        AND (
+          (
+            v_service_professional_type <> ''
+            AND lower(btrim(coalesce(p.professional_type, ''))) = lower(v_service_professional_type)
+          )
+          OR (
+            v_service_specialty <> ''
+            AND lower(btrim(coalesce(to_jsonb(p)->>'especialidade', to_jsonb(p)->>'specialty', ''))) = lower(v_service_specialty)
+          )
+          OR (
+            v_service_name <> ''
+            AND lower(btrim(coalesce(to_jsonb(p)->>'especialidade', to_jsonb(p)->>'specialty', ''))) = lower(v_service_name)
+          )
+        )
+    ) THEN
+      RAISE EXCEPTION 'clinical_referral_internal_service_invalid' USING ERRCODE = '23514';
+    END IF;
+
     RETURN NEW;
   END IF;
 
