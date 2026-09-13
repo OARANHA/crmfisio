@@ -27,6 +27,7 @@ for file in \
   supabase-migrations/20260912_clinical_referral_renderer_v1.sql \
   supabase-migrations/20260912_clinical_referral_internal_v1.sql \
   supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql \
+  supabase-migrations/20260909_clinical_authorization_reconciliation.sql \
   supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql \
   supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql \
   supabase-migrations/20260913_clinical_referral_target_professional_fix.sql \
@@ -34,9 +35,14 @@ for file in \
   "${PSQL[@]}" -f "$file" >/dev/null
 done
 
+# Effective production appointment authorization: this is the migration that
+# installs guard_appointment_mutation_boundary() and reproduced the real P0.
+"${PSQL[@]}" -f supabase-migrations/20260913_d2e4_fixed_target_appointment_transaction_proof.sql >/dev/null
+
 # Both the foundation and the corrective CREATE OR REPLACE must be replay-safe.
 "${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql >/dev/null
 "${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_target_professional_fix.sql >/dev/null
+"${PSQL[@]}" -f supabase-migrations/20260913_d2e4_fixed_target_appointment_transaction_proof.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_TARGET_PROFESSIONAL_FIX.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql >/dev/null

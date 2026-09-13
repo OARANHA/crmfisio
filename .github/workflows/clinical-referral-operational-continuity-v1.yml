@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql'
+      - 'supabase-migrations/20260913_d2e4_fixed_target_appointment_transaction_proof.sql'
       - 'supabase-migrations/20260913_clinical_referral_target_professional_fix.sql'
       - 'supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql'
       - 'supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_TARGET_PROFESSIONAL_FIX.sql'
