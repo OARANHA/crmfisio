@@ -31,6 +31,7 @@ for file in \
   supabase-migrations/20260912_clinical_referral_renderer_v1.sql \
   supabase-migrations/20260912_clinical_referral_internal_v1.sql \
   supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql \
+  tests/sql/d2e4_effective_appointment_authorization_prerequisite.sql \
   supabase-migrations/20260909_clinical_authorization_reconciliation.sql \
   supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql \
   supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql \
