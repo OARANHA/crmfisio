@@ -59,7 +59,7 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   const [key, setKey] = useState('');
 
   const createKey = creating
-    ? [creating.dia, creating.hora, creating.patientId, creating.fisioId, creating.roomId, creating.isFitIn ? 'fit' : 'normal'].join('-')
+    ? [creating.dia, creating.hora, creating.patientId, creating.fisioId, creating.roomId, creating.referralOperationId, creating.isFitIn ? 'fit' : 'normal'].join('-')
     : '';
 
   if (creating && createKey !== key) {
@@ -73,7 +73,9 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
     const firstUnit = initialRoom?.unidadeId ?? unidades[0]?.id ?? '';
     setUnitId(firstUnit);
     setRoomId(initialRoomId || rooms.find((r) => r.unidadeId === firstUnit)?.id || '');
-    setFisioId(user?.role === 'professional' ? user.id : (creating.fisioId ?? ''));
+    setFisioId(creating.referralOperationId
+      ? (creating.fisioId ?? (user?.role === 'professional' ? user.id : ''))
+      : (user?.role === 'professional' ? user.id : (creating.fisioId ?? '')));
     setDuracao(creating.duracaoMin ?? 50);
     setIsFitIn(Boolean(creating.isFitIn));
   }
@@ -98,6 +100,9 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
   const uniqueConflicts = conflicts.filter((item, index, all) =>
     all.findIndex((other) => other.kind === item.kind && other.appointment.id === item.appointment.id) === index
   );
+  const referralFixedProfessional = Boolean(creating?.referralOperationId && creating.fisioId);
+  const professionalLocked = referralFixedProfessional || (user?.role === 'professional' && !creating?.referralOperationId);
+  const patientLocked = Boolean(creating?.referralOperationId);
 
   const save = () => {
     if (!pacienteId || !fisioId || !roomId || !dia || conflicts.length > 0) return;
@@ -109,9 +114,9 @@ export function AppointmentCreateModal({ creating, onClose, rooms, unidades, pre
       {isFitIn && <div className="mb-4 border border-mint/35 bg-mint/[0.06] p-3 text-[12px] text-mint">Vaga recuperada da lista de espera. Confirme os dados antes de agendar.</div>}
       {creating?.referralOperationId && <div className="mb-4 border border-aqua/35 bg-aqua/[0.06] p-3 text-[12px] text-aqua">Continuidade de encaminhamento interno. Paciente e destino são validados novamente pelo servidor ao agendar.</div>}
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Paciente"><Select value={pacienteId} onChange={(e) => { setPacienteId(e.target.value); setPacoteId(''); }}><option value="">Selecionar…</option>{patients.filter((p) => p.status !== 'alta' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
+        <Field label="Paciente"><Select value={pacienteId} disabled={patientLocked} onChange={(e) => { setPacienteId(e.target.value); setPacoteId(''); }}><option value="">Selecionar…</option>{patients.filter((p) => p.status !== 'alta' && !p.anonimizado).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></Field>
         <Field label="Cobrança / pacote"><Select value={pacoteId} onChange={(e) => setPacoteId(e.target.value)}><option value="">Atendimento avulso — cobrar ao finalizar</option>{availablePackages.map((item) => { const catalog = packages.find((entry) => entry.id === item.pacoteId); const remaining = item.sessoesTotais - item.sessoesUsadas; return <option key={item.id} value={item.id}>{catalog?.nome ?? 'Pacote'} · {remaining} sessão(ões)</option>; })}</Select></Field>
-        <Field label="Profissional"><Select value={fisioId} disabled={user?.role === 'professional'} onChange={(e) => setFisioId(e.target.value)}><option value="">Selecionar…</option>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
+        <Field label="Profissional"><Select value={fisioId} disabled={professionalLocked} onChange={(e) => setFisioId(e.target.value)}><option value="">Selecionar…</option>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.nome}</option>)}</Select></Field>
         <Field label="Unidade"><Select value={unitId} onChange={(e) => { const id = e.target.value; setUnitId(id); setRoomId(rooms.find((r) => r.unidadeId === id)?.id ?? ''); }}><option value="">Selecionar…</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Select></Field>
         <Field label="Sala / equipamento"><Select value={roomId} onChange={(e) => setRoomId(e.target.value)}><option value="">Selecionar…</option>{availableRooms.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}</Select></Field>
         <Field label="Tipo"><Input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Ex.: Consulta, avaliação, sessão" /></Field>
