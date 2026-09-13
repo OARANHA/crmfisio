@@ -33,8 +33,9 @@ describe('D2-E3 Internal Referral V1 boundary', () => {
     expect(workspace).not.toContain("from('profiles')");
   });
 
-  it('fails closed for invalid internal professional targets without granting care access', () => {
+  it('fails closed for invalid internal professional and service targets without granting care access', () => {
     expect(migration).toContain('clinical_referral_target_invalid');
+    expect(migration).toContain('clinical_referral_internal_service_invalid');
     expect(migration).toContain('p.clinic_id = NEW.clinic_id');
     expect(migration).toContain("NEW.status = 'issued'");
     expect(migration).not.toContain('can_access_patient_clinical_record');
