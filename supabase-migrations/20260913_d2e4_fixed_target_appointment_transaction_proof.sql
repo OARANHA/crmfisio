@@ -219,12 +219,14 @@ BEGIN
     RAISE EXCEPTION 'clinical_referral_operation_internal_required' USING ERRCODE = '22023';
   END IF;
 
-  -- Professional users may schedule a colleague only for the exact immutable
-  -- internal-professional target. Internal-service and all arbitrary colleague
-  -- scheduling remain under the normal self-assignment rule.
+  -- Preserve the #452 fixed-target contract verbatim while the immutable
+  -- document/operation equality above supplies the stronger revalidation.
   IF v_role = 'professional'
      AND p_professional_id IS DISTINCT FROM v_uid
-     AND v_op.destination_scope IS DISTINCT FROM 'internal_professional' THEN
+     AND NOT (
+       v_op.destination_scope = 'internal_professional'
+       AND p_professional_id IS NOT DISTINCT FROM v_op.target_profile_id
+     ) THEN
     RAISE EXCEPTION 'clinical_referral_operation_self_or_fixed_target_required' USING ERRCODE = '42501';
   END IF;
 
