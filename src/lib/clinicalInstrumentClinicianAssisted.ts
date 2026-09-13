@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient';
 
 const db = supabase as any;
 
-export const CLINICIAN_ASSISTED_INSTRUMENT_KEYS = ['phq9', 'gad7'] as const;
+export const CLINICIAN_ASSISTED_INSTRUMENT_KEYS = ['phq9', 'gad7', 'phq15'] as const;
 export type ClinicianAssistedInstrumentKey = typeof CLINICIAN_ASSISTED_INSTRUMENT_KEYS[number];
 
 export type ClinicianAssistedSafetySignal = {

@@ -4,10 +4,11 @@ import {
   GAD7_PROCESSOR,
   getClinicalInstrumentProcessor,
   PHQ9_PROCESSOR,
+  PHQ15_PROCESSOR,
 } from '../../supabase/functions/_shared/clinical-instrument-engine';
 
 describe('shared clinical instrument server engine', () => {
-  it('keeps the canonical PHQ-9/GAD-7 Nexus identity and version', () => {
+  it('keeps the canonical Nexus identity and version for supported instruments', () => {
     expect(CLINICAL_INSTRUMENT_PROCESSORS.map((item) => ({
       toolKey: item.toolKey,
       ruleKey: item.ruleKey,
@@ -26,6 +27,13 @@ describe('shared clinical instrument server engine', () => {
         toolKey: 'gad7',
         ruleKey: 'nexus.gad7',
         ruleVersion: 'nexus-2026-09-03',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+      {
+        toolKey: 'phq15',
+        ruleKey: 'nexus.phq15',
+        ruleVersion: 'nexus-phq15-2026-09-13',
         moduleKey: 'scales',
         requiredCapability: 'nexus.scales',
       },
@@ -92,6 +100,18 @@ describe('shared clinical instrument server engine', () => {
     expect(calculated.redFlags).toEqual([]);
   });
 
+  it('scores PHQ-15 deterministically with the canonical 0-30 severity bands', () => {
+    const calculated = PHQ15_PROCESSOR.calculate(Object.fromEntries(
+      Array.from({ length: 15 }, (_, index) => [`q${index + 1}`, 1]),
+    ));
+
+    expect(calculated.totalScore).toBe(15);
+    expect(calculated.maxScore).toBe(30);
+    expect(calculated.classification).toBe('Faixa alta de sintomas somáticos');
+    expect(calculated.redFlags).toEqual([]);
+    expect(calculated.recommendations.join(' ')).toContain('não diferencia causa orgânica');
+  });
+
   it('fails closed on incomplete, out-of-range or unknown instruments', () => {
     expect(() => PHQ9_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-9 incompleto');
     expect(() => GAD7_PROCESSOR.calculate({
@@ -103,6 +123,8 @@ describe('shared clinical instrument server engine', () => {
       q6: 0,
       q7: 4,
     })).toThrow('GAD-7 incompleto ou com resposta fora da faixa 0-3');
+    expect(() => PHQ15_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-15 incompleto');
+    expect(() => PHQ15_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 15 }, (_, index) => [`q${index + 1}`, index === 14 ? 3 : 0])))).toThrow('PHQ-15 incompleto ou com resposta fora da faixa 0-2');
     expect(getClinicalInstrumentProcessor('unknown')).toBeNull();
   });
 });

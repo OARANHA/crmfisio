@@ -4,6 +4,8 @@ import {
   CLINICAL_INSTRUMENT_PROCESSORS,
 } from '../_shared/clinical-instrument-engine.ts';
 
+const PUBLIC_SELF_ASSESSMENT_TOOL_KEYS = new Set(['phq9', 'gad7']);
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-processor-secret',
@@ -45,9 +47,12 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const limit = Math.max(1, Math.min(Number(body?.limit) || 20, 100));
   const requestedScale = typeof body?.scaleKey === 'string' ? body.scaleKey.trim() : null;
+  const publicProcessors = CLINICAL_INSTRUMENT_PROCESSORS.filter((item) =>
+    PUBLIC_SELF_ASSESSMENT_TOOL_KEYS.has(item.toolKey),
+  );
   const processors = requestedScale
-    ? CLINICAL_INSTRUMENT_PROCESSORS.filter((item) => item.toolKey === requestedScale)
-    : CLINICAL_INSTRUMENT_PROCESSORS;
+    ? publicProcessors.filter((item) => item.toolKey === requestedScale)
+    : publicProcessors;
   if (requestedScale && processors.length === 0) return json({ error: 'Instrumento não suportado pelo processor' }, 400);
 
   const results: Array<{ inviteId: string; scaleKey: string; status: 'processed' | 'failed'; resultId?: string; error?: string }> = [];
@@ -126,7 +131,7 @@ Deno.serve(async (req) => {
     claimed,
     processed: results.filter((item) => item.status === 'processed').length,
     failed: results.filter((item) => item.status === 'failed').length,
-    supportedScales: CLINICAL_INSTRUMENT_PROCESSORS.map((item) => ({ scaleKey: item.toolKey, ruleVersion: item.ruleVersion })),
+    supportedScales: publicProcessors.map((item) => ({ scaleKey: item.toolKey, ruleVersion: item.ruleVersion })),
     results,
   });
 });

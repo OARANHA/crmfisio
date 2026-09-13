@@ -188,9 +188,61 @@ export const GAD7_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
   },
 };
 
+export const PHQ15_RULE_VERSION = 'nexus-phq15-2026-09-13';
+export const PHQ15_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
+  toolKey: 'phq15',
+  ruleKey: 'nexus.phq15',
+  ruleVersion: PHQ15_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'phq15-kroenke-2002', title: 'The PHQ-15: validity of a new measure for evaluating the severity of somatic symptoms', source: 'Kroenke K, Spitzer RL, Williams JB. Psychosom Med. 2002;64(2):258-66.', year: 2002, version: PHQ15_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const values = requireIntegerRange(answers, ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12', 'q13', 'q14', 'q15'], 0, 2, 'PHQ-15');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    let classification = '';
+    let severity: ClinicalInstrumentSeverity = 'low';
+    let interpretation = '';
+    const recommendations: string[] = [CLINICIAN_REVIEW_NOTICE];
+
+    if (totalScore <= 4) {
+      classification = 'Faixa mínima de sintomas somáticos';
+      interpretation = 'Escore PHQ-15 entre 0 e 4, correspondente à faixa mínima de carga de sintomas somáticos no instrumento.';
+    } else if (totalScore <= 9) {
+      classification = 'Faixa baixa de sintomas somáticos';
+      interpretation = 'Escore PHQ-15 entre 5 e 9, correspondente à faixa baixa de carga de sintomas somáticos no instrumento.';
+    } else if (totalScore <= 14) {
+      classification = 'Faixa moderada de sintomas somáticos';
+      severity = 'moderate';
+      interpretation = 'Escore PHQ-15 entre 10 e 14, correspondente à faixa moderada de carga de sintomas somáticos no instrumento.';
+    } else {
+      classification = 'Faixa alta de sintomas somáticos';
+      severity = 'high';
+      interpretation = 'Escore PHQ-15 entre 15 e 30, correspondente à faixa alta de carga de sintomas somáticos no instrumento.';
+    }
+
+    recommendations.push('Correlacionar o escore com história clínica, exame, funcionalidade, evolução temporal, comorbidades e contexto psicossocial.');
+    recommendations.push('O PHQ-15 não diferencia causa orgânica de causa funcional e não substitui avaliação clínica de sinais de alarme ou diagnósticos diferenciais.');
+
+    return {
+      totalScore,
+      maxScore: 30,
+      classification,
+      severity,
+      interpretation,
+      recommendations,
+      answersArray: values,
+      soapText: `PHQ-15: ${totalScore}/30 pts (${classification}) | Respostas: [${values.join(', ')}] | Instrumento de rastreio; interpretar clinicamente | Fonte: Kroenke et al., 2002`,
+      redFlags: [],
+    };
+  },
+};
+
 export const CLINICAL_INSTRUMENT_PROCESSORS: readonly ClinicalInstrumentProcessorDefinition[] = [
   PHQ9_PROCESSOR,
   GAD7_PROCESSOR,
+  PHQ15_PROCESSOR,
 ];
 
 export function getClinicalInstrumentProcessor(

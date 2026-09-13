@@ -7,7 +7,7 @@ import {
   type ClinicianAssistedInstrumentAvailability,
   type ClinicianAssistedInstrumentKey,
 } from '../lib/clinicalInstrumentClinicianAssisted';
-import { getPublicSelfAssessmentDefinition } from '../lib/nexus/publicSelfAssessmentCatalog';
+import { getClinicianAssistedInstrumentDefinition } from '../lib/nexus/clinicianAssistedInstrumentCatalog';
 import { Chip } from '../lib/ui';
 
 type ApplySession = {
@@ -15,7 +15,7 @@ type ApplySession = {
   requestId: string;
 };
 
-const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false };
+const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false };
 
 export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appointmentId: string }) {
   const [availability, setAvailability] = useState<ClinicianAssistedInstrumentAvailability>(EMPTY_AVAILABILITY);
@@ -53,10 +53,10 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
 
   const availableDefinitions = useMemo(() => CLINICIAN_ASSISTED_INSTRUMENT_KEYS
     .filter((instrumentKey) => availability[instrumentKey])
-    .map((instrumentKey) => getPublicSelfAssessmentDefinition(instrumentKey))
+    .map((instrumentKey) => getClinicianAssistedInstrumentDefinition(instrumentKey))
     .filter((definition): definition is NonNullable<typeof definition> => Boolean(definition)), [availability]);
 
-  const definition = session ? getPublicSelfAssessmentDefinition(session.instrumentKey) : null;
+  const definition = session ? getClinicianAssistedInstrumentDefinition(session.instrumentKey) : null;
   const answeredCount = definition
     ? definition.questions.filter((question) => Number.isInteger(answers[question.id])).length
     : 0;
@@ -174,7 +174,7 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
         {availableDefinitions.map((item) => (
           <div key={item.toolKey} className="rounded-xl border border-line/70 bg-panel p-3.5">
             <p className="font-display text-[14px] font-semibold text-paper">{item.acronym}</p>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.questions.length} itens · respostas estruturadas 0–3 · rastreio clínico</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.questions.length} itens · respostas estruturadas {Math.min(...item.questions.flatMap((question) => question.options.map((option) => option.value)))}–{Math.max(...item.questions.flatMap((question) => question.options.map((option) => option.value)))} · rastreio clínico</p>
             <button type="button" onClick={() => begin(item.toolKey)} className="mt-3 rounded-lg bg-mint px-3.5 py-2 text-[11px] font-semibold text-on-accent">Aplicar agora</button>
           </div>
         ))}

@@ -326,6 +326,16 @@ Suggested candidates:
 
 The exact order should still be decided against licensing, validation, user value and current beta priorities.
 
+Execution status as of 2026-09-13:
+
+- **ISI:** blocked pending commercial-use licensing/permission review;
+- **SRQ-20:** hold pending rights/provenance confirmation;
+- **AUDIT-C/CAGE:** hold pending rights/version reconciliation;
+- **PHQ-15:** first implementable candidate; clinician-assisted V1 is being implemented on `feat/phq15-clinician-assisted-v1`, not yet deployed;
+- **EUROHIS-QOL:** hold pending provenance/licensing review.
+
+PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
+
 ### Wave 2 — contextual/specialized screening
 
 - ASRS-18;
