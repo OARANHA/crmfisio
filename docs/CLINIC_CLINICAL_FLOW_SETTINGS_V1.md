@@ -2,6 +2,8 @@
 
 ## Estado
 
+**VALIDADO EM PRODUÇÃO em 2026-09-13.**
+
 Slice de configuração institucional para fluxos clínicos. Esta versão adiciona somente a política de autoria de encaminhamentos.
 
 ## Princípio canônico
@@ -70,6 +72,28 @@ O default é `true` para preservar o comportamento de clínicas existentes e de 
 O boundary de banco é `guard_clinical_referral_authoring_policy()` em `clinical_documents`.
 
 A regra é deliberadamente estreita: somente INSERT de referral e UPDATE enquanto o documento ainda está em `draft` e permanece `draft` ou transita para `issued` são afetados. A política não é usada como ACL de histórico.
+
+## Validação em produção
+
+A #454 foi mergeada no commit `9d04f011454db77f5197e227c540aa0d361d9442` e validada em produção em 2026-09-13.
+
+Banco:
+
+- migration aplicada com blob canônico conferido;
+- verifier retornou `CLINIC REFERRAL AUTHORING POLICY V1 VERIFY PASSED`;
+- postcheck confirmou uma linha de settings por clínica existente e preservação do default `referral_authoring_enabled=true` no rollout;
+- trigger `trg_clinical_referral_authoring_policy` ativo;
+- `authenticated` sem acesso direto de SELECT/UPDATE à tabela de policy;
+- `anon` sem EXECUTE no getter;
+- replay da migration preservou configuração explícita e o verifier permaneceu verde.
+
+Frontend/runtime:
+
+- owner/admin visualiza `Configurações → Fluxos clínicos`;
+- desligar a policy e salvar funciona;
+- com a policy desligada, profissional elegível é bloqueado ao iniciar novo encaminhamento pelo enforcement server-side;
+- religar a policy restaura o fluxo normal;
+- repetição do smoke confirmou o mesmo comportamento sem regressão observada.
 
 ## Por que o agendamento direto não entrou nesta V1
 
