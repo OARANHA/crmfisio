@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.rooms (
 -- guard_appointment_mutation_boundary. This is schema fixture only; all
 -- authorization logic still comes from versioned migrations.
 ALTER TABLE public.appointments
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
   ADD COLUMN IF NOT EXISTS room_id uuid,
   ADD COLUMN IF NOT EXISTS data date NOT NULL DEFAULT current_date,
   ADD COLUMN IF NOT EXISTS inicio time NOT NULL DEFAULT time '09:00',
