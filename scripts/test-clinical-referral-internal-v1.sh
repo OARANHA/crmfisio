@@ -23,11 +23,20 @@ python3 scripts/build-clinical-care-read-test.py | "${PSQL[@]}" >/dev/null
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_referral_foundation.sql
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_referral_renderer_v1.sql
 
+# Production diagnosis found a legacy reception profile with a non-clinical
+# professional_type. Keep it in the isolated fixture to prove routing uses the
+# canonical clinical profession catalog rather than any nonblank string.
+"${PSQL[@]}" -c "UPDATE public.profiles SET professional_type='recepcionista' WHERE id='d2100000-0000-4000-8000-000000000011'::uuid"
+
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_referral_internal_v1.sql
+"${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql
 
-# Replay must not create duplicate triggers or mutate business rows.
+# Replay the complete D2-E3 stack: historical base may be replayed by a fresh
+# environment, and the additive hardening must deterministically restore the
+# canonical boundary without duplicate triggers or business-row mutation.
 "${PSQL[@]}" -f supabase-migrations/20260912_clinical_referral_internal_v1.sql
+"${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql
 
 # Adjacent canonical boundaries remain green.
