@@ -3,7 +3,7 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-13  
-**Base canônica:** `main@b720ca2768cf2c1cb5b20fa65125306a8ae26936`
+**Base canônica:** `main@9d04f011454db77f5197e227c540aa0d361d9442`
 
 ## Estado clínico resumido
 
@@ -16,6 +16,7 @@ Referral D2-E0 / D2-E1 / D2-E2 / D2-E3 / D2-E3.1            PROD
 Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
 D2-E4 Referral Operational Continuity                         PROD
+Clinic Referral Authoring Policy V1                           MERGED / NÃO VALIDADO EM PRODUÇÃO
 ```
 
 ---
@@ -35,6 +36,7 @@ Referências Referral:
 - `docs/CLINICAL_REFERRAL_ENCOUNTER_V1.md`
 - `docs/CLINICAL_REFERRAL_RENDERER_V1.md`
 - `docs/CLINICAL_REFERRAL_INTERNAL_V1.md`
+- `docs/CLINIC_CLINICAL_FLOW_SETTINGS_V1.md`
 
 Institucionalmente:
 
@@ -242,6 +244,28 @@ Produção validou a stack final após #450–#453:
 - retry do mesmo referral retornou `Este encaminhamento já possui um agendamento vinculado.` sem criar segundo appointment.
 
 O D2-E4 está encerrado como funcionalmente validado; mudanças futuras de política/configuração da clínica devem compor essa autorização sem enfraquecer suas invariantes.
+
+---
+
+# Clinic Clinical Flow Settings
+
+## Referral Authoring Policy V1
+
+**MERGED / NÃO VALIDADO EM PRODUÇÃO.**
+
+A #454 adiciona em `Configurações → Fluxos clínicos` a política institucional:
+
+```text
+Permitir que profissionais emitam encaminhamentos
+```
+
+O default é `true`, preservando o comportamento atual. Quando `false`, PostgreSQL bloqueia criação, edição de draft e emissão de novos `referral`, sem alterar histórico emitido, snapshots, leitura já autorizada, cancelamento lifecycle, D2-E4 já materializado ou outros Clinical Documents.
+
+A configuração pode restringir o fluxo, mas nunca concede identidade, capability, care relationship ou acesso clínico. Somente owner/admin alteram a policy da própria clínica; usuários autenticados não possuem escrita direta na tabela.
+
+O toggle de agendamento direto pelo encaminhador **não entrou nesta V1** porque ainda não existe uma rota operacional alternativa equivalente para recepção/destinatário assumir o agendamento. Desativá-lo agora criaria risco de dead-end. Essa decisão fica separada do D2-E4 validado.
+
+Rollout de produção da #454 ainda exige migration, verifier, frontend redeploy e smoke funcional.
 
 ---
 
