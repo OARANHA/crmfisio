@@ -1,7 +1,7 @@
 # D2-E3 — Encaminhamento Interno V1
 
-**Base canônica validada:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`  
-**Estado:** **VALIDADO EM PRODUÇÃO** em 2026-09-12/13.
+**Base canônica validada:** `main@b720ca2768cf2c1cb5b20fa65125306a8ae26936`  
+**Estado:** **D2-E3 / D2-E3.1 / D2-E4 VALIDADOS EM PRODUÇÃO** em 2026-09-12/13.
 
 ## Objetivo
 
@@ -56,7 +56,7 @@ Documentos anteriores sem `destination_scope` normalizam como `external`. O obje
 
 Rascunhos incompletos anteriores ao D2-E3.1 que contenham apenas a clínica em `facility` são saneados somente na pré-visualização; nenhum snapshot emitido é reescrito.
 
-## Evidência de produção
+## Evidência de produção — D2-E3 / D2-E3.1
 
 A produção confirmou:
 
@@ -81,29 +81,41 @@ Smoke real:
 - emissão e impressão A4 congelaram `Dr. Aranha · Médico da Família · Clínica Piloto VidaNova` em linguagem humana;
 - UUID, `destination_scope` e `target_profile_id` não foram expostos ao paciente.
 
-## Fora de escopo
-
-Fila de recebidos, aceite/recusa, agendamento, atendimento, conclusão e contrarreferência não pertencem ao lifecycle do documento. Esses estados são workflow operacional separado e formam a próxima etapa D2-E4.
-
 ## Continuidade operacional D2-E4
 
-**D2-E4 — Continuidade Operacional do Encaminhamento Interno**:
+**D2-E4 — Continuidade Operacional do Encaminhamento Interno está VALIDADA EM PRODUÇÃO.**
 
 ```text
 encaminhamento interno emitido
+→ operação operacional separada
 → recebido
-→ aceito / recusado
+→ aceite/recusa quando aplicável
 → agendamento vinculado
 → atendimento
 → conclusão
 ```
 
-O documento clínico permanece imutável durante todo esse fluxo. D2-E4 usa
-`clinical_referral_operations`, separado do documento e com eventos append-only.
-Há uma única operação por referral interno; `schedule_clinical_referral_operation`
-revalida tenant, destino, paciente, profissional ativo e permissão antes de
-criar (ou retornar idempotentemente) o appointment canônico. A remarcação normal
-move apenas o vínculo operacional para o appointment substituto.
+O documento clínico permanece imutável durante todo esse fluxo. D2-E4 usa `clinical_referral_operations`, separado do documento e com eventos append-only. Há uma única operação por referral interno; `schedule_clinical_referral_operation(...)` revalida tenant, destino, paciente, profissional ativo e boundaries antes de criar — ou retornar idempotentemente — o appointment canônico.
 
-Inbox do destinatário, aceite/recusa explícitos, mensageria, billing e
-contrarreferência continuam fora deste V1.
+A Agenda continua sendo autoridade sobre data/hora, status, cancelamento, remarcação e atendimento. O referral snapshot não é reescrito quando o appointment muda.
+
+O hardening final preserva uma exceção estreita ao self-assignment global de Appointment: um profissional emissor pode agendar outro profissional somente quando o destino é exatamente o `target_profile_id` imutável do referral interno, no mesmo tenant/paciente, por meio da prova transacional criada e consumida na mesma transação do RPC. Isso não autoriza agendamento arbitrário de colegas, não abre `internal_service` para cross-assignment e não concede acesso ao prontuário.
+
+### Evidência de produção — D2-E4
+
+A stack final #450–#453 foi aplicada e validada em produção:
+
+- migration/verifier da continuidade operacional passaram;
+- o handoff da UI foi corrigido para usar o `clinical_documents.id` real;
+- paciente e profissional destinatário congelado aparecem corretamente no modal de Agenda;
+- o guard global `guard_appointment_mutation_boundary()` foi reconciliado sem relaxar o bloqueio normal de cross-professional assignment;
+- o smoke funcional criou um único appointment para o destinatário exato e vinculou `clinical_referral_operations.status='scheduled'` ao appointment canônico;
+- evento `appointment_insert_authorized` registrou a prova same-transaction com ator, paciente e target exatos;
+- o referral emitido permaneceu imutável;
+- retry do mesmo encaminhamento retornou `Este encaminhamento já possui um agendamento vinculado.` e não criou segundo appointment.
+
+D2-E4 não deve ser reaberto para resolver preferências institucionais. Políticas futuras da clínica — por exemplo permitir emissão de encaminhamentos por profissionais ou permitir agendamento direto pelo encaminhador — devem compor os boundaries atuais como **clinic configuration**, mantendo todas as invariantes acima.
+
+## Fora de escopo do V1 validado
+
+Inbox dedicada do destinatário, aceite/recusa com experiência própria, mensageria automática, billing específico, contrarreferência e políticas configuráveis da clínica não fizeram parte do D2-E3/D2-E4 validado. Esses itens devem nascer em slices separadas, sem alterar snapshots históricos nem criar scheduler paralelo.
