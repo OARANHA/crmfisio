@@ -1,11 +1,9 @@
 # MedicsPro — Manual Source Map
 
-> Fonte editorial para um manual futuro coerente. Não substitui código/documentação técnica; registra apenas comportamento visível e o estado real de validação.
+> Fonte editorial para um manual futuro coerente. Não substitui código/documentação técnica; registra comportamento visível e estado real de validação.
 
-**Atualizado em:** 2026-09-12  
-**Prescrição D2-B / D2-B.1 / D2-B.2A / D2-B.2B / D2-B.2C:** VALIDADO EM PRODUÇÃO  
-**Therapeutic Guidance D2-C / D2-C.1 Professional Print:** VALIDADO EM PRODUÇÃO  
-**Exam Order D2-D0 / D2-D1 / D2-D2 Professional Print:** VALIDADO EM PRODUÇÃO
+**Atualizado em:** 2026-09-12/13  
+**Base de referência:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`
 
 ## Regra editorial
 
@@ -20,7 +18,7 @@ PLANEJADO
 HISTÓRICO / NÃO USAR COMO MANUAL ATUAL
 ```
 
-Backend sem UI e roadmap não viram instrução de uso. Para cada tela documentar: nome visível, quem acessa, pré-condições, fluxo, resultado, persistência/retomada, limitações e fonte técnica.
+Backend sem UI e roadmap não viram instrução de uso. Para cada tela, documentar nome visível, quem acessa, pré-condições, fluxo, resultado, retomada, limitações e fonte técnica.
 
 ---
 
@@ -30,17 +28,11 @@ Backend sem UI e roadmap não viram instrução de uso. Para cada tela documenta
 
 Cobrir login/logout, tenant/unidade, Consultório × Gestão, identidade clínica e diferenças owner/admin/professional/recep/financeiro. Disponibilidade visual nunca substitui autorização.
 
----
-
 # 2. Agenda e atendimento
 
 **Estado:** IMPLEMENTADO.
 
-Cobrir agenda, status do appointment, entrada no atendimento, boundary temporal de início e cancelamentos/exceções realmente expostos.
-
-Não documentar `fisio` como papel operacional canônico.
-
----
+Cobrir Agenda, status do appointment, entrada no atendimento, guard temporal, cancelamento/remarcação e handoff clínico realmente exposto. Não documentar `fisio` como papel operacional canônico.
 
 # 3. Pacientes
 
@@ -48,11 +40,9 @@ Não documentar `fisio` como papel operacional canônico.
 
 Cobrir busca/abertura, contexto clínico, histórico longitudinal e superfícies realmente implantadas. Não usar dados identificáveis em material público.
 
----
-
 # 4. Clinical Encounter
 
-**Estado visual/funcional relevante:** VALIDADO EM PRODUÇÃO.
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
 Workspaces validados:
 
@@ -62,246 +52,184 @@ Anamneses & Avaliações
 Prescrição
 Exames
 Orientações
+Encaminhamento
 Nexus
 ```
 
-Prescrição, Pedido de Exames e Orientações pertencem ao mesmo Encounter e não criam segundo atendimento/prontuário.
-
----
+Os documentos pertencem ao mesmo Encounter; não criam segundo atendimento/prontuário.
 
 # 5. Anamneses & Avaliações
 
-**Estado:** VALIDADO EM PRODUÇÃO.
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
-Biblioteca MedicsPro V1 validada:
+Biblioteca V1 validada:
 
 - Anamnese Médica Geral;
 - Anamnese Psiquiátrica.
 
 Runner por seções, save/resume e persistência foram validados. Especialidade influencia relevância/ordem, nunca ACL.
 
----
-
 # 6. Nexus / instrumentos clínicos
 
-**Estado:** IMPLEMENTADO em partes; documentar por capability/superfície realmente exposta.
+**Estado:** IMPLEMENTADO em partes; documentar por capability/superfície exposta.
 
-Nexus é motor de instrumentos, cálculo, evidência e apoio à decisão. Não é emissor de Clinical Documents e não gera prescrição/orientação/pedido automaticamente.
+Nexus é motor de instrumentos, cálculo, evidência e apoio à decisão. Não é emissor de Clinical Documents e não gera prescrição, pedido de exame, orientação ou encaminhamento automaticamente.
 
 ---
 
-# 7. Prescrição e Clinical Documents
+# 7. Clinical Documents
 
-## Clinical Documents Foundation — D2-A
+## Foundation — D2-A
 
-**Estado técnico:** VALIDADO EM PRODUÇÃO.
+**Estado técnico:** **VALIDADO EM PRODUÇÃO**.
 
-Foundation entregue:
+Lifecycle visível/conceitual:
 
-- `medication_prescription`;
-- `therapeutic_guidance`;
-- `exam_order`;
-- templates versionados;
-- lifecycle draft/issued/canceled;
-- snapshots imutáveis;
-- autorização server-side;
-- validação tipada;
-- cancelamento auditável.
+```text
+rascunho
+→ revisão humana
+→ emitido
+→ histórico imutável
+→ cancelamento auditado quando aplicável
+```
+
+Template atual não reescreve documento já emitido.
 
 ## Prescrição — D2-B
 
-**Estado:** VALIDADO EM PRODUÇÃO.
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
-Manual pode ensinar:
+Manual pode ensinar: abrir Encounter → Prescrição → escolher modelo → criar/retomar rascunho → preencher → salvar → revisar → emitir → histórico → imprimir.
 
-1. abrir Encounter ativo e entrar em `Prescrição`;
-2. escolher template elegível;
-3. criar/retomar rascunho;
-4. preencher conteúdo estruturado;
-5. salvar;
-6. revisar explicitamente;
-7. emitir;
-8. consultar histórico;
-9. imprimir o documento emitido.
+Editor/preview, Template Admin e presets seguros foram validados. Administrar modelo não concede autoridade para prescrever.
 
-Regras: `clinical.documents` não é permissão universal; criação pertence ao Encounter atual; especialidade não substitui autorização; emitido é snapshot imutável; Nexus não prescreve automaticamente.
+## Orientações terapêuticas — D2-C / D2-C.1
 
-## Prescription Live Preview — D2-B.1
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
-**Estado:** VALIDADO EM PRODUÇÃO.
-
-Editor + folha ao vivo, selo `Rascunho · não emitida`, preview sem validade e impressão exclusiva do emitido foram validados.
-
-## Template Admin — D2-B.2A / D2-B.2B
-
-**Estado:** VALIDADO EM PRODUÇÃO.
-
-Manual pode cobrir:
-
-```text
-Configurações
-→ Documentos clínicos
-→ Modelos de prescrição
-```
-
-Fluxos: listar modelos MedicsPro read-only e clinic-owned; criar; duplicar; editar metadados; visualizar; arquivar/reativar. Administrar template não concede autoridade para prescrever.
-
-## Professional Print / Safe Presets — D2-B.2C
-
-**Estado:** VALIDADO EM PRODUÇÃO.
-
-Manual pode documentar presets seguros, acentos permitidos, apresentação de medicamentos, toggles visuais, preview administrativo, `Salvar e publicar` e imutabilidade histórica do layout.
-
-```text
-Template v2 publicado
-→ receita emitida com v2
-→ snapshot congela v2
-
-Admin publica v3
-→ novas receitas usam v3
-→ receita antiga continua v2
-```
-
-Não existe editor HTML/CSS/JS livre.
-
-## Therapeutic Guidance — D2-C
-
-**Estado:** VALIDADO EM PRODUÇÃO.
-
-PR #435 → `33da15230cd35179681406b212e87305618a4976`.
-
-Manual pode ensinar:
+Fluxo visível:
 
 ```text
 Encounter
 → Orientações
-→ escolher modelo
-→ criar/retomar draft
-→ orientações estruturadas
-→ instruções/observações opcionais
+→ modelo
+→ draft / resume
+→ conteúdo estruturado
 → revisão humana
 → emitir
 → histórico
 → imprimir
 ```
 
-Regras editoriais obrigatórias:
+Nunca mostrar `therapeutic_guidance` como título ao paciente.
 
-- `therapeutic_guidance` é termo interno e não deve aparecer como título ao paciente;
-- a orientação é ato documental explícito do profissional;
-- especialidade não concede autorização;
-- owner/admin não recebem autoria clínica por administrar o tenant;
-- Nexus não emite orientação automaticamente;
-- documento emitido é snapshot histórico imutável.
+## Pedido de Exames — D2-D0 / D2-D1 / D2-D2
 
-## Therapeutic Guidance Professional Print — D2-C.1
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
-**Estado:** VALIDADO EM PRODUÇÃO.
+Manual pode ensinar criação de pedido com múltiplos exames, prioridade, indicação clínica, revisão, emissão, histórico e impressão A4. V1 é médico/CRM. Não documentar resultados, laudos, coleta ou integração laboratorial como já existentes.
 
-PR #436 → `af53bf2d7229c238335ab201f3438f44543f7f89`.
+## Encaminhamento — D2-E0 / D2-E1 / D2-E2
 
-Manual pode documentar:
-
-- folha A4 ao vivo ao lado do editor;
-- selo `Rascunho · não emitida` / pré-visualização sem validade;
-- título humano `Orientações terapêuticas` ou título seguro do modelo;
-- clínica, paciente, profissional, conselho/registro, especialidade e data quando disponíveis;
-- orientações numeradas;
-- instruções ao paciente;
-- observações;
-- bloco de assinatura visual;
-- identificador do documento emitido;
-- impressão do emitido com a mesma composição segura do preview;
-- histórico preservado por snapshots congelados;
-- fallback seguro para documentos antigos `plain-text-v1`;
-- ausência de editor HTML/CSS/JS livre.
-
-Produção validada em 2026-09-12:
-
-```text
-migration D2-C.1
-→ COMMIT / MIGRATION_EXIT=0
-
-verifier
-→ CLINICAL THERAPEUTIC GUIDANCE RENDERER V1 VERIFY PASSED
-→ VERIFIER_EXIT=0
-
-frontend
-→ redeploy concluído
-
-smoke real
-→ preview A4 + emissão/histórico/impressão profissional confirmados
-```
-
-## Pedido de Exames — D2-D0 / D2-D1
-
-**Estado:** VALIDADO EM PRODUÇÃO.
-
-PR #439 → `49cee461f970a3630c4fd98ab93a1ac476798e74`.
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
 Manual pode ensinar:
 
 ```text
 Encounter
-→ Exames
-→ escolher Pedido de exames
+→ Encaminhamento
 → criar/retomar rascunho
-→ adicionar um ou mais exames
-→ definir prioridade global
-→ categoria/código/instruções/urgência por item quando necessário
-→ indicação clínica / hipótese / observações
-→ salvar
+→ escolher prioridade
+→ escolher destino
+→ informar motivo
+→ resumo clínico / ação solicitada / observações quando necessários
 → revisar
 → emitir
 → histórico
+→ imprimir
 ```
 
-O recorte V1 de autoria é médico/CRM e a autorização efetiva é server-side. O manual não deve sugerir que owner/admin ou especialidade concedem autoria.
+O A4 validado mostra clínica, paciente, emissor, credencial/especialidade quando disponível, prioridade, destino, motivo, assinatura e identificador do documento.
 
-## Pedido de Exames Professional Print — D2-D2
+## Encaminhamento interno — D2-E3 / D2-E3.1
 
-**Estado:** VALIDADO EM PRODUÇÃO.
+**Estado:** **VALIDADO EM PRODUÇÃO**.
 
-PR #440 → `cc2a22941a0f35f7d1b2a4d00abc9bc45f01c033`.
-
-Manual pode documentar:
-
-- folha A4 ao vivo no workspace `Exames`;
-- selo de pré-visualização sem validade antes da emissão;
-- título humano `Pedido de exames`;
-- clínica e dados de contato quando disponíveis;
-- paciente e nascimento;
-- profissional solicitante, CRM/UF, registro e especialidade;
-- prioridade;
-- lista estruturada de exames;
-- categoria, código, instruções e urgência por item;
-- indicação clínica, hipótese/impressão e observações;
-- bloco de assinatura visual;
-- identificador do documento emitido;
-- ação `Imprimir` no histórico de documentos emitidos;
-- impressão a partir dos snapshots congelados;
-- preservação de pedidos históricos no layout/snapshot original;
-- ausência de HTML/CSS/JS livre.
-
-Produção validada em 2026-09-12:
+A UI apresenta três escolhas:
 
 ```text
-migration D2-D2 aplicada
-→ verifier oficial executado com sucesso
-→ frontend redeployado
-→ preview A4 visível em produção
-→ histórico emitido com ação Imprimir
+Profissional da clínica
+Especialidade / serviço
+Destino externo
 ```
 
-Não documentar resultados, laudos, coleta, fulfillment ou integração laboratorial/imagem como parte de `Pedido de exames`; esses domínios ainda não existem como produto validado.
+### Profissional da clínica
+
+O seletor mostra somente destinos clínicos elegíveis do mesmo tenant, exclui o próprio emissor e usa linguagem humana, por exemplo:
+
+```text
+Dr. Aranha · Médico da Família
+```
+
+Perfis administrativos não aparecem como destinos clínicos, mesmo quando possuem `professional_type` legado indevido.
+
+Antes de escolher alguém, a pré-visualização deve dizer **Destino não informado**. O nome da clínica sozinho não representa escolha válida.
+
+### Especialidade / serviço
+
+As áreas disponíveis derivam de profissionais clínicos ativos da própria clínica. A seleção serve para roteamento, não para conceder acesso clínico.
+
+### Destino externo
+
+Continua disponível para encaminhar a profissional, serviço ou instituição fora da clínica.
+
+### Regras editoriais obrigatórias
+
+- encaminhar para alguém não concede automaticamente leitura do prontuário;
+- profissão/especialidade não são ACL;
+- destino técnico/UUID nunca aparece para o paciente;
+- documento emitido permanece snapshot imutável;
+- `target_profile_id`, `destination_scope` e outros códigos internos não devem aparecer em screenshots/manual de paciente;
+- o próprio emissor não aparece como destino para si mesmo;
+- profissionais de outra clínica nunca devem aparecer na lista.
+
+### Evidência de produção
+
+Smoke real confirmou:
+
+- `Dr. Aranha · Médico da Família` no seletor da Clínica Piloto VidaNova;
+- preview com `Destino não informado` antes da escolha;
+- emissão real com motivo clínico;
+- impressão em uma página;
+- destino impresso em linguagem humana;
+- emissor, assinatura e identificador documental presentes.
+
+Fontes técnicas:
+
+- `docs/CLINICAL_REFERRAL_FOUNDATION.md`
+- `docs/CLINICAL_REFERRAL_ENCOUNTER_V1.md`
+- `docs/CLINICAL_REFERRAL_RENDERER_V1.md`
+- `docs/CLINICAL_REFERRAL_INTERNAL_V1.md`
+
+### Ainda não documentar como disponível
+
+O fluxo abaixo é **D2-E4 / planejado**, não produto validado ainda:
+
+```text
+Recebidos
+→ aceitar / recusar
+→ agendar
+→ atender
+→ concluir
+```
+
+Também não documentar contrarreferência, envio automático externo, diretório externo, assinatura ICP-Brasil ou Nexus auto-referral como existentes.
 
 ---
 
 # 8. Consentimentos
 
-**Estado:** IMPLEMENTADO em partes; inventariar a UI atual antes da redação final.
-
----
+**Estado:** IMPLEMENTADO em partes; inventariar UI atual antes da redação final.
 
 # 9. Financeiro
 
@@ -315,13 +243,9 @@ atendimento
 → relatórios
 ```
 
----
-
 # 10. CRM e comunicação
 
 **Estado:** IMPLEMENTADO em partes; manual pendente de inventário atualizado.
-
----
 
 # 11. Configurações da clínica
 
@@ -337,8 +261,6 @@ Usuário operacional
 
 Owner/admin configuram o tenant; isso não concede atos clínicos.
 
----
-
 # 12. Platform Admin
 
 **Estado:** foundation existente; produto em evolução.
@@ -347,18 +269,17 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 
 ---
 
-# Registro de evidências
+# Registro de evidências principais
 
-- **2026-09-11 — Assessment Library V1:** VALIDADO EM PRODUÇÃO.
-- **2026-09-11 — Clinical Encounter #420:** VALIDADO EM PRODUÇÃO.
-- **2026-09-12 — Clinical Documents D2-A:** BACKEND VALIDADO EM PRODUÇÃO.
-- **2026-09-12 — Prescription D2-B + D2-B.1:** VALIDADO EM PRODUÇÃO.
-- **2026-09-12 — Template Admin D2-B.2A + D2-B.2B:** VALIDADO EM PRODUÇÃO.
-- **2026-09-12 — Professional Print / Safe Presets D2-B.2C:** VALIDADO EM PRODUÇÃO, inclusive imutabilidade visual histórica.
-- **2026-09-12 — Therapeutic Guidance D2-C:** VALIDADO EM PRODUÇÃO após smoke funcional real.
-- **2026-09-12 — Therapeutic Guidance D2-C.1:** VALIDADO EM PRODUÇÃO após migration/verifier/redeploy e smoke de preview A4 + impressão profissional.
-- **2026-09-12 — Exam Order D2-D0 / D2-D1:** VALIDADO EM PRODUÇÃO após migration foundation, redeploy e smoke funcional real.
-- **2026-09-12 — Exam Order D2-D2:** VALIDADO EM PRODUÇÃO após migration/verifier/redeploy e evidência visual de preview A4 + histórico com impressão.
+- 2026-09-11 — Assessment Library V1: PROD.
+- 2026-09-11 — Clinical Encounter: PROD.
+- 2026-09-12 — Clinical Documents D2-A: PROD.
+- 2026-09-12 — Prescription D2-B family: PROD.
+- 2026-09-12 — Therapeutic Guidance D2-C/C.1: PROD.
+- 2026-09-12 — Exam Order D2-D0/D1/D2: PROD.
+- 2026-09-12 — Referral D2-E0 Foundation: PROD.
+- 2026-09-12/13 — Referral D2-E1 Encounter UX + D2-E2 A4 renderer: PROD.
+- 2026-09-12/13 — Referral D2-E3 Internal + D2-E3.1 hardening: PROD após verifier, redeploy, tenant-isolation smoke, seleção de destino interno, emissão e impressão A4.
 
 ---
 
@@ -368,8 +289,7 @@ Manual interno separado recomendado para provisionamento, clínicas, planos/enti
 - revisar `docs/CURRENT_STATE.md` e este mapa;
 - usar screenshots da versão realmente implantada;
 - sanitizar dados de pacientes/usuários;
-- testar flows com professional e owner/admin quando relevante;
-- separar comportamento por role/capability;
+- testar flows por role/capability quando relevante;
 - marcar limitações conhecidas;
 - excluir funcionalidades apenas planejadas;
 - revisar terminologia visível antes de publicar.
