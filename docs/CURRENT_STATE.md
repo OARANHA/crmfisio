@@ -2,8 +2,8 @@
 
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes ficam nos documentos de domínio.
 
-**Data do snapshot:** 2026-09-12/13  
-**Base canônica:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`
+**Data do snapshot:** 2026-09-13  
+**Base canônica:** `main@9d04f011454db77f5197e227c540aa0d361d9442`
 
 ## Estado clínico resumido
 
@@ -15,7 +15,8 @@ Exam Order D2-D0 / D2-D1 / D2-D2                             PROD
 Referral D2-E0 / D2-E1 / D2-E2 / D2-E3 / D2-E3.1            PROD
 Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
-D2-E4 Referral Operational Continuity                         IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
+D2-E4 Referral Operational Continuity                         PROD
+Clinic Referral Authoring Policy V1                           MERGED / NÃO VALIDADO EM PRODUÇÃO
 ```
 
 ---
@@ -35,6 +36,7 @@ Referências Referral:
 - `docs/CLINICAL_REFERRAL_ENCOUNTER_V1.md`
 - `docs/CLINICAL_REFERRAL_RENDERER_V1.md`
 - `docs/CLINICAL_REFERRAL_INTERNAL_V1.md`
+- `docs/CLINIC_CLINICAL_FLOW_SETTINGS_V1.md`
 
 Institucionalmente:
 
@@ -204,6 +206,8 @@ O roteamento interno **não concede acesso ao prontuário nem care relationship 
 
 # D2-E4 — Referral Operational Continuity
 
+**VALIDADO EM PRODUÇÃO.**
+
 A implementação não altera o lifecycle do documento emitido. O workflow operacional é separado e vinculado ao `clinical_documents.id` emitido:
 
 ```text
@@ -215,21 +219,53 @@ referral emitido e imutável
 → conclusão
 ```
 
-Requisitos arquiteturais para D2-E4:
+Invariantes preservadas:
 
 - mesmo tenant sempre;
 - documento emitido permanece imutável;
 - estados operacionais vivem fora de `clinical_documents.status`;
 - destino/aceite não concedem automaticamente leitura de prontuário;
-- agendamento deve reutilizar os contratos canônicos de Agenda/Appointment, sem INSERT paralelo improvisado;
-- handoff para atendimento deve respeitar `clinical.attend`, profissional atribuído e guard temporal existentes;
-- conclusão deve ser auditável e referenciar o atendimento resultante quando houver;
-- especialidade/profissão continuam roteamento/relevância, nunca ACL.
+- agendamento reutiliza Agenda/Appointment canônicos;
+- handoff para atendimento continua sujeito a autorização clínica e guard temporal existentes;
+- especialidade/profissão continuam roteamento/relevância, nunca ACL;
+- agendamento cross-professional pelo emissor só existe para o destino interno exato congelado no referral e mediante prova transacional same-transaction.
 
-V1 cria uma operação única por referral interno, auditável e tenant-scoped. A
-Agenda continua dona de data/hora, status e remarcação; o RPC transacional só
-cria/recupera o appointment vinculado após revalidar os boundaries. Produção
-ainda exige migration, verifier e smoke manual após merge.
+V1 mantém uma única operação por referral interno em `clinical_referral_operations`, auditável e tenant-scoped. A Agenda continua dona de data/hora, status, remarcação e atendimento; `schedule_clinical_referral_operation(...)` revalida tenant, paciente, documento emitido, destino imutável, profissional ativo e appointment boundary antes de criar ou retornar idempotentemente o vínculo canônico.
+
+Produção validou a stack final após #450–#453:
+
+- migration e verifier da continuidade operacional aplicados com sucesso;
+- handoff da UI usa o `clinical_documents.id` correto;
+- profissional destinatário congelado é preservado no modal;
+- o guard global de Appointment aceita apenas o cross-target exato sustentado pela prova transacional criada no mesmo RPC/transaction;
+- tentativa direta de agendar outro colega continua bloqueada;
+- referral snapshot permanece imutável;
+- smoke real criou exatamente um appointment para o profissional alvo e vinculou a operação como `scheduled`;
+- retry do mesmo referral retornou `Este encaminhamento já possui um agendamento vinculado.` sem criar segundo appointment.
+
+O D2-E4 está encerrado como funcionalmente validado; mudanças futuras de política/configuração da clínica devem compor essa autorização sem enfraquecer suas invariantes.
+
+---
+
+# Clinic Clinical Flow Settings
+
+## Referral Authoring Policy V1
+
+**MERGED / NÃO VALIDADO EM PRODUÇÃO.**
+
+A #454 adiciona em `Configurações → Fluxos clínicos` a política institucional:
+
+```text
+Permitir que profissionais emitam encaminhamentos
+```
+
+O default é `true`, preservando o comportamento atual. Quando `false`, PostgreSQL bloqueia criação, edição de draft e emissão de novos `referral`, sem alterar histórico emitido, snapshots, leitura já autorizada, cancelamento lifecycle, D2-E4 já materializado ou outros Clinical Documents.
+
+A configuração pode restringir o fluxo, mas nunca concede identidade, capability, care relationship ou acesso clínico. Somente owner/admin alteram a policy da própria clínica; usuários autenticados não possuem escrita direta na tabela.
+
+O toggle de agendamento direto pelo encaminhador **não entrou nesta V1** porque ainda não existe uma rota operacional alternativa equivalente para recepção/destinatário assumir o agendamento. Desativá-lo agora criaria risco de dead-end. Essa decisão fica separada do D2-E4 validado.
+
+Rollout de produção da #454 ainda exige migration, verifier, frontend redeploy e smoke funcional.
 
 ---
 
@@ -257,26 +293,3 @@ Atendimento finalizado
 → baixa / resolução
 → relatórios
 ```
-
-Não reabrir sem evidência/escopo fresco.
-
----
-
-# Deploy / produção
-
-Frontend: React + TypeScript + Vite em Docker/Nginx/Portainer. Supabase é stack separada. Merge não significa migration aplicada.
-
-Migrations de produção são manuais, pinadas ao SHA mergeado, com backup e verifier quando aplicável.
-
-Estados documentais:
-
-```text
-VALIDADO EM PRODUÇÃO
-MERGEADO / NÃO VALIDADO EM PRODUÇÃO
-IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
-EM ANDAMENTO
-PLANEJADO
-HISTÓRICO / DEPRECATED
-```
-
-Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
