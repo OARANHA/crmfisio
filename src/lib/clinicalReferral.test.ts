@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyReferralError,
   emptyReferralPayload,
   normalizeReferralPayload,
   referralPriorityLabel,
@@ -84,6 +85,12 @@ describe('clinicalReferral', () => {
       recipient: { scope: 'internal_professional', targetProfileId: '00000000-0000-4000-8000-000000000001', professionalName: 'Dra. Ana' },
       priority: 'routine',
     });
+  });
+
+  it('maps internal routing failures to actionable UI feedback', () => {
+    expect(classifyReferralError(new Error('clinical_referral_target_invalid'))).toBe('target');
+    expect(classifyReferralError(new Error('clinical_referral_internal_service_invalid'))).toBe('target');
+    expect(classifyReferralError(new Error('clinical_referral_internal_service_required'))).toBe('payload');
   });
 
   it('uses human priority labels', () => {
