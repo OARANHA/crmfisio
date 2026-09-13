@@ -28,13 +28,16 @@ for file in \
   supabase-migrations/20260912_clinical_referral_internal_v1.sql \
   supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql \
   supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql \
-  supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql; do
+  supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql \
+  supabase-migrations/20260913_clinical_referral_target_professional_fix.sql \
+  supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_TARGET_PROFESSIONAL_FIX.sql; do
   "${PSQL[@]}" -f "$file" >/dev/null
 done
 
-# Replay must be safe: D2-E4 has no historic data rewrite and restores exactly
-# the same structural/RPC boundary after a fresh-environment replay.
+# Both the foundation and the corrective CREATE OR REPLACE must be replay-safe.
 "${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql >/dev/null
+"${PSQL[@]}" -f supabase-migrations/20260913_clinical_referral_target_professional_fix.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql >/dev/null
+"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_TARGET_PROFESSIONAL_FIX.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql >/dev/null
 echo 'CLINICAL REFERRAL OPERATIONAL CONTINUITY V1 POSTGRESQL 16 PASS'
