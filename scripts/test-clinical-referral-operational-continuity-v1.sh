@@ -10,7 +10,9 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 
 # Reconstruct the existing D2 clinical/referral stack, then explicitly layer the
-# effective appointment authorization migration that exists in production.
+# effective appointment authorization stack that exists in production. The
+# 20260907 migration installs the trigger; the 20260909 reconciliation replaces
+# its function body with the current professional-role contract.
 python3 scripts/build-nexus-c06-sql-test.py > "$tmp/bootstrap.sql"
 "${PSQL[@]}" -f "$tmp/bootstrap.sql" >/dev/null
 python3 scripts/build-clinical-care-read-test.py | "${PSQL[@]}" >/dev/null
@@ -32,6 +34,7 @@ for file in \
   supabase-migrations/20260912_clinical_referral_internal_v1.sql \
   supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql \
   tests/sql/d2e4_effective_appointment_authorization_prerequisite.sql \
+  supabase-migrations/20260907_appointment_mutation_boundary.sql \
   supabase-migrations/20260909_clinical_authorization_reconciliation.sql \
   supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql \
   supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql \
