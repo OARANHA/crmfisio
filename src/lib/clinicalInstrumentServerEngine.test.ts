@@ -1,0 +1,108 @@
+import { describe, expect, it } from 'vitest';
+import {
+  CLINICAL_INSTRUMENT_PROCESSORS,
+  GAD7_PROCESSOR,
+  getClinicalInstrumentProcessor,
+  PHQ9_PROCESSOR,
+} from '../../supabase/functions/_shared/clinical-instrument-engine';
+
+describe('shared clinical instrument server engine', () => {
+  it('keeps the canonical PHQ-9/GAD-7 Nexus identity and version', () => {
+    expect(CLINICAL_INSTRUMENT_PROCESSORS.map((item) => ({
+      toolKey: item.toolKey,
+      ruleKey: item.ruleKey,
+      ruleVersion: item.ruleVersion,
+      moduleKey: item.moduleKey,
+      requiredCapability: item.requiredCapability,
+    }))).toEqual([
+      {
+        toolKey: 'phq9',
+        ruleKey: 'nexus.phq9',
+        ruleVersion: 'nexus-2026-09-03',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+      {
+        toolKey: 'gad7',
+        ruleKey: 'nexus.gad7',
+        ruleVersion: 'nexus-2026-09-03',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+    ]);
+  });
+
+  it('scores PHQ-9 deterministically and preserves item 9 as an independent safety signal', () => {
+    const calculated = PHQ9_PROCESSOR.calculate({
+      q1: 1,
+      q2: 1,
+      q3: 1,
+      q4: 1,
+      q5: 1,
+      q6: 1,
+      q7: 1,
+      q8: 1,
+      q9: 1,
+    });
+
+    expect(calculated.totalScore).toBe(9);
+    expect(calculated.maxScore).toBe(27);
+    expect(calculated.classification).toBe('Faixa leve de sintomas depressivos');
+    expect(calculated.redFlags).toEqual([
+      expect.objectContaining({
+        flagCode: 'phq9.item9.positive',
+        severity: 'critical',
+      }),
+    ]);
+    expect(calculated.recommendations[0]).toContain('resposta positiva no item 9');
+  });
+
+  it('does not create a PHQ-9 safety signal when item 9 is zero', () => {
+    const calculated = PHQ9_PROCESSOR.calculate({
+      q1: 3,
+      q2: 3,
+      q3: 2,
+      q4: 2,
+      q5: 1,
+      q6: 1,
+      q7: 1,
+      q8: 1,
+      q9: 0,
+    });
+
+    expect(calculated.totalScore).toBe(14);
+    expect(calculated.classification).toBe('Faixa moderada de sintomas depressivos');
+    expect(calculated.redFlags).toEqual([]);
+  });
+
+  it('scores GAD-7 with the canonical 0-21 cutoffs', () => {
+    const calculated = GAD7_PROCESSOR.calculate({
+      q1: 2,
+      q2: 2,
+      q3: 2,
+      q4: 2,
+      q5: 2,
+      q6: 2,
+      q7: 3,
+    });
+
+    expect(calculated.totalScore).toBe(15);
+    expect(calculated.maxScore).toBe(21);
+    expect(calculated.classification).toBe('Faixa grave de sintomas ansiosos');
+    expect(calculated.redFlags).toEqual([]);
+  });
+
+  it('fails closed on incomplete, out-of-range or unknown instruments', () => {
+    expect(() => PHQ9_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-9 incompleto');
+    expect(() => GAD7_PROCESSOR.calculate({
+      q1: 0,
+      q2: 0,
+      q3: 0,
+      q4: 0,
+      q5: 0,
+      q6: 0,
+      q7: 4,
+    })).toThrow('GAD-7 incompleto ou com resposta fora da faixa 0-3');
+    expect(getClinicalInstrumentProcessor('unknown')).toBeNull();
+  });
+});
