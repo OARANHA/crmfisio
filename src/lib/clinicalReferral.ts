@@ -229,7 +229,8 @@ export function referralDocumentRenderDefinition(document: ReferralDocument): un
 export type ReferralErrorKind = 'eligibility' | 'active_encounter' | 'payload' | 'draft' | 'target' | 'unknown';
 export function classifyReferralError(error: unknown): ReferralErrorKind {
   const value = String(typeof error === 'object' && error !== null && 'message' in error ? (error as { message?: unknown }).message : error).toLowerCase();
-  if (value.includes('clinical_referral_target_invalid')) return 'target';
+  if (value.includes('clinical_referral_target_invalid') || value.includes('clinical_referral_internal_service_invalid')) return 'target';
+  if (value.includes('clinical_referral_internal_service_required')) return 'payload';
   if (value.includes('clinical_document_eligibility_required') || value.includes('42501')) return 'eligibility';
   if (value.includes('clinical_document_own_active_encounter_required')) return 'active_encounter';
   if (value.includes('clinical_document_referral') || value.includes('clinical_document_payload')) return 'payload';
