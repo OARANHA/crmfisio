@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase-migrations/20260909_financial_exception_resolution.sql'
       - 'supabase-verifiers/VERIFY_20260909_FINANCIAL_EXCEPTION_RESOLUTION.sql'
+      - 'supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql'
       - 'tests/sql/financial_exception_resolution_*.sql'
       - 'scripts/test-financial-exception-resolution.sh'
       - '.github/workflows/financial-exception-resolution.yml'
