@@ -89,6 +89,30 @@ const trim = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const asObject = (value: unknown): Record<string, unknown> => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 );
+const normalizeProfessionalTypeToken = (value: unknown): string => trim(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase();
+
+const INTERNAL_PROFESSIONAL_TYPE_LABELS: Record<string, string> = {
+  fisioterapeuta: 'Fisioterapeuta',
+  medico: 'Médico',
+  psicologo: 'Psicólogo',
+  quiropraxista: 'Quiropraxista',
+};
+
+export function referralProfessionalTypeLabel(value: unknown): string {
+  const raw = trim(value);
+  if (!raw) return '';
+  return INTERNAL_PROFESSIONAL_TYPE_LABELS[normalizeProfessionalTypeToken(raw)] ?? raw;
+}
+
+function serializeInternalProfessionalType(value: unknown): string {
+  const raw = trim(value);
+  if (!raw) return '';
+  const token = normalizeProfessionalTypeToken(raw);
+  return Object.prototype.hasOwnProperty.call(INTERNAL_PROFESSIONAL_TYPE_LABELS, token) ? token : raw;
+}
 
 export const emptyReferralRecipient = (): ReferralRecipient => ({
   scope: 'external', targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '', facility: '', contact: '',
@@ -104,12 +128,13 @@ export function normalizeReferralPayload(value: unknown): ReferralPayload {
   const rawScope = trim(source.destination_scope ?? recipientSource.scope);
   const scope: ReferralRecipientScope = rawScope === 'internal_professional' || rawScope === 'internal_service' ? rawScope : 'external';
   const priority = source.priority === 'high' || source.priority === 'urgent' ? source.priority : 'routine';
+  const rawProfessionalType = trim(recipientSource.professional_type ?? recipientSource.professionalType);
   return {
     recipient: {
       scope,
       targetProfileId: trim(source.target_profile_id ?? recipientSource.target_profile_id ?? recipientSource.targetProfileId),
       professionalName: trim(recipientSource.professional_name ?? recipientSource.professionalName),
-      professionalType: trim(recipientSource.professional_type ?? recipientSource.professionalType),
+      professionalType: scope === 'external' ? rawProfessionalType : referralProfessionalTypeLabel(rawProfessionalType),
       specialty: trim(recipientSource.specialty), service: trim(recipientSource.service), facility: trim(recipientSource.facility), contact: trim(recipientSource.contact),
     },
     reason: trim(source.reason), clinicalSummary: trim(source.clinical_summary ?? source.clinicalSummary),
@@ -118,12 +143,15 @@ export function normalizeReferralPayload(value: unknown): ReferralPayload {
 }
 
 export function serializeReferralPayload(payload: ReferralPayload): Record<string, unknown> {
+  const professionalType = payload.recipient.scope === 'external'
+    ? payload.recipient.professionalType.trim()
+    : serializeInternalProfessionalType(payload.recipient.professionalType);
   return {
     destination_scope: payload.recipient.scope,
     target_profile_id: payload.recipient.targetProfileId.trim(),
     recipient: {
       professional_name: payload.recipient.professionalName.trim(),
-      professional_type: payload.recipient.professionalType.trim(),
+      professional_type: professionalType,
       specialty: payload.recipient.specialty.trim(), service: payload.recipient.service.trim(),
       facility: payload.recipient.facility.trim(), contact: payload.recipient.contact.trim(),
     },
@@ -163,7 +191,7 @@ export async function loadReferralInternalTargets(): Promise<ReferralInternalTar
   const { data, error } = await db.rpc('list_clinical_referral_internal_targets');
   if (error) throw error;
   return ((data ?? []) as InternalTargetRow[]).map((row) => ({
-    profileId: row.profile_id, name: row.name, professionalType: trim(row.professional_type), specialty: trim(row.specialty),
+    profileId: row.profile_id, name: row.name, professionalType: referralProfessionalTypeLabel(row.professional_type), specialty: trim(row.specialty),
     councilType: trim(row.council_type), councilState: trim(row.council_state), registration: trim(row.registration),
   }));
 }
