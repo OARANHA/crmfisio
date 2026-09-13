@@ -4,6 +4,7 @@ import {
   emptyReferralPayload,
   normalizeReferralPayload,
   referralPriorityLabel,
+  referralProfessionalTypeLabel,
   referralReadyToIssue,
   serializeReferralPayload,
 } from './clinicalReferral';
@@ -55,12 +56,12 @@ describe('clinicalReferral', () => {
     expect(payload.recipient.targetProfileId).toBe('');
   });
 
-  it('serializes routing metadata outside the closed recipient contract', () => {
+  it('serializes routing metadata outside the closed recipient contract and keeps canonical internal profession values', () => {
     expect(serializeReferralPayload({
       recipient: {
         scope: 'internal_professional',
         targetProfileId: ' 00000000-0000-4000-8000-000000000001 ',
-        professionalName: ' Dra. Ana ', professionalType: ' Médica ', specialty: ' Cardiologia ',
+        professionalName: ' Dra. Ana ', professionalType: ' Médico ', specialty: ' Cardiologia ',
         service: ' Avaliação cardiológica ', facility: ' Serviço A ', contact: ' (51) 99999-0000 ',
       },
       reason: ' Sintomas persistentes ', clinicalSummary: ' Resumo ', requestedAction: ' Avaliar ', priority: 'high', observations: ' Retorno assistencial ',
@@ -68,23 +69,43 @@ describe('clinicalReferral', () => {
       destination_scope: 'internal_professional',
       target_profile_id: '00000000-0000-4000-8000-000000000001',
       recipient: {
-        professional_name: 'Dra. Ana', professional_type: 'Médica', specialty: 'Cardiologia',
+        professional_name: 'Dra. Ana', professional_type: 'medico', specialty: 'Cardiologia',
         service: 'Avaliação cardiológica', facility: 'Serviço A', contact: '(51) 99999-0000',
       },
       reason: 'Sintomas persistentes', clinical_summary: 'Resumo', requested_action: 'Avaliar', priority: 'high', observations: 'Retorno assistencial',
     });
   });
 
-  it('normalizes legacy payloads as external and new routing metadata explicitly', () => {
-    expect(normalizeReferralPayload({ recipient: { professional_name: 'Dra. Ana', specialty: 'Cardiologia' }, reason: 'Avaliação' }).recipient.scope).toBe('external');
+  it('does not rewrite free-text professional labels for external referrals', () => {
+    const payload = emptyReferralPayload();
+    payload.recipient.professionalType = 'Médica especialista';
+    const serialized = serializeReferralPayload(payload) as { recipient: { professional_type: string } };
+    expect(serialized.recipient.professional_type).toBe('Médica especialista');
+  });
+
+  it('normalizes legacy payloads as external and humanizes only canonical internal profession labels', () => {
+    expect(normalizeReferralPayload({ recipient: { professional_type: 'psicologo' }, reason: 'Avaliação' }).recipient.professionalType).toBe('psicologo');
     expect(normalizeReferralPayload({
       destination_scope: 'internal_professional',
       target_profile_id: '00000000-0000-4000-8000-000000000001',
-      recipient: { professional_name: 'Dra. Ana' }, reason: 'Avaliação', priority: 'immediate',
+      recipient: { professional_name: 'Dra. Ana', professional_type: 'psicologo' }, reason: 'Avaliação', priority: 'immediate',
     })).toMatchObject({
-      recipient: { scope: 'internal_professional', targetProfileId: '00000000-0000-4000-8000-000000000001', professionalName: 'Dra. Ana' },
+      recipient: {
+        scope: 'internal_professional',
+        targetProfileId: '00000000-0000-4000-8000-000000000001',
+        professionalName: 'Dra. Ana',
+        professionalType: 'Psicólogo',
+      },
       priority: 'routine',
     });
+  });
+
+  it('uses human labels for canonical internal professional types without guessing unknown values', () => {
+    expect(referralProfessionalTypeLabel('medico')).toBe('Médico');
+    expect(referralProfessionalTypeLabel('psicologo')).toBe('Psicólogo');
+    expect(referralProfessionalTypeLabel('fisioterapeuta')).toBe('Fisioterapeuta');
+    expect(referralProfessionalTypeLabel('quiropraxista')).toBe('Quiropraxista');
+    expect(referralProfessionalTypeLabel('terapeuta_ocupacional')).toBe('terapeuta_ocupacional');
   });
 
   it('maps internal routing failures to actionable UI feedback', () => {
