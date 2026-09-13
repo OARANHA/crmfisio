@@ -66,6 +66,7 @@ echo 'D2-E4 PRE-FIX EFFECTIVE-STACK REPRODUCTION PASS'
 "${PSQL[@]}" -f supabase-migrations/20260913_d2e4_fixed_target_appointment_transaction_proof.sql >/dev/null
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_D2E4_FIXED_TARGET_APPOINTMENT_TRANSACTION_PROOF.sql >/dev/null
 "${PSQL[@]}" -f tests/sql/d2e4_fixed_target_appointment_boundary_cases.sql >/dev/null
+"${PSQL[@]}" -f tests/sql/d2e4_fixed_target_appointment_boundary_rollback.sql >/dev/null
 
 # The hotfix itself must be replay-safe and must leave both the new contract and
 # all previous D2-E4/D2-E3 structural contracts green.
