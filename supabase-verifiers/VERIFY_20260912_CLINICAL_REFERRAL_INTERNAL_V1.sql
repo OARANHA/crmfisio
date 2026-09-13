@@ -27,6 +27,7 @@ BEGIN
   SELECT pg_get_functiondef('public.guard_clinical_referral_internal_target()'::regprocedure) INTO v_def;
   IF position('internal_professional' in v_def) = 0
      OR position('internal_service' in v_def) = 0
+     OR position('clinical_referral_internal_service_invalid' in v_def) = 0
      OR position('p.clinic_id = NEW.clinic_id' in v_def) = 0
      OR position('p.ativo IS TRUE' in v_def) = 0
      OR position('NEW.status = ''issued''' in v_def) = 0 THEN
@@ -62,6 +63,7 @@ RESET ROLE;
 DO $$
 DECLARE
   v_base jsonb := '{"destination_scope":"internal_professional","target_profile_id":"d2100000-0000-4000-8000-000000000004","recipient":{"professional_name":"Psicóloga D2","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
+  v_service jsonb := '{"destination_scope":"internal_service","target_profile_id":"","recipient":{"professional_name":"","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_ok boolean := false;
   v_version_id uuid;
 BEGIN
@@ -108,6 +110,33 @@ BEGIN
     );
   EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_target_invalid' in SQLERRM) > 0; END;
   IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_inactive_target_not_blocked'; END IF;
+
+  -- A routed internal service must correspond to an active professional area in
+  -- the same clinic. The valid psychology area passes; a fabricated area fails.
+  INSERT INTO public.clinical_documents(
+    id, clinic_id, patient_id, appointment_id, document_type, template_id,
+    template_version_id, issuer_id, status, payload, document_identifier
+  ) VALUES (
+    'd2e30000-0000-4000-8000-000000000004','d2000000-0000-4000-8000-000000000001',
+    'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
+    '12000000-0000-4000-8000-000000000007',v_version_id,
+    'd2100000-0000-4000-8000-000000000001','draft',v_service,'D2E3-VALID-SERVICE'
+  );
+
+  v_ok := false;
+  BEGIN
+    INSERT INTO public.clinical_documents(
+      id, clinic_id, patient_id, appointment_id, document_type, template_id,
+      template_version_id, issuer_id, status, payload, document_identifier
+    ) VALUES (
+      'd2e30000-0000-4000-8000-000000000005','d2000000-0000-4000-8000-000000000001',
+      'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
+      '12000000-0000-4000-8000-000000000007',v_version_id,
+      'd2100000-0000-4000-8000-000000000001','draft',
+      jsonb_set(v_service,'{recipient,professional_type}','"area-inexistente"'),'D2E3-INVALID-SERVICE'
+    );
+  EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_internal_service_invalid' in SQLERRM) > 0; END;
+  IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_invalid_internal_service_not_blocked'; END IF;
 END $$;
 
 SELECT 'CLINICAL REFERRAL INTERNAL V1 VERIFY PASSED' AS result;
