@@ -25,13 +25,19 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_boundary.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_clinical_finalization_reschedule_atomicity.sql
 
-# #388 is a historical slice with a deliberate "no resolution RPC yet" invariant.
-# Validate it before #389 exists. Never relax or run this verifier after #389.
+# #388 remains valid as a standalone historical slice before #389 exists.
+# The verifier is composition-aware: it accepts this pre-#389 state without
+# freezing the later approved resolution boundary out of the schema.
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql
 
-# #389 is additive. Apply it only after the complete #388 contract has passed.
+# #389 is additive. Apply it only after the complete #388 standalone contract passes.
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_exception_resolution.sql
 "${PSQL[@]}" -f supabase-migrations/20260909_financial_exception_resolution.sql
+
+# The same #388 verifier must remain green on the effective post-#389 stack.
+# This is the regression that prevents the historical verifier from becoming
+# false-red merely because the approved canonical resolution RPC now exists.
+"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260909_FINANCIAL_CLINICAL_FINALIZATION_BOUNDARY.sql
 
 # Seed already-detected exceptions without exercising the #388 detection path,
 # then execute the resolution cases on the post-#389 schema.

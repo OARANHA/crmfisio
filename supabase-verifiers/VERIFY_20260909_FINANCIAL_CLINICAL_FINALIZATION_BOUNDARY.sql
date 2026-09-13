@@ -252,20 +252,66 @@ BEGIN
   END IF;
 END $$;
 
-\echo '13) financial exception queue has no canonical generic resolve RPC in this slice'
+\echo '13) #388 queue stays directly immutable while approved #389 resolution may compose'
 DO $$
+DECLARE
+  v_resolver regprocedure := to_regprocedure(
+    'public.resolve_appointment_financial_exception(uuid,text,text)'
+  );
 BEGIN
+  -- Standalone #388 remains a valid historical composition before #389 exists.
+  IF v_resolver IS NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname IN (
+          'resolve_appointment_financial_exception',
+          'resolve_appointment_financial_exception_with_note'
+        )
+    ) THEN
+      RAISE EXCEPTION 'unexpected_financial_exception_resolution_surface';
+    END IF;
+    RETURN;
+  END IF;
+
+  -- Once #389 is present, the queue itself must remain non-mutable and the
+  -- approved resolution must materialize through the exact audited boundary.
+  IF to_regclass('public.appointment_financial_exception_dispositions') IS NULL THEN
+    RAISE EXCEPTION 'financial_exception_resolution_without_disposition_ledger';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    WHERE p.oid = v_resolver
+      AND p.prosecdef
+  ) THEN
+    RAISE EXCEPTION 'financial_exception_resolution_not_security_definer';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', v_resolver, 'EXECUTE')
+     OR has_function_privilege('anon', v_resolver, 'EXECUTE')
+     OR has_function_privilege('service_role', v_resolver, 'EXECUTE') THEN
+    RAISE EXCEPTION 'financial_exception_resolution_execute_boundary_invalid';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.appointment_financial_exceptions', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.appointment_financial_exceptions', 'DELETE')
+     OR has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'UPDATE')
+     OR has_table_privilege('service_role', 'public.appointment_financial_exceptions', 'DELETE') THEN
+    RAISE EXCEPTION 'financial_exception_queue_direct_resolution_exposed';
+  END IF;
+
   IF EXISTS (
     SELECT 1
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
-      AND p.proname IN (
-        'resolve_appointment_financial_exception',
-        'resolve_appointment_financial_exception_with_note'
-      )
+      AND p.proname = 'resolve_appointment_financial_exception_with_note'
   ) THEN
-    RAISE EXCEPTION 'unmaterialized_financial_exception_resolution_exposed';
+    RAISE EXCEPTION 'legacy_financial_exception_resolution_surface_present';
   END IF;
 END $$;
 
