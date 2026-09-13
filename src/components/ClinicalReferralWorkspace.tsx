@@ -177,7 +177,7 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
     try {
       const operation = await openReferralOperation(document.id);
       if (operation.appointmentId) { toast('Este encaminhamento já possui um agendamento vinculado.', 'warn'); return; }
-      navigate(`/agenda?referral_operation=${operation.id}&patient=${operation.patientId}`);
+      navigate(`/agenda?referral_operation=${document.id}`);
     } catch (error) { console.error('[MedicsPro] continuidade de encaminhamento:', error); toast('Não foi possível iniciar a continuidade operacional.', 'warn'); }
   };
 
