@@ -3,7 +3,7 @@
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes ficam nos documentos de domínio.
 
 **Data do snapshot:** 2026-09-13  
-**Base canônica:** `main@9d04f011454db77f5197e227c540aa0d361d9442`
+**Base canônica:** `main@2f2858a8055ee9c18651feafb52d73312609d7ee`
 
 ## Estado clínico resumido
 
@@ -16,7 +16,7 @@ Referral D2-E0 / D2-E1 / D2-E2 / D2-E3 / D2-E3.1            PROD
 Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
 D2-E4 Referral Operational Continuity                         PROD
-Clinic Referral Authoring Policy V1                           MERGED / NÃO VALIDADO EM PRODUÇÃO
+Clinic Referral Authoring Policy V1                           PROD
 ```
 
 ---
@@ -251,7 +251,7 @@ O D2-E4 está encerrado como funcionalmente validado; mudanças futuras de polí
 
 ## Referral Authoring Policy V1
 
-**MERGED / NÃO VALIDADO EM PRODUÇÃO.**
+**VALIDADO EM PRODUÇÃO.**
 
 A #454 adiciona em `Configurações → Fluxos clínicos` a política institucional:
 
@@ -263,9 +263,19 @@ O default é `true`, preservando o comportamento atual. Quando `false`, PostgreS
 
 A configuração pode restringir o fluxo, mas nunca concede identidade, capability, care relationship ou acesso clínico. Somente owner/admin alteram a policy da própria clínica; usuários autenticados não possuem escrita direta na tabela.
 
-O toggle de agendamento direto pelo encaminhador **não entrou nesta V1** porque ainda não existe uma rota operacional alternativa equivalente para recepção/destinatário assumir o agendamento. Desativá-lo agora criaria risco de dead-end. Essa decisão fica separada do D2-E4 validado.
+Produção confirmou em 2026-09-13:
 
-Rollout de produção da #454 ainda exige migration, verifier, frontend redeploy e smoke funcional.
+- migration e verifier aplicados sobre a release mergeada da #454;
+- `CLINIC REFERRAL AUTHORING POLICY V1 VERIFY PASSED`;
+- settings presentes para as clínicas existentes com default preservado no rollout;
+- trigger de enforcement ativo e tabela sem acesso direto indevido por `authenticated`;
+- replay da migration sem resetar configuração explícita;
+- owner/admin visualiza e salva a policy em `Configurações → Fluxos clínicos`;
+- desligar a policy bloqueia profissional no fluxo de novo encaminhamento pelo boundary server-side;
+- religar restaura o fluxo normal;
+- smoke repetido sem regressão observada.
+
+O toggle de agendamento direto pelo encaminhador **não entrou nesta V1** porque ainda não existe uma rota operacional alternativa equivalente para recepção/destinatário assumir o agendamento. Desativá-lo agora criaria risco de dead-end. Essa decisão fica separada do D2-E4 validado.
 
 ---
 
