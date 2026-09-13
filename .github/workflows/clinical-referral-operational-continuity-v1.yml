@@ -15,6 +15,7 @@ on:
       - 'tests/sql/d2e4_fixed_target_appointment_boundary_fixture.sql'
       - 'tests/sql/d2e4_fixed_target_appointment_boundary_before.sql'
       - 'tests/sql/d2e4_fixed_target_appointment_boundary_cases.sql'
+      - 'tests/sql/d2e4_fixed_target_appointment_boundary_rollback.sql'
       - 'scripts/test-clinical-referral-operational-continuity-v1.sh'
       - 'src/lib/clinicalReferral.ts'
       - 'src/lib/clinicalReferralOperationalBoundary.test.js'
