@@ -27,6 +27,8 @@ import { patientName } from '../lib/displayNames';
 import { useToast } from '../lib/toastContext';
 import { usePatients } from '../lib/patientContext';
 import { hasClinicalDirectoryIdentity } from '../lib/professionalIdentity';
+import { openReferralOperation } from '../lib/clinicalReferral';
+import { supabase } from '../lib/supabaseClient';
 import { professionalIdOf } from '../lib/professionalReference';
 import { STATUS_META, type Appointment, type AppointmentStatus } from '../lib/types';
 import { Btn, Card, Input, Select } from '../lib/ui';
@@ -95,6 +97,7 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
   const [whatsappByAppointment, setWhatsappByAppointment] = useState<Map<string, AppointmentWhatsappState>>(new Map());
   const [prefillPatientId] = useState(() => searchParams.get('patient') ?? '');
   const [prefillConsumed, setPrefillConsumed] = useState(false);
+  const [referralPrefillConsumed, setReferralPrefillConsumed] = useState(false);
 
   const todayIso = format(now, 'yyyy-MM-dd');
   const defaultView: AgendaView = mode === 'professional' ? 'dia' : 'semana';
@@ -105,7 +108,7 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
     [searchParams, todayIso],
   );
 
-  const updateAgendaQuery = (changes: Partial<Record<'view' | 'status' | 'date' | 'patient', string | null>>) => {
+  const updateAgendaQuery = (changes: Partial<Record<'view' | 'status' | 'date' | 'patient' | 'referral_operation', string | null>>) => {
     const next = new URLSearchParams(searchParams);
     for (const [key, value] of Object.entries(changes)) {
       if (value) next.set(key, value);
@@ -135,6 +138,16 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
     setCreating({ dia: todayIso, hora: '08:00' });
     setPrefillConsumed(true);
   }, [prefillConsumed, loadingInfra, prefillPatientId, rooms.length, todayIso]);
+
+  useEffect(() => {
+    const operationId = searchParams.get('referral_operation');
+    if (referralPrefillConsumed || loadingInfra || !operationId || rooms.length === 0) return;
+    void openReferralOperation(operationId).then((operation) => {
+      if (operation.appointmentId) { toast('Este encaminhamento já possui um agendamento vinculado.', 'warn'); return; }
+      setCreating({ dia: todayIso, hora: '08:00', patientId: operation.patientId, fisioId: operation.targetProfileId ?? undefined, referralOperationId: operation.id });
+    }).catch(() => toast('Não foi possível preparar a continuidade do encaminhamento.', 'warn'));
+    setReferralPrefillConsumed(true);
+  }, [referralPrefillConsumed, loadingInfra, searchParams, rooms.length, todayIso, toast]);
 
   const professionals = users.filter((item) => item.ativo && hasClinicalDirectoryIdentity(item.professionalType));
   const effectiveProfessionalFilter = mode === 'professional' ? (user?.id ?? '__unresolved__') : professionalFilter;
@@ -254,7 +267,21 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
     }
   };
 
-  const saveAppointment = (appointment: Omit<Appointment, 'id'>) => {
+  const saveAppointment = (appointment: Omit<Appointment, 'id'>, referralOperationId?: string) => {
+    // The existing Agenda creation path remains authoritative. Referral context
+    // is a server-validated operation id, never a browser-written document link.
+    if (referralOperationId) {
+      void (async () => {
+        const { error } = await supabase.rpc('schedule_clinical_referral_operation', {
+          p_operation_id: referralOperationId, p_data: appointment.data, p_inicio: appointment.inicio, p_fim: appointment.fim,
+          p_professional_id: appointment.fisioId, p_room_id: appointment.roomId || null, p_tipo: appointment.tipo,
+          p_valor: appointment.valor, p_pacote_id: appointment.pacoteId,
+        });
+        if (error) throw error;
+        toast('Continuidade agendada e vinculada ao encaminhamento.'); await refreshAgenda();
+      })().catch((error: unknown) => { console.error('[MedicsPro] continuidade de encaminhamento:', error); toast('Não foi possível agendar a continuidade.', 'warn'); });
+      setCreating(null); updateAgendaQuery({ referral_operation: null, patient: null }); return;
+    }
     void addAppointment(appointment)
       .then(() => toast('Agendamento salvo.'))
       .catch((error) => {

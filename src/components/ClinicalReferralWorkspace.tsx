@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCurrentClinicIdentity, type ClinicIdentity } from '../lib/clinicConfiguration';
 import {
   canIssueReferral,
@@ -6,6 +7,7 @@ import {
   createReferralDraft,
   emptyReferralPayload,
   issueReferral,
+  openReferralOperation,
   loadReferralDocuments,
   loadReferralInternalTargets,
   loadReferralTemplateRenderDefinition,
@@ -51,6 +53,7 @@ export function ClinicalReferralWorkspace(props: ClinicalReferralWorkspaceProps)
 
 function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: ClinicalReferralWorkspaceProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [eligible, setEligible] = useState(false);
@@ -170,6 +173,14 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
     finally { setIssuing(false); }
   };
 
+  const scheduleInternalReferral = async (document: ReferralDocument) => {
+    try {
+      const operation = await openReferralOperation(document.id);
+      if (operation.appointmentId) { toast('Este encaminhamento já possui um agendamento vinculado.', 'warn'); return; }
+      navigate(`/agenda?referral_operation=${operation.id}&patient=${operation.patientId}`);
+    } catch (error) { console.error('[MedicsPro] continuidade de encaminhamento:', error); toast('Não foi possível iniciar a continuidade operacional.', 'warn'); }
+  };
+
   const updateRecipient = (patch: Partial<ReferralRecipient>) => { setPayload((current) => ({ ...current, recipient: { ...current.recipient, ...patch } })); setDirty(true); setReviewing(false); };
   const updatePayload = (patch: Partial<ReferralPayload>) => { setPayload((current) => ({ ...current, ...patch })); setDirty(true); setReviewing(false); };
   const changeScope = (scope: ReferralRecipientScope) => updateRecipient({
@@ -220,8 +231,8 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
         </section>
         <aside className="space-y-3 xl:sticky xl:top-20"><ReferralDocumentPreview patient={patient} payload={payload} renderDefinition={previewRenderDefinition} clinic={clinic} />{reviewing && activeDocument && <section className="rounded-2xl border border-mint/35 bg-mint/[0.045] p-4"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mint">Revisão humana obrigatória</p><h4 className="mt-1 font-display text-[15px] font-semibold text-paper">Confirmar emissão</h4><p className="mt-2 text-[11px] leading-relaxed text-fog">Confirme destino, motivo e informações compartilhadas. Ao emitir, conteúdo, contexto e definição visual serão congelados em snapshots imutáveis.</p><div className="mt-3 flex flex-wrap gap-2"><Btn disabled={issuing || !readyToIssue} onClick={() => void confirmIssue()}>{issuing ? 'Emitindo…' : 'Emitir encaminhamento'}</Btn><Btn variant="subtle" disabled={issuing} onClick={() => setReviewing(false)}>Voltar à edição</Btn></div></section>}</aside>
       </div>
-      <ReferralHistory title="Encaminhamentos deste atendimento" documents={currentEncounterHistory} patientName={patientName} empty="Nenhum encaminhamento emitido neste atendimento." />
-      {priorHistory.length > 0 && <ReferralHistory title="Histórico anterior" documents={priorHistory} patientName={patientName} empty="" compact />}
+      <ReferralHistory title="Encaminhamentos deste atendimento" documents={currentEncounterHistory} patientName={patientName} empty="Nenhum encaminhamento emitido neste atendimento." onSchedule={scheduleInternalReferral} />
+      {priorHistory.length > 0 && <ReferralHistory title="Histórico anterior" documents={priorHistory} patientName={patientName} empty="" compact onSchedule={scheduleInternalReferral} />}
       <p className="sr-only">A impressão histórica usa os snapshots congelados pelo servidor.</p>
     </div>
   );
@@ -232,8 +243,8 @@ function TextArea({ label, value, placeholder, rows, onChange }: { label: string
 
 function recipientLabel(recipient: ReferralRecipient): string { return [recipient.professionalName, recipient.specialty, recipient.service, recipient.facility].map((value) => value.trim()).filter(Boolean).join(' · ') || 'Destino ainda não informado'; }
 
-function ReferralHistory({ title, documents, patientName, empty, compact = false }: { title: string; documents: ReferralDocument[]; patientName: string; empty: string; compact?: boolean }) {
-  return <section className="rounded-2xl border border-line/65 bg-panel p-4"><div className="flex items-center justify-between gap-3"><h4 className="font-display text-[15px] font-semibold text-paper">{title}</h4><Chip>{documents.length}</Chip></div>{documents.length === 0 ? <p className="mt-3 text-[11px] text-fog">{empty}</p> : <div className="mt-3 space-y-2">{documents.map((document) => { const content = document.payloadSnapshot ?? document.payload; return <article key={document.id} className="rounded-xl border border-line/60 bg-deep/25 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><p className="text-[11.5px] font-semibold text-paper">{recipientLabel(content.recipient)}</p><p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-fog">{content.reason || 'Motivo não registrado'}</p><p className="mt-2 font-mono text-[9px] text-fog">{document.documentIdentifier} · {document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : document.createdAt}</p></div><div className="flex flex-wrap items-center gap-2"><Chip className={document.status === 'issued' ? 'border-mint/35 text-mint' : 'border-pulse/35 text-pulse'}>{document.status === 'issued' ? 'Emitido' : 'Cancelado'}</Chip>{document.status === 'issued' && document.payloadSnapshot && <Btn variant="subtle" onClick={() => printIssuedReferral(document, patientName)}>Imprimir</Btn>}</div></div>{!compact && <p className="mt-2 text-[10px] font-semibold text-fog">{referralPriorityLabel(content.priority)}{content.requestedAction ? ` · ${content.requestedAction}` : ''}</p>}{document.status === 'canceled' && document.cancelReason && <p className="mt-2 text-[10px] text-pulse">Motivo do cancelamento: {document.cancelReason}</p>}<p className="mt-2 text-[9.5px] text-fog">Conteúdo e impressão histórica usam o snapshot emitido; não acompanham alterações futuras do modelo.</p></article>; })}</div>}</section>;
+function ReferralHistory({ title, documents, patientName, empty, compact = false, onSchedule }: { title: string; documents: ReferralDocument[]; patientName: string; empty: string; compact?: boolean; onSchedule: (document: ReferralDocument) => Promise<void> }) {
+  return <section className="rounded-2xl border border-line/65 bg-panel p-4"><div className="flex items-center justify-between gap-3"><h4 className="font-display text-[15px] font-semibold text-paper">{title}</h4><Chip>{documents.length}</Chip></div>{documents.length === 0 ? <p className="mt-3 text-[11px] text-fog">{empty}</p> : <div className="mt-3 space-y-2">{documents.map((document) => { const content = document.payloadSnapshot ?? document.payload; const internal = content.recipient.scope !== 'external'; return <article key={document.id} className="rounded-xl border border-line/60 bg-deep/25 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><p className="text-[11.5px] font-semibold text-paper">{recipientLabel(content.recipient)}</p><p className="mt-1 line-clamp-2 text-[10.5px] leading-relaxed text-fog">{content.reason || 'Motivo não registrado'}</p><p className="mt-2 font-mono text-[9px] text-fog">{document.documentIdentifier} · {document.issuedAt ? new Date(document.issuedAt).toLocaleString('pt-BR') : document.createdAt}</p></div><div className="flex flex-wrap items-center gap-2"><Chip className={document.status === 'issued' ? 'border-mint/35 text-mint' : 'border-pulse/35 text-pulse'}>{document.status === 'issued' ? 'Emitido' : 'Cancelado'}</Chip>{document.status === 'issued' && internal && <Btn variant="subtle" onClick={() => void onSchedule(document)}>Agendar continuidade</Btn>}{document.status === 'issued' && document.payloadSnapshot && <Btn variant="subtle" onClick={() => printIssuedReferral(document, patientName)}>Imprimir</Btn>}</div></div>{!compact && <p className="mt-2 text-[10px] font-semibold text-fog">{referralPriorityLabel(content.priority)}{content.requestedAction ? ` · ${content.requestedAction}` : ''}</p>}{document.status === 'canceled' && document.cancelReason && <p className="mt-2 text-[10px] text-pulse">Motivo do cancelamento: {document.cancelReason}</p>}<p className="mt-2 text-[9.5px] text-fog">Conteúdo e impressão histórica usam o snapshot emitido; não acompanham alterações futuras do modelo.</p></article>; })}</div>}</section>;
 }
 
 function printIssuedReferral(document: ReferralDocument, fallbackPatientName: string) {

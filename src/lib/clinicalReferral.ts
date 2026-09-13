@@ -65,6 +65,15 @@ export type ReferralDocument = {
   updatedAt: string;
 };
 
+export type ReferralOperation = {
+  id: string;
+  patientId: string;
+  targetProfileId: string | null;
+  destinationScope: 'internal_professional' | 'internal_service';
+  status: 'received' | 'scheduled' | 'completed' | 'declined' | 'canceled';
+  appointmentId: string | null;
+};
+
 type TemplateRow = { id: string; name: string; description: string; current_version_id: string | null };
 type TemplateVersionRow = { id: string; render_definition: unknown };
 type InternalTargetRow = {
@@ -247,6 +256,17 @@ export async function cancelReferral(documentId: string, reason: string): Promis
   const { data, error } = await db.rpc('cancel_clinical_document', { p_document_id: documentId, p_reason: reason.trim() });
   if (error || !data) throw error ?? new Error('Cancelamento do encaminhamento sem confirmação do servidor.');
   return mapDocument(data as DocumentRow);
+}
+
+export async function openReferralOperation(documentId: string): Promise<ReferralOperation> {
+  const { data, error } = await db.rpc('open_clinical_referral_operation', { p_referral_document_id: documentId });
+  if (error || !data) throw error ?? new Error('Continuidade operacional sem confirmação do servidor.');
+  const row = data as Record<string, unknown>;
+  return {
+    id: String(row.id), patientId: String(row.patient_id), targetProfileId: row.target_profile_id ? String(row.target_profile_id) : null,
+    destinationScope: row.destination_scope as ReferralOperation['destinationScope'], status: row.status as ReferralOperation['status'],
+    appointmentId: row.appointment_id ? String(row.appointment_id) : null,
+  };
 }
 
 export function referralDocumentRenderDefinition(document: ReferralDocument): unknown {
