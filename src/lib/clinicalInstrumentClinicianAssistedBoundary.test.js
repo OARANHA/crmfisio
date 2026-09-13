@@ -30,6 +30,13 @@ describe('Clinician-Assisted Administration V1 boundary', () => {
     expect(engine).toContain("flagCode: 'phq9.item9.positive'");
   });
 
+  it('persists only canonical validated answers instead of arbitrary browser keys', () => {
+    expect(edge).toContain('const canonicalAnswers = Object.fromEntries(');
+    expect(edge).toContain("calculated.answersArray.map((value, index) => [`q${index + 1}`, value])");
+    expect(edge).toContain('p_answers: canonicalAnswers');
+    expect(edge).not.toContain('p_answers: answers,');
+  });
+
   it('keeps Nexus capability metadata out of neutral clinician-assisted authorization', () => {
     expect(edge).not.toContain('nexus.scales');
     expect(edge).not.toContain('requiredCapability');
