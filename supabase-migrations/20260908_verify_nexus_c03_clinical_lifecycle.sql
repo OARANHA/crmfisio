@@ -37,7 +37,6 @@ $$;
 DO $$
 BEGIN
   IF to_regclass('public.nexus_result_contracts') IS NULL
-     OR (SELECT count(*) FROM public.nexus_result_contracts) <> 3
      OR NOT EXISTS (SELECT 1 FROM public.nexus_result_contracts WHERE module_key='eem' AND tool_key='eem' AND rule_key='nexus.eem' AND rule_version='nexus-eem-2026-09-03' AND required_capability='nexus.eem')
      OR NOT EXISTS (SELECT 1 FROM public.nexus_result_contracts WHERE module_key='scales' AND tool_key='phq9' AND rule_key='nexus.phq9' AND rule_version='nexus-2026-09-03' AND required_capability='nexus.scales')
      OR NOT EXISTS (SELECT 1 FROM public.nexus_result_contracts WHERE module_key='scales' AND tool_key='gad7' AND rule_key='nexus.gad7' AND rule_version='nexus-2026-09-03' AND required_capability='nexus.scales') THEN

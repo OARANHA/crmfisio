@@ -5,8 +5,8 @@ import {
 } from './clinicalInstrumentClinicianAssisted';
 
 describe('clinician-assisted instrument browser boundary', () => {
-  it('exposes only the neutral PHQ-9/GAD-7 keys', () => {
-    expect(CLINICIAN_ASSISTED_INSTRUMENT_KEYS).toEqual(['phq9', 'gad7']);
+  it('exposes only the neutral clinician-assisted keys', () => {
+    expect(CLINICIAN_ASSISTED_INSTRUMENT_KEYS).toEqual(['phq9', 'gad7', 'phq15']);
   });
 
   it('builds the minimal Edge payload without tenant, patient, actor, engine or score authority', () => {

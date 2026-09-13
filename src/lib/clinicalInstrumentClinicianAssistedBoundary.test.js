@@ -7,7 +7,10 @@ const edge = read('../../supabase/functions/clinical-instrument-clinician-assist
 const processor = read('../../supabase/functions/nexus-self-assessment-processor/index.ts');
 const engine = read('../../supabase/functions/_shared/clinical-instrument-engine.ts');
 const migration = read('../../supabase-migrations/20260913_clinician_assisted_clinical_instruments_v1.sql');
+const phq15Migration = read('../../supabase-migrations/20260913_phq15_clinician_assisted_v1.sql');
 const uiAdapter = read('./clinicalInstrumentClinicianAssisted.ts');
+const assistedCatalog = read('./nexus/clinicianAssistedInstrumentCatalog.ts');
+const publicCatalog = read('./nexus/publicSelfAssessmentCatalog.ts');
 const ui = read('../components/ClinicianAssistedInstrumentApplyNow.tsx');
 const workspace = read('../components/ClinicalEncounterWorkspaceV4.tsx');
 
@@ -21,16 +24,30 @@ describe('Clinician-Assisted Administration V1 boundary', () => {
     expect(edge).not.toContain('patientId');
   });
 
-  it('reuses one shared server-side PHQ-9/GAD-7 engine for both delivery modes', () => {
+  it('reuses the shared server-side engine while keeping PHQ-15 assisted-only', () => {
     expect(edge).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).not.toContain('const PHQ9:');
     expect(processor).not.toContain('const GAD7:');
     expect(processor).not.toContain('function requireIntegerRange(');
+    expect(processor).toContain("const PUBLIC_SELF_ASSESSMENT_TOOL_KEYS = new Set(['phq9', 'gad7'])");
+    expect(processor).toContain('PUBLIC_SELF_ASSESSMENT_TOOL_KEYS.has(item.toolKey)');
+    expect(processor).toContain('supportedScales: publicProcessors.map');
     expect(engine).toContain("ruleKey: 'nexus.phq9'");
     expect(engine).toContain("ruleKey: 'nexus.gad7'");
     expect(engine).toContain("ruleVersion: PHQ9_RULE_VERSION");
     expect(engine).toContain("flagCode: 'phq9.item9.positive'");
+    expect(engine).toContain("ruleKey: 'nexus.phq15'");
+    expect(engine).toContain("ruleVersion: PHQ15_RULE_VERSION");
+    expect(assistedCatalog).toContain("toolKey: 'phq15'");
+    expect(publicCatalog).not.toContain("'phq15'");
+  });
+
+  it('adds PHQ-15 as an additive neutral catalog contract without auto-grants', () => {
+    expect(phq15Migration).toContain("'scales', 'phq15', 'nexus.phq15', 'nexus-phq15-2026-09-13', 'nexus.scales'");
+    expect(phq15Migration).toContain("'phq15', 'nexus', 'scales', 'phq15'");
+    expect(phq15Migration).not.toMatch(/INSERT\s+INTO\s+public\.professional_capabilities/i);
+    expect(phq15Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i);
   });
 
   it('persists only canonical validated answers instead of arbitrary browser keys', () => {
