@@ -75,6 +75,13 @@ Deno.serve(async (req) => {
     return json({ error: 'Respostas incompletas ou fora da faixa permitida' }, 400);
   }
 
+  // Persist only the validated canonical questions. Extra browser keys are never
+  // allowed to become part of the clinical snapshot merely because the scorer
+  // ignored them.
+  const canonicalAnswers = Object.fromEntries(
+    calculated.answersArray.map((value, index) => [`q${index + 1}`, value]),
+  );
+
   const resultContract = {
     engineSource: 'nexus',
     engineModuleKey: definition.moduleKey,
@@ -101,7 +108,7 @@ Deno.serve(async (req) => {
     p_appointment_id: appointmentId,
     p_instrument_key: definition.toolKey,
     p_request_id: requestId,
-    p_answers: answers,
+    p_answers: canonicalAnswers,
     p_result: resultContract,
     p_safety_signals: calculated.redFlags ?? [],
   });
