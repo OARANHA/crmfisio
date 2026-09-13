@@ -42,7 +42,7 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
         setAvailabilityState('ready');
       })
       .catch((error) => {
-        console.error('[MedicsPro] instrumentos clínicos do Encounter:', error);
+        console.error('[MedicsPro] instrumentos clínicos do atendimento:', error);
         if (!active) return;
         setAvailability(EMPTY_AVAILABILITY);
         setAvailabilityState('error');
@@ -91,7 +91,7 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
       setResult(administration);
     } catch (error) {
       console.error('[MedicsPro] aplicar instrumento clínico:', error);
-      setSubmitError('Não foi possível registrar este instrumento. O mesmo identificador será reutilizado se você tentar novamente.');
+      setSubmitError('Não foi possível registrar este instrumento. Você pode tentar novamente sem duplicar a aplicação.');
     } finally {
       setSubmitting(false);
     }
@@ -102,13 +102,13 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
   }
 
   if (availabilityState === 'error') {
-    return <div className="rounded-xl border border-pulse/30 bg-pulse/[0.04] px-4 py-3"><p className="text-[12px] font-semibold text-pulse">Instrumentos clínicos indisponíveis</p><p className="mt-1 text-[11.5px] leading-relaxed text-fog">Não foi possível confirmar a autorização deste Encounter. Nenhum instrumento foi liberado.</p></div>;
+    return <div className="rounded-xl border border-pulse/30 bg-pulse/[0.04] px-4 py-3"><p className="text-[12px] font-semibold text-pulse">Instrumentos clínicos indisponíveis</p><p className="mt-1 text-[11.5px] leading-relaxed text-fog">Não foi possível confirmar a autorização deste atendimento. Nenhum instrumento foi liberado.</p></div>;
   }
 
   if (availableDefinitions.length === 0) return null;
 
-  if (result && definition) {
-    return <ResultCard result={result} acronym={definition.acronym} onApplyAgain={() => begin(session!.instrumentKey)} onClose={cancel} />;
+  if (result && definition && session) {
+    return <ResultCard result={result} acronym={definition.acronym} onApplyAgain={() => begin(session.instrumentKey)} onClose={cancel} />;
   }
 
   if (definition && session) {
@@ -165,9 +165,9 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
         <div className="min-w-0 flex-1">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-aqua">Instrumentos clínicos</p>
           <h3 className="mt-1 font-display text-[16px] font-semibold text-paper">Aplicar agora</h3>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-fog">Instrumentos habilitados pela clínica e autorizados para este Encounter. O cálculo e a validação acontecem no servidor.</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-fog">Instrumentos habilitados pela clínica e disponíveis para este atendimento. A pontuação é calculada e validada automaticamente ao concluir.</p>
         </div>
-        <Chip className="border-mint/30 text-mint">Encounter autorizado</Chip>
+        <Chip className="border-mint/30 text-mint">Disponível neste atendimento</Chip>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-2">
@@ -204,7 +204,7 @@ function ResultCard({
           <p className="mt-1 text-[12px] font-medium text-paper/90">{result.classification}</p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-fog">{result.interpretation}</p>
         </div>
-        <Chip className="border-mint/35 text-mint">Snapshot imutável</Chip>
+        <Chip className="border-mint/35 text-mint">Resultado registrado</Chip>
       </div>
 
       {result.safetySignals?.length > 0 && <div className="mt-4 space-y-2">
@@ -218,11 +218,11 @@ function ResultCard({
       </div>}
 
       {recommendations.length > 0 && <div className="mt-4 rounded-xl border border-line/70 bg-panel p-3.5">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-fog">Orientações da engine</p>
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-fog">Orientações do instrumento</p>
         <ul className="mt-2 space-y-1.5 text-[11.5px] leading-relaxed text-fog">{recommendations.map((item, index) => <li key={`${index}-${item}`}>• {item}</li>)}</ul>
       </div>}
 
-      <p className="mt-3 text-[10.5px] text-fog">Concluído em {new Date(result.completedAt).toLocaleString('pt-BR')} · {result.replayed ? 'replay idempotente' : 'nova administração'}</p>
+      <p className="mt-3 text-[10.5px] text-fog">Concluído em {new Date(result.completedAt).toLocaleString('pt-BR')} · {result.replayed ? 'solicitação já registrada' : 'nova aplicação'}</p>
       <p className="mt-1 text-[10.5px] leading-relaxed text-fog">Instrumento de rastreio. O resultado não estabelece diagnóstico nem conduta isoladamente.</p>
 
       <div className="mt-4 flex flex-wrap justify-end gap-2">
