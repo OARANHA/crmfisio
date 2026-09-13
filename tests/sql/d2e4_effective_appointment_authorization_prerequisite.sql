@@ -58,3 +58,9 @@ ALTER TABLE public.appointments
   ADD COLUMN IF NOT EXISTS cancellation_reason text,
   ADD COLUMN IF NOT EXISTS arrived_at timestamptz,
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+-- Supabase's production table grants allow authenticated requests to reach RLS
+-- and trigger boundaries. The historical fixture intentionally omits those
+-- grants, so restore only the privileges required to exercise the real INSERT /
+-- UPDATE authorization path. RLS and the canonical triggers remain authoritative.
+GRANT SELECT, INSERT, UPDATE ON public.appointments TO authenticated;
