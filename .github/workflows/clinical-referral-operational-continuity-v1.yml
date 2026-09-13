@@ -1,0 +1,36 @@
+name: Clinical Referral Operational Continuity V1
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260913_clinical_referral_operational_continuity_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260913_CLINICAL_REFERRAL_OPERATIONAL_CONTINUITY_V1.sql'
+      - 'scripts/test-clinical-referral-operational-continuity-v1.sh'
+      - 'src/lib/clinicalReferral.ts'
+      - 'src/lib/clinicalReferralOperationalBoundary.test.js'
+      - 'src/components/ClinicalReferralWorkspace.tsx'
+      - 'src/components/AppointmentCreateModal.tsx'
+      - 'src/pages/AgendaReal.tsx'
+      - 'docs/CLINICAL_REFERRAL_INTERNAL_V1.md'
+      - 'docs/CURRENT_STATE.md'
+      - '.github/workflows/clinical-referral-operational-continuity-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres16-d2-e4:
+    name: PostgreSQL 16 — D2-E4 Referral operational continuity
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: postgres }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
+    env: { PGHOST: localhost, PGPORT: 5432, PGUSER: postgres, PGPASSWORD: postgres, PGDATABASE: clinical_referral_operational_continuity_v1_test }
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - env: { PGDATABASE: postgres }
+        run: createdb clinical_referral_operational_continuity_v1_test
+      - run: bash scripts/test-clinical-referral-operational-continuity-v1.sh
