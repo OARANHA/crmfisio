@@ -1,8 +1,19 @@
 -- Minimal disposable prerequisites for loading the canonical effective
 -- appointment authorization stack inside the D2-E4 PostgreSQL 16 harness.
--- The historical Nexus bootstrap used by D2-E4 predates these production tables
--- and appointment columns. Do not copy/redefine appointment authorization
+-- The historical Nexus bootstrap used by D2-E4 predates these production tables,
+-- helper and appointment columns. Do not copy/redefine appointment authorization
 -- functions here: their bodies must continue to come from the real migrations.
+
+-- Supabase supplies auth.role() in production. The historical Nexus fixture only
+-- defines auth.uid(), so reproduce this infrastructure helper for the disposable
+-- effective-stack test database.
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT nullif(current_setting('request.jwt.claim.role', true), '')
+$$;
 
 CREATE TABLE IF NOT EXISTS public.patient_journey_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
