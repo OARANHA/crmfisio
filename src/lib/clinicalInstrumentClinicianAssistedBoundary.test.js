@@ -7,6 +7,9 @@ const edge = read('../../supabase/functions/clinical-instrument-clinician-assist
 const processor = read('../../supabase/functions/nexus-self-assessment-processor/index.ts');
 const engine = read('../../supabase/functions/_shared/clinical-instrument-engine.ts');
 const migration = read('../../supabase-migrations/20260913_clinician_assisted_clinical_instruments_v1.sql');
+const uiAdapter = read('./clinicalInstrumentClinicianAssisted.ts');
+const ui = read('../components/ClinicianAssistedInstrumentApplyNow.tsx');
+const workspace = read('../components/ClinicalEncounterWorkspaceV4.tsx');
 
 describe('Clinician-Assisted Administration V1 boundary', () => {
   it('authenticates the clinician before using the service-only writer', () => {
@@ -57,5 +60,45 @@ describe('Clinician-Assisted Administration V1 boundary', () => {
     expect(migration).toContain('BEFORE UPDATE OR DELETE ON public.clinical_instrument_administrations');
     expect(migration).toContain("a.status = 'em_atendimento'");
     expect(migration).toContain('a.professional_id = p_actor_user_id');
+  });
+
+  it('resolves Apply Now availability through the neutral Encounter act boundary', () => {
+    expect(uiAdapter).toContain("db.rpc('can_apply_clinical_instrument_in_encounter'");
+    expect(uiAdapter).toContain("supabase.functions.invoke('clinical-instrument-clinician-assisted'");
+    expect(uiAdapter).not.toContain('nexus.access');
+    expect(uiAdapter).not.toContain('nexus.scales');
+    expect(uiAdapter).not.toContain('clinical.assessment.apply');
+  });
+
+  it('keeps Apply Now independent from the Assessment Engine capability gate', () => {
+    const sectionStart = workspace.indexOf("workspace === 'assessment'");
+    const applyNow = workspace.indexOf('<ClinicianAssistedInstrumentApplyNow', sectionStart);
+    const assessmentGate = workspace.indexOf('assessmentCapability.loading', sectionStart);
+    const sectionEnd = workspace.indexOf("workspace === 'prescription'", sectionStart);
+
+    expect(sectionStart).toBeGreaterThan(-1);
+    expect(applyNow).toBeGreaterThan(sectionStart);
+    expect(assessmentGate).toBeGreaterThan(applyNow);
+    expect(sectionEnd).toBeGreaterThan(assessmentGate);
+    expect(workspace.slice(sectionStart, sectionEnd)).not.toContain('nexus.scales');
+  });
+
+  it('renders only server-returned score and safety signals without browser clinical inference', () => {
+    expect(ui).toContain('result.totalScore');
+    expect(ui).toContain('result.maxScore');
+    expect(ui).toContain('result.classification');
+    expect(ui).toContain('result.interpretation');
+    expect(ui).toContain('result.safetySignals');
+    expect(ui).not.toContain('answers.q9');
+    expect(ui).not.toContain('q9 >');
+    expect(ui).not.toContain('.reduce(');
+    expect(ui).not.toContain('totalScore =');
+    expect(ui).not.toContain('classification =');
+  });
+
+  it('creates one request id per application and preserves it for retry', () => {
+    expect(ui.match(/crypto\.randomUUID\(\)/g)).toHaveLength(1);
+    expect(ui).toContain('requestId: session.requestId');
+    expect(ui).toContain('Você pode tentar novamente sem duplicar a aplicação.');
   });
 });
