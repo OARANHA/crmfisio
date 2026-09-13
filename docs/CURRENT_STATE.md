@@ -2,8 +2,8 @@
 
 > Snapshot operacional de continuidade. `AGENTS.md` contém as regras de execução. Código, schema e runtime reais prevalecem se este arquivo envelhecer; detalhes ficam nos documentos de domínio.
 
-**Data do snapshot:** 2026-09-12/13  
-**Base canônica:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`
+**Data do snapshot:** 2026-09-13  
+**Base canônica:** `main@b720ca2768cf2c1cb5b20fa65125306a8ae26936`
 
 ## Estado clínico resumido
 
@@ -15,7 +15,7 @@ Exam Order D2-D0 / D2-D1 / D2-D2                             PROD
 Referral D2-E0 / D2-E1 / D2-E2 / D2-E3 / D2-E3.1            PROD
 Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
-D2-E4 Referral Operational Continuity                         IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
+D2-E4 Referral Operational Continuity                         PROD
 ```
 
 ---
@@ -204,6 +204,8 @@ O roteamento interno **não concede acesso ao prontuário nem care relationship 
 
 # D2-E4 — Referral Operational Continuity
 
+**VALIDADO EM PRODUÇÃO.**
+
 A implementação não altera o lifecycle do documento emitido. O workflow operacional é separado e vinculado ao `clinical_documents.id` emitido:
 
 ```text
@@ -215,21 +217,31 @@ referral emitido e imutável
 → conclusão
 ```
 
-Requisitos arquiteturais para D2-E4:
+Invariantes preservadas:
 
 - mesmo tenant sempre;
 - documento emitido permanece imutável;
 - estados operacionais vivem fora de `clinical_documents.status`;
 - destino/aceite não concedem automaticamente leitura de prontuário;
-- agendamento deve reutilizar os contratos canônicos de Agenda/Appointment, sem INSERT paralelo improvisado;
-- handoff para atendimento deve respeitar `clinical.attend`, profissional atribuído e guard temporal existentes;
-- conclusão deve ser auditável e referenciar o atendimento resultante quando houver;
-- especialidade/profissão continuam roteamento/relevância, nunca ACL.
+- agendamento reutiliza Agenda/Appointment canônicos;
+- handoff para atendimento continua sujeito a autorização clínica e guard temporal existentes;
+- especialidade/profissão continuam roteamento/relevância, nunca ACL;
+- agendamento cross-professional pelo emissor só existe para o destino interno exato congelado no referral e mediante prova transacional same-transaction.
 
-V1 cria uma operação única por referral interno, auditável e tenant-scoped. A
-Agenda continua dona de data/hora, status e remarcação; o RPC transacional só
-cria/recupera o appointment vinculado após revalidar os boundaries. Produção
-ainda exige migration, verifier e smoke manual após merge.
+V1 mantém uma única operação por referral interno em `clinical_referral_operations`, auditável e tenant-scoped. A Agenda continua dona de data/hora, status, remarcação e atendimento; `schedule_clinical_referral_operation(...)` revalida tenant, paciente, documento emitido, destino imutável, profissional ativo e appointment boundary antes de criar ou retornar idempotentemente o vínculo canônico.
+
+Produção validou a stack final após #450–#453:
+
+- migration e verifier da continuidade operacional aplicados com sucesso;
+- handoff da UI usa o `clinical_documents.id` correto;
+- profissional destinatário congelado é preservado no modal;
+- o guard global de Appointment aceita apenas o cross-target exato sustentado pela prova transacional criada no mesmo RPC/transaction;
+- tentativa direta de agendar outro colega continua bloqueada;
+- referral snapshot permanece imutável;
+- smoke real criou exatamente um appointment para o profissional alvo e vinculou a operação como `scheduled`;
+- retry do mesmo referral retornou `Este encaminhamento já possui um agendamento vinculado.` sem criar segundo appointment.
+
+O D2-E4 está encerrado como funcionalmente validado; mudanças futuras de política/configuração da clínica devem compor essa autorização sem enfraquecer suas invariantes.
 
 ---
 
@@ -257,26 +269,3 @@ Atendimento finalizado
 → baixa / resolução
 → relatórios
 ```
-
-Não reabrir sem evidência/escopo fresco.
-
----
-
-# Deploy / produção
-
-Frontend: React + TypeScript + Vite em Docker/Nginx/Portainer. Supabase é stack separada. Merge não significa migration aplicada.
-
-Migrations de produção são manuais, pinadas ao SHA mergeado, com backup e verifier quando aplicável.
-
-Estados documentais:
-
-```text
-VALIDADO EM PRODUÇÃO
-MERGEADO / NÃO VALIDADO EM PRODUÇÃO
-IMPLEMENTADO / NÃO VALIDADO EM PRODUÇÃO
-EM ANDAMENTO
-PLANEJADO
-HISTÓRICO / DEPRECATED
-```
-
-Produção só vira `VALIDADO EM PRODUÇÃO` com evidência real.
