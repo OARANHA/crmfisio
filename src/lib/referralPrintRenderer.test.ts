@@ -37,6 +37,8 @@ describe('Referral Print Renderer V1', () => {
     const payload = emptyReferralPayload();
     payload.priority = 'high';
     payload.recipient = {
+      scope: 'external',
+      targetProfileId: '',
       professionalName: 'Dra. Ana Costa',
       professionalType: 'Psicóloga',
       specialty: 'Psicologia clínica',

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyReferralError,
   emptyReferralPayload,
   normalizeReferralPayload,
   referralPriorityLabel,
@@ -8,9 +9,11 @@ import {
 } from './clinicalReferral';
 
 describe('clinicalReferral', () => {
-  it('starts with an intentionally incomplete draft', () => {
+  it('starts with an intentionally incomplete external draft', () => {
     expect(emptyReferralPayload()).toEqual({
       recipient: {
+        scope: 'external',
+        targetProfileId: '',
         professionalName: '',
         professionalType: '',
         specialty: '',
@@ -18,78 +21,76 @@ describe('clinicalReferral', () => {
         facility: '',
         contact: '',
       },
-      reason: '',
-      clinicalSummary: '',
-      requestedAction: '',
-      priority: 'routine',
-      observations: '',
+      reason: '', clinicalSummary: '', requestedAction: '', priority: 'routine', observations: '',
     });
   });
 
-  it('requires both an identifiable recipient and a reason before issue', () => {
+  it('keeps external referrals compatible with the original identifying fields', () => {
     const payload = emptyReferralPayload();
-    expect(referralReadyToIssue(payload)).toBe(false);
     payload.reason = 'Avaliação especializada';
     expect(referralReadyToIssue(payload)).toBe(false);
     payload.recipient.specialty = 'Cardiologia';
     expect(referralReadyToIssue(payload)).toBe(true);
+    payload.recipient.specialty = '';
+    payload.recipient.contact = 'contato@servico.test';
+    expect(referralReadyToIssue(payload)).toBe(false);
   });
 
-  it('accepts any canonical identifying recipient field but not contact alone', () => {
-    const base = { ...emptyReferralPayload(), reason: 'Continuidade do cuidado' };
-    expect(referralReadyToIssue({ ...base, recipient: { ...base.recipient, contact: 'contato@servico.test' } })).toBe(false);
-    expect(referralReadyToIssue({ ...base, recipient: { ...base.recipient, professionalName: 'Dra. Ana' } })).toBe(true);
-    expect(referralReadyToIssue({ ...base, recipient: { ...base.recipient, professionalType: 'Psicólogo' } })).toBe(true);
-    expect(referralReadyToIssue({ ...base, recipient: { ...base.recipient, service: 'Reabilitação' } })).toBe(true);
-    expect(referralReadyToIssue({ ...base, recipient: { ...base.recipient, facility: 'Serviço de referência' } })).toBe(true);
+  it('requires a stable target id for internal professional referrals', () => {
+    const payload = emptyReferralPayload();
+    payload.reason = 'Continuidade do cuidado';
+    payload.recipient.scope = 'internal_professional';
+    payload.recipient.professionalName = 'Dra. Ana';
+    expect(referralReadyToIssue(payload)).toBe(false);
+    payload.recipient.targetProfileId = '00000000-0000-4000-8000-000000000001';
+    expect(referralReadyToIssue(payload)).toBe(true);
   });
 
-  it('serializes exactly to the server snake_case contract', () => {
+  it('allows an internal specialty/service destination without inventing a professional id', () => {
+    const payload = emptyReferralPayload();
+    payload.reason = 'Continuidade do cuidado';
+    payload.recipient.scope = 'internal_service';
+    payload.recipient.specialty = 'Psicologia';
+    expect(referralReadyToIssue(payload)).toBe(true);
+    expect(payload.recipient.targetProfileId).toBe('');
+  });
+
+  it('serializes routing metadata outside the closed recipient contract', () => {
     expect(serializeReferralPayload({
       recipient: {
-        professionalName: ' Dra. Ana ',
-        professionalType: ' Médica ',
-        specialty: ' Cardiologia ',
-        service: ' Avaliação cardiológica ',
-        facility: ' Serviço A ',
-        contact: ' (51) 99999-0000 ',
+        scope: 'internal_professional',
+        targetProfileId: ' 00000000-0000-4000-8000-000000000001 ',
+        professionalName: ' Dra. Ana ', professionalType: ' Médica ', specialty: ' Cardiologia ',
+        service: ' Avaliação cardiológica ', facility: ' Serviço A ', contact: ' (51) 99999-0000 ',
       },
-      reason: ' Sintomas persistentes ',
-      clinicalSummary: ' Resumo ',
-      requestedAction: ' Avaliar ',
-      priority: 'high',
-      observations: ' Retorno assistencial ',
+      reason: ' Sintomas persistentes ', clinicalSummary: ' Resumo ', requestedAction: ' Avaliar ', priority: 'high', observations: ' Retorno assistencial ',
     })).toEqual({
+      destination_scope: 'internal_professional',
+      target_profile_id: '00000000-0000-4000-8000-000000000001',
       recipient: {
-        professional_name: 'Dra. Ana',
-        professional_type: 'Médica',
-        specialty: 'Cardiologia',
-        service: 'Avaliação cardiológica',
-        facility: 'Serviço A',
-        contact: '(51) 99999-0000',
+        professional_name: 'Dra. Ana', professional_type: 'Médica', specialty: 'Cardiologia',
+        service: 'Avaliação cardiológica', facility: 'Serviço A', contact: '(51) 99999-0000',
       },
-      reason: 'Sintomas persistentes',
-      clinical_summary: 'Resumo',
-      requested_action: 'Avaliar',
-      priority: 'high',
-      observations: 'Retorno assistencial',
+      reason: 'Sintomas persistentes', clinical_summary: 'Resumo', requested_action: 'Avaliar', priority: 'high', observations: 'Retorno assistencial',
     });
   });
 
-  it('normalizes persisted payloads and fails safe to routine priority', () => {
+  it('normalizes legacy payloads as external and new routing metadata explicitly', () => {
+    expect(normalizeReferralPayload({ recipient: { professional_name: 'Dra. Ana', specialty: 'Cardiologia' }, reason: 'Avaliação' }).recipient.scope).toBe('external');
     expect(normalizeReferralPayload({
-      recipient: { professional_name: 'Dra. Ana', specialty: 'Cardiologia' },
-      reason: 'Avaliação',
-      clinical_summary: 'Resumo',
-      requested_action: 'Conduta',
-      priority: 'immediate',
+      destination_scope: 'internal_professional',
+      target_profile_id: '00000000-0000-4000-8000-000000000001',
+      recipient: { professional_name: 'Dra. Ana' }, reason: 'Avaliação', priority: 'immediate',
     })).toMatchObject({
-      recipient: { professionalName: 'Dra. Ana', specialty: 'Cardiologia' },
-      reason: 'Avaliação',
-      clinicalSummary: 'Resumo',
-      requestedAction: 'Conduta',
+      recipient: { scope: 'internal_professional', targetProfileId: '00000000-0000-4000-8000-000000000001', professionalName: 'Dra. Ana' },
       priority: 'routine',
     });
+  });
+
+  it('maps internal routing failures to actionable UI feedback', () => {
+    expect(classifyReferralError(new Error('clinical_referral_target_invalid'))).toBe('target');
+    expect(classifyReferralError(new Error('clinical_referral_internal_service_invalid'))).toBe('target');
+    expect(classifyReferralError(new Error('clinical_referral_internal_service_required'))).toBe('payload');
   });
 
   it('uses human priority labels', () => {

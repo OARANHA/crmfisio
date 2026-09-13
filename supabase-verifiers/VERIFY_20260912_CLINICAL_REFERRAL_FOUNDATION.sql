@@ -118,8 +118,19 @@ BEGIN
   FROM public.clinical_document_templates
   WHERE id = '12000000-0000-4000-8000-000000000007'::uuid;
 
+  -- Foundation verifier must not freeze the current renderer version. It proves
+  -- that the canonical referral template is active and points to a published
+  -- referral version; renderer-specific verifiers own exact version/layout checks.
   IF v_template_count <> 1
-     OR v_current IS DISTINCT FROM '12100000-0000-4000-8000-000000000007'::uuid THEN
+     OR v_current IS NULL
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.clinical_document_template_versions v
+       WHERE v.id = v_current
+         AND v.template_id = '12000000-0000-4000-8000-000000000007'::uuid
+         AND v.published_at IS NOT NULL
+         AND v.definition->>'kind' = 'referral'
+     ) THEN
     RAISE EXCEPTION 'referral platform template drift';
   END IF;
 
