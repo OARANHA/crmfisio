@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AssessmentTemplatesAdmin } from '../components/AssessmentTemplatesAdmin';
+import { ClinicClinicalFlowsAdmin } from '../components/configuration/ClinicClinicalFlowsAdmin';
 import { ClinicGeneralAdmin } from '../components/configuration/ClinicGeneralAdmin';
 import { ConsentTemplatesAdmin } from '../components/ConsentTemplatesAdmin';
 import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
@@ -8,7 +9,7 @@ import { StorageAdmin } from '../components/StorageAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
 import { Config } from './Config';
 
-type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'avaliacoes' | 'documentos' | 'termos' | 'governanca';
+type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'fluxos' | 'avaliacoes' | 'documentos' | 'termos' | 'governanca';
 
 const SECTION_META: Array<{
   key: ConfigSection;
@@ -18,6 +19,7 @@ const SECTION_META: Array<{
   { key: 'geral', title: 'Geral', description: 'Identidade, unidades e horários' },
   { key: 'equipe', title: 'Equipe & Acessos', description: 'Pessoas e permissões operacionais' },
   { key: 'agenda', title: 'Agenda & Atendimento', description: 'Salas e recursos físicos' },
+  { key: 'fluxos', title: 'Fluxos clínicos', description: 'Políticas institucionais de atendimento' },
   { key: 'avaliacoes', title: 'Anamneses & Avaliações', description: 'Biblioteca clínica versionada' },
   { key: 'documentos', title: 'Documentos clínicos', description: 'Modelos de prescrição da clínica' },
   { key: 'termos', title: 'Termos', description: 'Modelos de consentimento' },
@@ -70,6 +72,7 @@ export function ConfigPremium() {
         {section === 'geral' && <ClinicGeneralAdmin />}
         {section === 'equipe' && <TeamAdmin />}
         {section === 'agenda' && <InfrastructureAdmin mode="rooms" />}
+        {section === 'fluxos' && <ClinicClinicalFlowsAdmin />}
         {section === 'avaliacoes' && <AssessmentTemplatesAdmin />}
         {section === 'documentos' && <PrescriptionTemplatesAdmin />}
         {section === 'termos' && <ConsentTemplatesAdmin />}

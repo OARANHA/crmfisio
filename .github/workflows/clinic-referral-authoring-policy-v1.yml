@@ -1,0 +1,52 @@
+name: Clinic Referral Authoring Policy V1
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260913_clinic_referral_authoring_policy_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260913_CLINIC_REFERRAL_AUTHORING_POLICY_V1.sql'
+      - 'tests/sql/clinic_referral_authoring_policy_v1_fixture.sql'
+      - 'tests/sql/clinic_referral_authoring_policy_v1_cases.sql'
+      - 'scripts/test-clinic-referral-authoring-policy-v1.sh'
+      - 'src/lib/clinicClinicalFlowSettings.ts'
+      - 'src/components/configuration/ClinicClinicalFlowsAdmin.tsx'
+      - 'src/pages/ConfigPremium.tsx'
+      - 'src/lib/clinicClinicalFlowSettingsBoundary.test.js'
+      - 'docs/CLINIC_CLINICAL_FLOW_SETTINGS_V1.md'
+      - '.github/workflows/clinic-referral-authoring-policy-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres16:
+    name: PostgreSQL 16 — Clinic referral authoring policy
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinic_referral_authoring_policy_v1_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated database
+        env:
+          PGDATABASE: postgres
+        run: createdb clinic_referral_authoring_policy_v1_test
+      - name: Run referral authoring policy gate
+        run: bash scripts/test-clinic-referral-authoring-policy-v1.sh
