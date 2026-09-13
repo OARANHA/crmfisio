@@ -174,16 +174,17 @@ function ClinicalReferralWorkspaceContext({ patient, encounter, userId }: Clinic
   const updatePayload = (patch: Partial<ReferralPayload>) => { setPayload((current) => ({ ...current, ...patch })); setDirty(true); setReviewing(false); };
   const changeScope = (scope: ReferralRecipientScope) => updateRecipient({
     scope, targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '',
-    facility: scope === 'external' ? '' : clinic.name, contact: '',
+    facility: '', contact: '',
   });
   const chooseInternalProfessional = (profileId: string) => {
     const target = internalTargets.find((item) => item.profileId === profileId);
-    if (!target) return updateRecipient({ targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '', facility: clinic.name, contact: '' });
+    if (!target) return updateRecipient({ targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '', facility: '', contact: '' });
     updateRecipient({ targetProfileId: target.profileId, professionalName: target.name, professionalType: target.professionalType, specialty: target.specialty, service: '', facility: clinic.name, contact: '' });
   };
   const chooseInternalService = (label: string) => {
     const option = serviceOptions.find((item) => item.label === label);
-    updateRecipient({ targetProfileId: '', professionalName: '', professionalType: option?.professionalType ?? '', specialty: option?.specialty ?? '', service: option?.specialty ? '' : label, facility: clinic.name, contact: '' });
+    if (!option) return updateRecipient({ targetProfileId: '', professionalName: '', professionalType: '', specialty: '', service: '', facility: '', contact: '' });
+    updateRecipient({ targetProfileId: '', professionalName: '', professionalType: option.professionalType, specialty: option.specialty, service: option.specialty ? '' : option.label, facility: clinic.name, contact: '' });
   };
 
   if (loading) return <ReferralState>Verificando elegibilidade e histórico de encaminhamentos…</ReferralState>;

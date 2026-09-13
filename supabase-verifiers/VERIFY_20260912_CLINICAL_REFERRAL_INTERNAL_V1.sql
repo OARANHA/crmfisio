@@ -15,7 +15,12 @@ BEGIN
      OR position('current_user_can_issue_clinical_document' in v_def) = 0
      OR position('p.clinic_id = v_clinic_id' in v_def) = 0
      OR position('p.ativo IS TRUE' in v_def) = 0
-     OR position('p.id IS DISTINCT FROM auth.uid()' in v_def) = 0 THEN
+     OR position('p.id IS DISTINCT FROM auth.uid()' in v_def) = 0
+     OR position('''medico''' in v_def) = 0
+     OR position('''fisioterapeuta''' in v_def) = 0
+     OR position('''psicologo''' in v_def) = 0
+     OR position('''quiropraxista''' in v_def) = 0
+     OR position('p.role' in v_def) > 0 THEN
     RAISE EXCEPTION 'clinical_referral_internal_directory_boundary_missing';
   END IF;
 
@@ -32,7 +37,12 @@ BEGIN
      OR position('clinical_referral_internal_service_invalid' in v_def) = 0
      OR position('p.clinic_id = NEW.clinic_id' in v_def) = 0
      OR position('p.ativo IS TRUE' in v_def) = 0
-     OR position('NEW.status = ''issued''' in v_def) = 0 THEN
+     OR position('NEW.status = ''issued''' in v_def) = 0
+     OR position('''medico''' in v_def) = 0
+     OR position('''fisioterapeuta''' in v_def) = 0
+     OR position('''psicologo''' in v_def) = 0
+     OR position('''quiropraxista''' in v_def) = 0
+     OR position('p.role' in v_def) > 0 THEN
     RAISE EXCEPTION 'clinical_referral_internal_target_guard_incomplete';
   END IF;
 
@@ -57,6 +67,7 @@ SELECT set_config(
     AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000004'::uuid AND ativo IS TRUE)
     AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000007'::uuid)
     AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000008'::uuid)
+    AND EXISTS (SELECT 1 FROM public.profiles WHERE id='d2100000-0000-4000-8000-000000000011'::uuid AND ativo IS TRUE)
     AND EXISTS (SELECT 1 FROM public.patients WHERE id='d2200000-0000-4000-8000-000000000001'::uuid)
     AND EXISTS (SELECT 1 FROM public.appointments WHERE id='d2300000-0000-4000-8000-000000000001'::uuid)
     THEN 'true' ELSE 'false' END,
@@ -75,7 +86,17 @@ BEGIN
     IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000001'::uuid) THEN
       RAISE EXCEPTION 'clinical_referral_internal_directory_self_leak';
     END IF;
-    IF EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id IN ('d2100000-0000-4000-8000-000000000005'::uuid,'d2100000-0000-4000-8000-000000000006'::uuid,'d2100000-0000-4000-8000-000000000007'::uuid,'d2100000-0000-4000-8000-000000000008'::uuid)) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.list_clinical_referral_internal_targets()
+      WHERE profile_id IN (
+        'd2100000-0000-4000-8000-000000000005'::uuid,
+        'd2100000-0000-4000-8000-000000000006'::uuid,
+        'd2100000-0000-4000-8000-000000000007'::uuid,
+        'd2100000-0000-4000-8000-000000000008'::uuid,
+        'd2100000-0000-4000-8000-000000000011'::uuid
+      )
+    ) THEN
       RAISE EXCEPTION 'clinical_referral_internal_directory_scope_leak';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM public.list_clinical_referral_internal_targets() WHERE profile_id='d2100000-0000-4000-8000-000000000004'::uuid AND professional_type <> '') THEN
@@ -98,6 +119,7 @@ DECLARE
   v_fixture_ready boolean := current_setting('medicspro.verify_d2e3_fixture_ready', true)::boolean;
   v_base jsonb := '{"destination_scope":"internal_professional","target_profile_id":"d2100000-0000-4000-8000-000000000004","recipient":{"professional_name":"Psicóloga D2","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_service jsonb := '{"destination_scope":"internal_service","target_profile_id":"","recipient":{"professional_name":"","professional_type":"psicologo","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
+  v_nonclinical_service jsonb := '{"destination_scope":"internal_service","target_profile_id":"","recipient":{"professional_name":"","professional_type":"recepcionista","specialty":"","service":"","facility":"Clínica D2 A","contact":""},"reason":"Continuidade do cuidado","priority":"routine"}'::jsonb;
   v_ok boolean := false;
   v_version_id uuid;
 BEGIN
@@ -150,8 +172,23 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_target_invalid' in SQLERRM) > 0; END;
   IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_inactive_target_not_blocked'; END IF;
 
-  -- A routed internal service must correspond to an active professional area in
-  -- the same clinic. The valid psychology area passes; a fabricated area fails.
+  v_ok := false;
+  BEGIN
+    INSERT INTO public.clinical_documents(
+      id, clinic_id, patient_id, appointment_id, document_type, template_id,
+      template_version_id, issuer_id, status, payload, document_identifier
+    ) VALUES (
+      'd2e30000-0000-4000-8000-000000000006','d2000000-0000-4000-8000-000000000001',
+      'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
+      '12000000-0000-4000-8000-000000000007',v_version_id,
+      'd2100000-0000-4000-8000-000000000001','draft',
+      jsonb_set(v_base,'{target_profile_id}','"d2100000-0000-4000-8000-000000000011"'),'D2E3-NONCLINICAL-TARGET'
+    );
+  EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_target_invalid' in SQLERRM) > 0; END;
+  IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_nonclinical_target_not_blocked'; END IF;
+
+  -- A routed internal service must correspond to an active canonical clinical
+  -- profession/area in the same clinic. A fabricated or non-clinical area fails.
   INSERT INTO public.clinical_documents(
     id, clinic_id, patient_id, appointment_id, document_type, template_id,
     template_version_id, issuer_id, status, payload, document_identifier
@@ -176,6 +213,20 @@ BEGIN
     );
   EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_internal_service_invalid' in SQLERRM) > 0; END;
   IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_invalid_internal_service_not_blocked'; END IF;
+
+  v_ok := false;
+  BEGIN
+    INSERT INTO public.clinical_documents(
+      id, clinic_id, patient_id, appointment_id, document_type, template_id,
+      template_version_id, issuer_id, status, payload, document_identifier
+    ) VALUES (
+      'd2e30000-0000-4000-8000-000000000007','d2000000-0000-4000-8000-000000000001',
+      'd2200000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','referral',
+      '12000000-0000-4000-8000-000000000007',v_version_id,
+      'd2100000-0000-4000-8000-000000000001','draft',v_nonclinical_service,'D2E3-NONCLINICAL-SERVICE'
+    );
+  EXCEPTION WHEN OTHERS THEN v_ok := position('clinical_referral_internal_service_invalid' in SQLERRM) > 0; END;
+  IF NOT v_ok THEN RAISE EXCEPTION 'clinical_referral_nonclinical_service_not_blocked'; END IF;
 END $$;
 
 SELECT 'CLINICAL REFERRAL INTERNAL V1 VERIFY PASSED' AS result;

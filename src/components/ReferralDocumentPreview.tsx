@@ -12,11 +12,24 @@ type ReferralDocumentPreviewProps = {
   clinic: ClinicIdentity;
 };
 
+function normalizeDraftPreviewPayload(payload: ReferralPayload): ReferralPayload {
+  const recipient = payload.recipient;
+  const internalProfessionalIncomplete = recipient.scope === 'internal_professional' && !recipient.targetProfileId.trim();
+  const internalServiceIncomplete = recipient.scope === 'internal_service'
+    && !recipient.professionalType.trim()
+    && !recipient.specialty.trim()
+    && !recipient.service.trim();
+
+  if (!internalProfessionalIncomplete && !internalServiceIncomplete) return payload;
+  return { ...payload, recipient: { ...recipient, facility: '' } };
+}
+
 export function ReferralDocumentPreview({ patient, payload, renderDefinition, clinic }: ReferralDocumentPreviewProps) {
   const { user } = useCurrentUserAccess();
   const { identity } = useProfessionalIdentity(user?.id);
+  const previewPayload = normalizeDraftPreviewPayload(payload);
   const html = buildReferralDocumentHtml({
-    payload,
+    payload: previewPayload,
     renderDefinition,
     mode: 'draft',
     context: {

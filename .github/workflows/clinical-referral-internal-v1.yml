@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - 'supabase-migrations/20260912_clinical_referral_internal_v1.sql'
+      - 'supabase-migrations/20260913_clinical_referral_internal_v1_hardening.sql'
       - 'supabase-verifiers/VERIFY_20260912_CLINICAL_REFERRAL_INTERNAL_V1.sql'
       - 'scripts/test-clinical-referral-internal-v1.sh'
       - 'src/lib/clinicalReferral.ts'
       - 'src/lib/clinicalReferral.test.ts'
       - 'src/lib/clinicalReferralInternalBoundary.test.js'
       - 'src/components/ClinicalReferralWorkspace.tsx'
+      - 'src/components/ReferralDocumentPreview.tsx'
       - 'docs/CLINICAL_REFERRAL_INTERNAL_V1.md'
       - '.github/workflows/clinical-referral-internal-v1.yml'
   workflow_dispatch:
