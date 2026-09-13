@@ -23,6 +23,7 @@ import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
+import { ClinicianAssistedInstrumentApplyNow } from './ClinicianAssistedInstrumentApplyNow';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
 import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';
 import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
@@ -164,7 +165,7 @@ export function ClinicalEncounterWorkspaceV4({
   );
 
   return (
-    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="7" className="space-y-3">
+    <section data-clinical-encounter-mode="active" data-clinical-encounter-version="8" className="space-y-3">
       <EncounterHero patient={patient} encounter={canonicalEncounter} identity={identity} />
 
       <div className="grid items-start gap-3 xl:grid-cols-[238px_minmax(0,1fr)]">
@@ -247,16 +248,19 @@ export function ClinicalEncounterWorkspaceV4({
             </EncounterSection>
           </section>}
 
-          {workspace === 'assessment' && <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Anamneses & Avaliações" detail="Avaliação estruturada opcional para esta consulta.">
-            {assessmentCapability.loading ? (
-              <NeutralState>Carregando avaliações clínicas…</NeutralState>
-            ) : assessmentCapability.error ? (
-              <BlockedState title="Não foi possível verificar o acesso às avaliações">Tente novamente em instantes ou atualize a página.</BlockedState>
-            ) : assessmentCapability.allowed ? (
-              <ClinicalAssessmentRunner patient={patient} presentation="encounter" />
-            ) : (
-              <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
-            )}
+          {workspace === 'assessment' && <EncounterSection id="encounter-assessment" eyebrow="Avaliação clínica" title="Anamneses & Avaliações" detail="Anamneses, avaliações estruturadas e instrumentos autorizados para a consulta atual.">
+            <ClinicianAssistedInstrumentApplyNow appointmentId={canonicalEncounter.id} />
+            <div className="border-t border-line/60 pt-3">
+              {assessmentCapability.loading ? (
+                <NeutralState>Carregando avaliações clínicas…</NeutralState>
+              ) : assessmentCapability.error ? (
+                <BlockedState title="Não foi possível verificar o acesso às avaliações">Tente novamente em instantes ou atualize a página.</BlockedState>
+              ) : assessmentCapability.allowed ? (
+                <ClinicalAssessmentRunner patient={patient} presentation="encounter" />
+              ) : (
+                <NeutralState>Avaliações estruturadas não estão disponíveis para seu perfil neste atendimento.</NeutralState>
+              )}
+            </div>
           </EncounterSection>}
 
           {workspace === 'prescription' && prescriptionRelevant && <EncounterSection id="encounter-prescription" eyebrow="Documento clínico" title="Prescrição" detail="Crie, revise e emita prescrições medicamentosas dentro do atendimento atual.">

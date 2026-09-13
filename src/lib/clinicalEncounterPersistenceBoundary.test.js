@@ -9,6 +9,7 @@ const editorSource = readFileSync(resolve(here, '../components/ClinicalEncounter
 const recordSource = readFileSync(resolve(here, './clinicalEncounterRecord.ts'), 'utf8');
 const assessmentSource = readFileSync(resolve(here, '../components/ClinicalAssessmentRunner.tsx'), 'utf8');
 const toolsSource = readFileSync(resolve(here, '../components/ActiveEncounterClinicalTools.tsx'), 'utf8');
+const applyNowSource = readFileSync(resolve(here, '../components/ClinicianAssistedInstrumentApplyNow.tsx'), 'utf8');
 const uxSource = readFileSync(resolve(here, './clinicalEncounterUx.ts'), 'utf8');
 
 describe('Clinical Encounter V4.1 persistence feedback boundary', () => {
@@ -73,7 +74,7 @@ describe('Clinical Encounter V4.1 persistence feedback boundary', () => {
   });
 
   it('keeps engineering terminology out of professional Encounter Mode copy', () => {
-    const professionalSources = [source, editorSource, toolsSource, uxSource].join('\n');
+    const professionalSources = [source, editorSource, toolsSource, applyNowSource, uxSource].join('\n');
     const forbiddenVisiblePhrases = [
       'Assessment Engine canônico',
       'capability clínica',
@@ -90,16 +91,24 @@ describe('Clinical Encounter V4.1 persistence feedback boundary', () => {
       'validada pelo PostgreSQL',
       'O PostgreSQL exige',
       'guard canônico',
+      'Encounter autorizado',
+      'deste Encounter',
+      'Snapshot imutável',
+      'Orientações da engine',
+      'replay idempotente',
     ];
 
     for (const phrase of forbiddenVisiblePhrases) {
       expect(professionalSources).not.toContain(phrase);
     }
 
-    expect(source).toContain('Avaliação estruturada opcional para esta consulta.');
+    expect(source).toContain('Anamneses, avaliações estruturadas e instrumentos autorizados para a consulta atual.');
     expect(source).toContain('Recursos disponíveis para este atendimento');
     expect(source).toContain('Registre ou consulte informações relevantes para a continuidade do cuidado.');
     expect(editorSource).toContain('Preencha somente o que for relevante para este atendimento.');
+    expect(applyNowSource).toContain('Instrumentos habilitados pela clínica e disponíveis para este atendimento.');
+    expect(applyNowSource).toContain('A pontuação é calculada e validada automaticamente ao concluir.');
+    expect(applyNowSource).toContain('Resultado registrado');
   });
 
   it('uses a consultation-specific assessment empty state without removing administrative guidance elsewhere', () => {
