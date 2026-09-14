@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const source = readFileSync(fileURLToPath(new URL('../pages/Pacientes.tsx', import.meta.url)), 'utf8');
+const pageSource = readFileSync(fileURLToPath(new URL('../pages/Pacientes.tsx', import.meta.url)), 'utf8');
+const tableSource = readFileSync(fileURLToPath(new URL('../components/PatientDirectoryTableV2.tsx', import.meta.url)), 'utf8');
+const source = `${pageSource}\n${tableSource}`;
 
 describe('patient directory operational surface', () => {
   it('does not expose complaint or CID as clinic-wide directory columns', () => {
