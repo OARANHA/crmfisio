@@ -1,0 +1,43 @@
+name: Temporary UI V2 lock sync
+
+on:
+  push:
+    branches:
+      - feat/ui-foundation-v2-patient-directory
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Synchronize package lock
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Remove temporary workflow and commit lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/_sync-ui-v2-lock.yml
+          git add package-lock.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync UI V2 lockfile"
+          git push origin HEAD:feat/ui-foundation-v2-patient-directory
