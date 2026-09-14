@@ -5,7 +5,28 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-13  
-**Base canônica:** `main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5`
+**Base canônica:** `main@7bcf7b109b661e4c0ee4b7c4eada4097210edc0a`
+
+## Boundary operacional de ambientes
+
+Leia `docs/ENVIRONMENT_BOUNDARIES.md` antes de qualquer comando de servidor ou ação de produção.
+
+```text
+158.220.97.145
+= PRODUÇÃO MEDICSPRO
+= Portainer / stacks / containers / migrations / deploy / smoke real
+
+13.140.190.149 — Wandora
+= workspace auxiliar de desenvolvimento/teste
+= NÃO é produção MedicsPro
+
+/tmp/crmfisio em Wandora
+= checkout descartável para ações do assistente, análise e testes
+= não é fonte de verdade
+= não é ambiente de produção
+```
+
+Qualquer migration real, repair, Portainer, container/redeploy, Edge Function, verifier de produção ou smoke real deve ser preparado pelo assistente e executado pelo usuário conectado ao servidor `158.220.97.145`, retornando a saída antes da etapa seguinte.
 
 ## Estado clínico resumido
 
@@ -19,7 +40,7 @@ Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
 D2-E4 Referral Operational Continuity                         PROD
 Clinic Referral Authoring Policy V1                           PROD
-PHQ-15 Clinician-Assisted V1                                  PR READY / NOT PROD
+PHQ-15 Clinician-Assisted V1                                  MERGED / NOT PROD
 ```
 
 ## Handoff ativo — PHQ-15 Clinician-Assisted V1
@@ -27,24 +48,24 @@ PHQ-15 Clinician-Assisted V1                                  PR READY / NOT PRO
 Estado em 2026-09-13:
 
 ```text
-branch:                feat/phq15-clinician-assisted-v1
-PR:                    #461 — feat: add PHQ-15 clinician-assisted V1
+PR:                    #461 — MERGED
 implementation commit: c26a27764d400590c750fc784151e9b5827723eb
-base:                  main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5
+merge commit:          7bcf7b109b661e4c0ee4b7c4eada4097210edc0a
 CI implementation:     10/10 workflows verdes
+CI pós-merge main:      3/3 workflows verdes
 prod:                  NÃO aplicado / NÃO deployado
-merge:                 NÃO executado
 ```
 
 A slice adiciona PHQ-15 somente ao fluxo clínico assistido `Aplicar agora`, reutilizando o ledger imutável e o writer server-side existentes. O self-assessment público permanece PHQ-9/GAD-7 e possui allowlist própria no processor para impedir exposição acidental por expansão da engine compartilhada.
 
-Validação concluída antes do merge:
+Validação concluída:
 
 - Node 22: `100` arquivos / `553` testes verdes;
 - typecheck, lint, build e `git diff --check` verdes;
 - PostgreSQL 16 dedicado do PHQ-15 verde;
 - C-01, C-02, C-03, C-04 e C-06 verdes;
-- Clinical Foundation Reconciliation, Clinical Authorization Reconciliation, Clinical workflow CI e Clinician-Assisted Clinical Instruments V1 verdes.
+- Clinical Foundation Reconciliation, Clinical Authorization Reconciliation, Clinical workflow CI e Clinician-Assisted Clinical Instruments V1 verdes;
+- pós-merge na `main`: Clinical Instrument Encounter Authorization, Clinician-Assisted Clinical Instruments V1 e PHQ-15 Clinician-Assisted V1 verdes.
 
 Invariantes da slice:
 
@@ -57,7 +78,7 @@ migration não habilita PHQ-15 automaticamente em nenhuma clínica
 PHQ-15 não vira diagnóstico, etiologia, prescrição ou encaminhamento automático
 ```
 
-Próximo passo seguro: revisar/mergear a #461 somente mediante autorização explícita. Depois do merge, a etapa de produção é separada e deve aplicar a migration `20260913_phq15_clinician_assisted_v1.sql`, publicar os componentes/runtime aplicáveis e executar smoke real. O smoke deve provar default-deny antes do setting, habilitação explícita, administração em Encounter autorizado, snapshot imutável/versionado e rejeição de `phq15` no self-assessment público.
+Próximo passo seguro: rollout de produção separado no servidor `158.220.97.145`. Aplicar a migration `20260913_phq15_clinician_assisted_v1.sql`, publicar os componentes/runtime aplicáveis e executar smoke real. O smoke deve provar default-deny antes do setting, habilitação explícita, administração em Encounter autorizado, snapshot imutável/versionado e rejeição de `phq15` no self-assessment público.
 
 Documento de domínio: `docs/PHQ15_CLINICIAN_ASSISTED_V1.md`.
 
@@ -67,10 +88,11 @@ Documento de domínio: `docs/PHQ15_CLINICIAN_ASSISTED_V1.md`.
 
 1. `AGENTS.md`
 2. este arquivo
-3. documento do domínio da tarefa
-4. `docs/MANUAL_SOURCE_MAP.md` para mudanças visíveis
-5. `docs/CLINICAL_DOCUMENTS_ROADMAP.md` para continuidade documental
-6. `docs/CLINICAL_TOOLING_REUSE_PLAN.md` para Nexus/reuso clínico
+3. `docs/ENVIRONMENT_BOUNDARIES.md` antes de qualquer tarefa de servidor/produção
+4. documento do domínio da tarefa
+5. `docs/MANUAL_SOURCE_MAP.md` para mudanças visíveis
+6. `docs/CLINICAL_DOCUMENTS_ROADMAP.md` para continuidade documental
+7. `docs/CLINICAL_TOOLING_REUSE_PLAN.md` para Nexus/reuso clínico
 
 Referências Referral:
 
