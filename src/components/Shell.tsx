@@ -43,7 +43,7 @@ function ThemeButton({ theme, onToggle }: { theme: ColorTheme; onToggle: () => v
     <button
       type="button"
       onClick={onToggle}
-      className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40"
+      className="grid h-11 w-11 place-items-center rounded-2xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40"
       aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
       title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
     >
@@ -332,7 +332,7 @@ export function Shell() {
   };
 
   const navList = (compact = false) => (
-    <nav className="flex flex-col gap-1.5 px-3.5">
+    <nav className="flex flex-col gap-2 px-4">
       {items.map((n) => {
         const label = presentationContext === 'clinical' && n.key === 'dashboard' ? 'Meu dia' : n.label;
         return (
@@ -342,12 +342,12 @@ export function Shell() {
             onClick={() => setMobileOpen(false)}
             title={compact ? label : undefined}
             className={({ isActive }) =>
-              `flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl py-2.5 font-display font-semibold text-[15.5px] leading-5 transition-colors ${
+              `flex min-h-12 items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-[16px] leading-5 transition-colors ${
                 isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
               }`
             }
           >
-            <n.Icon className="w-5.5 h-5.5 shrink-0" />
+            <n.Icon className="h-6 w-6 shrink-0" />
             <span className={compact ? 'sr-only' : ''}>{label}</span>
           </NavLink>
         );
@@ -357,25 +357,25 @@ export function Shell() {
 
   return (
     <div className="app-surface min-h-screen relative">
-      <aside className={`hidden lg:flex fixed inset-y-0 left-0 ${collapsed ? 'w-[80px]' : 'w-[268px]'} flex-col border-r border-line/65 bg-deep/96 backdrop-blur-sm z-40 transition-[width] duration-200`}>
-        <div className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-2.5 px-5.5'} h-[68px] border-b border-line/60`}>
-          <PulseMark className="w-7 h-6" />
-          {!collapsed && <span className="font-display font-bold text-[16.5px] tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>}
+      <aside className={`hidden lg:flex medicspro-sidebar fixed inset-y-0 left-0 ${collapsed ? 'w-[88px]' : 'w-[292px]'} flex-col border-r border-line/65 bg-deep/96 backdrop-blur-sm z-40 transition-[width] duration-200`}>
+        <div className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-3 px-6'} h-[76px] border-b border-line/60`}>
+          <PulseMark className="h-7 w-8" />
+          {!collapsed && <span className="font-display font-bold text-[18px] tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>}
         </div>
-        <button onClick={toggleCollapsed} className="absolute -right-3 top-[86px] grid h-7 w-7 place-items-center rounded-full border border-line/70 bg-panel text-fog shadow-sm hover:text-paper hover:bg-raise" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
+        <button onClick={toggleCollapsed} className="absolute -right-3 top-[96px] grid h-7 w-7 place-items-center rounded-full border border-line/70 bg-panel text-fog shadow-sm hover:text-paper hover:bg-raise" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
           {collapsed ? <IconChevronR className="h-3.5 w-3.5" /> : <IconChevronL className="h-3.5 w-3.5" />}
         </button>
-        <div className="py-5.5 flex-1 overflow-y-auto">{navList(collapsed)}</div>
-        <div className="space-y-3 border-t border-line/60 p-3.5">
+        <div className="flex-1 overflow-y-auto py-6">{navList(collapsed)}</div>
+        <div className="space-y-4 border-t border-line/60 p-4">
           {showPresentationControl && <div className={collapsed ? 'flex justify-center' : ''}><PresentationModeControl compact={collapsed} /></div>}
           {collapsed ? (
             <div className="flex justify-center">
-              <button type="button" onClick={toggleCollapsed} className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral para trocar unidade" title="Trocar unidade">
+              <button type="button" onClick={toggleCollapsed} className="grid h-11 w-11 place-items-center rounded-2xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral para trocar unidade" title="Trocar unidade">
                 <IconSettings className="h-4.5 w-4.5" />
               </button>
             </div>
           ) : (
-            <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!min-h-10 !w-full !py-2 !text-[13px]" title="Filtrar por unidade">
+            <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!min-h-11 !w-full !rounded-xl !py-2.5 !text-[14px]" title="Filtrar por unidade">
               <option value="all">Todas as unidades</option>
               {unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
             </Select>
@@ -385,12 +385,12 @@ export function Shell() {
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog" title="Notificações" aria-label="Notificações"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
           <div className={collapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'}>
-            <span className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-[13px] text-on-accent shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>
+            <span className="h-11 w-11 rounded-full grid place-items-center font-display font-bold text-[13px] text-on-accent shrink-0" style={{ background: effectiveUser.cor || '#cbd5e1' }}>
               {effectiveUser.nome ? effectiveUser.nome.replace(/^(Dra?\.|Dr\.?)\s/, '').split(' ').map((w) => w[0]).slice(0, 2).join('') : 'U'}
             </span>
             {!collapsed && <span className="min-w-0 flex-1">
-              <span className="block font-display font-semibold text-[14.5px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span>
-              <span className={`block text-[13px] mt-1 ${rm?.text || 'text-fog'}`}>{professionalLabel}</span>
+              <span className="block font-display font-semibold text-[15.5px] leading-tight truncate">{effectiveUser.nome || 'Usuário'}</span>
+              <span className={`block text-[13.5px] mt-1 ${rm?.text || 'text-fog'}`}>{professionalLabel}</span>
             </span>}
             <button onClick={handleLogout} className="grid h-9 w-9 place-items-center rounded-lg text-fog hover:text-pulse hover:bg-raise/55 transition-colors" title="Sair" aria-label="Sair"><IconLogout className="w-4.5 h-4.5" /></button>
           </div>
@@ -412,8 +412,8 @@ export function Shell() {
         </div>
       )}
 
-      <div className={`${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[268px]'} relative transition-[padding] duration-200`}>
-        <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b border-line/60 bg-ink/88 px-4 backdrop-blur-xl md:px-7 lg:hidden">
+      <div className={`${collapsed ? 'lg:pl-[88px]' : 'lg:pl-[292px]'} relative transition-[padding] duration-200`}>
+        <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-line/60 bg-ink/88 px-4 backdrop-blur-xl md:px-7 lg:hidden">
           <button className="text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
           <PresentationHeaderControl />
           <Select value={unidadeSel} onChange={(e) => setUnidadeSel(e.target.value)} className="!w-auto !min-h-10 !py-2 !text-[14px] ml-1" title="Filtrar por unidade">
@@ -425,7 +425,7 @@ export function Shell() {
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
         </header>
-        <main className="w-full min-w-0 px-4 py-7 text-[15px] sm:px-6 md:px-8 md:py-9 md:text-[15.5px] xl:px-10 xl:py-6">
+        <main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-[16px] xl:px-12 xl:py-8">
           <Outlet />
         </main>
       </div>

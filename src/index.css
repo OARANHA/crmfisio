@@ -31,15 +31,15 @@ html {
 }
 
 html[data-theme='light'] {
-  --color-ink: #f3f6f5;
-  --color-deep: #f8faf9;
+  --color-ink: #f1f5f3;
+  --color-deep: #f7faf8;
   --color-panel: #ffffff;
-  --color-raise: #edf3f0;
-  --color-line: #e0e7e4;
-  --color-line2: #c9d5d0;
-  --color-paper: #17211e;
-  --color-fog: #5f706a;
-  --color-mint: #157d68;
+  --color-raise: #eaf1ee;
+  --color-line: #d9e4df;
+  --color-line2: #bfd0c8;
+  --color-paper: #14201c;
+  --color-fog: #5a6c64;
+  --color-mint: #0f8069;
   --color-amber: #9f661d;
   --color-aqua: #2a7893;
   --color-pulse: #c94d59;
@@ -86,6 +86,15 @@ code, pre, kbd, samp { font-family: ui-monospace, "SFMono-Regular", Consolas, mo
 
 html[data-theme='light'] .bg-panel {
   box-shadow: 0 1px 2px rgba(21, 36, 31, 0.025);
+}
+
+html[data-theme='light'] .medicspro-sidebar {
+  background: linear-gradient(180deg, #fbfdfc 0%, #f6faf8 100%);
+  box-shadow: 14px 0 38px rgba(31, 58, 48, 0.045);
+}
+
+html[data-theme='light'] .medicspro-sidebar .bg-panel {
+  box-shadow: 0 1px 2px rgba(21, 36, 31, 0.035);
 }
 
 html[data-theme='light'] .bg-mint.text-on-accent,

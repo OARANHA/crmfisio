@@ -91,3 +91,12 @@ This is acceptable for the pilot, but the product still needs future code-splitt
 ## Promotion rule
 
 Do not extrapolate this pilot into a whole-product rewrite. Promote the visual system incrementally as real surfaces are touched and only adopt TanStack primitives when they remove real complexity.
+
+
+## System-scale expansion
+
+The pilot now covers the authenticated clinical shell, not only the patient directory. The comfortable density contract includes a 292 px expanded / 88 px compact desktop sidebar, 48 px class navigation and primary actions, larger clinician-home hierarchy, and light-theme-specific surface treatment.
+
+`ClinicianDashboard` is the canonical post-login visual reference for a clinical-only professional: **Meu dia → next movement → today metrics → agenda → clinical priorities**. Management-only information must not be reintroduced into this surface merely to fill space.
+
+TanStack adoption remains capability-driven. Table V9 is part of this PR because it already owns operational directory state. TanStack Query is intentionally split into a follow-up foundation slice so server-state migration can be tenant/user/role-scoped, session-cleared, and reviewed independently from visual changes. TanStack Router/Start remain out of scope.
