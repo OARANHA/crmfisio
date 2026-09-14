@@ -1,0 +1,141 @@
+name: Temporary UI Foundation V2 system sync
+
+on:
+  push:
+    branches:
+      - feat/ui-foundation-v2-patient-directory
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/ui-foundation-v2-patient-directory
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply validated UI Foundation V2 system patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/components/Shell.tsx')
+          s=p.read_text()
+          repls={
+          'className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog':'className="grid h-11 w-11 place-items-center rounded-2xl border border-line/75 bg-panel text-fog',
+          '<nav className="flex flex-col gap-1.5 px-3.5">':'<nav className="flex flex-col gap-2 px-4">',
+          "`flex min-h-11 items-center ${compact ? 'justify-center px-2' : 'gap-3.5 px-3.5'} rounded-xl py-2.5 font-display font-semibold text-[15.5px] leading-5 transition-colors":"`flex min-h-12 items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-[16px] leading-5 transition-colors",
+          '<n.Icon className="w-5.5 h-5.5 shrink-0" />':'<n.Icon className="h-6 w-6 shrink-0" />',
+          "<aside className={`hidden lg:flex fixed inset-y-0 left-0 ${collapsed ? 'w-[80px]' : 'w-[268px]'}":"<aside className={`hidden lg:flex medicspro-sidebar fixed inset-y-0 left-0 ${collapsed ? 'w-[88px]' : 'w-[292px]'}",
+          "${collapsed ? 'justify-center px-3' : 'gap-2.5 px-5.5'} h-[68px]":"${collapsed ? 'justify-center px-3' : 'gap-3 px-6'} h-[76px]",
+          '<PulseMark className="w-7 h-6" />':'<PulseMark className="h-7 w-8" />',
+          'font-display font-bold text-[16.5px] tracking-tight':'font-display font-bold text-[18px] tracking-tight',
+          'top-[86px]':'top-[96px]',
+          '<div className="py-5.5 flex-1 overflow-y-auto">':'<div className="flex-1 overflow-y-auto py-6">',
+          '<div className="space-y-3 border-t border-line/60 p-3.5">':'<div className="space-y-4 border-t border-line/60 p-4">',
+          'className="grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral':'className="grid h-11 w-11 place-items-center rounded-2xl border border-line/75 bg-panel text-fog transition-colors hover:border-line2 hover:bg-raise/45 hover:text-paper" aria-label="Expandir barra lateral',
+          'className="!min-h-10 !w-full !py-2 !text-[13px]"':'className="!min-h-11 !w-full !rounded-xl !py-2.5 !text-[14px]"',
+          'w-10 h-10 rounded-full':'h-11 w-11 rounded-full',
+          'font-display font-semibold text-[14.5px] leading-tight':'font-display font-semibold text-[15.5px] leading-tight',
+          'block text-[13px] mt-1':'block text-[13.5px] mt-1',
+          "${collapsed ? 'lg:pl-[80px]' : 'lg:pl-[268px]'}":"${collapsed ? 'lg:pl-[88px]' : 'lg:pl-[292px]'}",
+          'flex h-[68px] items-center':'flex h-[72px] items-center',
+          '<main className="w-full min-w-0 px-4 py-7 text-[15px] sm:px-6 md:px-8 md:py-9 md:text-[15.5px] xl:px-10 xl:py-6">':'<main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-[16px] xl:px-12 xl:py-8">',
+          }
+          for a,b in repls.items():
+              if a not in s: raise SystemExit(f'Missing Shell pattern: {a}')
+              s=s.replace(a,b,1)
+          p.write_text(s)
+
+          p=Path('src/components/dashboards/DashboardMetricGrid.tsx')
+          s=p.read_text()
+          repls={
+          'grid grid-cols-2 gap-3 xl:grid-cols-5':'grid grid-cols-2 gap-4 xl:grid-cols-5',
+          '<p className="text-[12px] font-semibold text-fog">':'<p className="text-[13.5px] font-semibold text-fog">',
+          'mt-5 flex items-end':'mt-6 flex items-end',
+          'text-[30px] font-bold':'text-[34px] font-bold',
+          'mt-3 min-h-[38px] text-[12px]':'mt-3 min-h-[42px] text-[13.5px]',
+          'min-h-[148px]':'min-h-[164px]',
+          'bg-panel p-4.5':'bg-panel p-5',
+          'inline-flex min-h-10 items-center gap-2 rounded-xl bg-mint px-4 py-2.5 text-[13px]':'inline-flex min-h-12 items-center gap-2 rounded-2xl bg-mint px-5 py-3 text-[14.5px]',
+          'inline-flex min-h-10 items-center gap-2 rounded-xl border border-line/80 bg-panel/80 px-4 py-2.5 text-[13px]':'inline-flex min-h-12 items-center gap-2 rounded-2xl border border-line/80 bg-panel/80 px-5 py-3 text-[14.5px]',
+          }
+          for a,b in repls.items():
+              if a not in s: raise SystemExit(f'Missing metric pattern: {a}')
+              s=s.replace(a,b,1)
+          p.write_text(s)
+
+          p=Path('src/components/dashboards/ClinicianDashboard.tsx')
+          s=p.read_text()
+          repls={
+          'rounded-[26px] border border-line/70':'rounded-[30px] border border-line/70',
+          'p-5 shadow-[0_20px_55px_rgba(0,0,0,0.06)] sm:p-6':'p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8',
+          'text-[12px] font-semibold uppercase tracking-[0.12em] text-mint':'text-[13.5px] font-semibold uppercase tracking-[0.11em] text-mint',
+          'mt-2 font-display text-3xl font-bold tracking-tight sm:text-[34px]':'mt-3 font-display text-[38px] font-bold tracking-[-0.03em] sm:text-[42px]',
+          'mt-1 text-[13px] capitalize text-fog':'mt-2 text-[15px] capitalize text-fog',
+          'mt-3 max-w-2xl text-[13px] leading-relaxed text-fog':'mt-4 max-w-2xl text-[15.5px] leading-relaxed text-fog',
+          'rounded-[22px] border border-aqua/35 bg-aqua/[0.055] p-5':'rounded-[24px] border border-aqua/35 bg-aqua/[0.055] p-6',
+          'text-[11px] font-semibold uppercase tracking-[0.13em] text-aqua':'text-[13px] font-semibold uppercase tracking-[0.11em] text-aqua',
+          'text-[22px] font-bold text-paper':'text-[26px] font-bold text-paper',
+          'mt-1 text-[12.5px] text-fog':'mt-1 text-[14.5px] text-fog',
+          'grid items-start gap-4 xl:grid-cols-[1.35fr_1fr]':'grid items-start gap-5 xl:grid-cols-[1.4fr_1fr]',
+          'px-5 py-5 transition-colors':'px-6 py-5 transition-colors',
+          'text-[14px] font-semibold':'text-[15.5px] font-semibold',
+          'mt-1 block text-[11px] text-fog':'mt-1 block text-[13px] text-fog',
+          'px-5 pt-4 text-[11px]':'px-6 pt-5 text-[13px]',
+          'px-5 py-3 transition-colors':'px-6 py-4 transition-colors',
+          'block truncate text-[12.5px] font-semibold':'block truncate text-[14.5px] font-semibold',
+          'block truncate text-[10.5px] text-fog':'block truncate text-[13px] text-fog',
+          'py-10 text-center text-[12px] text-fog':'py-10 text-center text-[14px] text-fog',
+          'block text-[10.5px] text-fog':'block text-[13px] text-fog',
+          }
+          for a,b in repls.items():
+              if a not in s: raise SystemExit(f'Missing clinician pattern: {a}')
+              s=s.replace(a,b,1)
+          p.write_text(s)
+
+          p=Path('src/index.css')
+          s=p.read_text()
+          old='''--color-ink: #f3f6f5;\n  --color-deep: #f8faf9;\n  --color-panel: #ffffff;\n  --color-raise: #edf3f0;\n  --color-line: #e0e7e4;\n  --color-line2: #c9d5d0;\n  --color-paper: #17211e;\n  --color-fog: #5f706a;\n  --color-mint: #157d68;'''
+          new='''--color-ink: #f1f5f3;\n  --color-deep: #f7faf8;\n  --color-panel: #ffffff;\n  --color-raise: #eaf1ee;\n  --color-line: #d9e4df;\n  --color-line2: #bfd0c8;\n  --color-paper: #14201c;\n  --color-fog: #5a6c64;\n  --color-mint: #0f8069;'''
+          if old not in s: raise SystemExit('Missing light-theme token block')
+          s=s.replace(old,new,1)
+          needle="""html[data-theme='light'] .bg-panel {\n  box-shadow: 0 1px 2px rgba(21, 36, 31, 0.025);\n}\n"""
+          extra=needle+"""\nhtml[data-theme='light'] .medicspro-sidebar {\n  background: linear-gradient(180deg, #fbfdfc 0%, #f6faf8 100%);\n  box-shadow: 14px 0 38px rgba(31, 58, 48, 0.045);\n}\n\nhtml[data-theme='light'] .medicspro-sidebar .bg-panel {\n  box-shadow: 0 1px 2px rgba(21, 36, 31, 0.035);\n}\n"""
+          if needle not in s: raise SystemExit('Missing light panel block')
+          s=s.replace(needle,extra,1)
+          p.write_text(s)
+
+          test=Path('src/lib/uiFoundationV2System.test.js')
+          test.write_text('''import { readFileSync } from 'node:fs';\nimport { fileURLToPath } from 'node:url';\nimport { describe, expect, it } from 'vitest';\n\nconst shellSource = readFileSync(fileURLToPath(new URL('../components/Shell.tsx', import.meta.url)), 'utf8');\nconst clinicianSource = readFileSync(fileURLToPath(new URL('../components/dashboards/ClinicianDashboard.tsx', import.meta.url)), 'utf8');\nconst metricSource = readFileSync(fileURLToPath(new URL('../components/dashboards/DashboardMetricGrid.tsx', import.meta.url)), 'utf8');\nconst cssSource = readFileSync(fileURLToPath(new URL('../index.css', import.meta.url)), 'utf8');\n\ndescribe('MedicsPro UI Foundation V2 system scale', () => {\n  it('keeps a comfortable desktop shell instead of returning to the compact legacy scale', () => {\n    expect(shellSource).toContain(\"collapsed ? 'w-[88px]' : 'w-[292px]'\");\n    expect(shellSource).toContain('min-h-12 items-center');\n    expect(shellSource).toContain(\"collapsed ? 'lg:pl-[88px]' : 'lg:pl-[292px]'\");\n    expect(shellSource).toContain('md:text-[16px]');\n  });\n\n  it('keeps the clinician home visually prioritized around the working day', () => {\n    expect(clinicianSource).toContain('Seu dia está aqui');\n    expect(clinicianSource).toContain('sm:text-[42px]');\n    expect(clinicianSource).toContain('xl:grid-cols-[1.4fr_1fr]');\n    expect(metricSource).toContain('text-[34px]');\n    expect(metricSource).toContain('min-h-12 items-center');\n  });\n\n  it('treats the light theme as a first-class UI surface', () => {\n    expect(cssSource).toContain(\"html[data-theme='light'] .medicspro-sidebar\");\n    expect(cssSource).toContain('--color-ink: #f1f5f3');\n    expect(cssSource).toContain('--color-mint: #0f8069');\n  });\n});\n''')
+
+          p=Path('docs/UI_FOUNDATION_V2.md')
+          s=p.read_text()
+          marker='## System-scale expansion'
+          if marker not in s:
+              s += '''\n\n## System-scale expansion\n\nThe pilot now covers the authenticated clinical shell, not only the patient directory. The comfortable density contract includes a 292 px expanded / 88 px compact desktop sidebar, 48 px class navigation and primary actions, larger clinician-home hierarchy, and light-theme-specific surface treatment.\n\n`ClinicianDashboard` is the canonical post-login visual reference for a clinical-only professional: **Meu dia → next movement → today metrics → agenda → clinical priorities**. Management-only information must not be reintroduced into this surface merely to fill space.\n\nTanStack adoption remains capability-driven. Table V9 is part of this PR because it already owns operational directory state. TanStack Query is intentionally split into a follow-up foundation slice so server-state migration can be tenant/user/role-scoped, session-cleared, and reviewed independently from visual changes. TanStack Router/Start remain out of scope.\n'''
+          p.write_text(s)
+          PY
+      - name: Validate targeted contracts
+        run: |
+          npm ci --no-audit --no-fund
+          npm test -- --run src/lib/uiFoundationV2System.test.js src/lib/patientDirectoryUiV2.test.js src/lib/presentationContextBoundary.test.js
+          npm run typecheck
+          npm run lint
+          npm run build
+          git diff --check
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-ui-foundation-v2-system-sync.yml
+          git add docs/UI_FOUNDATION_V2.md src/components/Shell.tsx src/components/dashboards/ClinicianDashboard.tsx src/components/dashboards/DashboardMetricGrid.tsx src/index.css src/lib/uiFoundationV2System.test.js
+          git commit -m 'feat: expand UI Foundation V2 to clinical shell'
+          git push origin HEAD:feat/ui-foundation-v2-patient-directory
