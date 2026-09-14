@@ -56,6 +56,20 @@ Do not code from assumptions when the repository can answer the question.
 
 Do not confuse speed with haste. Prefer coherent vertical slices that can be safely tested by real clinics.
 
+### Mandatory decision discipline
+
+For every meaningful MedicsPro change, use the sequence:
+
+```text
+DECISION
+→ SECOND REVIEW
+→ EXECUTION
+```
+
+The second review must be adversarial, not ceremonial. Before execution, actively look for a concrete reason the first decision may be wrong, premature, oversized, unsafe, duplicative or inconsistent with the canonical architecture. If the second review changes the conclusion, change the decision before executing.
+
+This discipline applies to product, architecture, UX, dependencies, authorization, data, migrations, rollout and documentation. See `docs/DECISION_REVIEW_EXECUTION_RULE.md` for the full contract.
+
 ---
 
 ## 2. Sources of truth and repository discipline
@@ -133,7 +147,7 @@ Canonical principles:
 3. UI reflects permissions but is not an authorization boundary;
 4. sensitive decisions belong in PostgreSQL/RPC/RLS/server code;
 5. clinical authorization is identity + capability + authorship/care relationship, never operational role alone;
-6. owner/admin may perform a clinical act only when they independently satisfy the same clinical boundary; the administrative role is never a bypass;
+6. owner/admin may perform a clinical act only when they indepently satisfy the same clinical boundary; the administrative role is never a bypass;
 7. general CRM authorization is separate from clinical journey decisions — `clinical.attend` must not grant arbitrary funnel editing;
 8. administrative corrections must preserve history and be auditable;
 9. team accounts must be real Supabase Auth users linked to `public.profiles` in the same `clinic_id`;
@@ -386,7 +400,7 @@ The future sequence is:
 
 None of these items is implemented by documentation alone.
 
-The future Encounter UX should expose the same instrument through explicit administration modes:
+The future Encounter UX should expose the same instrument through explicit administration modes.
 
 ```text
 PHQ-9
@@ -607,7 +621,7 @@ For every sensitive read or write ask:
 
 Treat any plausible cross-clinic leak as P0.
 
-Review when applicable authenticated identity, `clinic_id`, unit context, profile role, active/inactive state, RLS, RPC authorization, `SECURITY DEFINER`, `search_path`, grants/EXECUTE, ownership, IDOR, privilege escalation, service-role boundaries, webhook authentication and sensitive logging.
+Review when applicable authenticated identity, `clinic_id`, unit context, profile role, active/inactive state, RLS, RPC authorization, `SECURITY DEFINER`, `search_pathp, grants/EXECUTE, ownership, IDOR, privilege escalation, service-role boundaries, webhook authentication and sensitive logging.
 
 Never use frontend visibility or PresentationContext as authorization.
 
