@@ -101,3 +101,28 @@ Do not adopt TanStack Router or TanStack Start through this foundation. React Ro
 ## Production
 
 No production action is required for this draft. There are no migrations, RPC changes, RLS changes or Edge Function changes.
+
+## Agenda server-state slice
+
+The second reviewed migration moves `AgendaProvider` onto the same clinic-scoped Query foundation.
+
+The Agenda key is independently scoped by `clinicId + userId + role`; it cannot collide with the patient cache. Existing repository commands remain canonical: appointment creation still uses `insertAppointment()` and status transitions still use `updateAppointmentStatus()`.
+
+The migration preserves four explicit contracts:
+
+- the latest explicit Agenda refresh wins;
+- an in-flight read cannot overwrite a successful appointment creation;
+- status updates remain optimistic and roll back on canonical mutation failure;
+- a late rollback from an old clinic-session lifetime cannot write into the next clinic's QueryClient.
+
+The Agenda slice does not modify Encounter lifecycle, referral continuity, recurrence commands, finance projections, RLS, RPCs or appointment authorization. Existing consumers continue calling `refreshAgenda()` through the same context API.
+
+Validation after the second review:
+
+- five consecutive runs of the Agenda/session concurrency suite: `23/23` each;
+- full suite: `103/103` files and `563/563` tests;
+- TypeScript green;
+- ESLint green with zero warnings;
+- Vite production build green;
+- `git diff --check` green;
+- JavaScript bundle remains approximately `498.34 KB gzip`, with no material increase over the Patient Query foundation.

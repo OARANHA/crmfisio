@@ -65,15 +65,17 @@ describe('same-session refresh ordering', () => {
   it('keeps the latest agenda refresh', async () => {
     let state!: ReturnType<typeof useAgenda>;
     function Probe() { state = useAgenda(); return null; }
-    await mount(<AgendaProvider><Probe /></AgendaProvider>);
+    await mount(<ClinicQueryProvider><AgendaProvider><Probe /></AgendaProvider></ClinicQueryProvider>);
     const pending = pendingQueries();
     let first!: Promise<void>; let second!: Promise<void>;
     act(() => { first = state.refreshAgenda(); second = state.refreshAgenda(); });
     expect(pending).toHaveLength(2);
     await act(async () => { pending[1].resolve({ data: [{ id: 'new' }], error: null }); await second; });
     await act(async () => { pending[0].resolve({ data: [{ id: 'old' }], error: null }); await first; });
-    expect(state.appointments.map((item) => item.id)).toEqual(['new']);
-    expect(state.loading).toBe(false);
+    await vi.waitFor(() => {
+      expect(state.appointments.map((item) => item.id)).toEqual(['new']);
+      expect(state.loading).toBe(false);
+    });
   });
 
   it('keeps the latest finance refresh', async () => {
