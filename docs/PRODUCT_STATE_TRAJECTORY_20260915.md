@@ -1,7 +1,7 @@
 # MedicsPro — Estado efetivo e trajetória de produto
 
 **Reconciliação:** 2026-09-15
-**Árvore auditada:** equivalente a `main@91213008fcc3774b914540a20859b689db4c0922`
+**Árvore reconciliada:** `main@46ef897461fe813f8b2c2f75507a8f919019fcb1` após #478 e #479
 **Critério:** runtime/código + schema/backend + evidência de produção prevalecem sobre roadmap histórico.
 
 Este documento existe porque `CURRENT_STATE`, `TODO` e `PRODUCT_ROADMAP` acumulam snapshots de momentos diferentes. Quando houver conflito, não considerar uma feature entregue apenas por existir uma tela, nem considerar aberta uma feature que já possua contrato/runtime/produção comprovados.
@@ -39,7 +39,9 @@ Entregue e em produção:
 - Consultório V5 com contexto persistente, navegação por tarefa e prontuário longitudinal em drawer;
 - Assessment Engine versionado, com drafts/resume/finalização e biblioteca inicial;
 - visual hierarchy, Visual Comfort System e Typography Comfort Pass para uso prolongado;
-- branding público MedicsPro multiprofissional.
+- branding público MedicsPro multiprofissional;
+- autoentrada segura no Consultório após handoff explícito de iniciar/continuar o próprio Encounter (#478);
+- `Cobertura deste atendimento` read-only e appointment-scoped, sem Financeiro global (#479).
 
 Composição atual do Encounter:
 
@@ -155,12 +157,12 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 
 ## Fase A — agora: ergonomia do profissional + fechamento de piloto
 
-1. Autoentrada segura no Modo Consultório após ação explícita de iniciar/continuar o próprio Encounter.
+1. [x] Autoentrada segura no Modo Consultório após ação explícita de iniciar/continuar o próprio Encounter (#478).
 2. Medir cliques, tempo e fricções reais no fluxo de atendimento.
-3. Adicionar **Cobertura deste atendimento** por read model/RPC contextual, sem expor Financeiro global.
+3. [x] **Cobertura deste atendimento** por RPC contextual, sem expor Financeiro global (#479).
 4. Implementar correção/adendo auditável para Encounter Record finalizado.
 5. Melhorar histórico neutro de instrumentos clinician-assisted sem abrir leitura direta do ledger.
-6. Unificar UX de Instrument Delivery: `Aplicar agora` e `Enviar ao paciente`, mantendo boundaries distintos.
+6. Fechar `Enviar ao paciente` como boundary separada; `Aplicar agora` já está entregue.
 
 ## Fase B — configuração clínica/operacional
 
@@ -199,6 +201,6 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 
 # Próxima slice escolhida
 
-**Encounter Auto-Entry to Consultório V1.**
+**Encounter Record Correction/Addendum V1.**
 
-Motivo: reduz atrito imediatamente para owner/admin clinicamente elegível, exige zero mudança de RLS/schema/lifecycle e fecha um residual explicitamente documentado desde #396. A transição deve ocorrer somente após ação explícita de iniciar/continuar o próprio Encounter e passar pelo `PresentationContextProvider`, que já impede selecionar `clinical` quando o ator não é elegível.
+Motivo: autoentrada (#478) e cobertura contextual (#479) já estão em produção. O maior gap clínico estrutural imediato passa a ser corrigir ou complementar um registro finalizado sem sobrescrever histórico, preservando autoria, timestamp, motivo, vínculo ao Encounter original e trilha auditável.

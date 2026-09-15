@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-15
-**Base canônica:** `main@16cb7c048f177f2f61c2ea744eb3e31504c42103`
+**Base canônica:** `main@46ef897461fe813f8b2c2f75507a8f919019fcb1`
 
 ## Estado clínico resumido
 
@@ -20,7 +20,40 @@ Assessment Library V1                                         PROD
 D2-E4 Referral Operational Continuity                         PROD
 Clinic Referral Authoring Policy V1                           PROD
 PHQ-15 Clinician-Assisted V1                                  PROD BACKEND / FAIL-CLOSED VALIDATED
+Encounter Auto-Entry / Presentation handoff #478                PROD
+Encounter Coverage Context V1 #479                              PROD / VERIFIED
 ```
+
+## Último rollout — Encounter Auto-Entry + Coverage Context
+
+**Status:** PRODUÇÃO — #478 e #479 mergeadas, RPC aplicada e frontend observado.
+
+```text
+#478 Auto-Entry:          PROD
+#479 Coverage Context:    PROD
+main canônica:            46ef897461fe813f8b2c2f75507a8f919019fcb1
+RPC production verifier: PASSED
+frontend public smoke:    8/8 PASS
+HTTP 5xx / Nginx errors:  0 / 0
+```
+
+#478 centraliza a entrada em Consultório no handoff explícito de **Iniciar/Continuar atendimento**. O `PresentationContextProvider` continua decidindo se `clinical` está disponível; rota/query, abertura de paciente, histórico e mera existência de appointment ativo não mudam o contexto.
+
+#479 adiciona `public.get_encounter_coverage_context(uuid)` como leitura contextual do próprio Encounter `em_atendimento`. A função exige identidade clínica válida + `clinical.attend` + `professional_id = auth.uid()`, não exige `finance.access`, não executa mutation e não retorna valores, IDs de pagamento, histórico financeiro ou fila global.
+
+Smoke real de produção confirmou `private_planned` para o profissional atribuído e negação para outro ator da mesma clínica, dentro de transação revertida. O frontend ativo é byte a byte equivalente ao candidato validado e contém a rail:
+
+```text
+Paciente em contexto
+→ Encerramento
+→ Cobertura deste atendimento
+```
+
+O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
+
+**Próximo gap clínico estrutural:** correction/addendum auditável para Encounter Record finalizado, sem sobrescrever histórico.
+
+---
 
 ## Último rollout — PHQ-15 Clinician-Assisted V1
 
@@ -142,7 +175,7 @@ Evidência:
 
 Conclusão: documentos que ainda diziam que #388 exigia ausência da RPC de #389 estavam desatualizados. O verifier atual é composition-aware e mantém a fila `appointment_financial_exceptions` sem mutação direta enquanto admite somente a resolução canônica auditada.
 
-**Não confundir esta prova técnica com smoke operacional real.** O #394 foi fechado separadamente por leitura de produção em 2026-09-15. Permanecem como gaps P0: smoke humano/produção de `CHARGE` e `WAIVE`, cobertura role/mobile/URL do privacy shell e observabilidade mínima do beta.
+A prova técnica do harness foi complementada em 2026-09-15 por runtime real de `CHARGE` e `WAIVE` em produção dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos. A exceção real `package_exhausted` continua sem disposição porque isso é decisão econômica da clínica. Permanecem como gaps de evidência: owner/admin clínico e mobile autenticados no privacy shell, além do piloto humano prolongado.
 
 Documento de apoio: `docs/P0_388_389_VERIFIER_RECONCILIATION_20260915.md`.
 

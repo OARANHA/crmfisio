@@ -96,6 +96,12 @@ Automatic mode entry is deliberately deferred in this slice. The current UI has 
 
 Manual Consultório/Gestão switching therefore ships without a fragile auto-entry heuristic.
 
+### Follow-up entregue
+
+A #478 centralizou o handoff de Encounter e passou a chamar `setContext('clinical')` somente após ação explícita de iniciar/continuar o próprio atendimento. O provider continua sendo a autoridade sobre disponibilidade do contexto; URLs, abertura de paciente, histórico e mera existência de appointment ativo não fazem autoentrada.
+
+A #479 acrescentou `Cobertura deste atendimento` como projeção contextual read-only do próprio Encounter, sem `finance.access`, sem valores e sem ações financeiras.
+
 ## Legacy MedicsPro UX audit
 
 The historical `OARANHA/medicspro` application was reopened as experience reference only.
@@ -121,6 +127,6 @@ Explicitly rejected:
 - the historical finish flow that saved the record and then coupled completion to checkout;
 - role masquerading or changing auth claims to implement a visual mode.
 
-## Finance inside an encounter — reserved follow-up
+## Finance inside an encounter — follow-up fulfilled by #479
 
-This slice does not implement contextual finance. A future independently authorized component may present only `Cobertura deste atendimento` (for example particular/package and that encounter's allowed coverage/payment state). It must never expose clinic cash, monthly billing, another professional's repasse/commission, profit or global balances inside Consultório.
+The original #396 slice did not implement contextual finance. #479 later fulfilled this reserved follow-up with `Cobertura deste atendimento`: an independently authorized, appointment-scoped read model for the clinician's own active Encounter. It exposes no clinic cash, monthly billing, another professional's repasse/commission, profit, global balances, payment IDs or financial resolution actions inside Consultório.

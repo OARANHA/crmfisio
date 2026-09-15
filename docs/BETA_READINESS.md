@@ -29,7 +29,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | Consultório / Gestão | 🟢 estrutural | #396 entrega privacy/presentation shell sem alterar autorização. |
 | UX / design em uso real | 🟡 | Foundations visuais existem, mas ainda falta evidência suficiente de smoke visual e uso por profissionais reais para chamar UX de validada. |
 | Smoke pós-finalização #394 | 🟢 operacional/read-only | Em 2026-09-15, produção confirmou Record `finalized`, `finalized_at`, Evolution única/ativa e vinculada, appointment `finalizado`, efeito financeiro unitário/coerente e zero exceção financeira. |
-| Smoke CHARGE/WAIVE #389 | 🟡 | Contrato/verifier técnico existe; ação real deve ser documentada antes de tratá-la como smoke operacional concluído. |
+| Smoke CHARGE/WAIVE #389 | 🟢 runtime / 🟡 negócio | CHARGE e WAIVE foram exercidos em produção com autenticação real dentro de transações revertidas, provando idempotência e efeitos sem resíduos. A disposição da exceção real continua decisão econômica. |
 | WhatsApp / Evolution operacional | 🟢 estrutural | Outbox/worker/webhook e reconciliação fail-closed existentes; observabilidade continua sendo trabalho contínuo. |
 | LGPD / auditoria técnica | 🟢 estrutural | Controles técnicos existem; não equivalem por si só a declaração jurídica completa de conformidade. |
 
@@ -113,7 +113,7 @@ Parceiro/repasse não é autorização.
 
 Falhas financeiras inesperadas de integridade continuam fail-closed e podem reverter a transação conforme os guards existentes.
 
-O smoke real de `CHARGE`/`WAIVE` deve continuar YELLOW até existir evidência observada/documentada.
+O runtime real de `CHARGE`/`WAIVE` foi observado em produção dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos. Isso fecha a dúvida técnica, mas não decide a disposição econômica da exceção real existente.
 
 ## Consultório / Gestão — Presentation Privacy Shell
 
@@ -138,7 +138,7 @@ Acesso por URL continua passando pelos guards reais e, quando o ator já é auto
 
 A preferência local é isolada por `user_id + clinic_id`.
 
-Residual conhecido: **autoentrada automática no Consultório ainda não implementada**. Ela deve ser ligada apenas a um ponto canônico único após iniciar/continuar o próprio Encounter, nunca inferida por rota ou mera existência de appointment ativo.
+Desde a #478, a autoentrada existe somente no handoff explícito de iniciar/continuar o próprio Encounter e continua passando pelo `PresentationContextProvider`; rota/query, abertura de paciente e mera existência de appointment ativo não acionam mudança de contexto.
 
 ## Nexus — estado do piloto
 
@@ -176,11 +176,11 @@ A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conte�
 
 ## Próximo foco recomendado
 
-1. fechar evidência operacional curta do smoke #389 `CHARGE`/`WAIVE` e do privacy shell #396;
+1. fechar evidência visual/autenticada residual do privacy shell #396; o runtime #389 já foi exercido em produção com rollback;
 2. executar piloto UX do Encounter/Consultório e remover fricções observadas;
-3. evoluir **Cobertura deste atendimento** sem expor Financeiro global;
-4. unificar Instrument Delivery (`Aplicar agora` / `Enviar ao paciente`);
-5. construir Prescription V1 e demais documentos apenas conforme demanda do piloto;
+3. validar em uso real a **Cobertura deste atendimento** já entregue pela #479, sem expor Financeiro global;
+4. fechar Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+5. priorizar apenas documentos clínicos ainda ausentes conforme demanda do piloto;
 6. evoluir configuração financeira/parcerias sem criar role econômica;
 7. ampliar onboarding e integrações somente com evidência de necessidade.
 

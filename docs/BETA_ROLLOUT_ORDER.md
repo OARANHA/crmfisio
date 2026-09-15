@@ -31,7 +31,7 @@ As foundations abaixo estão incorporadas ao estado canônico e não devem ser �
 Antes de ampliar piloto:
 
 1. **fechado em 2026-09-15:** inspeção read-only pós-finalização do smoke #394 observada em produção, com Record/Evolution/appointment/financeiro consistentes e sem exceção financeira;
-2. executar/documentar smoke real `CHARGE` e `WAIVE` do #389, se pendente;
+2. **fechado tecnicamente em 2026-09-15:** `CHARGE` e `WAIVE` exercidos em produção com autenticação real dentro de transações revertidas, idempotência e ausência de resíduos; a exceção real continua decisão econômica;
 3. **fechado em 2026-09-15:** revalidar a composição do verifier #388 com #389 em PostgreSQL 16; o gate passou antes e depois da migration #389, com controles negativos preservados;
 4. executar smoke visual/uso real do privacy shell #396;
 5. confirmar observabilidade suficiente para diagnosticar falhas de beta.
@@ -82,7 +82,7 @@ Validar:
 - preferência isolada por `user_id + clinic_id`;
 - desktop/mobile e light/dark sem vazamento de chrome administrativo durante resolução.
 
-Autoentrada automática no Consultório está fora do rollout atual.
+A #478 adicionou autoentrada somente após handoff explícito de iniciar/continuar o próprio Encounter; ela não é inferida por rota/query nem concede autorização.
 
 ## 3. Financeiro — semântica atual
 
@@ -107,11 +107,11 @@ Falhas financeiras inesperadas de integridade permanecem fail-closed e devem int
 
 Depois das evidências curtas acima:
 
-1. Encounter UX / physician ergonomics;
-2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
-4. Prescription V1;
-5. demais documentos médicos conforme evidência;
+1. Encounter UX / ergonomia observada com profissionais reais;
+2. correction/addendum auditável para Encounter Record finalizado;
+3. histórico neutro de instrumentos clinician-assisted;
+4. Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+5. documentos clínicos ainda ausentes conforme evidência;
 6. Finance Configuration (solo/equipe, categorias, parceiro %/fixo com histórico/effective dates);
 7. onboarding/pilot friction;
 8. financeiro avançado/integracões conforme necessidade observada.

@@ -97,7 +97,7 @@ Após #388:
 
 O verifier #388 já foi reconciliado com #389: o harness executa #388 antes e depois da migration #389 e passou em PostgreSQL 16 em 2026-09-15, preservando a imutabilidade direta da fila e a superfície canônica de resolução.
 
-Smoke real CHARGE/WAIVE permanece pendente se não houver evidência posterior.
+Em 2026-09-15, CHARGE/WAIVE foram exercidos no runtime de produção dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos. A exceção real `package_exhausted` permanece aberta apenas como decisão econômica.
 
 ## Presentation Context
 
@@ -113,7 +113,7 @@ Consultório oculta Financeiro global, CRM gerencial, Relatórios administrativo
 
 Trocar contexto não muda role, JWT, tenant, RLS, capability, entitlement ou `canView`. Preferência local isolada por `user_id + clinic_id`.
 
-Autoentrada automática no Consultório ainda não existe.
+#478 entregou autoentrada segura somente no handoff explícito de iniciar/continuar o próprio Encounter; `PresentationContext` continua sem poder de autorização.
 
 ## Nexus
 
@@ -133,12 +133,12 @@ Assessment Engine já possui foundation estruturada. Avaliações padrão, model
 
 ## Próxima sequência recomendada
 
-0. fechar smokes/observabilidade pendentes #389/#396; #394 pós-finalização já possui evidência read-only de produção;
-1. Encounter UX / physician ergonomics;
-2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
-4. Prescription V1;
-5. demais documentos médicos conforme piloto;
+0. fechar evidência visual/autenticada residual #396 e piloto humano; #389 runtime e #394 pós-finalização já possuem prova de produção;
+1. Encounter UX / ergonomia observada em uso real;
+2. correction/addendum auditável para Encounter Record finalizado;
+3. histórico neutro de instrumentos clinician-assisted;
+4. Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+5. documentos clínicos ainda ausentes conforme piloto;
 6. Finance Configuration: solo/team, categorias, parceiro %/fixo com history/effective dates;
 7. onboarding/pilot friction;
 8. financeiro avançado/integracões conforme evidência.
