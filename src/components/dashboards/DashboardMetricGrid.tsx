@@ -48,13 +48,13 @@ export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
             {item.to && <IconChevronR className="h-4 w-4 shrink-0 text-fog/45 transition-all group-hover:translate-x-0.5 group-hover:text-mint" />}
           </div>
           <div className="mt-6 flex items-end justify-between gap-3">
-            <p className={`font-display text-[34px] font-bold leading-none tracking-[-0.035em] ${item.tone ?? 'text-paper'}`}>{item.value}</p>
+            <p className={`font-display text-ui-metric-value font-bold leading-none tracking-[-0.035em] ${item.tone ?? 'text-paper'}`}>{item.value}</p>
             <span className="font-mono text-[11px] text-fog/40">0{index + 1}</span>
           </div>
           <p className="mt-3 min-h-[42px] text-[13.5px] leading-relaxed text-fog/80">{item.sub}</p>
         </>;
 
-        const className = 'group relative min-h-[164px] overflow-hidden rounded-[22px] border border-line/70 bg-panel p-5 shadow-[0_16px_40px_rgba(6,14,11,0.055)] transition-all duration-200 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-line2/55 before:to-transparent hover:-translate-y-0.5 hover:border-line2 hover:bg-raise/25 hover:shadow-[0_20px_50px_rgba(6,14,11,0.09)]';
+        const className = 'group relative min-h-[164px] overflow-hidden rounded-ui-data-surface border border-line/70 bg-panel p-5 shadow-[0_16px_40px_rgba(6,14,11,0.055)] transition-all duration-200 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-line2/55 before:to-transparent hover:-translate-y-0.5 hover:border-line2 hover:bg-raise/25 hover:shadow-[0_20px_50px_rgba(6,14,11,0.09)]';
         return item.to
           ? <Link key={item.label} to={item.to} className={className}>{content}</Link>
           : <div key={item.label} className={className}>{content}</div>;
@@ -73,8 +73,8 @@ export function DashboardQuickActions({ actions }: { actions: { label: string; t
           key={action.to + action.label}
           to={action.to}
           className={action.primary
-            ? 'inline-flex min-h-12 items-center gap-2 rounded-2xl bg-mint px-5 py-3 text-[14.5px] font-semibold text-on-accent shadow-sm shadow-mint/10 transition-all hover:-translate-y-px hover:brightness-105'
-            : 'inline-flex min-h-12 items-center gap-2 rounded-2xl border border-line/80 bg-panel/80 px-5 py-3 text-[14.5px] font-semibold text-fog transition-all hover:-translate-y-px hover:border-line2 hover:bg-raise/45 hover:text-paper'}
+            ? 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl bg-mint px-5 py-3 text-[14.5px] font-semibold text-on-accent shadow-sm shadow-mint/10 transition-all hover:-translate-y-px hover:brightness-105'
+            : 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl border border-line/80 bg-panel/80 px-5 py-3 text-[14.5px] font-semibold text-fog transition-all hover:-translate-y-px hover:border-line2 hover:bg-raise/45 hover:text-paper'}
         >
           {action.label}<IconChevronR className="h-3.5 w-3.5" />
         </Link>

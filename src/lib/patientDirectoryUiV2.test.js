@@ -13,9 +13,10 @@ describe('patient directory UI Foundation V2', () => {
   });
 
   it('preserves comfortable interaction sizing in the pilot', () => {
-    expect(pageSource).toContain('!min-h-12');
+    expect(pageSource).toContain('!min-h-ui-control');
     expect(tableSource).toContain('px-6 py-5');
-    expect(pageSource).toContain('text-[34px]');
+    expect(tableSource).toContain('!rounded-ui-data-surface');
+    expect(pageSource).toContain('text-ui-page-title');
   });
 
   it('keeps row navigation keyboard accessible', () => {

@@ -88,11 +88,11 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
   return <div className="space-y-5">
     <Reveal>
-      <section className="overflow-hidden rounded-[30px] border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8">
+      <section className="overflow-hidden rounded-ui-hero border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8">
         <div className="flex flex-wrap items-start gap-5">
           <div className="min-w-[260px] flex-1">
             <p className="text-[13.5px] font-semibold uppercase tracking-[0.11em] text-mint">Seu dia está aqui</p>
-            <h1 className="mt-3 font-display text-[38px] font-bold tracking-[-0.03em] sm:text-[42px]">Olá, {firstName}</h1>
+            <h1 className="mt-3 font-display text-ui-hero-title font-bold tracking-[-0.03em] sm:text-ui-hero-title-lg">Olá, {firstName}</h1>
             <p className="mt-2 text-[15px] capitalize text-fog">{format(now, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
             <p className="mt-4 max-w-2xl text-[15.5px] leading-relaxed text-fog">Atendimentos, próximo movimento e pendências clínicas em uma única visão para você decidir rápido o que fazer agora.</p>
           </div>
@@ -106,7 +106,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
     {activeEncounter && (
       <Reveal delay={35}>
-        <section className="rounded-[24px] border border-aqua/35 bg-aqua/[0.055] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.045)]">
+        <section className="rounded-ui-surface border border-aqua/35 bg-aqua/[0.055] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.045)]">
           <div className="flex flex-wrap items-center gap-4">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.11em] text-aqua">Atendimento em andamento</p>

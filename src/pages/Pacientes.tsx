@@ -45,12 +45,12 @@ function Lista() {
   return (
     <div className="space-y-7">
       <Reveal>
-        <section className="rounded-[24px] border border-line/75 bg-panel px-6 py-6 shadow-[0_16px_44px_rgba(8,22,18,0.055)] sm:px-7">
+        <section className="rounded-ui-surface border border-line/75 bg-panel px-6 py-6 shadow-[0_16px_44px_rgba(8,22,18,0.055)] sm:px-7">
           <div className="flex flex-wrap items-start gap-5">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold uppercase tracking-[0.08em] text-mint">Cadastro operacional</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-[34px] font-bold leading-tight tracking-[-0.025em]">Pacientes</h1>
+                <h1 className="font-display text-ui-page-title font-bold leading-tight tracking-[-0.025em]">Pacientes</h1>
                 <span className="rounded-full border border-line2/65 bg-raise/45 px-3 py-1 text-sm font-semibold text-fog">
                   {patients.filter((patient) => !patient.anonimizado).length} cadastrados
                 </span>
@@ -68,20 +68,20 @@ function Lista() {
                 value={q}
                 onChange={(event) => setQ(event.target.value)}
                 placeholder="Nome, telefone, e-mail ou CPF…"
-                className="!min-h-12 !rounded-2xl !pl-12 !pr-4 !text-base"
+                className="!min-h-ui-control !rounded-2xl !pl-12 !pr-4 !text-base"
               />
             </div>
             <Select
               value={stage}
               onChange={(event) => setStage(event.target.value as 'all' | FunilStage)}
-              className="!min-h-12 !w-full !rounded-2xl !px-4 !text-[15px] xl:!w-[220px]"
+              className="!min-h-ui-control !w-full !rounded-2xl !px-4 !text-[15px] xl:!w-[220px]"
             >
               <option value="all">Toda a jornada</option>
               {(Object.keys(STAGE_META) as FunilStage[]).map((item) => (
                 <option key={item} value={item}>{STAGE_META[item].label}</option>
               ))}
             </Select>
-            <Btn onClick={() => nav('/pacientes/novo')} className="!min-h-12 !rounded-2xl !px-5 !text-[15px]">
+            <Btn onClick={() => nav('/pacientes/novo')} className="!min-h-ui-control !rounded-2xl !px-5 !text-[15px]">
               <IconPlus className="h-5 w-5" /> Novo paciente
             </Btn>
           </div>

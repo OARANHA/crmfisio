@@ -68,7 +68,7 @@ function Login({ theme, onToggleTheme }: { theme: ColorTheme; onToggleTheme: () 
   return (
     <div className="app-surface min-h-screen flex items-center justify-center p-5 relative">
       <div className="absolute right-5 top-5"><ThemeButton theme={theme} onToggle={onToggleTheme} /></div>
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[24px] border border-line/75 bg-panel shadow-[0_24px_80px_rgba(15,28,24,0.12)]">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-ui-surface border border-line/75 bg-panel shadow-[0_24px_80px_rgba(15,28,24,0.12)]">
         <div className="px-8 pt-8">
           <div className="flex items-center gap-2.5">
             <PulseMark className="w-8 h-7" />
@@ -86,13 +86,13 @@ function Login({ theme, onToggleTheme }: { theme: ColorTheme; onToggleTheme: () 
           )}
           <div className="space-y-2">
             <label className="block text-[13px] font-semibold text-paper/80">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full min-h-12 rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="seu@email.com" required disabled={loading} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full min-h-ui-control rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="seu@email.com" required disabled={loading} />
           </div>
           <div className="space-y-2">
             <label className="block text-[13px] font-semibold text-paper/80">Senha</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full min-h-12 rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="••••••••" required disabled={loading} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full min-h-ui-control rounded-xl border border-line/80 bg-deep px-4 py-3 text-[15px] focus:border-mint focus:outline-none focus:ring-2 focus:ring-mint/10" placeholder="••••••••" required disabled={loading} />
           </div>
-          <button type="submit" disabled={loading || !email || !password} className="w-full min-h-12 rounded-xl bg-mint text-on-accent hover:brightness-105 font-display font-semibold py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-mint/10">
+          <button type="submit" disabled={loading || !email || !password} className="w-full min-h-ui-control rounded-xl bg-mint text-on-accent hover:brightness-105 font-display font-semibold py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-mint/10">
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
@@ -190,11 +190,11 @@ function RouteContentFallback() {
       <span className="sr-only">Carregando módulo…</span>
       <div className="h-10 w-64 max-w-[70%] animate-pulse rounded-xl bg-raise/70" />
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
-        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
-        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
+        <div className="h-28 animate-pulse rounded-ui-data-surface border border-line/60 bg-panel/80" />
+        <div className="h-28 animate-pulse rounded-ui-data-surface border border-line/60 bg-panel/80" />
+        <div className="h-28 animate-pulse rounded-ui-data-surface border border-line/60 bg-panel/80" />
       </div>
-      <div className="h-72 animate-pulse rounded-[24px] border border-line/60 bg-panel/80" />
+      <div className="h-72 animate-pulse rounded-ui-surface border border-line/60 bg-panel/80" />
     </div>
   );
 }
@@ -357,7 +357,7 @@ export function Shell() {
             onClick={() => setMobileOpen(false)}
             title={compact ? label : undefined}
             className={({ isActive }) =>
-              `flex min-h-12 items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-[16px] leading-5 transition-colors ${
+              `flex min-h-ui-control items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-ui-body leading-5 transition-colors ${
                 isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
               }`
             }
@@ -372,7 +372,7 @@ export function Shell() {
 
   return (
     <div className="app-surface min-h-screen relative">
-      <aside className={`hidden lg:flex medicspro-sidebar fixed inset-y-0 left-0 ${collapsed ? 'w-[88px]' : 'w-[292px]'} flex-col border-r border-line/65 bg-deep/96 backdrop-blur-sm z-40 transition-[width] duration-200`}>
+      <aside className={`hidden lg:flex medicspro-sidebar fixed inset-y-0 left-0 ${collapsed ? 'w-ui-sidebar-compact' : 'w-ui-sidebar-expanded'} flex-col border-r border-line/65 bg-deep/96 backdrop-blur-sm z-40 transition-[width] duration-200`}>
         <div className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-3 px-6'} h-[76px] border-b border-line/60`}>
           <PulseMark className="h-7 w-8" />
           {!collapsed && <span className="font-display font-bold text-[18px] tracking-tight">MEDICSPRO<span className="text-pulse">.</span></span>}
@@ -417,7 +417,7 @@ export function Shell() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-[278px] flex flex-col border-r border-line bg-deep rv is-in">
             <div className="flex items-center justify-between px-5 h-16 border-b border-line/60">
-              <div className="flex items-center gap-2.5"><PulseMark className="w-6 h-5" /><span className="font-display font-bold text-[16px]">MEDICSPRO<span className="text-pulse">.</span></span></div>
+              <div className="flex items-center gap-2.5"><PulseMark className="w-6 h-5" /><span className="font-display font-bold text-ui-body">MEDICSPRO<span className="text-pulse">.</span></span></div>
               <button onClick={() => setMobileOpen(false)} className="text-fog"><IconX className="w-5 h-5" /></button>
             </div>
             {showPresentationControl && <div className="px-4 pt-4"><PresentationModeControl /></div>}
@@ -427,7 +427,7 @@ export function Shell() {
         </div>
       )}
 
-      <div className={`${collapsed ? 'lg:pl-[88px]' : 'lg:pl-[292px]'} relative transition-[padding] duration-200`}>
+      <div className={`${collapsed ? 'lg:pl-ui-sidebar-compact' : 'lg:pl-ui-sidebar-expanded'} relative transition-[padding] duration-200`}>
         <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-line/60 bg-ink/88 px-4 backdrop-blur-xl md:px-7 lg:hidden">
           <button className="text-fog hover:text-paper" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><IconMenu className="w-5 h-5" /></button>
           <PresentationHeaderControl />
@@ -440,7 +440,7 @@ export function Shell() {
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
         </header>
-        <main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-[16px] xl:px-12 xl:py-8">
+        <main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-ui-body xl:px-12 xl:py-8">
           <Suspense fallback={<RouteContentFallback />}>
             <Outlet />
           </Suspense>

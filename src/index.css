@@ -20,6 +20,19 @@
   /* `font-mono` era usado em excesso no legado visual. Mantemos números tabulares,
      mas a família agora segue o corpo. Código real deve usar <code>/<pre>. */
   --font-mono: "Aptos", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+
+  /* UI Foundation V2: additive comfortable-density tokens. */
+  --spacing-ui-control: 3rem;
+  --spacing-ui-sidebar-compact: 5.5rem;
+  --spacing-ui-sidebar-expanded: 18.25rem;
+  --text-ui-body: 1rem;
+  --text-ui-page-title: 2.125rem;
+  --text-ui-hero-title: 2.375rem;
+  --text-ui-hero-title-lg: 2.625rem;
+  --text-ui-metric-value: 2.125rem;
+  --radius-ui-surface: 1.5rem;
+  --radius-ui-data-surface: 1.375rem;
+  --radius-ui-hero: 1.875rem;
 }
 
 html {
