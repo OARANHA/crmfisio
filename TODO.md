@@ -52,10 +52,10 @@ Não iniciar uma tela isolada quando a decisão depende de entitlement, configur
 ## P0 — Pendências operacionais curtas antes de ampliar piloto
 
 - [x] Registrar prova read-only pós-finalização do smoke real do #394. Fechado em 2026-09-15: o único Encounter Record de produção está `finalized`, com `finalized_at`, exatamente uma Evolution ativa vinculada à mesma sessão/tenant/paciente/profissional, appointment `finalizado`, exatamente um lançamento financeiro coerente e zero `appointment_financial_exception`.
-- [ ] Executar/documentar smoke real das ações `CHARGE` e `WAIVE` do #389, se ainda não houver evidência posterior.
+- [x] Provar em produção o runtime `CHARGE` e `WAIVE` do #389 com autenticação real, idempotência e rollback sem resíduos. A exceção real `package_exhausted` continua pendente apenas como decisão econômica da clínica.
 - [x] Reconciliar o verifier #388 com #389. Fechado em 2026-09-15: o verifier #388 aceita o estado histórico pré-#389 e exige a composição auditada quando #389 existe; o harness PostgreSQL 16 prova ambos os estados e os controles negativos.
 - [ ] Fazer smoke visual e uso real suficiente do Consultório / Gestão (#396), especialmente owner/admin elegível, professional clinical-only, mobile e URL administrativa protegida.
-- [ ] Consolidar observabilidade mínima dos fluxos de beta antes de ampliar o número de clínicas.
+- [x] Consolidar observabilidade mínima dos fluxos de beta (#473), com operability check read-only e ausência de falha crítica no gate observado.
 
 **Não há rollout pendente de #399/#400 neste snapshot. Não reaplicar migrations nem repetir o repair apenas por documentação antiga.**
 
@@ -69,7 +69,7 @@ Não iniciar uma tela isolada quando a decisão depende de entitlement, configur
 - [ ] Validar linguagem e ordem clínica com médico e demais profissionais do piloto.
 - [ ] Implementar correção/adendo auditável para Encounter Record finalizado; nunca sobrescrever silenciosamente histórico.
 - [ ] Melhorar leitura longitudinal e comparação de registros sem tornar histórico editável.
-- [ ] Implementar autoentrada no Modo Consultório somente quando existir um ponto canônico único após iniciar/continuar o próprio Encounter; não inferir por rota/query ou mera existência de appointment ativo.
+- [x] Autoentrada segura no Modo Consultório (#478): somente handoff explícito de iniciar/continuar o próprio Encounter; sem inferência por rota/query ou mera existência de appointment ativo.
 
 ## P1 — Instrumentos clínicos multiprofissionais
 
@@ -90,32 +90,33 @@ PHQ-9/GAD-7 e instrumentos semelhantes podem ser multiprofissionais conforme fin
 Sequência canônica:
 
 1. [x] **Clinical Instrument Authorization Foundation (#399)** — efetiva no stack verificado; catálogo neutro expõe explicitamente apenas `phq9`/`gad7`, reutilizando a engine Nexus por referência técnica.
-2. [ ] **Clinician-Assisted Administration** — suportar administração presencial/assistida do mesmo instrumento/versionamento/scoring usado no self-assessment, com provenance explícita e `appointment_id` quando houver Encounter.
-3. [ ] **Encounter Instrument UX** — oferecer **Aplicar agora** e, somente quando houver boundary próprio, **Enviar ao paciente** dentro do atendimento, com estados de autorização/relevância distintos e sem criar segunda implementação de PHQ-9/GAD-7 no Assessment Engine.
-4. [ ] **Consultório V5 integration/polish** — integrar Instrumentos ao futuro Clinical Cockpit e absorver ergonomia do MedicsPro histórico sem portar arquitetura/autorização/autosave/checkout legados.
+2. [x] **Clinician-Assisted Administration** — PHQ-9/GAD-7 usam o mesmo engine/versionamento/scoring, com provenance `clinician_assisted` e `appointment_id`; PHQ-15 está instalado no mesmo caminho, fail-closed até habilitação explícita do tenant.
+3. [x] **Encounter Instrument UX — Aplicar agora** — disponível no workspace Instrumentos. **Enviar ao paciente** continua uma boundary separada e ainda aberta.
+4. [x] **Consultório V5 integration/polish estrutural** — Instrumentos integrados ao Cockpit/Encounter sem portar arquitetura/autorização/autosave/checkout legados; validação prolongada com profissionais reais continua no trilho de piloto.
 
 Requisitos associados:
 
-- [ ] Implementar a operação Clinician-Assisted Administration; #399 apenas autoriza o ato em Encounter, não coleta respostas nem calcula/persiste novo resultado multiprofissional.
-- [ ] Resolver disponibilidade/relevância de instrumento separadamente da autorização efetiva.
-- [ ] Preservar definição/versão/scoring validados de PHQ-9/GAD-7 na engine Nexus; não duplicar instrumento.
-- [ ] Diferenciar provenance pelo menos entre `patient_self` e `clinician_assisted`.
-- [ ] Desenhar `Enviar ao paciente` como boundary contextual separado.
-- [ ] Garantir que resposta positiva ao item 9 do PHQ-9 permaneça visível e gere destaque para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
+- [x] Clinician-Assisted Administration coleta respostas, calcula/persiste resultado multiprofissional e vincula ao Encounter.
+- [x] Disponibilidade/relevância permanecem separadas da autorização efetiva.
+- [x] Definição/versão/scoring de PHQ-9/GAD-7 continuam compartilhados com a engine canônica; não existe instrumento duplicado.
+- [x] Provenance diferencia `patient_self` de `clinician_assisted`.
+- [ ] Desenhar/fechar `Enviar ao paciente` como boundary contextual separado.
+- [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos
 
-- [ ] Prescription V1 com contrato server-side, autoria, versão, assinatura/emitente e histórico compatíveis com o piloto.
-- [ ] Priorizar demais documentos médicos somente conforme evidência de uso do piloto: atestado/declaração, solicitação de exame, relatório/laudo e outros documentos permitidos.
+- [x] Prescrição clínica com contrato server-side, autoria, versão, emitente e snapshot imutável de emissão.
+- [x] Pedido de Exames, Orientação Terapêutica e Encaminhamento clínico já operam no Clinical Documents engine canônico.
+- [ ] Priorizar apenas os documentos ainda ausentes conforme evidência de uso do piloto, como atestado/declaração e relatório/laudo quando necessários.
 - [ ] Evoluir anexos/documentos clínicos sem criar botões fictícios antes do contrato canônico existir.
 
 ## P1 — Cobertura deste atendimento
 
-- [ ] Criar componente contextual de cobertura do Encounter sem expor o Financeiro global no Consultório.
-- [ ] Exibir somente informação necessária ao atendimento atual: particular/pacote e estado de cobertura/pagamento autorizado.
-- [ ] Preservar a regra: falha esperada de cobertura (`package_exhausted`, `package_expired`, `package_not_eligible`) **não apaga uma finalização clínica válida**; registrar `appointment_financial_exception`.
-- [ ] Nunca consumir sessão gratuitamente/silenciosamente.
-- [ ] Manter resolução explícita de exceção: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`, recep/professional sem resolução.
+- [x] #479 — componente contextual de cobertura do próprio Encounter sem expor o Financeiro global no Consultório.
+- [x] Projeção retorna apenas particular/pacote, estado contextual, nome do pacote quando aplicável e sinal de atenção administrativa; sem valores, IDs ou fila global.
+- [x] Falha esperada de cobertura (`package_exhausted`, `package_expired`, `package_not_eligible`) continua sem apagar finalização clínica válida; `appointment_financial_exception` permanece o mecanismo canônico.
+- [x] Leitura contextual nunca consome sessão nem cria efeito financeiro.
+- [x] Resolução explícita continua separada: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`, recep/professional sem resolução.
 
 ---
 
@@ -149,7 +150,7 @@ User/Professional → executa ações autorizadas
 
 Antes de novas foundations neste eixo:
 
-- [ ] Auditar `PlatformAdminShell`, páginas atuais, `platformAdmin` lib, entitlement RPCs/tabelas, provisioning, audit log e receita/assinaturas existentes.
+- [x] Inventário profundo Platform Admin atual × MedicsPro histórico concluído em 2026-09-11; manter `docs/PLATFORM_AND_LEGACY_GAP_AUDIT_20260911.md` como referência antes de novas foundations.
 - [ ] Abrir diretamente no `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83` os equivalentes de:
   - Clinics/lifecycle;
   - Plans;
@@ -341,10 +342,9 @@ Não tratar como TODO implícito sem evidência de necessidade:
 
 Explicitamente **não tratar como entregue**:
 
-- administração assistida de PHQ-9/GAD-7;
-- persistência multiprofissional nova de respostas/resultados;
-- UI PHQ/GAD no Encounter;
 - `Enviar ao paciente` ou qualquer boundary de entrega remota;
+- habilitação automática de PHQ-15 sem decisão explícita do tenant;
+- novos instrumentos sem definição/versionamento/authorization canônicos;
 - Enfermagem como identidade profissional suportada;
 - relaxamento de C-01…C-06 ou grant de `nexus.*` para resolver instrumentos multiprofissionais;
 - Control Plane completo descrito no documento de plataforma;

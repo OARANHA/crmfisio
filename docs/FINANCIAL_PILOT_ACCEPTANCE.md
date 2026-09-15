@@ -82,16 +82,18 @@ O histórico de pagamento não deve ser apagado para “corrigir” um cancelame
 
 Crédito, reembolso, retenção ou transferência para reagendamento devem preservar rastreabilidade; não sobrescrever lançamento liquidado.
 
-## Cobertura deste atendimento — slice futura
+## Cobertura deste atendimento — PROD #479
 
-O Modo Consultório não deve expor Financeiro global. Uma próxima slice pode mostrar apenas contexto financeiro necessário ao Encounter atual, como:
+A #479 implementa uma projeção read-only estritamente vinculada ao próprio Encounter `em_atendimento`. A RPC exige identidade clínica válida + `clinical.attend` + profissional atribuído ao appointment e não exige `finance.access`.
+
+O Consultório pode exibir:
 
 - particular/pacote;
-- cobertura aplicável;
-- estado do efeito financeiro daquele atendimento;
-- exceção financeira daquele appointment quando o ator puder vê-la.
+- estado contextual de cobertura/pagamento daquele appointment;
+- nome do pacote quando aplicável;
+- sinal neutro de atenção administrativa.
 
-Não mostrar no Consultório saldo geral de caixa, faturamento mensal, lucro, repasses globais ou informação de outros profissionais apenas porque o ator também possui acesso de gestão.
+Ela não retorna valor, ID de pagamento, histórico de recebíveis, fila financeira ou ação de resolução. Não mostra caixa, faturamento mensal, lucro, repasses globais ou informação de outros profissionais. A conclusão clínica permanece separada do acerto administrativo.
 
 ## Smoke / evidência
 
@@ -107,24 +109,19 @@ Não mostrar no Consultório saldo geral de caixa, faturamento mensal, lucro, re
 
 A dívida histórica foi encerrada. O verifier #388 é composition-aware: valida a fundação sem #389 e, quando `resolve_appointment_financial_exception(uuid,text,text)` existe, exige a resolução auditada e mantém a fila diretamente imutável.
 
-Em 2026-09-15, `scripts/test-financial-exception-resolution.sh` passou integralmente em PostgreSQL 16, incluindo #388 pré-#389, #388 pós-#389, verifier #389, concorrência/idempotência e controles negativos. Essa prova é técnica; smoke real de `CHARGE`/`WAIVE` continua uma evidência operacional separada.
+Em 2026-09-15, `scripts/test-financial-exception-resolution.sh` passou integralmente em PostgreSQL 16, incluindo #388 pré-#389, #388 pós-#389, verifier #389, concorrência/idempotência e controles negativos. Depois, `CHARGE` e `WAIVE` também foram exercidos no runtime de produção dentro de transações revertidas, com autenticação real, idempotência e pós-check sem resíduos.
 
-### Smoke real ainda não declarado
+### Runtime de resolução observado em produção
 
-Se não houver evidência posterior registrada, manter como pendentes:
+A prova de 2026-09-15 confirmou transitoriamente `CHARGE` e `WAIVE` no banco vivo, incluindo materialização esperada, idempotência e conflito bloqueado, seguida de `ROLLBACK` e pós-check sem resíduos. Essa evidência fecha o runtime técnico.
 
-- `CHARGE` real por owner/admin e financeiro autorizado;
-- `WAIVE` real por owner/admin;
-- negação real para recep/professional;
-- efeitos finais/auditoria associados.
-
-Não marcar esses itens como concluídos apenas porque o verifier estrutural está verde.
+Ela **não** autoriza escolher `CHARGE` ou `WAIVE` para a exceção real `package_exhausted`: essa disposição permanece uma decisão econômica da clínica.
 
 ## Próximas evoluções de produto
 
 Conforme o piloto demonstrar necessidade:
 
-- **Cobertura deste atendimento** dentro do Encounter;
+- observar **Cobertura deste atendimento** (#479) em uso real e ajustar somente por evidência;
 - configuração solo/equipe;
 - categorias financeiras;
 - parceiro/repasse percentual ou fixo com effective dates/histórico;

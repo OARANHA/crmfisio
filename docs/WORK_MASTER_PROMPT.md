@@ -100,7 +100,7 @@ Professional é Consultório-only. Owner/admin só alternam se identidade clíni
 
 Trocar contexto não altera role, JWT, tenant, RLS, capability, entitlement ou `canView`.
 
-Autoentrada automática no Consultório ainda não está implementada e não deve ser simulada por heurística de rota/query.
+#478 implementou autoentrada somente no handoff explícito de iniciar/continuar o próprio Encounter. Nunca ampliar isso para heurística de rota/query, abertura de paciente ou mera existência de appointment ativo.
 
 ## Estado de produção relevante
 
@@ -108,7 +108,7 @@ Em 2026-09-10, a migration #394 já foi aplicada em produção e o verifier prod
 
 Não reaplique #394 com base em documentação antiga. O verifier `...FOUNDATION.sql` pertence ao harness de 34 casos; o verifier `...PRODUCTION.sql` é o read-only apropriado para schema real.
 
-A prova read-only pós-finalização do smoke real #394 foi registrada em produção em 2026-09-15. O smoke `CHARGE`/`WAIVE` #389 permanece pendente enquanto não houver evidência operacional posterior registrada no repositório.
+A prova read-only pós-finalização do #394 foi registrada em produção em 2026-09-15. No mesmo dia, `CHARGE` e `WAIVE` do #389 foram exercidos no runtime real dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos; a exceção real continua decisão econômica da clínica.
 
 ## Forma de trabalhar
 
@@ -149,12 +149,12 @@ O objetivo é **beta controlado com profissionais reais**, não crescimento indi
 
 Sequência recomendada:
 
-0. fechar smokes/observabilidade pendentes #389/#396; #394 pós-finalização está fechado por evidência read-only de produção;
-1. Encounter UX / physician ergonomics;
-2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`) para PHQ-9/GAD-7 e instrumentos pertinentes;
-4. Prescription V1;
-5. demais documentos médicos conforme evidência do piloto;
+0. fechar evidência visual/autenticada residual #396 e piloto humano; #389 runtime e #394 pós-finalização já possuem prova de produção;
+1. Encounter UX / ergonomia observada em uso real;
+2. correction/addendum auditável para Encounter Record finalizado;
+3. histórico neutro de instrumentos clinician-assisted;
+4. Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+5. documentos clínicos ainda ausentes conforme evidência do piloto;
 6. Finance Configuration: solo/team, categorias e parceiro %/fixo com history/effective dates;
 7. onboarding/pilot friction;
 8. financeiro avançado/integracões conforme demanda observada.

@@ -83,7 +83,7 @@ Modo Consultório oculta visualmente Financeiro global, CRM gerencial, Relatóri
 
 Trocar contexto não muda role, JWT, tenant, RLS, capabilities, entitlements ou `canView`. A preferência local é isolada por `user_id + clinic_id`.
 
-Autoentrada automática no Consultório após iniciar/continuar um atendimento ainda não foi implementada; aguarda um ponto canônico único de transição.
+Desde a #478, uma ação explícita de **Iniciar/Continuar atendimento** pode solicitar entrada em Consultório pelo `PresentationContextProvider`. Rota, query, mera abertura de paciente ou simples existência de appointment ativo não fazem autoentrada e não criam autorização.
 
 ---
 
@@ -120,6 +120,8 @@ A resolução explícita posterior segue o contrato atual:
 - `recep/professional`: sem ação de resolução.
 
 Falhas financeiras inesperadas de integridade continuam fail-closed e podem reverter a transação clínica, conforme os invariantes PostgreSQL existentes.
+
+Desde a #479, o Consultório possui **Cobertura deste atendimento** como projeção read-only do próprio Encounter ativo: particular/pacote, estado contextual, nome do pacote quando aplicável e atenção administrativa. Não expõe Financeiro global, valores, IDs de pagamento, fila financeira nem concede ação `CHARGE`/`WAIVE` ao profissional.
 
 ---
 
