@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { isCancelledError, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabaseClient';
 import { useAuth } from './useAuth';
 import { anonymizePatient as persistAnonymizePatient, insertPatient, mapPatient, updatePatientStage } from './repository';
 import { canManagePatientFunnel } from './permissions';
+import { patientQueryKey } from './clinicQuery';
 import type { Database, Json } from './database.types';
 import type { FunilStage, Patient, Role } from './types';
 
@@ -20,71 +22,115 @@ interface PatientState {
 }
 const PatientContext = createContext<PatientState | null>(null);
 
-async function loadClinicalSnapshot(role: Role): Promise<PatientClinicalSnapshot[]> {
+async function awaitAbortable<T>(request: PromiseLike<T> & { abortSignal?: (signal: AbortSignal) => PromiseLike<T> }, signal: AbortSignal): Promise<T> {
+  return typeof request.abortSignal === 'function' ? await request.abortSignal(signal) : await request;
+}
+
+async function loadClinicalSnapshot(role: Role, signal: AbortSignal): Promise<PatientClinicalSnapshot[]> {
   if (!CLINICAL_ROLES.includes(role)) return [];
-  const { data, error } = await (supabase as unknown as { rpc: (name: 'list_patient_clinical_snapshot', args?: Record<string, never>) => Promise<{ data: PatientClinicalSnapshot[] | null; error: unknown }> }).rpc('list_patient_clinical_snapshot');
+  const request = (supabase as any).rpc('list_patient_clinical_snapshot') as PromiseLike<{ data: PatientClinicalSnapshot[] | null; error: unknown }> & { abortSignal?: (signal: AbortSignal) => PromiseLike<{ data: PatientClinicalSnapshot[] | null; error: unknown }> };
+  const { data, error } = await awaitAbortable(request, signal);
   if (error) throw error;
   return data ?? [];
 }
 
+async function loadPatients(clinicId: string, role: Role, signal: AbortSignal): Promise<Patient[]> {
+  const operationalRequest = supabase.from('patients')
+    .select(PATIENT_OPERATIONAL_SELECT)
+    .eq('clinic_id', clinicId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+  const [patientsResult, clinicalSnapshot] = await Promise.all([
+    awaitAbortable(operationalRequest as any, signal),
+    loadClinicalSnapshot(role, signal),
+  ]);
+  if ((patientsResult as any).error) throw (patientsResult as any).error;
+  const clinicalByPatient = new Map(clinicalSnapshot.map((row) => [row.patient_id, row]));
+  return ((patientsResult as any).data ?? []).map((row: PatientRow) => {
+    const clinical = clinicalByPatient.get(row.id);
+    return mapPatient({ ...row, queixa_principal: clinical?.queixa_principal ?? null, cid10: clinical?.cid10 ?? [], anamnese: clinical?.anamnese ?? null } as PatientRow);
+  });
+}
+
 export function PatientProvider({ children }: { children: ReactNode }) {
-  const { profile, tenantAccessState } = useAuth();
+  const { session, profile, tenantAccessState } = useAuth();
   const clinicId = profile?.clinic_id ?? null;
+  const userId = session?.user.id ?? null;
   const role = (profile?.role ?? null) as Role | null;
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const generation = useRef(0);
+  const enabled = Boolean(clinicId && userId && role && tenantAccessState === 'active');
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => patientQueryKey({ clinicId, userId, role }), [clinicId, userId, role]);
+  const queryFn = useCallback(({ signal }: { signal: AbortSignal }) => loadPatients(clinicId!, role!, signal), [clinicId, role]);
+  const { data: patientData, error: queryError, isFetching, refetch } = useQuery({ queryKey, queryFn, enabled });
 
   const refreshPatients = useCallback(async () => {
-    const request = ++generation.current;
-    if (!clinicId || !role || tenantAccessState !== 'active') {
-      setPatients([]); setLoading(false); setError(null); return;
-    }
-    setLoading(true);
+    if (!enabled) return;
     try {
-      const [patientsResult, clinicalSnapshot] = await Promise.all([
-        supabase.from('patients').select(PATIENT_OPERATIONAL_SELECT).eq('clinic_id', clinicId).is('deleted_at', null).order('created_at', { ascending: false }),
-        loadClinicalSnapshot(role),
-      ]);
-      if (request !== generation.current) return;
-      if (patientsResult.error) throw patientsResult.error;
-      const clinicalByPatient = new Map(clinicalSnapshot.map((row) => [row.patient_id, row]));
-      const mapped = (patientsResult.data ?? []).map((row) => {
-        const clinical = clinicalByPatient.get(row.id);
-        return mapPatient({ ...row, queixa_principal: clinical?.queixa_principal ?? null, cid10: clinical?.cid10 ?? [], anamnese: clinical?.anamnese ?? null } as PatientRow);
-      });
-      setPatients(mapped); setError(null);
+      await refetch({ cancelRefetch: true, throwOnError: true });
     } catch (cause) {
-      if (request !== generation.current) return;
-      console.error('[MedicsPro] pacientes:', cause); setError('Não foi possível carregar os pacientes.'); throw cause;
-    } finally {
-      if (request === generation.current) setLoading(false);
+      if (isCancelledError(cause)) return;
+      console.error('[MedicsPro] pacientes:', cause);
+      throw cause;
     }
-  }, [clinicId, role, tenantAccessState]);
+  }, [enabled, refetch]);
 
-  useEffect(() => { void refreshPatients().catch(() => undefined); }, [refreshPatients]);
+  const { mutateAsync: addPatientMutation } = useMutation({
+    mutationFn: async (patient: Omit<Patient, 'id' | 'createdAt' | 'anamnese'> & { anamnese?: Patient['anamnese'] }) => {
+      if (!clinicId) throw new Error('Clínica não identificada');
+      const payload: Omit<Patient, 'id' | 'createdAt'> = { ...patient, anamnese: patient.anamnese ?? { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' } };
+      return insertPatient(clinicId, payload);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey, exact: true });
+    },
+    onSuccess: (created) => queryClient.setQueryData<Patient[]>(queryKey, (current = []) => [created, ...current]),
+  });
 
-  const addPatient = useCallback(async (patient: Omit<Patient, 'id' | 'createdAt' | 'anamnese'> & { anamnese?: Patient['anamnese'] }) => {
-    if (!clinicId) throw new Error('Clínica não identificada');
-    const payload: Omit<Patient, 'id' | 'createdAt'> = { ...patient, anamnese: patient.anamnese ?? { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' } };
-    const created = await insertPatient(clinicId, payload); setPatients((current) => [created, ...current]); return created;
-  }, [clinicId]);
+  const { mutateAsync: setFunilStageMutation } = useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: FunilStage }) => updatePatientStage(id, stage),
+    onMutate: async ({ id, stage }) => {
+      if (!canManagePatientFunnel(role)) throw new Error('Sem permissão para alterar o funil do CRM');
+      await queryClient.cancelQueries({ queryKey, exact: true });
+      const previous = queryClient.getQueryData<Patient[]>(queryKey) ?? [];
+      queryClient.setQueryData<Patient[]>(queryKey, previous.map((patient) => patient.id === id ? { ...patient, funilStage: stage } : patient));
+      return { previous };
+    },
+    onError: (_cause, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+  });
 
-  const setFunilStage = useCallback(async (id: string, stage: FunilStage) => {
-    if (!canManagePatientFunnel(role)) throw new Error('Sem permissão para alterar o funil do CRM');
-    let previous: Patient | undefined;
-    setPatients((current) => current.map((patient) => { if (patient.id !== id) return patient; previous = patient; return { ...patient, funilStage: stage }; }));
-    try { await updatePatientStage(id, stage); }
-    catch (cause) { if (previous) { const rollback = previous; setPatients((current) => current.map((patient) => patient.id === id ? rollback : patient)); } throw cause; }
-  }, [role]);
+  const { mutateAsync: anonymizePatientMutation } = useMutation({
+    mutationFn: persistAnonymizePatient,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey, exact: true });
+    },
+    onSuccess: (_result, id) => queryClient.setQueryData<Patient[]>(queryKey, (current = []) => current.map((item) => item.id === id ? {
+      ...item,
+      nome: 'Paciente Anonizado', cpf: '', telefone: '', email: '', queixaPrincipal: '', convenio: null, cid10: [], ultimaVisita: null,
+      optInWhats: false, status: 'inativo', anonimizado: true,
+      anamnese: { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' },
+    } : item)),
+  });
 
-  const anonymizePatient = useCallback(async (id: string) => {
-    await persistAnonymizePatient(id);
-    setPatients((current) => current.map((item) => item.id === id ? { ...item, nome: 'Paciente Anonizado', cpf: '', telefone: '', email: '', queixaPrincipal: '', convenio: null, cid10: [], ultimaVisita: null, optInWhats: false, status: 'inativo', anonimizado: true, anamnese: { historia: '', cirurgias: '', medicamentos: '', alergias: '', objetivo: '' } } : item));
-  }, []);
-
-  const value = useMemo<PatientState>(() => ({ patients, loading, error, refreshPatients, addPatient, setFunilStage, anonymizePatient }), [patients, loading, error, refreshPatients, addPatient, setFunilStage, anonymizePatient]);
+  const addPatient = useCallback((patient: Parameters<typeof addPatientMutation>[0]) => addPatientMutation(patient), [addPatientMutation]);
+  const setFunilStage = useCallback(async (id: string, stage: FunilStage) => { await setFunilStageMutation({ id, stage }); }, [setFunilStageMutation]);
+  const anonymizePatient = useCallback(async (id: string) => { await anonymizePatientMutation(id); }, [anonymizePatientMutation]);
+  const error = queryError ? 'Não foi possível carregar os pacientes.' : null;
+  const value = useMemo<PatientState>(() => ({
+    patients: enabled ? (patientData ?? []) : [],
+    loading: enabled ? isFetching : false,
+    error,
+    refreshPatients,
+    addPatient,
+    setFunilStage,
+    anonymizePatient,
+  }), [enabled, patientData, isFetching, error, refreshPatients, addPatient, setFunilStage, anonymizePatient]);
   return <PatientContext.Provider value={value}>{children}</PatientContext.Provider>;
 }
-export function usePatients(): PatientState { const context = useContext(PatientContext); if (!context) throw new Error('usePatients deve ser usado dentro de PatientProvider'); return context; }
+
+export function usePatients(): PatientState {
+  const context = useContext(PatientContext);
+  if (!context) throw new Error('usePatients deve ser usado dentro de PatientProvider');
+  return context;
+}

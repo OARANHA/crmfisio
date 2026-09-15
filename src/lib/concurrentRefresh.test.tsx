@@ -17,6 +17,7 @@ vi.mock('./repository', () => ({
 import { AgendaProvider, useAgenda } from './agendaContext';
 import { FinanceProvider, useFinance } from './financeContext';
 import { PatientProvider, usePatients } from './patientContext';
+import { ClinicQueryProvider } from './clinicQuery';
 import { ClinicalProvider, useClinical } from './clinicalContext';
 
 function deferred<T>() {
@@ -25,7 +26,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-const auth = () => ({ profile: { id: 'user', clinic_id: 'clinic', role: 'owner', ativo: true }, tenantAccessState: 'active' });
+const auth = () => ({ session: { user: { id: 'user' } }, profile: { id: 'user', clinic_id: 'clinic', role: 'owner', ativo: true }, tenantAccessState: 'active' });
 const immediateQuery = () => {
   const query: any = { select: () => query, eq: () => query, is: () => query, order: () => Promise.resolve({ data: [], error: null }) };
   return query;
@@ -100,15 +101,17 @@ describe('same-session refresh ordering', () => {
   it('keeps the latest patient refresh', async () => {
     let state!: ReturnType<typeof usePatients>;
     function Probe() { state = usePatients(); return null; }
-    await mount(<PatientProvider><Probe /></PatientProvider>);
+    await mount(<ClinicQueryProvider><PatientProvider><Probe /></PatientProvider></ClinicQueryProvider>);
     const pending = pendingQueries();
     let first!: Promise<void>; let second!: Promise<void>;
     act(() => { first = state.refreshPatients(); second = state.refreshPatients(); });
     expect(pending).toHaveLength(2);
     await act(async () => { pending[1].resolve({ data: [{ id: 'new' }], error: null }); await second; });
     await act(async () => { pending[0].resolve({ data: [{ id: 'old' }], error: null }); await first; });
-    expect(state.patients.map((item) => item.id)).toEqual(['new']);
-    expect(state.loading).toBe(false);
+    await vi.waitFor(() => {
+      expect(state.patients.map((item) => item.id)).toEqual(['new']);
+      expect(state.loading).toBe(false);
+    });
   });
 
   it('keeps the latest clinical refresh', async () => {
