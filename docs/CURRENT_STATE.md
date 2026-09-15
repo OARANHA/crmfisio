@@ -19,34 +19,40 @@ Clinical Encounter visual                                     PROD
 Assessment Library V1                                         PROD
 D2-E4 Referral Operational Continuity                         PROD
 Clinic Referral Authoring Policy V1                           PROD
-PHQ-15 Clinician-Assisted V1                                  PR READY / NOT PROD
+PHQ-15 Clinician-Assisted V1                                  PROD BACKEND / FAIL-CLOSED VALIDATED
 ```
 
 ## Handoff ativo — PHQ-15 Clinician-Assisted V1
 
-Estado em 2026-09-13:
+Estado em **2026-09-14 (America/Sao_Paulo)** / 2026-09-15 UTC:
 
 ```text
-branch:                feat/phq15-clinician-assisted-v1
-PR:                    #461 — feat: add PHQ-15 clinician-assisted V1
-implementation commit: c26a27764d400590c750fc784151e9b5827723eb
-base:                  main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5
-CI implementation:     10/10 workflows verdes
-prod:                  NÃO aplicado / NÃO deployado
-merge:                 NÃO executado
+PR:                    #461 — MERGED
+merge SHA:             7bcf7b109b661e4c0ee4b7c4eada4097210edc0a
+current main:          7f3483f02abf289131a19e7a40292846ae4da5bf
+DB migration:          APPLIED
+production verifier:   PASSED (read-only)
+Edge shared engine:    DEPLOYED
+public processor:      DEPLOYED with PHQ-9/GAD-7 allowlist
+clinic settings PHQ15: 0
+persisted PHQ15 rows:  0
 ```
 
-A slice adiciona PHQ-15 somente ao fluxo clínico assistido `Aplicar agora`, reutilizando o ledger imutável e o writer server-side existentes. O self-assessment público permanece PHQ-9/GAD-7 e possui allowlist própria no processor para impedir exposição acidental por expansão da engine compartilhada.
+Produção contém o contrato versionado `nexus.phq15 / nexus-phq15-2026-09-13` e o mapeamento clínico neutro `phq15`, sem auto-grant e sem habilitar nenhuma clínica. O frontend já contém a UI clinician-assisted, mas `clinical_instrument_base_authorized()` permanece deny-by-default enquanto não houver setting explícito da clínica.
 
-Validação concluída antes do merge:
+Validação real executada no `28server / 158.220.97.145`:
 
-- Node 22: `100` arquivos / `553` testes verdes;
-- typecheck, lint, build e `git diff --check` verdes;
-- PostgreSQL 16 dedicado do PHQ-15 verde;
-- C-01, C-02, C-03, C-04 e C-06 verdes;
-- Clinical Foundation Reconciliation, Clinical Authorization Reconciliation, Clinical workflow CI e Clinician-Assisted Clinical Instruments V1 verdes.
+- migration `20260913_phq15_clinician_assisted_v1.sql` aplicada com COMMIT;
+- verifier `VERIFY_20260913_PHQ15_CLINICIAN_ASSISTED_V1.sql` passou integralmente em transação read-only;
+- shared engine e `nexus-self-assessment-processor` publicados com hashes pinados ao código mergeado;
+- self-assessment público rejeita `phq15` com HTTP 400;
+- clinician-assisted sem sessão permanece HTTP 401;
+- resolver do contrato retorna `nexus.scales` apenas como metadado/proveniência da engine;
+- `settings=0` e `ledger=0` após o rollout;
+- smoke positivo DB em Encounter real ativo executado somente dentro de `BEGIN ... ROLLBACK`: identidade/capability válidas, setting temporário, writer positivo, replay idempotente, snapshot versionado e imutabilidade comprovados;
+- pós-rollback: zero setting PHQ-15 e zero administração PHQ-15 persistidos.
 
-Invariantes da slice:
+Invariantes preservadas:
 
 ```text
 ENGINE != AUTHORIZATION != RELEVANCE
@@ -57,7 +63,7 @@ migration não habilita PHQ-15 automaticamente em nenhuma clínica
 PHQ-15 não vira diagnóstico, etiologia, prescrição ou encaminhamento automático
 ```
 
-Próximo passo seguro: revisar/mergear a #461 somente mediante autorização explícita. Depois do merge, a etapa de produção é separada e deve aplicar a migration `20260913_phq15_clinician_assisted_v1.sql`, publicar os componentes/runtime aplicáveis e executar smoke real. O smoke deve provar default-deny antes do setting, habilitação explícita, administração em Encounter autorizado, snapshot imutável/versionado e rejeição de `phq15` no self-assessment público.
+Próximo passo seguro: **não habilitar automaticamente nenhuma clínica**. Quando owner/admin de uma clínica escolher habilitar PHQ-15, executar um smoke E2E autenticado de `Aplicar agora` com sessão humana válida, confirmar snapshot real no ledger e então registrar a clínica como operacionalmente validada para PHQ-15.
 
 Documento de domínio: `docs/PHQ15_CLINICIAN_ASSISTED_V1.md`.
 

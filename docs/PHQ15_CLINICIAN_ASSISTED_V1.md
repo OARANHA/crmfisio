@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTATION SLICE — NOT DEPLOYED TO PRODUCTION.**
+**PRODUCTION BACKEND INSTALLED / FAIL-CLOSED VALIDATED — CLINIC ENABLEMENT PENDING.**
 
 Branch: `feat/phq15-clinician-assisted-v1`
 
@@ -88,7 +88,7 @@ Local Node 22 validation before PR:
 
 GitHub CI on implementation commit `c26a27764d400590c750fc784151e9b5827723eb` is fully green: `10/10` workflows completed successfully, including the dedicated disposable PostgreSQL 16 workflow `PHQ-15 Clinician-Assisted V1`, C-01/C-02/C-03/C-04/C-06, clinical foundation/authorization reconciliation, the general clinical workflow CI, and the existing clinician-assisted instrument gate.
 
-Production verification remains intentionally deferred until after an explicitly authorized merge and a separate explicit production action.
+Production rollout was executed on 2026-09-14 (America/Sao_Paulo; 2026-09-15 UTC) on the canonical `28server / 158.220.97.145` environment. The database migration is installed, the production-safe verifier passed, and the shared Edge engine plus public processor are pinned to the merged implementation. No clinic was enabled automatically.
 
 ## Out of scope
 
@@ -98,19 +98,34 @@ Production verification remains intentionally deferred until after an explicitly
 - automatic referral/prescription;
 - longitudinal PHQ-15 dashboard;
 - module/plan packaging changes;
-- production migration/deploy.
+- automatic clinic enablement;
+- persistent production administration without an explicit clinic setting and authenticated human smoke.
+
+## Production rollout evidence
+
+Production rollout on 2026-09-14 (America/Sao_Paulo; 2026-09-15 UTC) established:
+
+- migration installed: one `nexus_result_contracts` row and one active `clinical_instrument_catalog` row for PHQ-15;
+- production verifier: passed read-only;
+- Edge shared engine SHA-256: `79670f0ddafbfb6e4bb03ae3910da5cde4fa3eaf755b04a692731167b0526ab8`;
+- public processor SHA-256: `4b8f1a0020f79a3e4d849212045fe4d0d1181fcdf937d8ee154ad4fd79ab301f`;
+- public processor rejects `phq15` with HTTP 400 while preserving PHQ-9/GAD-7 public exposure;
+- clinician-assisted endpoint remains HTTP 401 without a session;
+- no persistent clinic setting was created (`settings=0`);
+- no persistent PHQ-15 administration exists from rollout (`ledger=0`).
+
+A positive writer smoke used one real active Encounter only inside a rollback-only transaction. The existing professional satisfied tenant, clinical identity and `clinical.instrument.apply`; a temporary PHQ-15 clinic setting allowed the canonical writer to create the versioned snapshot; replay returned the same row as idempotent; direct mutation was blocked by `clinical_instrument_administration_immutable`; `ROLLBACK` left zero PHQ-15 setting and zero PHQ-15 ledger residue.
+
+This proves the installed server contract and fail-closed/immutable writer behavior without fabricating a persistent clinical act. It is **not** a substitute for the first authenticated human `Aplicar agora` after a clinic deliberately enables PHQ-15.
 
 ## Continuity / next safe action
 
-The implementation is PR-ready and all local/CI gates are green. It is **not production state**.
+Do **not** auto-enable PHQ-15 for any tenant. The next operational step belongs to clinic configuration:
 
-Next sequence:
+1. owner/admin explicitly enables PHQ-15 for the chosen clinic through the canonical settings boundary;
+2. an authorized professional with an active own Encounter performs one authenticated `Aplicar agora` smoke;
+3. confirm the persisted versioned/immutable administration and normal UI result rendering;
+4. keep public self-assessment PHQ-15 rejected;
+5. only then call that clinic operationally validated for PHQ-15.
 
-1. merge PR #461 only after explicit authorization;
-2. treat production rollout as a separate controlled step;
-3. apply `supabase-migrations/20260913_phq15_clinician_assisted_v1.sql`;
-4. deploy the affected application/runtime surfaces;
-5. smoke the fail-closed clinic setting, authorized `Aplicar agora`, immutable/versioned administration snapshot, and the public rejection of PHQ-15;
-6. only then update `docs/CURRENT_STATE.md` and this document to `VALIDADO EM PRODUÇÃO`.
-
-If another chat/agent resumes this work before merge, start from `docs/CURRENT_STATE.md`, this document, and PR #461; do not recreate the PHQ-15 implementation or broaden public exposure.
+Future agents should start from `docs/CURRENT_STATE.md`, this document, and the production release evidence; do not recreate the implementation, reapply the migration, or broaden public exposure.
