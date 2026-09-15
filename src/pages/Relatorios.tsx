@@ -137,8 +137,8 @@ export function Relatorios() {
       <Reveal>
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">Relatórios de produção</h1>
-            <p className="text-fog text-[13px] mt-0.5">
+            <h1 className="medicspro-page-title">Relatórios de produção</h1>
+            <p className="medicspro-page-subtitle">
               {unidade ? unidade.nome : 'Consolidado · todas as unidades'} · competência {format(new Date(mes + '-01T12:00'), 'MMMM/yyyy', { locale: ptBR })}
             </p>
           </div>

@@ -33,11 +33,11 @@ export function ConfigPremium() {
   return (
     <div className="space-y-4">
       <header className="border-b border-line/70 pb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-mint">Administração da clínica</p>
+        <p className="medicspro-kicker">Administração da clínica</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-[28px] font-bold tracking-tight md:text-[32px]">Configurações</h1>
-            <p className="mt-1.5 max-w-3xl text-[12.5px] leading-relaxed text-fog">Gerencie a operação da clínica em áreas independentes, sem perder o contexto da configuração atual.</p>
+            <h1 className="medicspro-page-title">Configurações</h1>
+            <p className="medicspro-page-subtitle !mt-1.5">Gerencie a operação da clínica em áreas independentes, sem perder o contexto da configuração atual.</p>
           </div>
           <div className="hidden text-right lg:block">
             <p className="font-display text-[12px] font-semibold text-paper">{activeMeta.title}</p>

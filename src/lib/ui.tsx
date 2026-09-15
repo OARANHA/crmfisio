@@ -96,15 +96,15 @@ export function Chip({ className = '', children }: { className?: string; childre
 }
 
 export function Card({ className = '', children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-[18px] border border-line/75 bg-panel shadow-[0_8px_28px_rgba(15,28,24,0.045)] ${className}`}>{children}</div>;
+  return <div className={`medicspro-card rounded-[18px] border border-line/75 bg-panel ${className}`}>{children}</div>;
 }
 
 export function CardHead({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5.5 pt-5 pb-4 border-b border-line/60">
+    <div className="medicspro-card-head flex items-start justify-between gap-4 rounded-t-[18px] border-b border-line/60 px-5.5 pb-4 pt-5">
       <div>
-        <h3 className="font-display font-semibold text-[16px] leading-tight tracking-[-0.01em]">{title}</h3>
-        {sub && <p className="text-[13px] text-fog mt-1.5 leading-relaxed">{sub}</p>}
+        <h3 className="font-display font-semibold text-[16.5px] leading-tight tracking-[-0.01em] text-paper">{title}</h3>
+        {sub && <p className="mt-1.5 text-[13.5px] leading-relaxed text-fog">{sub}</p>}
       </div>
       {right}
     </div>
@@ -114,7 +114,7 @@ export function CardHead({ title, sub, right }: { title: string; sub?: string; r
 export function Btn({
   variant = 'primary', className = '', children, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' | 'subtle' }) {
-  const base = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl font-display font-semibold text-[14px] px-4 py-2.5 transition-all active:translate-y-px disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/40';
+  const base = 'medicspro-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-display text-[14.5px] font-semibold transition-all active:translate-y-px disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/45';
   const v =
     variant === 'primary' ? 'bg-mint text-on-accent shadow-sm shadow-mint/10 hover:brightness-105'
     : variant === 'danger' ? 'bg-pulse text-white hover:brightness-105'
@@ -149,14 +149,14 @@ export function Modal({
   );
 }
 
-const fieldCls = 'w-full min-h-11 rounded-xl bg-deep border border-line/80 px-3.5 py-2.5 text-[14.5px] text-paper placeholder:text-fog/55 focus:outline-none focus:border-mint/65 focus:ring-2 focus:ring-mint/10 transition-colors';
+const fieldCls = 'medicspro-field w-full min-h-11 rounded-xl border px-3.5 py-2.5 text-[15px] text-paper placeholder:text-fog/70 focus:outline-none focus:border-mint/70 transition-colors';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="block text-[13px] font-semibold text-paper/80 mb-1.5">{label}</span>
+      <span className="mb-1.5 block text-[13.5px] font-semibold text-paper/90">{label}</span>
       {children}
-      {hint && <span className="block text-[12px] text-fog/80 mt-1.5 leading-relaxed">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-[12.75px] leading-relaxed text-fog">{hint}</span>}
     </label>
   );
 }
@@ -174,9 +174,9 @@ export function Bar({ pct, color = '#4fd1a5', className = '' }: { pct: number; c
 
 export function Empty({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
-    <div className="rounded-[18px] border border-dashed border-line2/75 bg-deep/35 px-6 py-11 text-center">
+    <div className="medicspro-card rounded-[18px] border border-dashed border-line2/75 px-6 py-11 text-center">
       <p className="font-display font-semibold text-[16px] text-paper/85">{title}</p>
-      {sub && <p className="text-[13px] text-fog mt-2 leading-relaxed max-w-2xl mx-auto">{sub}</p>}
+      {sub && <p className="mx-auto mt-2 max-w-2xl text-[13.5px] leading-relaxed text-fog">{sub}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );

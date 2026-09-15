@@ -45,17 +45,17 @@ function Lista() {
   return (
     <div className="space-y-7">
       <Reveal>
-        <section className="rounded-ui-surface border border-line/75 bg-panel px-6 py-6 shadow-[0_16px_44px_rgba(8,22,18,0.055)] sm:px-7">
+        <section className="medicspro-card rounded-ui-surface border px-6 py-6 sm:px-7">
           <div className="flex flex-wrap items-start gap-5">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold uppercase tracking-[0.08em] text-mint">Cadastro operacional</p>
+              <p className="medicspro-kicker">Cadastro operacional</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-ui-page-title font-bold leading-tight tracking-[-0.025em]">Pacientes</h1>
+                <h1 className="medicspro-page-title">Pacientes</h1>
                 <span className="rounded-full border border-line2/65 bg-raise/45 px-3 py-1 text-sm font-semibold text-fog">
                   {patients.filter((patient) => !patient.anonimizado).length} cadastrados
                 </span>
               </div>
-              <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-fog">
+              <p className="medicspro-page-subtitle !mt-2 !max-w-3xl !text-[15px]">
                 Localize rapidamente o cadastro administrativo; dados clínicos ficam no prontuário conforme relação assistencial.
               </p>
             </div>

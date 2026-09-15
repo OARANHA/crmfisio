@@ -14,6 +14,8 @@
   --color-aqua: #79b9d0;
   --color-pulse: #e96b73;
   --color-steel: #afbdc2;
+  --color-clinical-blue: #8ab8f0;
+  --color-clinical-violet: #aa9cf0;
   --color-on-accent: #082019;
   --font-display: "Aptos Display", "Aptos", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-body: "Aptos", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -44,27 +46,29 @@ html {
 }
 
 html[data-theme='light'] {
-  --color-ink: #f1f5f3;
-  --color-deep: #f7faf8;
+  --color-ink: #f3f7f5;
+  --color-deep: #f8fbf9;
   --color-panel: #ffffff;
-  --color-raise: #eaf1ee;
-  --color-line: #d9e4df;
-  --color-line2: #bfd0c8;
-  --color-paper: #14201c;
-  --color-fog: #5a6c64;
-  --color-mint: #0f8069;
-  --color-amber: #9f661d;
-  --color-aqua: #2a7893;
-  --color-pulse: #c94d59;
-  --color-steel: #586f77;
+  --color-raise: #e9f1ed;
+  --color-line: #d4e1db;
+  --color-line2: #b7cbc2;
+  --color-paper: #102019;
+  --color-fog: #465b52;
+  --color-mint: #0b8068;
+  --color-amber: #a45f18;
+  --color-aqua: #287894;
+  --color-pulse: #c64654;
+  --color-steel: #526970;
+  --color-clinical-blue: #2f6fbd;
+  --color-clinical-violet: #6858c7;
   --color-on-accent: #ffffff;
 }
 
 body {
   @apply bg-ink text-paper font-body antialiased;
   min-width: 320px;
-  font-size: 15.5px;
-  line-height: 1.58;
+  font-size: 16px;
+  line-height: 1.6;
   letter-spacing: 0;
   transition: background-color 180ms ease, color 180ms ease;
 }
@@ -138,6 +142,129 @@ html[data-theme='light'] .app-surface {
   background:
     radial-gradient(1000px 560px at 15% -10%, color-mix(in srgb, var(--color-mint) 4%, transparent), transparent 68%),
     radial-gradient(900px 560px at 92% 4%, color-mix(in srgb, var(--color-aqua) 3%, transparent), transparent 70%);
+}
+
+
+
+/* Visual Comfort System V1 — designed for sustained all-day use, not screenshot-only polish. */
+:root {
+  --comfort-info: var(--color-clinical-blue);
+  --comfort-focus: var(--color-aqua);
+  --comfort-attention: var(--color-amber);
+  --comfort-success: var(--color-mint);
+  --comfort-document: var(--color-clinical-violet);
+}
+
+
+.medicspro-page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 2vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+  color: var(--color-paper);
+}
+
+.medicspro-page-subtitle {
+  margin-top: 0.4rem;
+  max-width: 72ch;
+  font-size: 0.925rem;
+  line-height: 1.58;
+  color: var(--color-fog);
+}
+
+.medicspro-kicker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--color-mint);
+}
+
+.medicspro-card {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-aqua) 1.6%, transparent), transparent 52%);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--color-deep) 18%, transparent);
+}
+
+.medicspro-card-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-raise) 16%, transparent), transparent);
+}
+
+.medicspro-field {
+  background: color-mix(in srgb, var(--color-deep) 94%, var(--color-panel));
+  border-color: color-mix(in srgb, var(--color-line2) 72%, var(--color-line));
+}
+
+.medicspro-field:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-mint) 14%, transparent);
+}
+
+.comfort-tone-info { --comfort-accent: var(--comfort-info); }
+.comfort-tone-focus { --comfort-accent: var(--comfort-focus); }
+.comfort-tone-attention { --comfort-accent: var(--comfort-attention); }
+.comfort-tone-success { --comfort-accent: var(--comfort-success); }
+.comfort-tone-document { --comfort-accent: var(--comfort-document); }
+
+.dashboard-metric {
+  border-color: color-mix(in srgb, var(--comfort-accent) 22%, var(--color-line));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--comfort-accent) 8%, var(--color-panel)), var(--color-panel) 66%);
+}
+
+.dashboard-metric::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--comfort-accent) 82%, transparent), color-mix(in srgb, var(--comfort-accent) 24%, transparent));
+  opacity: 0.82;
+}
+
+.dashboard-metric-icon {
+  color: var(--comfort-accent);
+  border-color: color-mix(in srgb, var(--comfort-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--comfort-accent) 11%, var(--color-panel));
+}
+
+.clinician-dashboard-hero {
+  position: relative;
+}
+
+.clinician-dashboard-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-mint), var(--color-aqua) 56%, var(--color-clinical-blue));
+  opacity: 0.72;
+}
+
+.clinical-active-encounter {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-mint) 8%, var(--color-panel)), color-mix(in srgb, var(--color-aqua) 5%, var(--color-panel)));
+  border-color: color-mix(in srgb, var(--color-mint) 24%, var(--color-line));
+}
+
+html[data-theme='light'] .medicspro-card {
+  background-image: linear-gradient(180deg, rgba(40, 120, 148, 0.012), rgba(11, 128, 104, 0.018));
+  box-shadow: 0 10px 34px rgba(31, 58, 48, 0.055), 0 1px 2px rgba(31, 58, 48, 0.035);
+}
+
+html[data-theme='light'] .clinician-dashboard-hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-mint) 8%, #ffffff), #ffffff 54%, color-mix(in srgb, var(--color-clinical-blue) 7%, #ffffff));
+  border-color: color-mix(in srgb, var(--color-aqua) 18%, var(--color-line));
+}
+
+html[data-theme='light'] .clinical-active-encounter {
+  box-shadow: 0 12px 36px rgba(21, 94, 76, 0.07), 0 1px 2px rgba(31, 58, 48, 0.035);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* MVD: o detalhe da agenda ocupa uma coluna persistente, sem apagar o contexto do calendário. */

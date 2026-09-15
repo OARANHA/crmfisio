@@ -4,11 +4,15 @@ import { useClinicModuleEntitlementVisibility } from '../../hooks/useClinicModul
 import type { ModuleKey } from '../../lib/types';
 import { IconChevronR } from '../../lib/ui';
 
+export type DashboardMetricTone = 'info' | 'focus' | 'attention' | 'success' | 'document';
+
 export type DashboardMetric = {
   label: string;
   value: ReactNode;
   sub: string;
   tone?: string;
+  surface?: DashboardMetricTone;
+  icon?: ReactNode;
   to?: string;
 };
 
@@ -33,28 +37,37 @@ function useEntitledItems<T extends { to?: string }>(items: T[]) {
   });
 }
 
+const SURFACE_CLASS: Record<DashboardMetricTone, string> = {
+  info: 'comfort-tone-info',
+  focus: 'comfort-tone-focus',
+  attention: 'comfort-tone-attention',
+  success: 'comfort-tone-success',
+  document: 'comfort-tone-document',
+};
+
 export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
   const visibleItems = useEntitledItems(items);
 
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
       {visibleItems.map((item, index) => {
+        const surface = SURFACE_CLASS[item.surface ?? 'focus'];
         const content = <>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${item.tone ?? 'text-paper'} bg-current shadow-[0_0_0_4px_currentColor] shadow-transparent`} />
-              <p className="text-[13.5px] font-semibold text-fog">{item.label}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              {item.icon ? <span className="dashboard-metric-icon grid h-10 w-10 shrink-0 place-items-center rounded-2xl border">{item.icon}</span> : <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.tone ?? 'text-paper'} bg-current`} />}
+              <p className="truncate text-[13.5px] font-semibold text-paper/90">{item.label}</p>
             </div>
             {item.to && <IconChevronR className="h-4 w-4 shrink-0 text-fog/45 transition-all group-hover:translate-x-0.5 group-hover:text-mint" />}
           </div>
-          <div className="mt-6 flex items-end justify-between gap-3">
+          <div className="mt-5 flex items-end justify-between gap-3">
             <p className={`font-display text-ui-metric-value font-bold leading-none tracking-[-0.035em] ${item.tone ?? 'text-paper'}`}>{item.value}</p>
-            <span className="font-mono text-[11px] text-fog/40">0{index + 1}</span>
+            <span className="font-mono text-[11px] text-fog/65">0{index + 1}</span>
           </div>
-          <p className="mt-3 min-h-[42px] text-[13.5px] leading-relaxed text-fog/80">{item.sub}</p>
+          <p className="mt-3 min-h-[42px] text-[13.5px] leading-relaxed text-fog">{item.sub}</p>
         </>;
 
-        const className = 'group relative min-h-[164px] overflow-hidden rounded-ui-data-surface border border-line/70 bg-panel p-5 shadow-[0_16px_40px_rgba(6,14,11,0.055)] transition-all duration-200 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-line2/55 before:to-transparent hover:-translate-y-0.5 hover:border-line2 hover:bg-raise/25 hover:shadow-[0_20px_50px_rgba(6,14,11,0.09)]';
+        const className = `dashboard-metric ${surface} group relative min-h-[164px] overflow-hidden rounded-ui-data-surface border p-5 shadow-[0_14px_36px_rgba(6,14,11,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(6,14,11,0.085)]`;
         return item.to
           ? <Link key={item.label} to={item.to} className={className}>{content}</Link>
           : <div key={item.label} className={className}>{content}</div>;

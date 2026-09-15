@@ -12,7 +12,8 @@ describe('MedicsPro UI Foundation V2 system scale', () => {
     expect(shellSource).toContain("collapsed ? 'w-ui-sidebar-compact' : 'w-ui-sidebar-expanded'");
     expect(shellSource).toContain('min-h-ui-control items-center');
     expect(shellSource).toContain("collapsed ? 'lg:pl-ui-sidebar-compact' : 'lg:pl-ui-sidebar-expanded'");
-    expect(shellSource).toContain('md:text-ui-body');
+    expect(shellSource).toContain('medicspro-workspace');
+    expect(shellSource).toContain('text-ui-body');
   });
 
   it('keeps the clinician home visually prioritized around the working day', () => {
@@ -35,7 +36,7 @@ describe('MedicsPro UI Foundation V2 system scale', () => {
 
   it('treats the light theme as a first-class UI surface', () => {
     expect(cssSource).toContain("html[data-theme='light'] .medicspro-sidebar");
-    expect(cssSource).toContain('--color-ink: #f1f5f3');
-    expect(cssSource).toContain('--color-mint: #0f8069');
+    expect(cssSource).toContain('--color-ink: #f3f7f5');
+    expect(cssSource).toContain('--color-mint: #0b8068');
   });
 });

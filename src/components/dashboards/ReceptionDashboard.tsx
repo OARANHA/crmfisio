@@ -88,8 +88,8 @@ export function ReceptionDashboard() {
       <Reveal>
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">Bom trabalho, {user?.nome.split(' ')[0]}</h1>
-            <p className="text-fog text-[13px] mt-0.5">{format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · central operacional da recepção</p>
+            <h1 className="medicspro-page-title">Bom trabalho, {user?.nome.split(' ')[0]}</h1>
+            <p className="medicspro-page-subtitle">{format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })} · central operacional da recepção</p>
           </div>
           <div className="ml-auto flex flex-col items-end gap-2">
             <Chip className={unidadeSel === 'all' ? 'border-line2 text-fog' : 'border-mint/40 text-mint'}>{unit ? unit.nome : 'Todas as unidades'}</Chip>
@@ -100,11 +100,11 @@ export function ReceptionDashboard() {
 
       <Reveal delay={60}>
         <DashboardMetricGrid items={[
-          { label: 'Agenda hoje', value: todayAppointments.length, sub: 'atendimentos previstos', to: '/agenda' },
-          { label: 'A confirmar', value: operational.pendingConfirmation, sub: 'pedem contato', tone: operational.pendingConfirmation ? 'text-amber' : 'text-mint', to: '/mensagens' },
-          { label: 'Confirmados', value: operational.confirmed, sub: 'presenças esperadas', tone: 'text-mint', to: '/hoje' },
-          { label: 'Consentimentos', value: operational.pendingConsents, sub: 'pendentes de aceite', tone: operational.pendingConsents ? 'text-amber' : 'text-mint', to: '/pacientes' },
-          { label: 'Cobranças vencidas', value: operational.overdueCount, sub: operational.overdueValue ? fmtBRL(operational.overdueValue) : 'nenhuma pendência', tone: operational.overdueCount ? 'text-pulse' : 'text-mint', to: '/financeiro' },
+          { label: 'Agenda hoje', value: todayAppointments.length, sub: 'atendimentos previstos', surface: 'info', to: '/agenda' },
+          { label: 'A confirmar', value: operational.pendingConfirmation, sub: 'pedem contato', surface: 'attention', tone: operational.pendingConfirmation ? 'text-amber' : 'text-mint', to: '/mensagens' },
+          { label: 'Confirmados', value: operational.confirmed, sub: 'presenças esperadas', surface: 'success', tone: 'text-mint', to: '/hoje' },
+          { label: 'Consentimentos', value: operational.pendingConsents, sub: 'pendentes de aceite', surface: 'document', tone: operational.pendingConsents ? 'text-amber' : 'text-clinical-violet', to: '/pacientes' },
+          { label: 'Cobranças vencidas', value: operational.overdueCount, sub: operational.overdueValue ? fmtBRL(operational.overdueValue) : 'nenhuma pendência', surface: 'attention', tone: operational.overdueCount ? 'text-pulse' : 'text-mint', to: '/financeiro' },
         ]} />
       </Reveal>
 

@@ -358,7 +358,7 @@ export function Shell() {
             title={compact ? label : undefined}
             className={({ isActive }) =>
               `medicspro-nav-item relative flex min-h-ui-control items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-ui-body leading-5 transition-all ${
-                isActive ? 'bg-mint/[0.13] text-mint ring-1 ring-inset ring-mint/15 shadow-sm' : 'text-fog hover:text-paper hover:bg-raise/60'
+                isActive ? 'bg-mint/[0.16] text-mint ring-1 ring-inset ring-mint/20 shadow-sm' : 'text-fog hover:text-paper hover:bg-raise/70'
               }`
             }
           >
@@ -440,7 +440,7 @@ export function Shell() {
             <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-line/75 bg-panel text-fog"><IconBell className="w-4.5 h-4.5" />{pendencias > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 grid place-items-center rounded-full bg-pulse text-white text-[10px] font-semibold">{pendencias}</span>}</span>
           </div>
         </header>
-        <main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-ui-body xl:px-12 xl:py-8">
+        <main className="medicspro-workspace w-full min-w-0 px-5 py-8 text-ui-body sm:px-7 md:px-9 md:py-10 xl:px-12 xl:py-8">
           <Suspense fallback={<RouteContentFallback />}>
             <Outlet />
           </Suspense>

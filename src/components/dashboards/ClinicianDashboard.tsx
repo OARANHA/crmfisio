@@ -15,7 +15,8 @@ import {
 } from '../../lib/clinicianDaily';
 import { professionalIdOf } from '../../lib/professionalReference';
 import { STATUS_META } from '../../lib/types';
-import { Btn, Card, CardHead, Chip, IconAlert, IconChevronR } from '../../lib/ui';
+import { Btn, Card, CardHead, Chip, IconAlert, IconCalendar, IconChevronR, IconClock, IconFile, IconUsers } from '../../lib/ui';
+import { IconCheck } from '../icons';
 import { Reveal } from '../Reveal';
 import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGrid';
 
@@ -88,7 +89,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
   return <div className="space-y-5">
     <Reveal>
-      <section className="overflow-hidden rounded-ui-hero border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8">
+      <section className="clinician-dashboard-hero overflow-hidden rounded-ui-hero border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8">
         <div className="flex flex-wrap items-start gap-5">
           <div className="min-w-[260px] flex-1">
             <p className="text-[13.5px] font-semibold uppercase tracking-[0.11em] text-mint">Seu dia está aqui</p>
@@ -106,8 +107,9 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
     {activeEncounter && (
       <Reveal delay={35}>
-        <section className="rounded-ui-surface border border-aqua/35 bg-aqua/[0.055] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.045)]">
+        <section className="clinical-active-encounter rounded-ui-surface border p-6">
           <div className="flex flex-wrap items-center gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-mint/20 bg-mint/10 text-mint"><IconCalendar className="h-6 w-6" /></span>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold uppercase tracking-[0.11em] text-aqua">Atendimento em andamento</p>
               <h2 className="mt-2 truncate font-display text-[26px] font-bold text-paper">{activePatient?.preferredName || activePatient?.nome || 'Paciente'}</h2>
@@ -124,11 +126,11 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
     <Reveal delay={55}>
       <DashboardMetricGrid items={[
-        { label: 'Atendimentos hoje', value: todayAppointments.length, sub: next ? `próximo às ${next.inicio.slice(0, 5)}` : 'sem próximo pendente', to: dayAgendaPath },
-        { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', tone: confirmed ? 'text-amber' : 'text-fog', to: clinicianAgendaPath({ status: 'confirmed', view: 'dia', date: today }) },
-        { label: 'Em atendimento', value: inServiceToday, sub: 'no período de hoje', tone: inServiceToday ? 'text-aqua' : 'text-fog', to: clinicianAgendaPath({ status: 'in_service', view: 'dia', date: today }) },
-        { label: 'Finalizados', value: finished, sub: 'no dia', tone: 'text-mint', to: clinicianAgendaPath({ status: 'finished', view: 'dia', date: today }) },
-        { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', tone: missingEvolution.length ? 'text-amber' : 'text-mint', to: dayAgendaPath },
+        { label: 'Atendimentos hoje', value: todayAppointments.length, sub: next ? `próximo às ${next.inicio.slice(0, 5)}` : 'sem próximo pendente', surface: 'info', tone: 'text-clinical-blue', icon: <IconCalendar className="h-5 w-5" />, to: dayAgendaPath },
+        { label: 'Confirmados', value: confirmed, sub: 'aguardando atendimento', surface: 'focus', tone: confirmed ? 'text-aqua' : 'text-paper', icon: <IconUsers className="h-5 w-5" />, to: clinicianAgendaPath({ status: 'confirmed', view: 'dia', date: today }) },
+        { label: 'Em atendimento', value: inServiceToday, sub: 'no período de hoje', surface: 'attention', tone: inServiceToday ? 'text-amber' : 'text-paper', icon: <IconClock className="h-5 w-5" />, to: clinicianAgendaPath({ status: 'in_service', view: 'dia', date: today }) },
+        { label: 'Finalizados', value: finished, sub: 'no dia', surface: 'success', tone: 'text-mint', icon: <IconCheck className="h-5 w-5" />, to: clinicianAgendaPath({ status: 'finished', view: 'dia', date: today }) },
+        { label: 'Evoluções pendentes', value: missingEvolution.length, sub: 'sessões finalizadas hoje', surface: 'document', tone: missingEvolution.length ? 'text-amber' : 'text-clinical-violet', icon: <IconFile className="h-5 w-5" />, to: dayAgendaPath },
       ]} />
     </Reveal>
 
