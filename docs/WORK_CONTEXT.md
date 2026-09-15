@@ -76,7 +76,7 @@ Em 2026-09-10:
 
 O smoke de draft comprovou persistência, refresh/navegação e revision; antes da finalização havia 1 record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-A prova read-only pós-finalização desse mesmo smoke não deve ser declarada concluída sem evidência posterior registrada.
+Em 2026-09-15, a prova read-only pós-finalização foi observada em produção: único Record `finalized`, Evolution única/ativa corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. Nenhum conteúdo clínico foi lido e nenhuma mutation foi executada.
 
 ## Financeiro
 
@@ -95,7 +95,7 @@ Após #388:
 - financeiro: `CHARGE`;
 - recep/professional: sem resolução.
 
-O verifier antigo #388 possui uma assertion obsoleta sobre ausência da RPC criada depois pelo #389. Corrigir/versionar o verifier em slice própria; não enfraquecer a regra de negócio.
+O verifier #388 já foi reconciliado com #389: o harness executa #388 antes e depois da migration #389 e passou em PostgreSQL 16 em 2026-09-15, preservando a imutabilidade direta da fila e a superfície canônica de resolução.
 
 Smoke real CHARGE/WAIVE permanece pendente se não houver evidência posterior.
 
@@ -133,7 +133,7 @@ Assessment Engine já possui foundation estruturada. Avaliações padrão, model
 
 ## Próxima sequência recomendada
 
-0. fechar smokes/observabilidade pendentes #394/#389/#396;
+0. fechar smokes/observabilidade pendentes #389/#396; #394 pós-finalização já possui evidência read-only de produção;
 1. Encounter UX / physician ergonomics;
 2. Cobertura deste atendimento;
 3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);

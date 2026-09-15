@@ -110,15 +110,15 @@ Existem dois verifiers com papéis diferentes:
 
 O smoke de draft observou persistência, refresh/navegação e revision. Antes da finalização o cenário tinha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-A documentação atual **não declara** como concluída a inspeção read-only pós-finalização desse mesmo smoke sem evidência posterior. Registrar essa leitura quando executada.
+Em **2026-09-15**, a inspeção read-only pós-finalização foi executada em produção sem consultar conteúdo clínico ou dados pessoais: único Encounter Record `finalized`, `finalized_at` presente, exatamente uma Evolution ativa e vinculada à mesma sessão/tenant/paciente/profissional, appointment `finalizado`, exatamente um lançamento financeiro do mesmo tenant/paciente e zero `appointment_financial_exception`. O lançamento observado estava não pago e `atrasado`, coerente com a data de vencimento no momento da leitura.
 
 ### #388 / #389 — atenção ao verifier histórico
 
 #388 definiu a separação entre finalização clínica e falhas esperadas de cobertura. #389 criou a resolução explícita de `appointment_financial_exception`.
 
-O verifier antigo #388 possui uma assertion histórica esperando ausência da RPC que #389 adicionou depois. Essa assertion é obsoleta para o schema atual e deve ser atualizada/versionada antes de reutilização contra produção.
+O verifier #388 já foi reconciliado com #389 e não deve mais produzir false-red apenas porque a RPC canônica de resolução existe. Em 2026-09-15, o harness PostgreSQL 16 passou #388 antes e depois de aplicar #389 e também passou o verifier #389 com controles negativos.
 
-Não enfraquecer as demais invariantes de #388 para corrigir essa dívida do verifier.
+Essa reconciliação não enfraquece as demais invariantes de #388 e não substitui o smoke operacional real de `CHARGE`/`WAIVE`.
 
 ## Finalização clínica × cobertura
 

@@ -8,7 +8,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 - 🟡 **YELLOW** — foundation existe, mas ainda depende de smoke, UX real, observabilidade ou validação operacional antes de ampliação.
 - 🔴 **RED** — blocker conhecido.
 
-## Estado em 2026-09-10
+## Estado em 2026-09-15
 
 | Gate | Status | Evidência / próxima ação |
 | --- | --- | --- |
@@ -24,10 +24,11 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | #394 rollout / verifier | 🟢 técnico | Migration #394 aplicada em produção em 2026-09-10; production-safe verifier passou com `VERIFY #394 PRODUCTION OK`. |
 | Finalização clínica × cobertura | 🟢 estrutural | #388 preserva finalização clínica diante de falhas esperadas de cobertura e registra `appointment_financial_exception`. |
 | Resolução de exceção financeira | 🟢 estrutural | #389: owner/admin `CHARGE|WAIVE`; financeiro `CHARGE`; recep/professional sem resolução. |
+| Verifier #388 × #389 | 🟢 técnico | Em 2026-09-15 o harness PostgreSQL 16 provou #388 antes e depois de #389; o mesmo verifier permanece verde na composição efetiva e os controles negativos continuam falhando como esperado. |
 | Assessment Engine | 🟢 estrutural | Foundation de avaliações estruturadas, drafts/versionamento e integração ao atendimento já existe. |
 | Consultório / Gestão | 🟢 estrutural | #396 entrega privacy/presentation shell sem alterar autorização. |
 | UX / design em uso real | 🟡 | Foundations visuais existem, mas ainda falta evidência suficiente de smoke visual e uso por profissionais reais para chamar UX de validada. |
-| Smoke pós-finalização #394 | 🟡 | Draft real foi comprovado; falta registrar a comprovação read-only pós-finalização se não houver evidência posterior no repositório. |
+| Smoke pós-finalização #394 | 🟢 operacional/read-only | Em 2026-09-15, produção confirmou Record `finalized`, `finalized_at`, Evolution única/ativa e vinculada, appointment `finalizado`, efeito financeiro unitário/coerente e zero exceção financeira. |
 | Smoke CHARGE/WAIVE #389 | 🟡 | Contrato/verifier técnico existe; ação real deve ser documentada antes de tratá-la como smoke operacional concluído. |
 | WhatsApp / Evolution operacional | 🟢 estrutural | Outbox/worker/webhook e reconciliação fail-closed existentes; observabilidade continua sendo trabalho contínuo. |
 | LGPD / auditoria técnica | 🟢 estrutural | Controles técnicos existem; não equivalem por si só a declaração jurídica completa de conformidade. |
@@ -55,14 +56,14 @@ Encounter Record finalizado é histórico. Correção/adendo auditável ainda n�
 
 ## Evidência de produção do #394
 
-Estado conhecido em **2026-09-10**:
+Estado de produção conhecido em **2026-09-10**; compatibilidade do verifier revalidada em **2026-09-15**:
 
 - migration `20260910_clinical_encounter_record_foundation.sql` aplicada em produção;
 - verifier read-only de produção passou: `VERIFY #394 PRODUCTION OK`;
 - Clinical Foundation passou;
 - Clinical Authorization passou;
 - Financial Exception Resolution #389 passou;
-- o verifier antigo #388 contém uma assertion histórica de ausência da RPC de resolução que foi criada posteriormente pelo #389; essa assertion é obsoleta para o schema atual e precisa ser versionada/atualizada antes de reutilização direta.
+- o verifier #388 já é composition-aware: aceita a fundação histórica antes de #389 e, quando a RPC canônica existe, exige resolver auditado, `SECURITY DEFINER`, grants corretos e fila ainda sem mutação direta; o harness #389 reexecuta #388 após aplicar #389 e ficou verde em PostgreSQL 16 em 2026-09-15.
 
 ### Smoke observado antes da finalização
 
@@ -73,7 +74,20 @@ Foi observado no fluxo real:
 - revisão do draft observada;
 - antes da finalização havia **1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions** para o cenário exercitado.
 
-Não há, neste snapshot documental, evidência suficiente no repositório para declarar como observada a comprovação read-only **pós-finalização** desse mesmo smoke. A validação curta deve confirmar os artefatos finais sem inventar resultado.
+### Smoke observado após a finalização — 2026-09-15
+
+Uma inspeção estritamente read-only no banco vivo confirmou, sem ler texto clínico, nomes, IDs ou conteúdo do prontuário:
+
+- existe exatamente **1 Encounter Record** em produção e ele está `finalized`;
+- `finalized_at` está presente;
+- o appointment vinculado está `finalizado`;
+- existe exatamente **1 Evolution** pelo `evolution_id`, ativa (`deleted_at IS NULL`) e com `session_id` igual ao appointment;
+- tenant, paciente e profissional coincidem entre Encounter Record, appointment e Evolution;
+- existe exatamente **1** lançamento em `payments` para o appointment, do mesmo tenant/paciente;
+- o lançamento está não pago e `atrasado`, coerente com `vencimento < CURRENT_DATE` no momento da leitura;
+- existem **0** `appointment_financial_exceptions` para o appointment.
+
+Isso fecha a evidência read-only pós-finalização do #394. Não transforma UX do piloto em GREEN e não prova `CHARGE`/`WAIVE` do #389.
 
 ## Finalização clínica e semântica financeira
 
@@ -162,14 +176,15 @@ A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conte�
 
 ## Próximo foco recomendado
 
-1. fechar evidência operacional curta do smoke #394 pós-finalização e smoke #389 CHARGE/WAIVE;
-2. corrigir/versionar a assertion obsoleta do verifier #388;
-3. executar piloto UX do Encounter/Consultório e remover fricções observadas;
-4. evoluir **Cobertura deste atendimento** sem expor Financeiro global;
-5. unificar Instrument Delivery (`Aplicar agora` / `Enviar ao paciente`);
-6. construir Prescription V1 e demais documentos apenas conforme demanda do piloto;
-7. evoluir configuração financeira/parcerias sem criar role econômica;
-8. ampliar onboarding e integrações somente com evidência de necessidade.
+1. fechar evidência operacional curta do smoke #389 `CHARGE`/`WAIVE` e do privacy shell #396;
+2. executar piloto UX do Encounter/Consultório e remover fricções observadas;
+3. evoluir **Cobertura deste atendimento** sem expor Financeiro global;
+4. unificar Instrument Delivery (`Aplicar agora` / `Enviar ao paciente`);
+5. construir Prescription V1 e demais documentos apenas conforme demanda do piloto;
+6. evoluir configuração financeira/parcerias sem criar role econômica;
+7. ampliar onboarding e integrações somente com evidência de necessidade.
+
+A antiga dívida do verifier #388 não faz mais parte da fila: a composição #388 → #389 foi revalidada em PostgreSQL 16 em 2026-09-15.
 
 ## Regra de implantação
 

@@ -49,13 +49,13 @@ Isso é evidência estrutural do rollout do #394. Não equivale automaticamente 
 
 O draft smoke observado comprovou persistência, refresh/navegação e revision; antes da finalização o cenário continha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-A comprovação read-only pós-finalização deve permanecer pendente até existir evidência registrada. O mesmo vale para smoke real `CHARGE`/`WAIVE` do #389.
+Em 2026-09-15, a comprovação read-only pós-finalização foi registrada: o único Encounter Record estava `finalized`, com Evolution única/ativa corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. O smoke real `CHARGE`/`WAIVE` do #389 continua pendente até evidência observada.
 
-## Dívida de verifier conhecida
+## Verifier #388 × #389 — dívida fechada
 
-O verifier histórico #388 contém uma assertion sobre ausência da RPC que #389 criou posteriormente. Essa assertion é obsoleta para o schema atual.
+Em 2026-09-15, o harness PostgreSQL 16 confirmou que o verifier #388 é composition-aware: passa no estado histórico antes de #389 e volta a passar após a migration #389, exigindo a superfície canônica de resolução sem liberar mutação direta da fila.
 
-Não usar essa checagem antiga como blocker sem versioná-la/atualizá-la. As demais invariantes de #388 continuam relevantes e não devem ser relaxadas.
+O verifier #389 também passou e os controles negativos de autorização, mutabilidade, materialização, duplicidade e cross-tenant falharam como esperado. Isso fecha a dívida técnica do verifier; **não** substitui o smoke operacional real de `CHARGE`/`WAIVE` em produção.
 
 ## Gate clínico do beta
 

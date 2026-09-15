@@ -38,7 +38,7 @@
 - Falhas financeiras inesperadas de integridade continuam fail-closed/atômicas.
 - #389 adiciona resolução explícita: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`, recep/professional sem resolução.
 - Parceiro/repasse não é role nem autorização.
-- O verifier histórico #388 ainda contém uma assertion sobre ausência da RPC criada posteriormente pelo #389; essa assertion ficou obsoleta para o schema atual e deve ser versionada/atualizada antes de reutilização direta.
+- Em 2026-09-15, a dívida do verifier #388 × #389 foi encerrada: o harness PostgreSQL 16 provou #388 antes e depois de #389, preservando fila imutável, resolver auditado e controles negativos.
 
 ### Consultório / Gestão
 
@@ -52,7 +52,7 @@
 ### Evidência operacional ainda aberta
 
 - O smoke real do draft #394 comprovou persistência do Encounter Record, preservação após refresh/navegação e revisão observada; antes da finalização o cenário possuía 1 record, 0 Evolutions, 0 payments e 0 financial exceptions.
-- Este changelog não declara a comprovação read-only pós-finalização do mesmo smoke sem evidência posterior no repositório.
+- Em 2026-09-15, a comprovação read-only pós-finalização do mesmo smoke foi observada em produção: único Encounter Record `finalized`, `finalized_at` presente, uma única Evolution ativa vinculada ao mesmo appointment/tenant/paciente/profissional, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira.
 - Smoke real de `CHARGE`/`WAIVE` do #389 também permanece pendente se não houver evidência posterior registrada.
 - Foundations técnicas acima não equivalem a validação UX por profissionais externos; esse trabalho continua no beta/piloto.
 

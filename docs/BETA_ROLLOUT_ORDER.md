@@ -30,9 +30,9 @@ As foundations abaixo estão incorporadas ao estado canônico e não devem ser �
 
 Antes de ampliar piloto:
 
-1. registrar a inspeção read-only pós-finalização do smoke #394, se ainda não houver evidência posterior;
+1. **fechado em 2026-09-15:** inspeção read-only pós-finalização do smoke #394 observada em produção, com Record/Evolution/appointment/financeiro consistentes e sem exceção financeira;
 2. executar/documentar smoke real `CHARGE` e `WAIVE` do #389, se pendente;
-3. atualizar/versionar o verifier antigo #388 cuja assertion de ausência da RPC #389 ficou obsoleta;
+3. **fechado em 2026-09-15:** revalidar a composição do verifier #388 com #389 em PostgreSQL 16; o gate passou antes e depois da migration #389, com controles negativos preservados;
 4. executar smoke visual/uso real do privacy shell #396;
 5. confirmar observabilidade suficiente para diagnosticar falhas de beta.
 
@@ -65,7 +65,7 @@ Validar:
 - owner/admin clínico sem bypass administrativo;
 - Nexus somente quando todas as boundaries médicas autorizarem.
 
-O smoke de draft do #394 já comprovou persistência, refresh/navegação e estado pré-finalização (1 record, 0 Evolutions, 0 payments, 0 financial exceptions). Não declarar a inspeção pós-finalização como executada sem observação real.
+O smoke de draft do #394 comprovou persistência, refresh/navegação e estado pré-finalização (1 record, 0 Evolutions, 0 payments, 0 financial exceptions). Em 2026-09-15, leitura real e estritamente read-only fechou a outra metade: o único Record estava `finalized`, com Evolution única/ativa e corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira.
 
 ## 2. Validar Consultório / Gestão em uso real
 

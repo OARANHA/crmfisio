@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-15
-**Base canônica:** `main@ea5f982f556b1723c2b036bff961c1f7bb2cdbbe`
+**Base canônica:** `main@16cb7c048f177f2f61c2ea744eb3e31504c42103`
 
 ## Estado clínico resumido
 
@@ -125,6 +125,49 @@ Documentos: `docs/CONSULTORIO_V5_NAVIGATION_COMPOSITION_V1.md` e `docs/CONSULTOR
 
 ---
 
+## P0 beta hardening — verifier #388 × #389
+
+**Status:** DÍVIDA TÉCNICA FECHADA NO REPOSITÓRIO. Nenhuma mutation de produção foi executada nesta reconciliação.
+
+Em 2026-09-15, sobre `main@16cb7c048f177f2f61c2ea744eb3e31504c42103`, `scripts/test-financial-exception-resolution.sh` foi executado em PostgreSQL 16 isolado e passou integralmente.
+
+Evidência:
+
+- verifier #388 passou no estado histórico pré-#389;
+- migration #389 foi aplicada duas vezes no harness, preservando idempotência de rollout;
+- o mesmo verifier #388 passou novamente no stack efetivo pós-#389;
+- verifier #389 passou integralmente;
+- casos `CHARGE`/`WAIVE`, autorização por role, idempotência e concorrência ficaram verdes;
+- controles negativos de recepção, `financeiro` tentando `WAIVE`, materialização ausente, mutabilidade, duplicidade de pagamento e cross-tenant falharam como esperado.
+
+Conclusão: documentos que ainda diziam que #388 exigia ausência da RPC de #389 estavam desatualizados. O verifier atual é composition-aware e mantém a fila `appointment_financial_exceptions` sem mutação direta enquanto admite somente a resolução canônica auditada.
+
+**Não confundir esta prova técnica com smoke operacional real.** O #394 foi fechado separadamente por leitura de produção em 2026-09-15. Permanecem como gaps P0: smoke humano/produção de `CHARGE` e `WAIVE`, cobertura role/mobile/URL do privacy shell e observabilidade mínima do beta.
+
+Documento de apoio: `docs/P0_388_389_VERIFIER_RECONCILIATION_20260915.md`.
+
+---
+
+## P0 beta hardening — #394 pós-finalização
+
+**Status:** EVIDÊNCIA READ-ONLY DE PRODUÇÃO FECHADA EM 2026-09-15. Nenhuma mutation foi executada.
+
+A inspeção do único Encounter Record existente em produção confirmou:
+
+- `status = finalized` e `finalized_at` presente;
+- appointment correspondente `finalizado`;
+- `evolution_id` presente, apontando para exatamente uma Evolution ativa;
+- Evolution vinculada à mesma sessão e alinhada ao mesmo tenant/paciente/profissional;
+- exatamente um lançamento em `payments` para o appointment, alinhado ao mesmo tenant/paciente;
+- lançamento não pago e `atrasado`, coerente com o vencimento no momento da leitura;
+- zero `appointment_financial_exceptions`.
+
+A leitura ocorreu dentro de transação `READ ONLY` e não consultou conteúdo clínico, nomes ou identificadores em saída. Isso fecha o gap de evidência pós-finalização do #394; não equivale a validação UX do piloto nem prova `CHARGE`/`WAIVE` do #389.
+
+Documento de apoio: `docs/P0_394_POST_FINALIZATION_READONLY_20260915.md`.
+
+---
+
 ## Leitura obrigatória
 
 1. `AGENTS.md`
@@ -176,19 +219,19 @@ Nexus apoia decisão; não prescreve, pede exame ou encaminha automaticamente.
 
 # Clinical Cockpit / Encounter
 
-Workspaces validados em produção atualmente:
+Workspaces canônicos validados em produção atualmente:
 
 ```text
 Registro
-Anamneses & Avaliações
-Prescrição
-Exames
-Orientações
-Encaminhamento
+Avaliações
+Instrumentos
+Prescrição        (quando relevante)
+Exames            (quando relevante)
+Documentos
 Nexus
 ```
 
-A branch V5 validada localmente recompõe a navegação para `Registro / Avaliações / Instrumentos / Prescrição / Exames / Documentos / Nexus`, sem alterar backend. Até merge/deploy e smoke manual, a lista acima continua sendo a referência de produção.
+A composição V5 já foi mergeada/deployada e validada estruturalmente em produção; ela altera navegação/apresentação, não os contratos server-side de cada ferramenta.
 
 Prescrição, Pedido de Exames, Orientações e Encaminhamento pertencem ao mesmo Encounter e não criam segundo prontuário.
 

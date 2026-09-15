@@ -1,6 +1,6 @@
 # MedicsPro — TODO canônico
 
-> Estado em **2026-09-11**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
+> Estado em **2026-09-15**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
 
 Referências:
 
@@ -51,9 +51,9 @@ Não iniciar uma tela isolada quando a decisão depende de entitlement, configur
 
 ## P0 — Pendências operacionais curtas antes de ampliar piloto
 
-- [ ] Registrar prova read-only pós-finalização do smoke real do #394, caso ainda não exista evidência posterior no repositório: Encounter Record finalizado + Evolution oficial + appointment finalizado + efeitos financeiros esperados.
+- [x] Registrar prova read-only pós-finalização do smoke real do #394. Fechado em 2026-09-15: o único Encounter Record de produção está `finalized`, com `finalized_at`, exatamente uma Evolution ativa vinculada à mesma sessão/tenant/paciente/profissional, appointment `finalizado`, exatamente um lançamento financeiro coerente e zero `appointment_financial_exception`.
 - [ ] Executar/documentar smoke real das ações `CHARGE` e `WAIVE` do #389, se ainda não houver evidência posterior.
-- [ ] Atualizar/versionar o verifier antigo #388 que ainda possui assertion obsoleta sobre ausência da RPC criada posteriormente pelo #389. Não usar essa assertion contra o schema atual.
+- [x] Reconciliar o verifier #388 com #389. Fechado em 2026-09-15: o verifier #388 aceita o estado histórico pré-#389 e exige a composição auditada quando #389 existe; o harness PostgreSQL 16 prova ambos os estados e os controles negativos.
 - [ ] Fazer smoke visual e uso real suficiente do Consultório / Gestão (#396), especialmente owner/admin elegível, professional clinical-only, mobile e URL administrativa protegida.
 - [ ] Consolidar observabilidade mínima dos fluxos de beta antes de ampliar o número de clínicas.
 
