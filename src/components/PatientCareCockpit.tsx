@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
+import { useClinicalEncounterHandoff } from '../hooks/useClinicalEncounterHandoff';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -21,6 +22,7 @@ const sessionLabel = (appointment: Appointment | undefined) => {
 
 export function PatientCareCockpit({ patient }: { patient: Patient }) {
   const nav = useNavigate();
+  const { openEncounter } = useClinicalEncounterHandoff();
   const { user, access } = useCurrentUserAccess();
   const { allowed: canAttend } = useClinicalCapability('clinical.attend', user?.id);
   const { users } = useClinicDirectory();
@@ -139,7 +141,7 @@ export function PatientCareCockpit({ patient }: { patient: Patient }) {
 
           <div className="mt-5 grid gap-2">
             {isOwnActiveSession && (
-              <Btn onClick={() => nav(`/pacientes/${patient.id}?session=${activeSession!.id}#clinical-workspace`)}>
+              <Btn onClick={() => openEncounter(activeSession!)}>
                 Continuar atendimento
               </Btn>
             )}

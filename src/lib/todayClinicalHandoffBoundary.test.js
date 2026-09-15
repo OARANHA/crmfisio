@@ -13,8 +13,8 @@ describe('today queue clinical handoff', () => {
 
   it('hands a started session directly into the clinical workspace', () => {
     expect(page).toContain("await status(item, 'em_atendimento')");
-    expect(page).toContain('if (accepted) nav(clinicalSessionPath(item))');
-    expect(page).toContain('?session=${item.appointment_id}#clinical-workspace');
+    expect(page).toContain('useClinicalEncounterHandoff');
+    expect(page).toContain('if (accepted) openEncounter({ id: item.appointment_id, pacienteId: item.patient_id })');
   });
 
   it('does not offer direct finalization outside the chart', () => {

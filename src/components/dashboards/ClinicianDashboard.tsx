@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import { useClinicalEncounterHandoff } from '../../hooks/useClinicalEncounterHandoff';
 import { useAgenda } from '../../lib/agendaContext';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { usePatients } from '../../lib/patientContext';
@@ -22,6 +23,7 @@ import { DashboardMetricGrid, DashboardQuickActions } from './DashboardMetricGri
 
 export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: ReactNode }) {
   const { user } = useCurrentUserAccess();
+  const { enterClinicalPresentation } = useClinicalEncounterHandoff();
   const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { evolutions } = useClinical();
@@ -116,7 +118,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
               <p className="mt-1 text-[14.5px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)} · {activeEncounter.tipo}</p>
               {activeEncounter.data !== today && <p className="mt-2 text-[11.5px] text-amber">Este atendimento segue aberto de uma data anterior e precisa de continuidade clínica.</p>}
             </div>
-            <Link to={clinicianEncounterPath(activeEncounter)}>
+            <Link to={clinicianEncounterPath(activeEncounter)} onClick={enterClinicalPresentation}>
               <Btn>Continuar atendimento</Btn>
             </Link>
           </div>
@@ -139,7 +141,7 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
         <Card>
           <CardHead title="Próximo movimento" sub={activeEncounter ? 'continue o atendimento que já está aberto' : 'o que vem agora na sua agenda'} />
           {activeEncounter ? (
-            <Link to={clinicianEncounterPath(activeEncounter)} className="group flex items-center gap-3 px-6 py-5 transition-colors hover:bg-raise/50">
+            <Link to={clinicianEncounterPath(activeEncounter)} onClick={enterClinicalPresentation} className="group flex items-center gap-3 px-6 py-5 transition-colors hover:bg-raise/50">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-aqua/30 bg-aqua/10 text-aqua">▶</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-[18px] font-semibold">Continuar — {activePatient?.preferredName || activePatient?.nome || 'Paciente'}</span>
