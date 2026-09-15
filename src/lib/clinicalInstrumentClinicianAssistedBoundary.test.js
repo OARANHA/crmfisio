@@ -88,16 +88,22 @@ describe('Clinician-Assisted Administration V1 boundary', () => {
   });
 
   it('keeps Apply Now independent from the Assessment Engine capability gate', () => {
-    const sectionStart = workspace.indexOf("workspace === 'assessment'");
-    const applyNow = workspace.indexOf('<ClinicianAssistedInstrumentApplyNow', sectionStart);
-    const assessmentGate = workspace.indexOf('assessmentCapability.loading', sectionStart);
-    const sectionEnd = workspace.indexOf("workspace === 'prescription'", sectionStart);
+    const assessmentStart = workspace.indexOf("activeWorkspace === 'assessment'");
+    const instrumentsStart = workspace.indexOf("activeWorkspace === 'instruments'");
+    const prescriptionStart = workspace.indexOf("activeWorkspace === 'prescription'");
+    const assessmentGate = workspace.indexOf('assessmentCapability.loading', assessmentStart);
+    const applyNow = workspace.indexOf('<ClinicianAssistedInstrumentApplyNow', instrumentsStart);
 
-    expect(sectionStart).toBeGreaterThan(-1);
-    expect(applyNow).toBeGreaterThan(sectionStart);
-    expect(assessmentGate).toBeGreaterThan(applyNow);
-    expect(sectionEnd).toBeGreaterThan(assessmentGate);
-    expect(workspace.slice(sectionStart, sectionEnd)).not.toContain('nexus.scales');
+    expect(assessmentStart).toBeGreaterThan(-1);
+    expect(instrumentsStart).toBeGreaterThan(assessmentStart);
+    expect(prescriptionStart).toBeGreaterThan(instrumentsStart);
+    expect(assessmentGate).toBeGreaterThan(assessmentStart);
+    expect(assessmentGate).toBeLessThan(instrumentsStart);
+    expect(applyNow).toBeGreaterThan(instrumentsStart);
+    expect(applyNow).toBeLessThan(prescriptionStart);
+    expect(workspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentApplyNow');
+    expect(workspace.slice(instrumentsStart, prescriptionStart)).not.toContain('assessmentCapability');
+    expect(workspace.slice(instrumentsStart, prescriptionStart)).not.toContain('nexus.scales');
   });
 
   it('renders only server-returned score and safety signals without browser clinical inference', () => {

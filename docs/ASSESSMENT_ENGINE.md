@@ -234,6 +234,8 @@ um Encounter
 
 A ergonomia do MedicsPro histórico pode orientar composição, contexto e fluidez. Não portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou outros contratos históricos.
 
+**Status da primeira slice de composição:** implementada e validada localmente na branch `feat/consultorio-v5-navigation-composition`, ainda não em produção. `Avaliações` mantém o Assessment Engine; `Instrumentos` recebe a administração assistida sem herdar `clinical.assessment.apply`; `Documentos` agrupa apenas a navegação de Orientação terapêutica e Encaminhamento, preservando engines e boundaries independentes.
+
 ## Historical data
 
 Não fazer backfill fictício ou reinterpretação silenciosa de registros clínicos antigos.
@@ -259,7 +261,7 @@ A foundation atual não significa que todo conteúdo clínico esteja pronto. Con
 - Clinical Instrument Authorization Foundation;
 - Clinician-Assisted Administration;
 - Encounter Instrument UX;
-- Consultório V5 integration/polish;
+- Consultório V5 integration/polish após a primeira slice de composição;
 - melhoria longitudinal/comparações;
 - novos componentes somente quando necessários;
 - correction/amendment quando o domínio exigir;

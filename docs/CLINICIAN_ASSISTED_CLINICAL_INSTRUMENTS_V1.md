@@ -121,7 +121,7 @@ Owner/admin não recebem bypass clínico. Profissão/especialidade continuam sem
 
 ## UI `Aplicar agora`
 
-A UI vive em **Anamneses & Avaliações** no Encounter ativo e não no workspace Nexus. Isso é deliberado: o instrumento é clínico neutro; Nexus fornece a engine, não a autorização nem a navegação.
+No Consultório V5, a UI vive em **Instrumentos** no Encounter ativo, separada de **Avaliações** e do workspace Nexus. Isso é deliberado: o instrumento é clínico neutro; Nexus fornece a engine, não a autorização nem a navegação, e o Assessment Engine não concede a autorização do modo assistido.
 
 A disponibilidade é resolvida instrumento a instrumento por `can_apply_clinical_instrument_in_encounter(...)`. Falha na resolução fecha a superfície; não existe fallback por role, profissão, specialty ou capability inferida no browser.
 

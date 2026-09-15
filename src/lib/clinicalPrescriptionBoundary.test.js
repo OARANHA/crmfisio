@@ -110,8 +110,8 @@ describe('Clinical Prescription V1 boundary', () => {
   });
 
   it('integrates prescription as navigation inside the same canonical Encounter without freezing adjacent workspaces', () => {
-    expect(encounterSource).toContain("workspace === 'prescription'");
-    expect(encounterSource).toContain("['prescription', 'Prescrição']");
+    expect(encounterSource).toContain("activeWorkspace === 'prescription'");
+    expect(encounterSource).toContain("{ id: 'prescription' as const, label: 'Prescrição' }");
     expect(encounterSource).toContain("useClinicalCapability('clinical.documents'");
     expect(encounterSource).toContain('<ClinicalPrescriptionWorkspace patient={patient} encounter={canonicalEncounter} userId={user.id} />');
   });
