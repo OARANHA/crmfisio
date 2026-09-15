@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useToast, type Toast } from '../lib/toastContext';
 import { useAuth } from '../lib/useAuth';
@@ -180,6 +180,21 @@ function PresentationModeControl({ compact = false }: { compact?: boolean }) {
           Gestão
         </button>
       </div>
+    </div>
+  );
+}
+
+function RouteContentFallback() {
+  return (
+    <div className="space-y-6" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Carregando módulo…</span>
+      <div className="h-10 w-64 max-w-[70%] animate-pulse rounded-xl bg-raise/70" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
+        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
+        <div className="h-28 animate-pulse rounded-[22px] border border-line/60 bg-panel/80" />
+      </div>
+      <div className="h-72 animate-pulse rounded-[24px] border border-line/60 bg-panel/80" />
     </div>
   );
 }
@@ -426,7 +441,9 @@ export function Shell() {
           </div>
         </header>
         <main className="w-full min-w-0 px-5 py-8 text-[15.5px] sm:px-7 md:px-9 md:py-10 md:text-[16px] xl:px-12 xl:py-8">
-          <Outlet />
+          <Suspense fallback={<RouteContentFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <Toasts />

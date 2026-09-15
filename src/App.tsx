@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/useAuth';
 import { FinanceProvider } from './lib/financeContext';
@@ -20,27 +21,42 @@ import { ModuleAccessGate } from './components/ModuleAccessGate';
 import { PresentationPrivacyBoundary } from './components/PresentationPrivacyBoundary';
 import { MandatoryPasswordChange } from './components/MandatoryPasswordChange';
 import { PulseMark } from './components/Ecg';
-import { DashboardRoleAware } from './pages/DashboardRoleAware';
-import { AgendaOperational } from './pages/AgendaOperational';
-import { RecepcaoHoje } from './pages/RecepcaoHoje';
-import { PatientsRoleAware } from './pages/PatientsRoleAware';
-import { PatientEditPage } from './pages/PatientEditPage';
-import { ClinicAccessRequestPage } from './pages/ClinicAccessRequestPage';
-import { NexusPublicSelfAssessmentPage } from './pages/NexusPublicSelfAssessmentPage';
-import { NexusGlobalPage } from './pages/NexusGlobalPage';
-import { NexusPatientEemPage } from './pages/NexusPatientEemPage';
-import { NexusPatientEvolutionPage } from './pages/NexusPatientEvolutionPage';
-import { PlatformAdminHomePage } from './pages/PlatformAdminHomePage';
-import { PlatformAdminPage } from './pages/PlatformAdminPage';
-import { PlatformClinicModulesPage } from './pages/PlatformClinicModulesPage';
-import { PlatformClinicProvisioningPage } from './pages/PlatformClinicProvisioningPage';
-import { PlatformCommercialPage } from './pages/PlatformCommercialPage';
-import { PlatformRevenuePage } from './pages/PlatformRevenuePage';
-import { FinanceiroOperational } from './pages/FinanceiroOperational';
-import { CrmOperational } from './pages/CrmOperational';
-import { MensagensOperational } from './pages/MensagensOperational';
-import { RelatoriosHub } from './pages/RelatoriosHub';
-import { ConfigPremium } from './pages/ConfigPremium';
+const DashboardRoleAware = lazy(() => import('./pages/DashboardRoleAware').then((module) => ({ default: module.DashboardRoleAware })));
+const AgendaOperational = lazy(() => import('./pages/AgendaOperational').then((module) => ({ default: module.AgendaOperational })));
+const RecepcaoHoje = lazy(() => import('./pages/RecepcaoHoje').then((module) => ({ default: module.RecepcaoHoje })));
+const PatientsRoleAware = lazy(() => import('./pages/PatientsRoleAware').then((module) => ({ default: module.PatientsRoleAware })));
+const PatientEditPage = lazy(() => import('./pages/PatientEditPage').then((module) => ({ default: module.PatientEditPage })));
+const ClinicAccessRequestPage = lazy(() => import('./pages/ClinicAccessRequestPage').then((module) => ({ default: module.ClinicAccessRequestPage })));
+const NexusPublicSelfAssessmentPage = lazy(() => import('./pages/NexusPublicSelfAssessmentPage').then((module) => ({ default: module.NexusPublicSelfAssessmentPage })));
+const NexusGlobalPage = lazy(() => import('./pages/NexusGlobalPage').then((module) => ({ default: module.NexusGlobalPage })));
+const NexusPatientEemPage = lazy(() => import('./pages/NexusPatientEemPage').then((module) => ({ default: module.NexusPatientEemPage })));
+const NexusPatientEvolutionPage = lazy(() => import('./pages/NexusPatientEvolutionPage').then((module) => ({ default: module.NexusPatientEvolutionPage })));
+const PlatformAdminHomePage = lazy(() => import('./pages/PlatformAdminHomePage').then((module) => ({ default: module.PlatformAdminHomePage })));
+const PlatformAdminPage = lazy(() => import('./pages/PlatformAdminPage').then((module) => ({ default: module.PlatformAdminPage })));
+const PlatformClinicModulesPage = lazy(() => import('./pages/PlatformClinicModulesPage').then((module) => ({ default: module.PlatformClinicModulesPage })));
+const PlatformClinicProvisioningPage = lazy(() => import('./pages/PlatformClinicProvisioningPage').then((module) => ({ default: module.PlatformClinicProvisioningPage })));
+const PlatformCommercialPage = lazy(() => import('./pages/PlatformCommercialPage').then((module) => ({ default: module.PlatformCommercialPage })));
+const PlatformRevenuePage = lazy(() => import('./pages/PlatformRevenuePage').then((module) => ({ default: module.PlatformRevenuePage })));
+const FinanceiroOperational = lazy(() => import('./pages/FinanceiroOperational').then((module) => ({ default: module.FinanceiroOperational })));
+const CrmOperational = lazy(() => import('./pages/CrmOperational').then((module) => ({ default: module.CrmOperational })));
+const MensagensOperational = lazy(() => import('./pages/MensagensOperational').then((module) => ({ default: module.MensagensOperational })));
+const RelatoriosHub = lazy(() => import('./pages/RelatoriosHub').then((module) => ({ default: module.RelatoriosHub })));
+const ConfigPremium = lazy(() => import('./pages/ConfigPremium').then((module) => ({ default: module.ConfigPremium })));
+
+function FullPageRouteFallback() {
+  return (
+    <div className="app-surface grid min-h-screen place-items-center p-6" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 rounded-2xl border border-line/70 bg-panel px-5 py-4 text-fog shadow-[0_18px_60px_rgba(15,28,24,0.10)]">
+        <PulseMark className="h-6 w-7" />
+        <span className="text-[15px] font-medium">Carregando MedicsPro…</span>
+      </div>
+    </div>
+  );
+}
+
+const deferredRoute = (element: React.ReactNode) => (
+  <Suspense fallback={<FullPageRouteFallback />}>{element}</Suspense>
+);
 
 function Home() {
   const { user, canView } = useCurrentUserAccess();
@@ -141,14 +157,14 @@ export default function App() {
                             <HashRouter>
                               <PresentationContextProvider>
                                 <Routes>
-                                  <Route path="/solicitar-acesso" element={<ClinicAccessRequestPage />} />
-                                  <Route path="/autoavaliacao/:token" element={<NexusPublicSelfAssessmentPage />} />
-                                  <Route path="/platform" element={<PlatformAdminHomePage />} />
-                                  <Route path="/platform/comercial" element={<PlatformCommercialPage />} />
-                                  <Route path="/platform/receita" element={<PlatformRevenuePage />} />
-                                  <Route path="/platform/governanca" element={<PlatformAdminPage />} />
-                                  <Route path="/platform/modulos" element={<PlatformClinicModulesPage />} />
-                                  <Route path="/platform/provisionar" element={<PlatformClinicProvisioningPage />} />
+                                  <Route path="/solicitar-acesso" element={deferredRoute(<ClinicAccessRequestPage />)} />
+                                  <Route path="/autoavaliacao/:token" element={deferredRoute(<NexusPublicSelfAssessmentPage />)} />
+                                  <Route path="/platform" element={deferredRoute(<PlatformAdminHomePage />)} />
+                                  <Route path="/platform/comercial" element={deferredRoute(<PlatformCommercialPage />)} />
+                                  <Route path="/platform/receita" element={deferredRoute(<PlatformRevenuePage />)} />
+                                  <Route path="/platform/governanca" element={deferredRoute(<PlatformAdminPage />)} />
+                                  <Route path="/platform/modulos" element={deferredRoute(<PlatformClinicModulesPage />)} />
+                                  <Route path="/platform/provisionar" element={deferredRoute(<PlatformClinicProvisioningPage />)} />
                                   <Route element={<ClinicSessionGate><Shell /></ClinicSessionGate>}>
                                     <Route path="/" element={<Home />} />
                                     <Route path="/dashboard" element={moduleGate('dashboard', <DashboardRoleAware />)} />
