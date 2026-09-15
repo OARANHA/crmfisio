@@ -64,22 +64,46 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(assessment).toContain('autosave.setContext(contextKey, ownDraft.id)');
   });
 
-  it('renders the V7 cockpit as a single active workspace with the approved clinical workspaces', () => {
-    expect(encounterWorkspace).toContain("useState<'record' | 'assessment' | 'prescription' | 'exams' | 'guidance' | 'referral' | 'nexus'>('record')");
-    expect(encounterWorkspace).toContain("workspace === 'assessment'");
-    expect(encounterWorkspace).toContain("workspace === 'prescription'");
-    expect(encounterWorkspace).toContain("workspace === 'exams'");
-    expect(encounterWorkspace).toContain("workspace === 'guidance'");
-    expect(encounterWorkspace).toContain("workspace === 'referral'");
-    expect(encounterWorkspace).toContain("workspace === 'nexus'");
-    expect(encounterWorkspace).toContain("['prescription', 'Prescrição']");
-    expect(encounterWorkspace).toContain("['exams', 'Exames']");
-    expect(encounterWorkspace).toContain("['guidance', 'Orientações']");
-    expect(encounterWorkspace).toContain("['referral', 'Encaminhamento']");
-    expect(encounterWorkspace).toContain('<ClinicalExamOrderWorkspace');
+  it('renders the Consultório V5 composition as one active workspace with seven canonical clinical intents', () => {
+    expect(encounterWorkspace).toContain("type EncounterWorkspace = 'record' | 'assessment' | 'instruments' | 'prescription' | 'exams' | 'documents' | 'nexus';");
+    expect(encounterWorkspace).toContain('data-clinical-encounter-version="9"');
+    expect(encounterWorkspace).toContain("{ id: 'record', label: 'Registro' }");
+    expect(encounterWorkspace).toContain("{ id: 'assessment', label: 'Avaliações' }");
+    expect(encounterWorkspace).toContain("{ id: 'instruments', label: 'Instrumentos' }");
+    expect(encounterWorkspace).toContain("{ id: 'prescription' as const, label: 'Prescrição' }");
+    expect(encounterWorkspace).toContain("{ id: 'exams' as const, label: 'Exames' }");
+    expect(encounterWorkspace).toContain("{ id: 'documents', label: 'Documentos' }");
+    expect(encounterWorkspace).toContain("{ id: 'nexus', label: 'Nexus' }");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'assessment'");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'instruments'");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'prescription'");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'exams'");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'documents'");
+    expect(encounterWorkspace).toContain("activeWorkspace === 'nexus'");
+    expect(encounterWorkspace).not.toContain("activeWorkspace === 'guidance'");
+    expect(encounterWorkspace).not.toContain("activeWorkspace === 'referral'");
+  });
+
+  it('keeps assessments, clinician-assisted instruments and document kinds compositionally separate', () => {
+    const assessmentStart = encounterWorkspace.indexOf("activeWorkspace === 'assessment'");
+    const instrumentsStart = encounterWorkspace.indexOf("activeWorkspace === 'instruments'");
+    const prescriptionStart = encounterWorkspace.indexOf("activeWorkspace === 'prescription'");
+    const documentsStart = encounterWorkspace.indexOf("activeWorkspace === 'documents'");
+    const nexusStart = encounterWorkspace.indexOf("activeWorkspace === 'nexus'");
+    expect(assessmentStart).toBeGreaterThan(-1);
+    expect(instrumentsStart).toBeGreaterThan(assessmentStart);
+    expect(documentsStart).toBeGreaterThan(prescriptionStart);
+    expect(nexusStart).toBeGreaterThan(documentsStart);
+    expect(encounterWorkspace.slice(assessmentStart, instrumentsStart)).toContain('<ClinicalAssessmentRunner patient={patient} presentation="encounter" />');
+    expect(encounterWorkspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentApplyNow');
+    expect(encounterWorkspace.slice(instrumentsStart, prescriptionStart)).toContain('<ClinicianAssistedInstrumentApplyNow appointmentId={canonicalEncounter.id} />');
+    expect(encounterWorkspace.slice(instrumentsStart, prescriptionStart)).not.toContain('ClinicalAssessmentRunner');
+    expect(encounterWorkspace).toContain("type ClinicalDocumentWorkspace = 'guidance' | 'referral';");
+    expect(encounterWorkspace).toContain("{ id: 'guidance', label: 'Orientação terapêutica' }");
+    expect(encounterWorkspace).toContain("{ id: 'referral', label: 'Encaminhamento' }");
+    expect(encounterWorkspace).toContain('aria-label="Tipos de documento clínico"');
     expect(encounterWorkspace).toContain('<ClinicalTherapeuticGuidanceWorkspace');
     expect(encounterWorkspace).toContain('<ClinicalReferralWorkspace');
-    expect(encounterWorkspace).not.toContain('Instrumentos');
   });
 
   it('keeps therapeutic guidance and referral on the D2-A document engine instead of creating parallel paths', () => {

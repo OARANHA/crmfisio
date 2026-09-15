@@ -213,6 +213,8 @@ um Encounter
 
 Esse cockpit deve absorver ergonomia e aprendizado do MedicsPro histórico sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou outras decisões arquiteturais legadas.
 
+A primeira slice de composição V5 está implementada e validada localmente sobre o Encounter existente, sem backend/migration/RLS novos. A autorização continua pertencendo aos boundaries já existentes; a navegação apenas organiza as superfícies por intenção clínica.
+
 ## Assessment
 
 Avaliações padrão e modelos próprios continuam no mesmo Assessment Engine versionado/autorado. Body map é componente clínico estruturado. A profissão/especialidade determina aplicabilidade/conteúdo, não cria outra engine.

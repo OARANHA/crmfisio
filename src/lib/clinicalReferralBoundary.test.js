@@ -60,10 +60,12 @@ describe('Clinical Referral Encounter V1 boundary', () => {
     expect(workspace).not.toContain('Nexus');
   });
 
-  it('integrates a human Encaminhamento workspace into the active Encounter', () => {
-    expect(encounter).toContain("['referral', 'Encaminhamento']");
-    expect(encounter).toContain("workspace === 'referral'");
+  it('integrates human Encaminhamento inside the Consultório V5 Documentos workspace', () => {
+    expect(encounter).toContain("{ id: 'referral', label: 'Encaminhamento' }");
+    expect(encounter).toContain("activeWorkspace === 'documents'");
+    expect(encounter).toContain("documentWorkspace === 'guidance'");
     expect(encounter).toContain('<ClinicalReferralWorkspace');
+    expect(encounter).not.toContain("activeWorkspace === 'referral'");
     expect(encounter).not.toContain('title="referral"');
   });
 });

@@ -22,8 +22,8 @@ describe('Clinical Exam Order D2-D1/D2-D2 boundary', () => {
 
   it('keeps a dedicated human Exames workspace in the active Encounter', () => {
     expect(encounterSource).toContain("import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';");
-    expect(encounterSource).toContain("['exams', 'Exames']");
-    expect(encounterSource).toContain("workspace === 'exams'");
+    expect(encounterSource).toContain("{ id: 'exams' as const, label: 'Exames' }");
+    expect(encounterSource).toContain("activeWorkspace === 'exams'");
     expect(encounterSource).toContain('<ClinicalExamOrderWorkspace');
     expect(encounterSource).toContain('Pedido de exames');
   });

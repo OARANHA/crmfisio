@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-13  
-**Base canônica:** `main@5f01832afc35284b8fa5bacc6c0e23b4572bc7b5`
+**Base canônica:** `main@5220747eb1673a34aeecd73eedbc9e768a2f044f`
 
 ## Estado clínico resumido
 
@@ -22,14 +22,14 @@ Clinic Referral Authoring Policy V1                           PROD
 PHQ-15 Clinician-Assisted V1                                  PROD BACKEND / FAIL-CLOSED VALIDATED
 ```
 
-## Handoff ativo — PHQ-15 Clinician-Assisted V1
+## Último rollout — PHQ-15 Clinician-Assisted V1
 
 Estado em **2026-09-14 (America/Sao_Paulo)** / 2026-09-15 UTC:
 
 ```text
 PR:                    #461 — MERGED
 merge SHA:             7bcf7b109b661e4c0ee4b7c4eada4097210edc0a
-current main:          7f3483f02abf289131a19e7a40292846ae4da5bf
+current main:          5220747eb1673a34aeecd73eedbc9e768a2f044f
 DB migration:          APPLIED
 production verifier:   PASSED (read-only)
 Edge shared engine:    DEPLOYED
@@ -66,6 +66,57 @@ PHQ-15 não vira diagnóstico, etiologia, prescrição ou encaminhamento automá
 Próximo passo seguro: **não habilitar automaticamente nenhuma clínica**. Quando owner/admin de uma clínica escolher habilitar PHQ-15, executar um smoke E2E autenticado de `Aplicar agora` com sessão humana válida, confirmar snapshot real no ledger e então registrar a clínica como operacionalmente validada para PHQ-15.
 
 Documento de domínio: `docs/PHQ15_CLINICIAN_ASSISTED_V1.md`.
+
+---
+
+## Handoff ativo — Consultório V5 Navigation Composition V1
+
+**Status:** VALIDADO LOCALMENTE / NÃO PRODUÇÃO.
+
+```text
+base:                  main@5220747eb1673a34aeecd73eedbc9e768a2f044f
+branch:                feat/consultorio-v5-navigation-composition
+runtime backend:       INALTERADO
+migration/schema/RLS:  NENHUMA ALTERAÇÃO
+produção:              NÃO TOCADA
+```
+
+A primeira slice V5 materializa a composição frontend já aprovada:
+
+```text
+um Encounter
+├─ Registro
+├─ Avaliações
+├─ Instrumentos
+├─ Prescrição        (quando relevante)
+├─ Exames            (quando relevante)
+├─ Documentos
+│  ├─ Orientação terapêutica
+│  └─ Encaminhamento
+└─ Nexus
+```
+
+Invariantes preservadas:
+
+- `Assessment Engine` continua separado de `Clinician-Assisted Administration`;
+- `Instrumentos` não usa `clinical.assessment.apply` como autorização implícita;
+- Prescrição e Exames continuam com relevância de apresentação conservadora e autorização server-side própria;
+- agrupar Orientação + Encaminhamento em `Documentos` não funde seus document types, payloads, lifecycle ou writers;
+- Encounter, autoria, care relationship, capabilities, RLS/RPCs e finalização não mudam;
+- nenhuma engine clínica foi reimplementada.
+
+Validação local:
+
+- testes direcionados da composição/boundaries: verdes;
+- suíte completa: `105/105` arquivos e `572/572` testes verdes;
+- TypeScript: verde;
+- ESLint: verde, zero warnings;
+- Vite build: verde;
+- `git diff --check`: verde.
+
+Comparação histórica obrigatória feita contra `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83`: preservar contexto persistente do paciente e navegação por intenção clínica; rejeitar arquitetura Vue/Pinia/Mongo, autosave/checkout legados, excesso de módulos concorrentes e qualquer autorização histórica.
+
+Documento da slice: `docs/CONSULTORIO_V5_NAVIGATION_COMPOSITION_V1.md`.
 
 ---
 
@@ -120,7 +171,7 @@ Nexus apoia decisão; não prescreve, pede exame ou encaminha automaticamente.
 
 # Clinical Cockpit / Encounter
 
-Workspaces validados em produção:
+Workspaces validados em produção atualmente:
 
 ```text
 Registro
@@ -131,6 +182,8 @@ Orientações
 Encaminhamento
 Nexus
 ```
+
+A branch V5 validada localmente recompõe a navegação para `Registro / Avaliações / Instrumentos / Prescrição / Exames / Documentos / Nexus`, sem alterar backend. Até merge/deploy e smoke manual, a lista acima continua sendo a referência de produção.
 
 Prescrição, Pedido de Exames, Orientações e Encaminhamento pertencem ao mesmo Encounter e não criam segundo prontuário.
 

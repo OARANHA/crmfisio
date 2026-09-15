@@ -102,7 +102,8 @@ describe('Clinical Encounter V4.1 persistence feedback boundary', () => {
       expect(professionalSources).not.toContain(phrase);
     }
 
-    expect(source).toContain('Anamneses, avaliações estruturadas e instrumentos autorizados para a consulta atual.');
+    expect(source).toContain('Anamneses e avaliações estruturadas disponíveis para a consulta atual.');
+    expect(source).toContain('Aplique instrumentos estruturados habilitados pela clínica sem misturá-los às anamneses e avaliações.');
     expect(source).toContain('Recursos disponíveis para este atendimento');
     expect(source).toContain('Registre ou consulte informações relevantes para a continuidade do cuidado.');
     expect(editorSource).toContain('Preencha somente o que for relevante para este atendimento.');
