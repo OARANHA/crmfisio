@@ -1,6 +1,6 @@
 # MedicsPro — Product Roadmap
 
-**Estado em 2026-09-11**
+**Estado em 2026-09-15**
 
 ## North Star
 
@@ -165,9 +165,9 @@ Fundação técnica pronta não equivale a UX validada por profissionais externo
 
 Antes de ampliar o piloto ou abrir várias foundations novas:
 
-- registrar a comprovação read-only pós-finalização do smoke real #394, se não houver evidência posterior no repositório;
+- **fechado em 2026-09-15:** comprovação read-only pós-finalização do smoke real #394 observada em produção, sem leitura de conteúdo clínico: Record finalizado + Evolution única/ativa + appointment finalizado + efeito financeiro unitário/coerente + zero exceção financeira;
 - registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
-- atualizar/versionar o verifier antigo #388 cuja assertion sobre ausência da RPC #389 ficou obsoleta;
+- **fechado em 2026-09-15:** o verifier #388 foi reconciliado com #389 e o harness PostgreSQL 16 prova o estado pré-#389 e a composição efetiva pós-#389 sem relaxar a imutabilidade da fila;
 - fazer smoke visual/uso real do Consultório/Gestão #396;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
 

@@ -79,7 +79,7 @@ Em produção, a migration #394 foi aplicada em 2026-09-10 e o verifier read-onl
 
 O smoke de draft comprovou persistência, refresh/navegação e revision. Antes da finalização, o cenário observado tinha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-**Não marcar a inspeção pós-finalização como executada sem evidência observada.** Essa leitura é uma pendência operacional curta neste snapshot.
+Em **2026-09-15**, essa inspeção foi observada em produção de forma estritamente read-only e minimizada: Record `finalized` + `finalized_at`, Evolution única/ativa e corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. Isso fecha a evidência operacional do #394, mas não torna UX/piloto automaticamente GREEN.
 
 ## Critério de GREEN
 

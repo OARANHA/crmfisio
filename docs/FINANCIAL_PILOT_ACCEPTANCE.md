@@ -103,11 +103,11 @@ Não mostrar no Consultório saldo geral de caixa, faturamento mensal, lucro, re
 - o gate Financial Clinical Finalization cobre a taxonomia esperada incluindo `package_expired` e `package_not_eligible`;
 - Financial Exception Resolution #389 passou no ambiente verificado em 2026-09-10.
 
-### Dívida conhecida do verifier #388
+### Verifier #388 × #389 — reconciliado
 
-O verifier histórico #388 contém uma assertion de que a RPC de resolução posterior não existe. Depois do #389, essa assertion ficou obsoleta para o schema atual.
+A dívida histórica foi encerrada. O verifier #388 é composition-aware: valida a fundação sem #389 e, quando `resolve_appointment_financial_exception(uuid,text,text)` existe, exige a resolução auditada e mantém a fila diretamente imutável.
 
-Não interpretar a falha dessa assertion contra produção como regressão do contrato financeiro. Atualizar/versionar o verifier em uma slice própria, sem enfraquecer os invariantes de #388.
+Em 2026-09-15, `scripts/test-financial-exception-resolution.sh` passou integralmente em PostgreSQL 16, incluindo #388 pré-#389, #388 pós-#389, verifier #389, concorrência/idempotência e controles negativos. Essa prova é técnica; smoke real de `CHARGE`/`WAIVE` continua uma evidência operacional separada.
 
 ### Smoke real ainda não declarado
 

@@ -1,6 +1,6 @@
 # Clinical Encounter Record
 
-**Status em 2026-09-10:** foundation canônica entregue em #394, verifier production-safe entregue em #395 e migration #394 aplicada em produção. Este documento registra o contrato que não deve regredir e separa evidência técnica de smoke operacional ainda pendente.
+**Status em 2026-09-15:** foundation canônica entregue em #394, verifier production-safe entregue em #395, migration #394 aplicada em produção e evidência read-only pós-finalização do smoke real observada. Este documento registra o contrato que não deve regredir e separa evidência técnica/operacional de UX ainda em validação.
 
 ## Purpose
 
@@ -197,7 +197,7 @@ O runbook deixou de ser apenas futuro.
 - Financial Exception Resolution #389 passou;
 - migration #394 não deve ser reaplicada por causa de documentação antiga.
 
-O verifier antigo #388 contém uma assertion histórica de ausência da RPC criada posteriormente pelo #389. Essa assertion é obsoleta no schema atual e deve ser atualizada/versionada antes de reutilização contra produção; isso não é defeito do #394.
+O verifier #388 já é compatível com a composição posterior de #389. Em 2026-09-15, o harness PostgreSQL 16 executou #388 no estado pré-#389 e novamente após aplicar #389; ambos passaram, sem flexibilizar a fila de exceções nem os grants da resolução. Isso não altera o contrato do #394.
 
 ### Smoke real observado antes da finalização
 
@@ -208,11 +208,22 @@ Foi comprovado:
 - draft revision observada;
 - antes da finalização: **1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions** no cenário exercitado.
 
-### Pendência operacional curta
+### Evidência read-only pós-finalização — 2026-09-15
 
-Este documento **não possui evidência suficiente** para afirmar que a inspeção read-only pós-finalização desse mesmo smoke foi formalmente observada. Antes de tratar o rollout funcional como completamente evidenciado, registrar o estado final esperado por leitura real.
+A produção foi inspecionada em `BEGIN READ ONLY ... ROLLBACK`, sem leitura de texto clínico, nomes, IDs ou conteúdo do prontuário.
 
-Da mesma forma, não declarar smoke real de `CHARGE`/`WAIVE` como concluído sem evidência posterior.
+Foi observado:
+
+- exatamente um `clinical_encounter_records`, em `finalized`, com `finalized_at`;
+- appointment correspondente em `finalizado`;
+- `evolution_id` presente e apontando para exatamente uma Evolution ativa;
+- `physiotherapy_evolutions.session_id` igual ao appointment do Record;
+- tenant, paciente e profissional alinhados entre Record, appointment e Evolution;
+- exatamente um lançamento em `payments` para o appointment, alinhado ao mesmo tenant/paciente;
+- lançamento não pago e `atrasado`, coerente com vencimento anterior à data corrente no momento da inspeção;
+- zero `appointment_financial_exceptions` para o appointment.
+
+Isso fecha o gap de evidência pós-finalização do #394 sem introduzir qualquer mutation. Smoke real de `CHARGE`/`WAIVE` permanece uma prova independente do #389.
 
 ## Deliberately deferred
 

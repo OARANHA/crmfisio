@@ -108,7 +108,7 @@ Em 2026-09-10, a migration #394 já foi aplicada em produção e o verifier prod
 
 Não reaplique #394 com base em documentação antiga. O verifier `...FOUNDATION.sql` pertence ao harness de 34 casos; o verifier `...PRODUCTION.sql` é o read-only apropriado para schema real.
 
-A prova pós-finalização do smoke real #394 e o smoke CHARGE/WAIVE #389 permanecem pendências somente se não houver evidência posterior registrada no repositório.
+A prova read-only pós-finalização do smoke real #394 foi registrada em produção em 2026-09-15. O smoke `CHARGE`/`WAIVE` #389 permanece pendente enquanto não houver evidência operacional posterior registrada no repositório.
 
 ## Forma de trabalhar
 
@@ -149,7 +149,7 @@ O objetivo é **beta controlado com profissionais reais**, não crescimento indi
 
 Sequência recomendada:
 
-0. fechar smokes/observabilidade pendentes #394/#389/#396;
+0. fechar smokes/observabilidade pendentes #389/#396; #394 pós-finalização está fechado por evidência read-only de produção;
 1. Encounter UX / physician ergonomics;
 2. Cobertura deste atendimento;
 3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`) para PHQ-9/GAD-7 e instrumentos pertinentes;
