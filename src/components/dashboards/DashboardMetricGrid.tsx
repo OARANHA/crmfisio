@@ -56,7 +56,7 @@ export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               {item.icon ? <span className="dashboard-metric-icon grid h-10 w-10 shrink-0 place-items-center rounded-2xl border">{item.icon}</span> : <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.tone ?? 'text-paper'} bg-current`} />}
-              <p className="truncate text-[13.5px] font-semibold text-paper/90">{item.label}</p>
+              <p className="truncate text-[19px] font-semibold text-paper/90">{item.label}</p>
             </div>
             {item.to && <IconChevronR className="h-4 w-4 shrink-0 text-fog/45 transition-all group-hover:translate-x-0.5 group-hover:text-mint" />}
           </div>
@@ -64,10 +64,10 @@ export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
             <p className={`font-display text-ui-metric-value font-bold leading-none tracking-[-0.035em] ${item.tone ?? 'text-paper'}`}>{item.value}</p>
             <span className="font-mono text-[11px] text-fog/65">0{index + 1}</span>
           </div>
-          <p className="mt-3 min-h-[42px] text-[13.5px] leading-relaxed text-fog">{item.sub}</p>
+          <p className="mt-3 min-h-[48px] text-[17px] leading-relaxed text-fog">{item.sub}</p>
         </>;
 
-        const className = `dashboard-metric ${surface} group relative min-h-[164px] overflow-hidden rounded-ui-data-surface border p-5 shadow-[0_14px_36px_rgba(6,14,11,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(6,14,11,0.085)]`;
+        const className = `dashboard-metric ${surface} group relative min-h-[184px] overflow-hidden rounded-ui-data-surface border p-5 shadow-[0_14px_36px_rgba(6,14,11,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(6,14,11,0.085)]`;
         return item.to
           ? <Link key={item.label} to={item.to} className={className}>{content}</Link>
           : <div key={item.label} className={className}>{content}</div>;
@@ -86,8 +86,8 @@ export function DashboardQuickActions({ actions }: { actions: { label: string; t
           key={action.to + action.label}
           to={action.to}
           className={action.primary
-            ? 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl bg-mint px-5 py-3 text-[14.5px] font-semibold text-on-accent shadow-sm shadow-mint/10 transition-all hover:-translate-y-px hover:brightness-105'
-            : 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl border border-line/80 bg-panel/80 px-5 py-3 text-[14.5px] font-semibold text-fog transition-all hover:-translate-y-px hover:border-line2 hover:bg-raise/45 hover:text-paper'}
+            ? 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl bg-mint px-5 py-3 text-[16.5px] font-semibold text-on-accent shadow-sm shadow-mint/10 transition-all hover:-translate-y-px hover:brightness-105'
+            : 'inline-flex min-h-ui-control items-center gap-2 rounded-2xl border border-line/80 bg-panel/80 px-5 py-3 text-[16.5px] font-semibold text-fog transition-all hover:-translate-y-px hover:border-line2 hover:bg-raise/45 hover:text-paper'}
         >
           {action.label}<IconChevronR className="h-3.5 w-3.5" />
         </Link>
