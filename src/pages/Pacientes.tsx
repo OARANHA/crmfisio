@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { usePatients } from '../lib/patientContext';
 import { useAgenda } from '../lib/agendaContext';
 import { resolveClinicalEncounterWorkspace } from '../lib/clinicalEncounterUx';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { STAGE_META, maskCpf, ageFrom, type FunilStage } from '../lib/types';
-import { Card, Btn, Input, Select, Chip, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
+import { STAGE_META, type FunilStage } from '../lib/types';
+import { Btn, Input, Select, Empty, IconSearch, IconPlus, IconChevronL } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 import { ClinicalWorkspaceV3 } from '../components/ClinicalWorkspaceV3';
 import { PatientCareCockpit } from '../components/PatientCareCockpit';
 import { PatientOperationalActions } from '../components/PatientOperationalActions';
 import { PatientProfileHeader } from '../components/PatientProfileHeader';
+import { PatientDirectoryTableV2 } from '../components/PatientDirectoryTableV2';
 import { NexusPatientContextHub } from '../components/NexusPatientContextHub';
 import { PatientRegistrationPage } from './PatientRegistrationPage';
 
@@ -44,67 +43,62 @@ function Lista() {
   }, [patients, q, stage]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-7">
       <Reveal>
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-mint">Cadastro operacional</p>
-            <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Pacientes</h1>
-            <p className="mt-1 text-[14px] text-fog">{patients.filter((patient) => !patient.anonimizado).length} cadastrados · dados clínicos ficam no prontuário conforme relação assistencial</p>
-          </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-auto">
-              <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fog" />
-              <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Nome, telefone, e-mail ou CPF…" className="!w-full sm:!w-72 !pl-9" />
+        <section className="rounded-[24px] border border-line/75 bg-panel px-6 py-6 shadow-[0_16px_44px_rgba(8,22,18,0.055)] sm:px-7">
+          <div className="flex flex-wrap items-start gap-5">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold uppercase tracking-[0.08em] text-mint">Cadastro operacional</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-[34px] font-bold leading-tight tracking-[-0.025em]">Pacientes</h1>
+                <span className="rounded-full border border-line2/65 bg-raise/45 px-3 py-1 text-sm font-semibold text-fog">
+                  {patients.filter((patient) => !patient.anonimizado).length} cadastrados
+                </span>
+              </div>
+              <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-fog">
+                Localize rapidamente o cadastro administrativo; dados clínicos ficam no prontuário conforme relação assistencial.
+              </p>
             </div>
-            <Select value={stage} onChange={(event) => setStage(event.target.value as 'all' | FunilStage)} className="!w-auto">
-              <option value="all">Toda a jornada</option>
-              {(Object.keys(STAGE_META) as FunilStage[]).map((item) => <option key={item} value={item}>{STAGE_META[item].label}</option>)}
-            </Select>
-            <Btn onClick={() => nav('/pacientes/novo')}><IconPlus className="h-4 w-4" /> Novo paciente</Btn>
           </div>
-        </div>
+
+          <div className="mt-6 flex flex-col gap-3 xl:flex-row xl:items-center">
+            <div className="relative min-w-0 flex-1">
+              <IconSearch className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fog" />
+              <Input
+                value={q}
+                onChange={(event) => setQ(event.target.value)}
+                placeholder="Nome, telefone, e-mail ou CPF…"
+                className="!min-h-12 !rounded-2xl !pl-12 !pr-4 !text-base"
+              />
+            </div>
+            <Select
+              value={stage}
+              onChange={(event) => setStage(event.target.value as 'all' | FunilStage)}
+              className="!min-h-12 !w-full !rounded-2xl !px-4 !text-[15px] xl:!w-[220px]"
+            >
+              <option value="all">Toda a jornada</option>
+              {(Object.keys(STAGE_META) as FunilStage[]).map((item) => (
+                <option key={item} value={item}>{STAGE_META[item].label}</option>
+              ))}
+            </Select>
+            <Btn onClick={() => nav('/pacientes/novo')} className="!min-h-12 !rounded-2xl !px-5 !text-[15px]">
+              <IconPlus className="h-5 w-5" /> Novo paciente
+            </Btn>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-fog">
+            <span><strong className="font-semibold text-paper/85">{filtered.length}</strong> resultado{filtered.length === 1 ? '' : 's'}</span>
+            {q.trim() && <span>Busca: “{q.trim()}”</span>}
+            {stage !== 'all' && <span>Jornada: {STAGE_META[stage].label}</span>}
+          </div>
+        </section>
       </Reveal>
 
       <Reveal delay={80}>
         {filtered.length === 0 ? (
           <Empty title="Nenhum paciente encontrado" sub="Cadastre o primeiro paciente ou ajuste os filtros." />
         ) : (
-          <Card className="overflow-x-auto !p-0">
-            <table className="w-full min-w-[940px] text-[13.5px]">
-              <thead>
-                <tr className="border-b border-line bg-deep/70 text-[12px] font-semibold uppercase tracking-[0.06em] text-fog">
-                  <th className="px-5 py-3.5 text-left">Paciente</th>
-                  <th className="px-5 py-3.5 text-left">Contato</th>
-                  <th className="px-5 py-3.5 text-left">Convênio</th>
-                  <th className="px-5 py-3.5 text-left">Jornada</th>
-                  <th className="px-5 py-3.5 text-left">Última visita</th>
-                  <th className="px-5 py-3.5 text-left">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((patient) => {
-                  const stageMeta = STAGE_META[patient.funilStage];
-                  return (
-                    <tr key={patient.id} onClick={() => nav(`/pacientes/${patient.id}`)} className="cursor-pointer border-b border-line/50 transition-colors last:border-0 hover:bg-raise/45">
-                      <td className="px-5 py-4">
-                        <p className="font-display text-[14.5px] font-semibold">{patient.preferredName || patient.nome}</p>
-                        <p className="mt-1 text-[12.5px] text-fog">{ageFrom(patient.nascimento)} anos · {maskCpf(patient.cpf)}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-paper/90">{patient.telefone || 'Sem telefone'}</p>
-                        <p className="mt-1 max-w-[230px] truncate text-[12px] text-fog">{patient.email || 'Sem e-mail'}</p>
-                      </td>
-                      <td className="px-5 py-4 text-[13px] text-fog">{patient.convenio || 'Particular / não informado'}</td>
-                      <td className="px-5 py-4"><Chip className={stageMeta.chip}>{stageMeta.label}</Chip></td>
-                      <td className="px-5 py-4 text-[13px] text-fog">{patient.ultimaVisita ? format(new Date(`${patient.ultimaVisita}T12:00`), 'dd/MM/yy', { locale: ptBR }) : '—'}</td>
-                      <td className="px-5 py-4"><span className={`text-[12.5px] font-semibold capitalize ${patient.status === 'ativo' ? 'text-mint' : patient.status === 'alta' ? 'text-aqua' : 'text-pulse'}`}>{patient.status}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
+          <PatientDirectoryTableV2 patients={filtered} onOpenPatient={(patientId) => nav(`/pacientes/${patientId}`)} />
         )}
       </Reveal>
     </div>

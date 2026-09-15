@@ -88,13 +88,13 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
   return <div className="space-y-5">
     <Reveal>
-      <section className="overflow-hidden rounded-[26px] border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-5 shadow-[0_20px_55px_rgba(0,0,0,0.06)] sm:p-6">
+      <section className="overflow-hidden rounded-[30px] border border-line/70 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-mint)_8%,var(--color-panel)),var(--color-panel)_55%,color-mix(in_srgb,var(--color-aqua)_5%,var(--color-panel)))] p-6 shadow-[0_24px_68px_rgba(0,0,0,0.07)] sm:p-7 xl:p-8">
         <div className="flex flex-wrap items-start gap-5">
           <div className="min-w-[260px] flex-1">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-mint">Seu dia está aqui</p>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-[34px]">Olá, {firstName}</h1>
-            <p className="mt-1 text-[13px] capitalize text-fog">{format(now, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
-            <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-fog">Atendimentos, próximo movimento e pendências clínicas em uma única visão para você decidir rápido o que fazer agora.</p>
+            <p className="text-[13.5px] font-semibold uppercase tracking-[0.11em] text-mint">Seu dia está aqui</p>
+            <h1 className="mt-3 font-display text-[38px] font-bold tracking-[-0.03em] sm:text-[42px]">Olá, {firstName}</h1>
+            <p className="mt-2 text-[15px] capitalize text-fog">{format(now, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
+            <p className="mt-4 max-w-2xl text-[15.5px] leading-relaxed text-fog">Atendimentos, próximo movimento e pendências clínicas em uma única visão para você decidir rápido o que fazer agora.</p>
           </div>
           <DashboardQuickActions actions={[
             { label: 'Abrir Agenda', to: dayAgendaPath, primary: true },
@@ -106,12 +106,12 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
 
     {activeEncounter && (
       <Reveal delay={35}>
-        <section className="rounded-[22px] border border-aqua/35 bg-aqua/[0.055] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.045)]">
+        <section className="rounded-[24px] border border-aqua/35 bg-aqua/[0.055] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.045)]">
           <div className="flex flex-wrap items-center gap-4">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-aqua">Atendimento em andamento</p>
-              <h2 className="mt-2 truncate font-display text-[22px] font-bold text-paper">{activePatient?.preferredName || activePatient?.nome || 'Paciente'}</h2>
-              <p className="mt-1 text-[12.5px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)} · {activeEncounter.tipo}</p>
+              <p className="text-[13px] font-semibold uppercase tracking-[0.11em] text-aqua">Atendimento em andamento</p>
+              <h2 className="mt-2 truncate font-display text-[26px] font-bold text-paper">{activePatient?.preferredName || activePatient?.nome || 'Paciente'}</h2>
+              <p className="mt-1 text-[14.5px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)} · {activeEncounter.tipo}</p>
               {activeEncounter.data !== today && <p className="mt-2 text-[11.5px] text-amber">Este atendimento segue aberto de uma data anterior e precisa de continuidade clínica.</p>}
             </div>
             <Link to={clinicianEncounterPath(activeEncounter)}>
@@ -132,16 +132,16 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
       ]} />
     </Reveal>
 
-    <div className="grid items-start gap-4 xl:grid-cols-[1.35fr_1fr]">
+    <div className="grid items-start gap-5 xl:grid-cols-[1.4fr_1fr]">
       <Reveal delay={90}>
         <Card>
           <CardHead title="Próximo movimento" sub={activeEncounter ? 'continue o atendimento que já está aberto' : 'o que vem agora na sua agenda'} />
           {activeEncounter ? (
-            <Link to={clinicianEncounterPath(activeEncounter)} className="group flex items-center gap-3 px-5 py-5 transition-colors hover:bg-raise/50">
+            <Link to={clinicianEncounterPath(activeEncounter)} className="group flex items-center gap-3 px-6 py-5 transition-colors hover:bg-raise/50">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-aqua/30 bg-aqua/10 text-aqua">▶</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-display text-[14px] font-semibold">Continuar — {activePatient?.preferredName || activePatient?.nome || 'Paciente'}</span>
-                <span className="mt-1 block text-[11px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)}</span>
+                <span className="block truncate font-display text-[15.5px] font-semibold">Continuar — {activePatient?.preferredName || activePatient?.nome || 'Paciente'}</span>
+                <span className="mt-1 block text-[13px] text-fog">{activeEncounterStartedLabel(activeEncounter, now)}</span>
               </span>
               <IconChevronR className="h-4 w-4 text-fog group-hover:text-aqua" />
             </Link>
@@ -159,14 +159,14 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
           )}
 
           <div className="border-t border-line/65">
-            <p className="px-5 pt-4 text-[11px] font-semibold uppercase tracking-[0.09em] text-fog">Agenda de hoje</p>
+            <p className="px-6 pt-5 text-[13px] font-semibold uppercase tracking-[0.09em] text-fog">Agenda de hoje</p>
             <div className="divide-y divide-line/60">
               {todayAppointments.slice(0, 5).map((appointment) => {
                 const patient = patients.find((item) => item.id === appointment.pacienteId);
                 const meta = STATUS_META[appointment.status];
-                return <Link key={appointment.id} to={clinicianEncounterPath(appointment)} className="grid grid-cols-[58px_1fr_auto] items-center gap-3 px-5 py-3 transition-colors hover:bg-raise/50">
+                return <Link key={appointment.id} to={clinicianEncounterPath(appointment)} className="grid grid-cols-[58px_1fr_auto] items-center gap-3 px-6 py-4 transition-colors hover:bg-raise/50">
                   <span className="font-mono text-[11.5px] text-fog">{appointment.inicio.slice(0, 5)}</span>
-                  <span className="min-w-0"><span className="block truncate text-[12.5px] font-semibold">{patient?.preferredName || patient?.nome || 'Paciente'}</span><span className="block truncate text-[10.5px] text-fog">{appointment.tipo}</span></span>
+                  <span className="min-w-0"><span className="block truncate text-[14.5px] font-semibold">{patient?.preferredName || patient?.nome || 'Paciente'}</span><span className="block truncate text-[13px] text-fog">{appointment.tipo}</span></span>
                   <Chip className={meta.chip}>{meta.label}</Chip>
                 </Link>;
               })}
@@ -180,12 +180,12 @@ export function ClinicianDashboard({ nexusContext = null }: { nexusContext?: Rea
         <Card>
           <CardHead title="Prioridades" sub="pendências que merecem sua atenção" right={<IconAlert className="h-4.5 w-4.5 text-amber" />} />
           <div className="divide-y divide-line/70">
-            {missingEvolution.length === 0 && continuityRisks.length === 0 && <p className="py-10 text-center text-[12px] text-fog">Sem pendências clínicas relevantes.</p>}
+            {missingEvolution.length === 0 && continuityRisks.length === 0 && <p className="py-10 text-center text-[14px] text-fog">Sem pendências clínicas relevantes.</p>}
             {missingEvolution.slice(0, 3).map((appointment) => {
               const patient = patients.find((item) => item.id === appointment.pacienteId);
               return <Link key={`evo-${appointment.id}`} to={clinicianEncounterPath(appointment)} className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-raise/50"><span className="grid h-8 w-8 place-items-center rounded-full border border-amber/30 bg-amber/10 text-amber">!</span><span className="flex-1 text-[12.5px]">Registrar evolução — {patient?.preferredName || patient?.nome || 'Paciente'}</span><IconChevronR className="h-3.5 w-3.5 text-fog group-hover:text-mint" /></Link>;
             })}
-            {continuityRisks.slice(0, 3).map((risk) => <Link key={`risk-${risk.patient.id}`} to={`/pacientes/${risk.patient.id}`} className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-raise/50"><span className="grid h-8 w-8 place-items-center rounded-full border border-amber/30 bg-amber/10 text-amber">!</span><span className="flex-1 text-[12.5px]"><strong className="font-semibold">{risk.patient.preferredName || risk.patient.nome}</strong><span className="block text-[10.5px] text-fog">{risk.days} dias sem sessão{risk.remaining !== null ? ` · ${risk.remaining} restante(s)${risk.packageName ? ` em ${risk.packageName}` : ''}` : ''}</span></span><IconChevronR className="h-3.5 w-3.5 text-fog group-hover:text-mint" /></Link>)}
+            {continuityRisks.slice(0, 3).map((risk) => <Link key={`risk-${risk.patient.id}`} to={`/pacientes/${risk.patient.id}`} className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-raise/50"><span className="grid h-8 w-8 place-items-center rounded-full border border-amber/30 bg-amber/10 text-amber">!</span><span className="flex-1 text-[12.5px]"><strong className="font-semibold">{risk.patient.preferredName || risk.patient.nome}</strong><span className="block text-[13px] text-fog">{risk.days} dias sem sessão{risk.remaining !== null ? ` · ${risk.remaining} restante(s)${risk.packageName ? ` em ${risk.packageName}` : ''}` : ''}</span></span><IconChevronR className="h-3.5 w-3.5 text-fog group-hover:text-mint" /></Link>)}
           </div>
         </Card>
       </Reveal>
