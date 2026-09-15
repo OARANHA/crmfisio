@@ -357,8 +357,8 @@ export function Shell() {
             onClick={() => setMobileOpen(false)}
             title={compact ? label : undefined}
             className={({ isActive }) =>
-              `flex min-h-ui-control items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-ui-body leading-5 transition-colors ${
-                isActive ? 'bg-mint/10 text-mint' : 'text-fog hover:text-paper hover:bg-raise/60'
+              `medicspro-nav-item relative flex min-h-ui-control items-center ${compact ? 'justify-center px-2.5' : 'gap-3.5 px-4'} rounded-2xl py-3 font-display font-semibold text-ui-body leading-5 transition-all ${
+                isActive ? 'bg-mint/[0.13] text-mint ring-1 ring-inset ring-mint/15 shadow-sm' : 'text-fog hover:text-paper hover:bg-raise/60'
               }`
             }
           >
