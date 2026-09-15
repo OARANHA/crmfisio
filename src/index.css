@@ -27,7 +27,7 @@
   --spacing-ui-control: 3rem;
   --spacing-ui-sidebar-compact: 5.5rem;
   --spacing-ui-sidebar-expanded: 18.25rem;
-  --text-ui-body: 1rem;
+  --text-ui-body: 1.125rem;
   --text-ui-page-title: 2.125rem;
   --text-ui-hero-title: 2.375rem;
   --text-ui-hero-title-lg: 2.625rem;
@@ -78,17 +78,27 @@ button { cursor: pointer; }
 code, pre, kbd, samp { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
 ::selection { background: var(--color-mint); color: var(--color-on-accent); }
 
-/* Evita a volta de textos microscópicos em áreas operacionais. */
+/* Typography Comfort Pass V1 — legacy microtype is promoted without flattening hierarchy. */
+[class~="text-[8px]"],
 [class~="text-[9px]"],
 [class~="text-[9.5px]"],
 [class~="text-[10px]"],
-[class~="text-[10.5px]"] { font-size: 12px !important; line-height: 1.45 !important; }
+[class~="text-[10.5px]"] { font-size: 13.5px !important; line-height: 1.48 !important; }
 [class~="text-[11px]"],
-[class~="text-[11.5px]"] { font-size: 12.75px !important; line-height: 1.5 !important; }
+[class~="text-[11.5px]"] { font-size: 14.5px !important; line-height: 1.52 !important; }
 [class~="text-[12px]"],
-[class~="text-[12.5px]"] { font-size: 13.25px !important; line-height: 1.5 !important; }
+[class~="text-[12.5px]"],
+[class~="text-[12.75px]"] { font-size: 15.5px !important; line-height: 1.55 !important; }
 [class~="text-[13px]"],
-[class~="text-[13.5px]"] { font-size: 14.25px !important; line-height: 1.52 !important; }
+[class~="text-[13.5px]"] { font-size: 16.5px !important; line-height: 1.56 !important; }
+[class~="text-[14px]"],
+[class~="text-[14.5px]"] { font-size: 17px !important; line-height: 1.56 !important; }
+[class~="text-[15px]"],
+[class~="text-[15.5px]"] { font-size: 18px !important; line-height: 1.55 !important; }
+
+.medicspro-workspace .text-xs { font-size: 0.875rem !important; line-height: 1.5 !important; }
+.medicspro-workspace .text-sm { font-size: 1rem !important; line-height: 1.55 !important; }
+.medicspro-workspace .text-base { font-size: 1.0625rem !important; line-height: 1.58 !important; }
 
 .font-mono {
   letter-spacing: 0;
@@ -168,13 +178,13 @@ html[data-theme='light'] .app-surface {
 .medicspro-page-subtitle {
   margin-top: 0.4rem;
   max-width: 72ch;
-  font-size: 0.925rem;
-  line-height: 1.58;
+  font-size: 1.0625rem;
+  line-height: 1.62;
   color: var(--color-fog);
 }
 
 .medicspro-kicker {
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: 0.11em;
