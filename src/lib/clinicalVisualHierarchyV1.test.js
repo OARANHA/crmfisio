@@ -35,7 +35,7 @@ describe('Consultório V5 clinical visual hierarchy V1', () => {
 
   it('strengthens the global navigation active state without adding another navigation model', () => {
     expect(shell).toContain('medicspro-nav-item relative');
-    expect(shell).toContain("bg-mint/[0.13] text-mint ring-1 ring-inset ring-mint/15 shadow-sm");
+    expect(shell).toContain("bg-mint/[0.16] text-mint ring-1 ring-inset ring-mint/20 shadow-sm");
     expect(css).toContain(".medicspro-nav-item[aria-current='page']::before");
   });
 });

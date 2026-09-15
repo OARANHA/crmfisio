@@ -186,7 +186,7 @@ export function Mensagens() {
   };
 
   return <div className="space-y-4">
-    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="font-display text-3xl font-bold tracking-tight">Mensagens</h1><p className="text-fog text-[13px] mt-0.5">fila persistente · entrega reconciliável · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{operationalAttention > 0 && <Chip className="border-amber/45 text-amber">{operationalAttention} requerem atenção</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
+    <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="medicspro-page-title">Mensagens</h1><p className="medicspro-page-subtitle">fila persistente · entrega reconciliável · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{operationalAttention > 0 && <Chip className="border-amber/45 text-amber">{operationalAttention} requerem atenção</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
 
     <Reveal delay={45}>
       <Card className="!p-0 overflow-hidden">

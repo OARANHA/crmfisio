@@ -84,9 +84,9 @@ export function RecepcaoHoje() {
       <Reveal>
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-mint">operação ao vivo</p>
-            <h1 className="font-display text-3xl font-bold tracking-tight">Hoje · Recepção</h1>
-            <p className="text-fog text-[13px] mt-1">Chegadas, espera e andamento dos atendimentos sem precisar navegar pela grade.</p>
+            <p className="medicspro-kicker">operação ao vivo</p>
+            <h1 className="medicspro-page-title">Hoje · Recepção</h1>
+            <p className="medicspro-page-subtitle">Chegadas, espera e andamento dos atendimentos sem precisar navegar pela grade.</p>
           </div>
           <div className="ml-auto flex gap-2"><Btn variant="ghost" onClick={() => void reload()}>Atualizar</Btn><Btn onClick={() => nav('/agenda')}>Abrir agenda</Btn></div>
         </div>

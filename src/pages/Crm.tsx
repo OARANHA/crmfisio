@@ -75,8 +75,8 @@ export function Crm() {
       <Reveal>
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">CRM · Jornada do Paciente</h1>
-            <p className="text-fog text-[13px] mt-0.5">funil de captação, retenção e satisfação</p>
+            <h1 className="medicspro-page-title">CRM · Jornada do Paciente</h1>
+            <p className="medicspro-page-subtitle">funil de captação, retenção e satisfação</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
             <Btn variant="subtle" onClick={() => navigate('/mensagens')}><IconWhats className="w-4 h-4" /> Selecionar confirmações</Btn>

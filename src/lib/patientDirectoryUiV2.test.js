@@ -16,7 +16,7 @@ describe('patient directory UI Foundation V2', () => {
     expect(pageSource).toContain('!min-h-ui-control');
     expect(tableSource).toContain('px-6 py-5');
     expect(tableSource).toContain('!rounded-ui-data-surface');
-    expect(pageSource).toContain('text-ui-page-title');
+    expect(pageSource).toContain('medicspro-page-title');
   });
 
   it('keeps row navigation keyboard accessible', () => {
