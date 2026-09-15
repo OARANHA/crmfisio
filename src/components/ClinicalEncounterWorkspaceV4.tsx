@@ -25,6 +25,7 @@ import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
 import { ClinicianAssistedInstrumentApplyNow } from './ClinicianAssistedInstrumentApplyNow';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
+import { EncounterCoverageContextCard } from './EncounterCoverageContextCard';
 import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';
 import { ClinicalPrescriptionWorkspace } from './ClinicalPrescriptionWorkspace';
 import { ClinicalReferralWorkspace } from './ClinicalReferralWorkspace';
@@ -205,7 +206,6 @@ export function ClinicalEncounterWorkspaceV4({
 
       <div className="grid items-start gap-4 xl:grid-cols-[252px_minmax(0,1fr)]">
         <aside aria-label="Contexto persistente da consulta" className="clinical-context-rail order-2 space-y-3 xl:order-1 xl:sticky xl:top-3 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-y-auto">
-          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={() => setWorkspace('record')} />
           <div className="clinical-context-card rounded-[20px] border border-line/70 bg-panel p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-aqua">Paciente em contexto</p>
             <p className="mt-1 font-display text-[16px] font-semibold text-paper">{patient.preferredName || patient.nome}</p>
@@ -216,6 +216,8 @@ export function ClinicalEncounterWorkspaceV4({
               <span className="text-[12px] font-semibold text-aqua" aria-hidden>Ver →</span>
             </button>
           </div>
+          <ConsultationStateCard closing={closing} hasLinkedEvolution={hasLinkedEvolution} onRegisterEvolution={() => setWorkspace('record')} />
+          <EncounterCoverageContextCard appointmentId={canonicalEncounter.id} />
         </aside>
         <main className="order-1 min-w-0 space-y-4 xl:order-2">
           <div className="clinical-workspace-nav rounded-[20px] border border-line/70 bg-panel/95 px-3 py-2.5 shadow-sm xl:sticky xl:top-3 xl:z-20">
@@ -436,7 +438,7 @@ function ConsultationStateCard({
 
   return (
     <div className="clinical-context-card rounded-[20px] border border-line/70 bg-panel p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Estado da consulta</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fog">Encerramento</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Chip className={persistence.className}>{persistence.label}</Chip>
         {hasLinkedEvolution && <ClosingChip closing={closing} />}
