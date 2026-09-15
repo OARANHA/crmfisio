@@ -1,8 +1,8 @@
 # Consultório V5 — Navigation Composition V1
 
-**Status:** VALIDADO LOCALMENTE / NÃO PRODUÇÃO
-**Base:** `main@5220747eb1673a34aeecd73eedbc9e768a2f044f`
-**Branch:** `feat/consultorio-v5-navigation-composition`
+**Status:** PRODUÇÃO — MERGED / DEPLOYED / RUNTIME VALIDATED
+**PR:** `#469`
+**Merge SHA:** `233b6cb30e4f6943d1ede28acceafe2e08d18284`
 
 ## Objetivo
 
@@ -116,3 +116,14 @@ Antes de produção:
 5. confirmar navegação mobile/desktop, troca entre Avaliações/Instrumentos e subnavegação de Documentos;
 6. confirmar que nenhuma capability é concedida pela apresentação;
 7. atualizar `docs/CURRENT_STATE.md` para marcar V5 como produção somente depois do smoke.
+
+
+## Produção
+
+Validado no `28server / 158.220.97.145` após deploy GitOps:
+
+- sete workspaces canônicos presentes no bundle vivo;
+- médico com Prescrição e Exames por relevância de apresentação;
+- rotas principais responderam HTTP 200;
+- container sem restart/OOM;
+- nenhum backend, migration, RLS/RPC ou Edge Function foi alterado por esta slice.
