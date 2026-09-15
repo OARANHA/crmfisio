@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClinicalCapability } from '../hooks/useClinicalCapability';
+import { useClinicalEncounterHandoff } from '../hooks/useClinicalEncounterHandoff';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import { useAgenda } from '../lib/agendaContext';
@@ -10,7 +11,6 @@ import { Btn, Card } from '../lib/ui';
 import { Reveal } from '../components/Reveal';
 
 const activeStatuses = new Set(['agendado', 'confirmado', 'em_atendimento']);
-const clinicalSessionPath = (item: ReceptionQueueItem) => `/pacientes/${item.patient_id}?session=${item.appointment_id}#clinical-workspace`;
 
 export function RecepcaoHoje() {
   const { user } = useCurrentUserAccess();
@@ -18,6 +18,7 @@ export function RecepcaoHoje() {
   const { toast } = useToast();
   const { setAppointmentStatus } = useAgenda();
   const nav = useNavigate();
+  const { openEncounter } = useClinicalEncounterHandoff();
   const [items, setItems] = useState<ReceptionQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -73,7 +74,7 @@ export function RecepcaoHoje() {
 
   const startClinicalSession = async (item: ReceptionQueueItem) => {
     const accepted = await status(item, 'em_atendimento');
-    if (accepted) nav(clinicalSessionPath(item));
+    if (accepted) openEncounter({ id: item.appointment_id, pacienteId: item.patient_id });
   };
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -130,7 +131,7 @@ export function RecepcaoHoje() {
                       {!arrived && !['finalizado','faltou','cancelado'].includes(item.status) && <Btn disabled={busyId === item.appointment_id} onClick={() => void arrival(item, true)}>Paciente chegou</Btn>}
                       {arrived && item.status !== 'em_atendimento' && item.status !== 'finalizado' && <Btn variant="ghost" disabled={busyId === item.appointment_id} onClick={() => void arrival(item, false)}>Desfazer chegada</Btn>}
                       {isAssignedClinician && arrived && ['agendado','confirmado'].includes(item.status) && <Btn onClick={() => void startClinicalSession(item)}>Iniciar atendimento</Btn>}
-                      {isAssignedClinician && item.status === 'em_atendimento' && <Btn onClick={() => nav(clinicalSessionPath(item))}>Continuar atendimento</Btn>}
+                      {isAssignedClinician && item.status === 'em_atendimento' && <Btn onClick={() => openEncounter({ id: item.appointment_id, pacienteId: item.patient_id })}>Continuar atendimento</Btn>}
                       {(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'recep') && ['agendado','confirmado'].includes(item.status) && <Btn variant="ghost" onClick={() => void status(item, 'faltou')}>Marcar falta</Btn>}
                     </div>
                   </div>

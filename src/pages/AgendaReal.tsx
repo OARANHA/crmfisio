@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, addMonths, format, getDay, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useClinicalEncounterHandoff } from '../hooks/useClinicalEncounterHandoff';
 import { cancelAppointmentWithReason, rescheduleAppointment } from '../lib/appointmentOperations';
 import { loadAppointmentWhatsappStates, type AppointmentWhatsappState } from '../lib/appointmentWhatsapp';
 import { useAgenda } from '../lib/agendaContext';
 import { useClinicDirectory } from '../lib/clinicDirectoryContext';
 import {
-  clinicianEncounterPath,
   filterAgendaAppointments,
   parseAgendaStatusFilter,
   resolveProfessionalActiveEncounter,
@@ -77,6 +77,7 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
   const { appointments, addAppointment, setAppointmentStatus, refreshAgenda } = useAgenda();
   const { unidades, rooms, loading: loadingInfra } = useInfrastructure();
   const nav = useNavigate();
+  const { openEncounter } = useClinicalEncounterHandoff();
   const [searchParams, setSearchParams] = useSearchParams();
   const listAnchorRef = useRef<HTMLDivElement | null>(null);
   const [unitFilter, setUnitFilter] = useState('all');
@@ -258,9 +259,15 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
 
   const manageStatus = async (status: AppointmentStatus) => {
     if (!selected) return;
+    const appointment = selected;
     try {
-      await setAppointmentStatus(selected.id, status);
-      setSelected({ ...selected, status });
+      await setAppointmentStatus(appointment.id, status);
+      if (status === 'em_atendimento' && professionalIdOf(appointment) === user?.id) {
+        setSelected(null);
+        openEncounter(appointment);
+        return;
+      }
+      setSelected({ ...appointment, status });
     } catch (error) {
       console.error('[MedicsPro] Falha ao atualizar o atendimento:', error);
       toast('Falha ao atualizar o atendimento. Tente novamente.', 'warn');
@@ -483,7 +490,7 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
             encounter={activeEncounter}
             patientLabel={activePatient?.preferredName || activePatient?.nome || 'Paciente'}
             now={now}
-            onContinue={() => nav(clinicianEncounterPath(activeEncounter))}
+            onContinue={() => openEncounter(activeEncounter)}
           />
         </Reveal>
       )}
@@ -542,7 +549,7 @@ export function AgendaReal({ mode = 'operational' }: { mode?: AgendaExperienceMo
       )}
 
       <AppointmentCreateModal creating={creating} onClose={() => setCreating(null)} rooms={rooms} unidades={unidades} prefillPatientId={prefillPatientId} onSave={saveAppointment} />
-      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={(status) => void manageStatus(status)} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => selected && nav(selected.status === 'em_atendimento' && professionalIdOf(selected) === user?.id ? clinicianEncounterPath(selected) : `/pacientes/${selected.pacienteId}`)} />
+      <AppointmentActionModal appointment={selected} role={user?.role ?? 'recep'} patient={selected ? patients.find((item) => item.id === selected.pacienteId) : undefined} appointments={appointments} whatsapp={selected ? whatsappByAppointment.get(selected.id) : undefined} patientLabel={selected ? patientName(patients, selected.pacienteId) : '—'} unitLabel={selected ? unitLabel(selected.roomId) : ''} roomLabel={selected ? roomLabel(selected.roomId) : ''} onClose={() => setSelected(null)} onStatus={(status) => void manageStatus(status)} onReschedule={() => { if (selected) { setReschedulePreset(null); setRescheduling(selected); } setSelected(null); }} onCancel={() => { if (selected) setCancelling(selected); setSelected(null); }} onOpenPatient={() => { if (!selected) return; if (selected.status === 'em_atendimento' && professionalIdOf(selected) === user?.id) openEncounter(selected); else nav(`/pacientes/${selected.pacienteId}`); }} />
       <AppointmentCancelModal appointment={cancelling} onClose={() => setCancelling(null)} onConfirm={confirmCancellation} busy={operationBusy} />
       <AppointmentRescheduleModal appointment={rescheduling} preset={reschedulePreset} rooms={rooms} unidades={unidades} onClose={() => { setRescheduling(null); setReschedulePreset(null); }} onConfirm={confirmReschedule} busy={operationBusy} />
     </div>
