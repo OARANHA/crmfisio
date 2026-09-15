@@ -21,6 +21,14 @@ export function ClinicQueryProvider({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+export function agendaQueryKey(scope: {
+  clinicId: string | null;
+  userId: string | null;
+  role: Role | null;
+}) {
+  return ['clinic', 'agenda', 'v1', scope.clinicId, scope.userId, scope.role] as const;
+}
+
 export function patientQueryKey(scope: {
   clinicId: string | null;
   userId: string | null;

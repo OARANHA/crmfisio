@@ -127,7 +127,9 @@ describe('clinic session lifetime', () => {
       else await latest.agenda.addAppointment({} as any);
     });
     await act(async () => { result.reject(new Error('old failure')); await operation; });
-    expect(domain === 'patient' ? latest.patients.patients : latest.agenda.appointments).toEqual([current]);
+    await vi.waitFor(() => {
+      expect(domain === 'patient' ? latest.patients.patients : latest.agenda.appointments).toEqual([current]);
+    });
   });
 
   it('preserves state and avoids reloading on token renewal', async () => {

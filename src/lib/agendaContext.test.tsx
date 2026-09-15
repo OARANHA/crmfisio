@@ -18,7 +18,8 @@ vi.mock('./repository', () => repositoryMocks);
 
 vi.mock('./useAuth', () => ({
   useAuth: () => ({
-    profile: { clinic_id: 'clinic-a' },
+    session: { user: { id: 'user-a' } },
+    profile: { id: 'user-a', clinic_id: 'clinic-a', role: 'owner', ativo: true },
     tenantAccessState: 'active',
   }),
 }));
@@ -36,6 +37,7 @@ vi.mock('./supabaseClient', () => ({
 }));
 
 import { AgendaProvider, useAgenda } from './agendaContext';
+import { ClinicQueryProvider } from './clinicQuery';
 
 const appointment: Appointment = {
   id: 'appointment-a',
@@ -80,16 +82,21 @@ describe('AgendaProvider canonical appointment status mutation', () => {
 
     await act(async () => {
       renderer = create(
-        <AgendaProvider>
-          <Probe />
-        </AgendaProvider>,
+        <ClinicQueryProvider>
+          <AgendaProvider>
+            <Probe />
+          </AgendaProvider>
+        </ClinicQueryProvider>,
       );
       await Promise.resolve();
       await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(latestAgenda?.appointments).toHaveLength(1);
-    expect(latestAgenda?.appointments[0]?.status).toBe('em_atendimento');
+    await vi.waitFor(() => {
+      expect(latestAgenda?.appointments).toHaveLength(1);
+      expect(latestAgenda?.appointments[0]?.status).toBe('em_atendimento');
+    });
 
     let caught: unknown;
     await act(async () => {

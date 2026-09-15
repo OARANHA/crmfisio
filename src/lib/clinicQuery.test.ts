@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createClinicQueryClient, patientQueryKey } from './clinicQuery';
+import { agendaQueryKey, createClinicQueryClient, patientQueryKey } from './clinicQuery';
 
 describe('clinic-scoped TanStack Query foundation', () => {
   it('scopes patient cache keys by clinic, user and role', () => {
@@ -7,6 +7,14 @@ describe('clinic-scoped TanStack Query foundation', () => {
     expect(patientQueryKey({ clinicId: 'clinic-b', userId: 'user-a', role: 'professional' })).not.toEqual(base);
     expect(patientQueryKey({ clinicId: 'clinic-a', userId: 'user-b', role: 'professional' })).not.toEqual(base);
     expect(patientQueryKey({ clinicId: 'clinic-a', userId: 'user-a', role: 'admin' })).not.toEqual(base);
+  });
+
+  it('scopes agenda cache keys by clinic, user and role', () => {
+    const base = agendaQueryKey({ clinicId: 'clinic-a', userId: 'user-a', role: 'professional' });
+    expect(agendaQueryKey({ clinicId: 'clinic-b', userId: 'user-a', role: 'professional' })).not.toEqual(base);
+    expect(agendaQueryKey({ clinicId: 'clinic-a', userId: 'user-b', role: 'professional' })).not.toEqual(base);
+    expect(agendaQueryKey({ clinicId: 'clinic-a', userId: 'user-a', role: 'admin' })).not.toEqual(base);
+    expect(base).not.toEqual(patientQueryKey({ clinicId: 'clinic-a', userId: 'user-a', role: 'professional' }));
   });
 
   it('creates isolated query clients for distinct clinic-session lifetimes', () => {
