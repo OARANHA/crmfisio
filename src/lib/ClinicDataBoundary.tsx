@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import { useAuth } from './useAuth';
+import { ClinicQueryProvider } from './clinicQuery';
 
 /**
  * All clinic providers and their consumers share one session lifetime.
@@ -18,5 +19,5 @@ export function ClinicDataBoundary({ children }: { children: ReactNode }) {
     profile?.ativo ?? null,
     tenantAccessState,
   ]);
-  return <Fragment key={scope}>{children}</Fragment>;
+  return <Fragment key={scope}><ClinicQueryProvider>{children}</ClinicQueryProvider></Fragment>;
 }
