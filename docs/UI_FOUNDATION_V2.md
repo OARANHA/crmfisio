@@ -43,7 +43,7 @@ Canonical dependency decision for this slice:
 
 ```text
 TanStack Table: ADOPT IN PILOT
-TanStack Query: NEXT FOUNDATION SLICE
+TanStack Query: ADOPT IN SERVER-STATE SLICES
 TanStack Router: NO CHANGE
 TanStack Start: NO CHANGE
 ```
@@ -62,7 +62,23 @@ Result: narrow and sequence the decision before execution.
 
 ### Execution
 
-`@tanstack/react-table` remains in this pilot. TanStack Query moves to a dedicated follow-up slice where query keys, invalidation and session clearing can be reviewed explicitly.
+`@tanstack/react-table` remains in this pilot. TanStack Query was then adopted in dedicated server-state slices for Pacientes and Agenda, where query keys, invalidation and session clearing are reviewed independently from visual changes.
+
+## Comfortable tokens V1
+
+The approved pilot scale is now expressed through **additive semantic Tailwind theme tokens** instead of repeating raw pixel literals across the pilot surfaces.
+
+Canonical examples:
+
+- `ui-control` = 48px interaction height;
+- `ui-sidebar-compact` = 88px;
+- `ui-sidebar-expanded` = 292px;
+- `ui-page-title` / `ui-metric-value` = 34px;
+- `ui-hero-title-lg` = 42px;
+- `ui-surface` = 24px radius;
+- `ui-data-surface` = 22px radius.
+
+This is intentionally **not** a global primitive-default change. Existing compact surfaces keep their current dimensions until they are reviewed and explicitly promoted to the comfortable contract.
 
 ## Compatibility reviewed
 
@@ -110,7 +126,7 @@ The comfortable density contract includes:
 
 `ClinicianDashboard` is the canonical post-login visual reference for a clinical-only professional: **Meu dia → next movement → today metrics → agenda → clinical priorities**.
 
-TanStack adoption remains capability-driven. Table V9 is part of this PR because it already owns operational directory state. TanStack Query is intentionally split into a follow-up foundation slice so server-state migration can be tenant/user/role-scoped, session-cleared, and reviewed independently from visual changes. TanStack Router/Start remain out of scope.
+TanStack adoption remains capability-driven. Table V9 entered through the operational directory, while Query is isolated to dedicated Pacientes and Agenda server-state slices so migration stays tenant/user/role-scoped, session-cleared, and independently reviewable. TanStack Router/Start remain out of scope.
 
 ## Preview
 

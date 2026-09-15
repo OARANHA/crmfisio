@@ -117,7 +117,7 @@ export function PatientDirectoryTableV2({ patients, onOpenPatient }: PatientDire
   });
 
   return (
-    <Card className="overflow-hidden !rounded-[22px] !p-0">
+    <Card className="overflow-hidden !rounded-ui-data-surface !p-0">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1080px]">
           <thead>

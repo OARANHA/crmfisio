@@ -9,18 +9,28 @@ const cssSource = readFileSync(fileURLToPath(new URL('../index.css', import.meta
 
 describe('MedicsPro UI Foundation V2 system scale', () => {
   it('keeps a comfortable desktop shell instead of returning to the compact legacy scale', () => {
-    expect(shellSource).toContain("collapsed ? 'w-[88px]' : 'w-[292px]'");
-    expect(shellSource).toContain('min-h-12 items-center');
-    expect(shellSource).toContain("collapsed ? 'lg:pl-[88px]' : 'lg:pl-[292px]'");
-    expect(shellSource).toContain('md:text-[16px]');
+    expect(shellSource).toContain("collapsed ? 'w-ui-sidebar-compact' : 'w-ui-sidebar-expanded'");
+    expect(shellSource).toContain('min-h-ui-control items-center');
+    expect(shellSource).toContain("collapsed ? 'lg:pl-ui-sidebar-compact' : 'lg:pl-ui-sidebar-expanded'");
+    expect(shellSource).toContain('md:text-ui-body');
   });
 
   it('keeps the clinician home visually prioritized around the working day', () => {
     expect(clinicianSource).toContain('Seu dia está aqui');
-    expect(clinicianSource).toContain('sm:text-[42px]');
+    expect(clinicianSource).toContain('sm:text-ui-hero-title-lg');
     expect(clinicianSource).toContain('xl:grid-cols-[1.4fr_1fr]');
-    expect(metricSource).toContain('text-[34px]');
-    expect(metricSource).toContain('min-h-12 items-center');
+    expect(metricSource).toContain('text-ui-metric-value');
+    expect(metricSource).toContain('min-h-ui-control items-center');
+  });
+
+  it('codifies the approved comfortable scale as additive semantic tokens', () => {
+    expect(cssSource).toContain('--spacing-ui-control: 3rem');
+    expect(cssSource).toContain('--spacing-ui-sidebar-compact: 5.5rem');
+    expect(cssSource).toContain('--spacing-ui-sidebar-expanded: 18.25rem');
+    expect(cssSource).toContain('--text-ui-page-title: 2.125rem');
+    expect(cssSource).toContain('--text-ui-hero-title-lg: 2.625rem');
+    expect(cssSource).toContain('--radius-ui-surface: 1.5rem');
+    expect(cssSource).toContain('--radius-ui-data-surface: 1.375rem');
   });
 
   it('treats the light theme as a first-class UI surface', () => {
