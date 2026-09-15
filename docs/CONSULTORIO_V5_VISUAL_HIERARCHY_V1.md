@@ -1,6 +1,6 @@
 # Consultório V5 — Clinical Visual Hierarchy V1
 
-**Status:** VALIDADO LOCALMENTE / NÃO PRODUÇÃO.
+**Status:** PRODUÇÃO — MERGED / DEPLOYED / STRUCTURAL RUNTIME VALIDATED
 
 ## Objetivo
 
@@ -61,6 +61,22 @@ Esta slice não altera:
 - ESLint verde sem warnings;
 - build Vite verde;
 - `git diff --check` verde.
+
+## Produção
+
+PR `#470` mergeada por squash em `main@ea5f982f556b1723c2b036bff961c1f7bb2cdbbe`.
+
+Validação estrutural no `28server / 158.220.97.145` após o GitOps:
+
+- container frontend recriado com nova imagem;
+- `restarts=0`, `OOM=false`, `status=running`;
+- `clinical-history-drawer` presente no bundle vivo;
+- `medicspro-nav-item` presente no JS/CSS vivo;
+- texto `Referência longitudinal` e `Prontuário longitudinal e histórico` presentes no bundle;
+- `/`, `/agenda`, `/pacientes`, `/nexus` e `/mensagens` retornaram HTTP 200;
+- nenhum 4xx/5xx observado nos logs desde o deploy.
+
+A validação acima prova rollout/runtime. Aceitação visual humana contínua permanece uma evidência de UX separada e pode gerar refinamentos posteriores sem reabrir os boundaries clínicos.
 
 ## Critério de promoção
 

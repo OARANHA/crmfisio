@@ -4,8 +4,8 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-13  
-**Base canônica:** `main@5220747eb1673a34aeecd73eedbc9e768a2f044f`
+**Data do snapshot:** 2026-09-15
+**Base canônica:** `main@ea5f982f556b1723c2b036bff961c1f7bb2cdbbe`
 
 ## Estado clínico resumido
 
@@ -69,19 +69,19 @@ Documento de domínio: `docs/PHQ15_CLINICIAN_ASSISTED_V1.md`.
 
 ---
 
-## Handoff ativo — Consultório V5 Navigation Composition V1
+## Consultório V5 — composição + hierarquia visual
 
-**Status:** VALIDADO LOCALMENTE / NÃO PRODUÇÃO.
+**Status:** PRODUÇÃO — RUNTIME VALIDATED.
 
 ```text
-base:                  main@5220747eb1673a34aeecd73eedbc9e768a2f044f
-branch:                feat/consultorio-v5-navigation-composition
-runtime backend:       INALTERADO
-migration/schema/RLS:  NENHUMA ALTERAÇÃO
-produção:              NÃO TOCADA
+Navigation Composition:   #469 MERGED → main@233b6cb30e4f6943d1ede28acceafe2e08d18284
+Visual Hierarchy V1:      #470 MERGED → main@ea5f982f556b1723c2b036bff961c1f7bb2cdbbe
+runtime backend:          INALTERADO
+migration/schema/RLS:     NENHUMA ALTERAÇÃO
+produção frontend:        DEPLOYED / HTTP 200
 ```
 
-A primeira slice V5 materializa a composição frontend já aprovada:
+Composição canônica em produção:
 
 ```text
 um Encounter
@@ -96,27 +96,32 @@ um Encounter
 └─ Nexus
 ```
 
+Visual Hierarchy V1 reforça contraste e hierarquia sem transformar o produto em dashboard decorativo:
+
+- aqua/azul = contexto, foco e referência;
+- mint/verde = ação/estado ativo ou confirmado;
+- amber/laranja = atenção/pendência;
+- pulse/vermelho = erro/bloqueio;
+- hero, tabs, seções e rail de contexto ganharam presença visual controlada;
+- sidebar ganhou marcador ativo discreto;
+- `Prontuário longitudinal e histórico` deixou o rodapé e passou para drawer lateral aberto por `Paciente em contexto`, usando o mesmo `historicalWorkspace` canônico.
+
 Invariantes preservadas:
 
 - `Assessment Engine` continua separado de `Clinician-Assisted Administration`;
-- `Instrumentos` não usa `clinical.assessment.apply` como autorização implícita;
-- Prescrição e Exames continuam com relevância de apresentação conservadora e autorização server-side própria;
-- agrupar Orientação + Encaminhamento em `Documentos` não funde seus document types, payloads, lifecycle ou writers;
-- Encounter, autoria, care relationship, capabilities, RLS/RPCs e finalização não mudam;
-- nenhuma engine clínica foi reimplementada.
+- `Instrumentos` não herda `clinical.assessment.apply`;
+- profissão/especialidade seguem apenas como relevância de apresentação;
+- Prescrição/Exames e Clinical Documents mantêm autorização server-side própria;
+- histórico longitudinal não vira oitava aba nem outra engine;
+- Encounter lifecycle, RLS/RPC, capabilities, autoria e care relationship não mudam.
 
-Validação local:
+Evidência:
 
-- testes direcionados da composição/boundaries: verdes;
-- suíte completa: `105/105` arquivos e `572/572` testes verdes;
-- TypeScript: verde;
-- ESLint: verde, zero warnings;
-- Vite build: verde;
-- `git diff --check`: verde.
+- Navigation Composition: `105/105` arquivos e `572/572` testes antes do merge; PR #469 com `22/22` workflows verdes;
+- Visual Hierarchy V1: `106/106` arquivos e `576/576` testes, TypeScript, lint, build e diff-check verdes; PR #470 com `11/11` workflows verdes;
+- produção #470: container novo, `restarts=0`, `OOM=false`, bundle com `clinical-history-drawer`/`medicspro-nav-item`, rotas `/`, `/agenda`, `/pacientes`, `/nexus`, `/mensagens` HTTP 200 e sem 4xx/5xx nos logs observados.
 
-Comparação histórica obrigatória feita contra `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83`: preservar contexto persistente do paciente e navegação por intenção clínica; rejeitar arquitetura Vue/Pinia/Mongo, autosave/checkout legados, excesso de módulos concorrentes e qualquer autorização histórica.
-
-Documento da slice: `docs/CONSULTORIO_V5_NAVIGATION_COMPOSITION_V1.md`.
+Documentos: `docs/CONSULTORIO_V5_NAVIGATION_COMPOSITION_V1.md` e `docs/CONSULTORIO_V5_VISUAL_HIERARCHY_V1.md`.
 
 ---
 
