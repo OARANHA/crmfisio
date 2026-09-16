@@ -1,6 +1,6 @@
 # Encounter Record Correction/Addendum V1
 
-**Status desta revisão:** implementação de repositório validada; rollout de produção ainda não executado.
+**Status em 2026-09-15:** #481 mergeada e rollout de produção concluído; migration, verifier read-only, smoke de imutabilidade e frontend observados.
 
 ## Objetivo
 
@@ -126,3 +126,17 @@ Os 14 cenários cobrem:
 O verifier `VERIFY_20260915_CLINICAL_ENCOUNTER_RECORD_ADDENDUM_V1.sql` é read-only e apropriado para produção após a migration.
 
 Frontend validado localmente com testes focados, suíte completa, typecheck, lint e build. Evidência de produção só pode ser registrada após merge, migration/verifier e smoke reais.
+
+## Evidência de produção — 2026-09-15
+
+- `main@84446b68f4f195ca0441bf341c28a517b773d438`;
+- migration aplicada com `COMMIT`;
+- verifier retornou `VERIFY ENCOUNTER RECORD ADDENDUM V1 PRODUCTION OK`;
+- RLS ativo e `authenticated` sem INSERT/UPDATE/DELETE direto no ledger;
+- trigger de freeze da Evolution oficial finalizada ativo;
+- smoke transacional confirmou a imutabilidade e terminou em `ROLLBACK`;
+- zero retificações/adendos reais foram criados durante a validação;
+- frontend ativo comprovado byte a byte contra o build canônico: 50/50 arquivos;
+- container sem restart/OOM e sem HTTP 5xx ou erro Nginx no smoke observado.
+
+A ausência de um adendo clínico real é deliberada: não se fabrica ato clínico em prontuário apenas para fechar checklist de rollout.

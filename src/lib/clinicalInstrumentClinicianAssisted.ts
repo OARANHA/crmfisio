@@ -37,6 +37,23 @@ export type ClinicianAssistedAdministration = {
   replayed: boolean;
 };
 
+export type ClinicianAssistedInstrumentHistoryItem = {
+  id: string;
+  appointmentId: string;
+  professionalId: string;
+  instrumentKey: string;
+  engineRuleVersion: string;
+  provenance: 'clinician_assisted';
+  totalScore: number;
+  maxScore: number;
+  classification: string;
+  severity: string;
+  interpretation: string;
+  hasSafetySignal: boolean;
+  hasCriticalSafetySignal: boolean;
+  completedAt: string;
+};
+
 export type ClinicianAssistedInstrumentAvailability = Record<ClinicianAssistedInstrumentKey, boolean>;
 
 export type ClinicianAssistedRequestPayload = {
@@ -81,4 +98,30 @@ export async function submitClinicianAssistedInstrument(
   const administration = (data as { administration?: ClinicianAssistedAdministration } | null)?.administration;
   if (!administration) throw new Error('Administração clínica não retornada pelo servidor');
   return administration;
+}
+
+export async function loadClinicianAssistedInstrumentHistory(
+  patientId: string,
+): Promise<ClinicianAssistedInstrumentHistoryItem[]> {
+  const { data, error } = await db.rpc('list_patient_clinician_assisted_instrument_history', {
+    p_patient_id: patientId,
+  });
+  if (error) throw error;
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    appointmentId: String(row.appointment_id),
+    professionalId: String(row.professional_id),
+    instrumentKey: String(row.instrument_key),
+    engineRuleVersion: String(row.engine_rule_version),
+    provenance: 'clinician_assisted' as const,
+    totalScore: Number(row.total_score),
+    maxScore: Number(row.max_score),
+    classification: String(row.classification),
+    severity: String(row.severity),
+    interpretation: String(row.interpretation),
+    hasSafetySignal: row.has_safety_signal === true,
+    hasCriticalSafetySignal: row.has_critical_safety_signal === true,
+    completedAt: String(row.completed_at),
+  }));
 }

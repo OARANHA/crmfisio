@@ -23,6 +23,7 @@ migration = Path('supabase-migrations/20260913_clinician_assisted_clinical_instr
 edge = Path('supabase/functions/clinical-instrument-clinician-assisted/index.ts').read_text()
 processor = Path('supabase/functions/nexus-self-assessment-processor/index.ts').read_text()
 engine = Path('supabase/functions/_shared/clinical-instrument-engine.ts').read_text()
+history = Path('supabase-migrations/20260915_clinician_assisted_instrument_history_v1.sql').read_text()
 
 required_migration = [
     'clinical_instrument_administrations',
@@ -79,6 +80,13 @@ for token in ['nexus.phq9', 'nexus.gad7', 'nexus-2026-09-03', 'phq9.item9.positi
     if token not in engine:
         raise SystemExit(f'CAI static safety failed: shared engine missing {token}')
 
+for token in ['list_patient_clinician_assisted_instrument_history', 'can_access_patient_clinical_record', 'has_safety_signal', 'has_critical_safety_signal']:
+    if token not in history:
+        raise SystemExit(f'CAI history static safety failed: missing {token}')
+for forbidden in ['answers_snapshot', 'output_snapshot', 'evidence_snapshot', 'soap_text', 'nexus.access', 'clinical.instrument.apply']:
+    if forbidden in history:
+        raise SystemExit(f'CAI history static safety failed: projection depends on {forbidden}')
+
 print('CAI static safety: #399 act boundary reused; Nexus scorer shared; neutral persistence isolated')
 PY
 
@@ -86,5 +94,10 @@ python3 scripts/build-clinician-assisted-instrument-v1-sql-test.py > "$GENERATED
 "${PSQL[@]}" -f "$GENERATED"
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260910_CLINICAL_INSTRUMENT_ENCOUNTER_AUTHORIZATION.sql
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260913_CLINICIAN_ASSISTED_CLINICAL_INSTRUMENTS_V1.sql
+"${PSQL[@]}" -f supabase-migrations/20260912_clinical_care_relationship_read_reconciliation.sql
+"${PSQL[@]}" -f supabase-migrations/20260915_clinician_assisted_instrument_history_v1.sql
+"${PSQL[@]}" -f supabase-migrations/20260915_clinician_assisted_instrument_history_v1.sql
+"${PSQL[@]}" -f tests/sql/clinician_assisted_instrument_history_v1_cases.sql
+"${PSQL[@]}" -f supabase-verifiers/VERIFY_20260915_CLINICIAN_ASSISTED_INSTRUMENT_HISTORY_V1.sql
 
-echo "Clinician-Assisted Administration V1 PostgreSQL 16: effective #399/#400 stack + replay + behavior + historical #399 verifier + V1 read-only verifier passed"
+echo "Clinician-Assisted Administration + Neutral History V1 PostgreSQL 16: effective #399/#400 stack + immutable administration + canonical care-read reconciliation + history behavior + production-safe verifier passed"

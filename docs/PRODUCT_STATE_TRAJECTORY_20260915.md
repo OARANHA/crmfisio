@@ -160,8 +160,8 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 1. [x] Autoentrada segura no Modo Consultório após ação explícita de iniciar/continuar o próprio Encounter (#478).
 2. Medir cliques, tempo e fricções reais no fluxo de atendimento.
 3. [x] **Cobertura deste atendimento** por RPC contextual, sem expor Financeiro global (#479).
-4. Implementar correção/adendo auditável para Encounter Record finalizado.
-5. Melhorar histórico neutro de instrumentos clinician-assisted sem abrir leitura direta do ledger.
+4. [x] Correction/Addendum V1 append-only para Encounter Record finalizado (#481).
+5. **Melhorar histórico neutro de instrumentos clinician-assisted sem abrir leitura direta do ledger.**
 6. Fechar `Enviar ao paciente` como boundary separada; `Aplicar agora` já está entregue.
 
 ## Fase B — configuração clínica/operacional
@@ -201,6 +201,6 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 
 # Próxima slice escolhida
 
-**Encounter Record Correction/Addendum V1.**
+**Neutral Clinician-Assisted Instrument History V1.**
 
-Motivo: autoentrada (#478) e cobertura contextual (#479) já estão em produção. O maior gap clínico estrutural imediato passa a ser corrigir ou complementar um registro finalizado sem sobrescrever histórico, preservando autoria, timestamp, motivo, vínculo ao Encounter original e trilha auditável.
+Motivo: autoentrada (#478), cobertura contextual (#479) e Correction/Addendum append-only (#481) já estão em produção. O próximo gap de ergonomia clínica é permitir leitura longitudinal neutra de instrumentos clinician-assisted sem expor o ledger Nexus diretamente, sem transformar relevância em autorização e sem duplicar engine/versionamento/scoring.

@@ -13,6 +13,7 @@ const assistedCatalog = read('./nexus/clinicianAssistedInstrumentCatalog.ts');
 const publicCatalog = read('./nexus/publicSelfAssessmentCatalog.ts');
 const ui = read('../components/ClinicianAssistedInstrumentApplyNow.tsx');
 const workspace = read('../components/ClinicalEncounterWorkspaceV4.tsx');
+const instrumentWorkspace = read('../components/ClinicianAssistedInstrumentWorkspace.tsx');
 
 describe('Clinician-Assisted Administration V1 boundary', () => {
   it('authenticates the clinician before using the service-only writer', () => {
@@ -92,16 +93,18 @@ describe('Clinician-Assisted Administration V1 boundary', () => {
     const instrumentsStart = workspace.indexOf("activeWorkspace === 'instruments'");
     const prescriptionStart = workspace.indexOf("activeWorkspace === 'prescription'");
     const assessmentGate = workspace.indexOf('assessmentCapability.loading', assessmentStart);
-    const applyNow = workspace.indexOf('<ClinicianAssistedInstrumentApplyNow', instrumentsStart);
+    const instrumentSurface = workspace.indexOf('<ClinicianAssistedInstrumentWorkspace', instrumentsStart);
 
     expect(assessmentStart).toBeGreaterThan(-1);
     expect(instrumentsStart).toBeGreaterThan(assessmentStart);
     expect(prescriptionStart).toBeGreaterThan(instrumentsStart);
     expect(assessmentGate).toBeGreaterThan(assessmentStart);
     expect(assessmentGate).toBeLessThan(instrumentsStart);
-    expect(applyNow).toBeGreaterThan(instrumentsStart);
-    expect(applyNow).toBeLessThan(prescriptionStart);
-    expect(workspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentApplyNow');
+    expect(instrumentSurface).toBeGreaterThan(instrumentsStart);
+    expect(instrumentSurface).toBeLessThan(prescriptionStart);
+    expect(instrumentWorkspace).toContain('<ClinicianAssistedInstrumentApplyNow');
+    expect(instrumentWorkspace).toContain('<ClinicianAssistedInstrumentHistory');
+    expect(workspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentWorkspace');
     expect(workspace.slice(instrumentsStart, prescriptionStart)).not.toContain('assessmentCapability');
     expect(workspace.slice(instrumentsStart, prescriptionStart)).not.toContain('nexus.scales');
   });

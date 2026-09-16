@@ -67,7 +67,7 @@ Não iniciar uma tela isolada quando a decisão depende de entitlement, configur
 
 - [ ] Refinar ergonomia do Encounter com profissionais reais, reduzindo cliques e fricção sem alterar o lifecycle canônico.
 - [ ] Validar linguagem e ordem clínica com médico e demais profissionais do piloto.
-- [ ] Implementar correção/adendo auditável para Encounter Record finalizado; nunca sobrescrever silenciosamente histórico.
+- [x] #481 — Correction/Addendum V1 em produção: ledger append-only, Evolution oficial finalizada imutável, autor original como único writer V1 e zero efeitos em appointment/financeiro.
 - [ ] Melhorar leitura longitudinal e comparação de registros sem tornar histórico editável.
 - [x] Autoentrada segura no Modo Consultório (#478): somente handoff explícito de iniciar/continuar o próprio Encounter; sem inferência por rota/query ou mera existência de appointment ativo.
 
@@ -100,6 +100,7 @@ Requisitos associados:
 - [x] Disponibilidade/relevância permanecem separadas da autorização efetiva.
 - [x] Definição/versão/scoring de PHQ-9/GAD-7 continuam compartilhados com a engine canônica; não existe instrumento duplicado.
 - [x] Provenance diferencia `patient_self` de `clinician_assisted`.
+- [ ] Melhorar histórico neutro de instrumentos clinician-assisted sem abrir leitura direta do ledger Nexus nem acoplar UI multiprofissional a `nexus.*`.
 - [ ] Desenhar/fechar `Enviar ao paciente` como boundary contextual separado.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
