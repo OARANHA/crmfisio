@@ -25,16 +25,16 @@ Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
-CAGE Clinician-Assisted V1 #488                                 MAIN VALIDATED / NOT PROD
+CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 ```
 
-## Slice em andamento — CAGE Clinician-Assisted V1
+## Produção — CAGE Clinician-Assisted V1
 
-**Status:** #488 mergeada; `main@4a574681ec97c0893619b95158afb79791fd6fe6`; 50/50 checks da PR e 5/5 workflows pós-merge verdes; ainda sem rollout produtivo ou enablement de clínica.
+**Status:** #488 mergeada e rollout produtivo verificado em 2026-09-16; migration aplicada, shared Edge engine pinado à `main@28bc2eab26edf33672e2509f0ec64503f9d05047`, frontend com bundle CAGE ativo e nenhuma clínica habilitada permanentemente.
 
 CAGE foi selecionado como primeira ferramenta nova da expansão Nexus restante após revisão de direitos/proveniência. A V1 usa somente `Aplicar agora`, exige quatro respostas binárias explícitas, mantém cutoff canônico `>=2` como **rastreio** e não como diagnóstico, não auto-habilita clínicas e não cria contrato `patient_self`.
 
-Gates locais aprovados: PostgreSQL 16 e PostgreSQL 17.6 (behavior + replay + autorização + writer + verifier), testes focados 26/26, full suite 116 arquivos / 631 testes, typecheck, lint, build, dependency audit e `git diff --check`. Falta apenas CI GitHub/merge; produção permanece intocada.
+Gates aprovados: PostgreSQL 16 e PostgreSQL 17.6, testes focados 26/26, full suite 116 arquivos / 631 testes, typecheck, lint, build, dependency audit, PR CI 50/50 e 5/5 workflows pós-merge. Em produção, verifier formal e smoke transacional de writer/idempotência passaram; o ROLLBACK deixou `0` settings CAGE, `0` administrações CAGE e `0` contratos `patient_self`.
 
 ---
 

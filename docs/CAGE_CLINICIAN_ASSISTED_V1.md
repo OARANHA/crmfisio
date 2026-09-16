@@ -1,11 +1,12 @@
 # CAGE Clinician-Assisted V1
 
-**Status:** #488 MERGED / MAIN VALIDATED / NOT PROD.
+**Status:** #488 MERGED / PROD / VERIFIED / NO TENANT AUTO-ENABLE.
 **Base:** `main@b99c5ca24b3c57e07475eb96acfb8dcb8e691366`.
 **Branch:** `feat/cage-clinician-assisted-v1`.
 **Implementation commit:** `4422152` (pre-continuity-doc update).
 **PR:** `#488` MERGED.
 **Merge/main SHA:** `4a574681ec97c0893619b95158afb79791fd6fe6`.
+**Production rollout:** 2026-09-16 — migration committed, production verifier passed, shared Edge engine hash matched canonical main, frontend bundle already contained CAGE, and transactional writer/idempotency smoke passed with ROLLBACK. Persistent post-smoke state: no CAGE clinic setting, no CAGE administration, no CAGE `patient_self` contract.
 
 ## Decision
 

@@ -326,18 +326,18 @@ Suggested candidates:
 
 The exact order should still be decided against licensing, validation, user value and current beta priorities.
 
-Execution status as of 2026-09-13:
+Execution status as of 2026-09-16:
 
 - **ISI:** blocked pending commercial-use licensing/permission review;
 - **SRQ-20:** hold pending rights/provenance confirmation;
 - **AUDIT-C:** hold pending WHO/commercial-use and version/population reconciliation;
-- **CAGE:** selected on 2026-09-16 for the first remaining clinician-assisted slice; public-domain status has stronger support, Brazilian Portuguese validation exists, and V1 remains fail-closed with no `patient_self` exposure;
+- **CAGE:** clinician-assisted V1 is deployed and verified in production via #488; no clinic is auto-enabled and no `patient_self` contract is created;
 - **PHQ-15:** clinician-assisted backend is deployed and fail-closed; no clinic is auto-enabled;
 - **EUROHIS-QOL:** hold pending provenance/licensing review.
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
 
-CAGE Clinician-Assisted V1 follows the same neutral boundary. The upstream Nexus scorer is not copied verbatim: missing answers must fail closed, positive screening language must remain non-diagnostic, and automatic conduct suggestions are not ported.
+CAGE Clinician-Assisted V1 follows the same neutral boundary and is now deployed in production. The upstream Nexus item wording is preserved as operational provenance, while runtime behavior is hardened: missing answers fail closed, positive screening language remains non-diagnostic, and automatic conduct suggestions are not ported.
 
 Patient-facing delivery V1 is in production via #484 + hotfix #486 and remains registry-driven/versioned. Remote eligibility stays separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
 
