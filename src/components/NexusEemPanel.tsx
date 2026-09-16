@@ -7,7 +7,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { useToast } from '../lib/toastContext';
 import type { Appointment, Patient } from '../lib/types';
 import { Btn, Card, CardHead, Chip, Empty } from '../lib/ui';
-import { hasProfessionalCapability, listPatientNexusResults, type NexusClinicalResult } from '../lib/nexusClinical';
+import { hasProfessionalCapability, listPatientNexusResults, type NexusCapabilityStatus, type NexusClinicalResult } from '../lib/nexusClinical';
 import {
   createInitialEemState,
   EEM_DOMAINS,
@@ -27,6 +27,7 @@ export function NexusEemPanel({ patient, encounter = null }: { patient: Patient;
   const [history, setHistory] = useState<NexusClinicalResult[]>([]);
   const [canApply, setCanApply] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [capabilityStatus, setCapabilityStatus] = useState<NexusCapabilityStatus>('loading');
   const [busy, setBusy] = useState(false);
   const [showNarrative, setShowNarrative] = useState(true);
 
@@ -42,19 +43,22 @@ export function NexusEemPanel({ patient, encounter = null }: { patient: Patient;
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setCapabilityStatus('loading');
       try {
         const [capability, results] = await Promise.all([
-          hasProfessionalCapability('nexus.eem').catch(() => false),
+          hasProfessionalCapability('nexus.eem'),
           listPatientNexusResults(patient.id),
         ]);
         if (!cancelled) {
           setCanApply(capability);
+          setCapabilityStatus(capability ? 'allowed' : 'denied');
           setHistory(results.filter((item) => item.toolKey === 'eem'));
         }
       } catch (error) {
         console.error('[MedicsPro/Nexus] carregar EEM:', error);
         if (!cancelled) {
           setCanApply(false);
+          setCapabilityStatus('error');
           setHistory([]);
         }
         toast('Não foi possível carregar o EEM Nexus.', 'warn');
@@ -87,6 +91,7 @@ export function NexusEemPanel({ patient, encounter = null }: { patient: Patient;
   };
 
   if (loading) return <Card><div className="p-6 font-mono text-[11px] text-fog">Carregando EEM Nexus…</div></Card>;
+  if (capabilityStatus === 'error') return <Card><div className="p-6 text-[12px] leading-relaxed text-fog"><p className="font-semibold text-amber">Não foi possível verificar a capability do EEM Nexus.</p><p className="mt-1">A aplicação permanece indisponível por segurança até a autorização poder ser confirmada.</p></div></Card>;
 
   return <div className="space-y-4">
     <Card>

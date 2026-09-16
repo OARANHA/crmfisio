@@ -6,7 +6,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import { isPsychiatristIdentity, professionalIdentityLabel } from '../lib/professionalIdentity';
 import { Reveal } from '../components/Reveal';
 import { NexusPatientLauncher } from '../components/NexusPatientLauncher';
-import { hasProfessionalCapability } from '../lib/nexusClinical';
+import { hasProfessionalCapability, type NexusCapabilityStatus } from '../lib/nexusClinical';
 
 const DOMAINS = [
   { key: 'mental-health', title: 'Saúde Mental', sub: 'PHQ-9 e GAD-7 com autoavaliação segura, processamento e acompanhamento longitudinal. Outros instrumentos seguem em expansão.', state: 'operacional parcial' },
@@ -24,34 +24,45 @@ export function NexusGlobalPage() {
   const userId = user?.id;
   const { identity } = useProfessionalIdentity(userId);
   const psychiatrist = isPsychiatristIdentity(identity);
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorizationStatus, setAuthorizationStatus] = useState<NexusCapabilityStatus>('loading');
 
   useEffect(() => {
     let active = true;
     if (!userId) {
-      setAuthorized(false);
+      setAuthorizationStatus('denied');
       return () => {
         active = false;
       };
     }
+    setAuthorizationStatus('loading');
     void hasProfessionalCapability('nexus.access')
       .then((allowed) => {
-        if (active) setAuthorized(allowed);
+        if (active) setAuthorizationStatus(allowed ? 'allowed' : 'denied');
       })
       .catch((error) => {
         console.error('[Nexus] global authorization:', error);
-        if (active) setAuthorized(false);
+        if (active) setAuthorizationStatus('error');
       });
     return () => {
       active = false;
     };
   }, [userId]);
 
-  if (authorized === null) {
+  if (authorizationStatus === 'loading') {
     return <div className="rounded-2xl border border-line bg-panel p-6 text-[13px] text-fog">Validando acesso ao Nexus…</div>;
   }
 
-  if (!authorized) {
+  if (authorizationStatus === 'error') {
+    return (
+      <div className="rounded-2xl border border-amber/25 bg-panel p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber">Validação indisponível</p>
+        <h1 className="mt-2 font-display text-xl font-bold">Não foi possível verificar o acesso ao Nexus</h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-fog">Por segurança, os recursos Nexus permanecem bloqueados até a autorização poder ser confirmada.</p>
+      </div>
+    );
+  }
+
+  if (authorizationStatus === 'denied') {
     return (
       <div className="rounded-2xl border border-line bg-panel p-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fog">Nexus Clinical Engine</p>

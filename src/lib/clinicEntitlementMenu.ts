@@ -26,7 +26,10 @@ export function isModuleVisibleByEntitlement(
   module: ModuleKey,
   visibility: ModuleEntitlementVisibility,
 ): boolean {
-  // Undefined means we do not yet have a conclusive entitlement state.
-  // The route gate remains the authority and will fail safely if access is denied.
-  return visibility[module] !== false;
+  // Modules without an entitlement boundary remain normal navigation entries.
+  // For entitlement-controlled modules, undefined is unresolved/unknown and must
+  // never be presented as if the module were positively available. The route
+  // gate remains the server-backed authority and independently fails closed.
+  if (!MODULE_ENTITLEMENT[module]) return true;
+  return visibility[module] === true;
 }

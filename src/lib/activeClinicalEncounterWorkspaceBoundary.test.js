@@ -163,6 +163,11 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(tools).not.toContain('isPsychiatryContext');
     expect(tools).not.toContain('NexusPatientContextHub');
     expect(tools).not.toContain('patient.queixaPrincipal');
+    expect(tools).toContain("visible.boundaryState === 'loading'");
+    expect(tools).toContain("visible.boundaryState === 'error'");
+    expect(tools).toContain('Não foi possível verificar a disponibilidade das ferramentas Nexus');
+    expect(selfAssessment).toContain("setCapabilityStatus('error')");
+    expect(selfAssessment).toContain('Não foi possível verificar a permissão para enviar autoavaliações');
     expect(toolRegistry).toContain("requiredCapability: 'nexus.eem'");
     expect(toolRegistry).toContain("requiredCapability: 'nexus.scales'");
     expect(toolRegistry.match(/requiredCapability: null/g)?.length).toBe(2);

@@ -5,7 +5,7 @@ import { Chip } from '../lib/ui';
 import { NexusLongitudinalPanel } from './NexusLongitudinalPanel';
 import { NexusSelfAssessmentInviteAction } from './NexusSelfAssessmentInviteAction';
 import { NexusSelfAssessmentStatus } from './NexusSelfAssessmentStatus';
-import { hasProfessionalCapability } from '../lib/nexusClinical';
+import { hasProfessionalCapability, type NexusCapabilityStatus } from '../lib/nexusClinical';
 
 const DOMAINS = [
   { key: 'mental-health', label: 'Saúde Mental', description: 'Escalas, rastreios e acompanhamento por domínio clínico.', status: 'ativo' },
@@ -17,18 +17,19 @@ const DOMAINS = [
 ] as const;
 
 export function NexusPatientContextHub({ patient }: { patient: Patient }) {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorizationStatus, setAuthorizationStatus] = useState<NexusCapabilityStatus>('loading');
   const [assessmentRefreshKey, setAssessmentRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setAuthorizationStatus('loading');
     void hasProfessionalCapability('nexus.access')
       .then((allowed) => {
-        if (active) setAuthorized(allowed);
+        if (active) setAuthorizationStatus(allowed ? 'allowed' : 'denied');
       })
       .catch((error) => {
         console.error('[Nexus] patient-context authorization:', error);
-        if (active) setAuthorized(false);
+        if (active) setAuthorizationStatus('error');
       });
     return () => {
       active = false;
@@ -37,7 +38,8 @@ export function NexusPatientContextHub({ patient }: { patient: Patient }) {
 
   // Capability is the authorization boundary. Profession and route visibility
   // personalize UX, but never grant Nexus access by themselves.
-  if (authorized !== true) return null;
+  if (authorizationStatus === 'loading' || authorizationStatus === 'denied') return null;
+  if (authorizationStatus === 'error') return <p className="rounded-xl border border-amber/25 bg-amber/[0.04] px-4 py-3 text-[11.5px] leading-relaxed text-fog">Não foi possível verificar o acesso ao Nexus neste prontuário. Os recursos Nexus permanecem ocultos por segurança.</p>;
 
   return (
     <section className="overflow-hidden rounded-[20px] border border-aqua/25 bg-panel shadow-[0_12px_38px_rgba(15,28,24,0.055)]">

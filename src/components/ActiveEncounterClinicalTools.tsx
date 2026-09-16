@@ -130,6 +130,14 @@ export function ActiveEncounterClinicalTools({
 
   // Availability comes from entitlement + server-side C-06 capability resolution.
   // Specialty only changes presentation level/order in the pure registry resolver.
+  if (visible.boundaryState === 'loading') {
+    return <p className="rounded-xl border border-line/65 bg-deep/30 px-4 py-3 text-[11.5px] leading-relaxed text-fog">Verificando disponibilidade das ferramentas Nexus…</p>;
+  }
+
+  if (visible.boundaryState === 'error') {
+    return <p className="rounded-xl border border-amber/25 bg-amber/[0.04] px-4 py-3 text-[11.5px] leading-relaxed text-fog">Não foi possível verificar a disponibilidade das ferramentas Nexus. Por segurança, esses recursos permanecem ocultos até a autorização poder ser confirmada.</p>;
+  }
+
   if (tools.length === 0) {
     return <p className="rounded-xl border border-line/65 bg-deep/30 px-4 py-3 text-[11.5px] leading-relaxed text-fog">Nenhuma ferramenta adicional disponível para este atendimento.</p>;
   }

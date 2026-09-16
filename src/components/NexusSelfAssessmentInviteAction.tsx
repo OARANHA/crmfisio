@@ -35,30 +35,30 @@ export function NexusSelfAssessmentInviteAction({ patient, appointmentId = null,
   const [scaleKey, setScaleKey] = useState<NexusSelfAssessmentScaleKey>('phq9');
   const [busy, setBusy] = useState(false);
   const [lastInvite, setLastInvite] = useState<InviteResponse | null>(null);
-  const [canInvite, setCanInvite] = useState<boolean | null>(null);
+  const [capabilityStatus, setCapabilityStatus] = useState<'loading' | 'allowed' | 'denied' | 'error'>('loading');
 
   useEffect(() => {
     let active = true;
     if (!userId) {
-      setCanInvite(false);
+      setCapabilityStatus('denied');
       return () => { active = false; };
     }
 
-    setCanInvite(null);
+    setCapabilityStatus('loading');
     void hasProfessionalCapability('nexus.scales')
       .then((allowed) => {
-        if (active) setCanInvite(allowed);
+        if (active) setCapabilityStatus(allowed ? 'allowed' : 'denied');
       })
       .catch((error) => {
         console.error('[Nexus] self-assessment capability:', error);
-        if (active) setCanInvite(false);
+        if (active) setCapabilityStatus('error');
       });
 
     return () => { active = false; };
   }, [userId]);
 
   const sendInvite = async () => {
-    if (canInvite !== true || busy) return;
+    if (capabilityStatus !== 'allowed' || busy) return;
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke<InviteResponse>('nexus-self-assessment-invite', {
@@ -77,7 +77,8 @@ export function NexusSelfAssessmentInviteAction({ patient, appointmentId = null,
     }
   };
 
-  if (canInvite !== true) return null;
+  if (capabilityStatus === 'loading' || capabilityStatus === 'denied') return null;
+  if (capabilityStatus === 'error') return <p className="rounded-xl border border-amber/25 bg-amber/[0.04] px-4 py-3 text-[11.5px] leading-relaxed text-fog">Não foi possível verificar a permissão para enviar autoavaliações. A ação permanece indisponível por segurança.</p>;
   const selected = NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS.find((item) => item.value === scaleKey) ?? NEXUS_SELF_ASSESSMENT_SCALE_OPTIONS[0];
 
   return <section className="rounded-2xl border border-aqua/25 bg-aqua/[0.035] p-4">

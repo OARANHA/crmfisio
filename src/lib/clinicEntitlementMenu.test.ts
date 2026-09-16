@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { isModuleVisibleByEntitlement } from './clinicEntitlementMenu';
 
 describe('clinic entitlement menu visibility', () => {
-  it('keeps modules visible before a conclusive entitlement lookup', () => {
-    expect(isModuleVisibleByEntitlement('crm', {})).toBe(true);
+  it('keeps entitlement-controlled modules hidden until the lookup is conclusive', () => {
+    expect(isModuleVisibleByEntitlement('crm', {})).toBe(false);
   });
 
-  it('hides a module only when its entitlement is conclusively blocked', () => {
+  it('keeps modules without an entitlement boundary visible while entitlement state resolves', () => {
+    expect(isModuleVisibleByEntitlement('agenda', {})).toBe(true);
+    expect(isModuleVisibleByEntitlement('pacientes', {})).toBe(true);
+  });
+
+  it('hides a module when its entitlement is conclusively blocked', () => {
     expect(isModuleVisibleByEntitlement('crm', { crm: false })).toBe(false);
   });
 
