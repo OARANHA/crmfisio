@@ -6,7 +6,7 @@
 
 **Data do snapshot:** 2026-09-16
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
-**Último SHA funcional com rollout registrado nesta sequência:** `44e392ef2df7e5b1fca1cf373246fb500eb7254b` (#491). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
+**Último SHA funcional com rollout registrado nesta sequência:** `a88bb8ac0f14d5b67222da6b42bdabea27269ac2` (#498). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
 
 ## Estado clínico resumido
 
@@ -29,8 +29,25 @@ Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 PC-PTSD-5 Clinician-Assisted V1 #495                              PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
+Authorization/config tri-state UX hardening #498                PROD / VERIFIED
 ```
 
+
+## Produção — Authorization/config tri-state UX hardening #498
+
+**Status:** #498 mergeada por squash em `main@a88bb8ac0f14d5b67222da6b42bdabea27269ac2`; PR CI `11/11` verde; frontend promovido e observado em produção em 2026-09-16. Nenhuma migration, RLS/RPC, grant, capability ou Edge Function foi alterada nesta slice.
+
+O hardening não cria nem amplia autorização. Ele preserva explicitamente `loading / allowed / denied / error` nos consumidores clínicos/Nexus que antes colapsavam erro técnico em negação silenciosa. Em falha de verificação, ferramentas, rotas e ações Nexus permanecem fail-closed, mas a UI informa que a autorização não pôde ser confirmada em vez de afirmar que o recurso está simplesmente indisponível.
+
+A mesma regra foi aplicada à navegação por entitlement: módulos sujeitos a entitlement não são mais tratados como visíveis quando o lookup está `unknown`/não resolvido; módulos sem boundary de entitlement continuam visíveis normalmente. O `ClinicEntitlementGate`, os RPCs, RLS, C-06 e demais boundaries server-side não foram alterados. Platform Admin permanece fora deste recorte e continua coberto pela auditoria residual separada de autorização/configuração.
+
+Gates locais: boundaries focados `73/73` PASS; menu entitlement `20/20` PASS; full suite `116 arquivos / 639 testes` PASS; typecheck, lint, build e `git diff --check` PASS. PR: `11/11` workflows PASS, mergeable e sem threads pendentes antes do squash. O merge SHA não gerou workflow `push` associado; a promoção foi comprovada diretamente no runtime.
+
+Produção: container frontend recriado após o merge; `/`, `/dashboard`, `/pacientes` e `/nexus` HTTP `200`; chunks lazy com os novos estados de erro tri-state servidos com HTTP `200`; `restart_count=0`, processo `running` e `OOM=false`. O warning de chunks grandes do Vite permanece débito pré-existente e não foi misturado nesta slice.
+
+**Próximo passo seguro:** manter a auditoria residual de `entitlement × clinic configuration × user authorization`, tratando Platform Admin separadamente e sem reabrir #498 sem evidência de regressão.
+
+---
 
 ## Produção — PC-PTSD-5 Clinician-Assisted V1
 

@@ -1,6 +1,6 @@
 # MedicsPro — TODO canônico
 
-> Estado em **2026-09-15**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
+> Estado em **2026-09-16**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
 
 Referências:
 
@@ -292,7 +292,7 @@ Somente depois das foundations anteriores:
 ## P1 — Authorization/config residual
 
 - [ ] Limpar consumidores residuais de `fisio_id`/nomenclaturas legadas onde houver alternativa segura; `professional_id` continua canônico.
-- [ ] Resolver o issue tri-state capability/configuration onde estado desconhecido possa ser confundido com desabilitado/habilitado.
+- [x] #498 — resolver o issue tri-state capability/configuration no domínio clínico/Nexus e na navegação por entitlement; `loading/allowed/denied/error` permanecem distintos, falha técnica não vira negação silenciosa, entitlement desconhecido não é apresentado como liberado e boundaries server-side permanecem inalterados. Rollout frontend observado em produção em 2026-09-16.
 - [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos.
 - [ ] Não liberar Nexus por role, especialidade isolada, PresentationContext ou simples relevância de instrumento.
 
