@@ -7,6 +7,17 @@ describe('clinician-assisted instrument question catalog', () => {
     expect(getClinicianAssistedInstrumentDefinition('phq9')?.questions).toHaveLength(9);
     expect(getClinicianAssistedInstrumentDefinition('gad7')?.questions).toHaveLength(7);
     expect(getPublicSelfAssessmentDefinition('phq15')).toBeNull();
+    expect(getPublicSelfAssessmentDefinition('cage')).toBeNull();
+  });
+
+  it('exposes CAGE only to the clinician-assisted surface with four explicit yes/no items', () => {
+    const definition = getClinicianAssistedInstrumentDefinition('cage');
+    expect(definition?.ruleVersion).toBe('nexus-cage-2026-09-16');
+    expect(definition?.questions).toHaveLength(4);
+    expect(definition?.instructions).toContain('Nexus/MedicsPro');
+    expect(definition?.questions[0].text).toContain('deveria diminuir a quantidade de bebida');
+    expect(definition?.questions.every((question) => question.options.map((option) => option.value).join(',') === '0,1')).toBe(true);
+    expect(definition?.instructions).toContain('não estabelece diagnóstico');
   });
 
   it('exposes PHQ-15 only to the clinician-assisted surface', () => {

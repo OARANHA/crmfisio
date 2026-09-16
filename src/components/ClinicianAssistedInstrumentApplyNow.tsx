@@ -15,7 +15,7 @@ type ApplySession = {
   requestId: string;
 };
 
-const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false };
+const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false, cage: false };
 
 export function ClinicianAssistedInstrumentApplyNow({
   appointmentId,

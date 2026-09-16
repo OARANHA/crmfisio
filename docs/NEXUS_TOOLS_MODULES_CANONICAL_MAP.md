@@ -330,13 +330,16 @@ Execution status as of 2026-09-13:
 
 - **ISI:** blocked pending commercial-use licensing/permission review;
 - **SRQ-20:** hold pending rights/provenance confirmation;
-- **AUDIT-C/CAGE:** hold pending rights/version reconciliation;
+- **AUDIT-C:** hold pending WHO/commercial-use and version/population reconciliation;
+- **CAGE:** selected on 2026-09-16 for the first remaining clinician-assisted slice; public-domain status has stronger support, Brazilian Portuguese validation exists, and V1 remains fail-closed with no `patient_self` exposure;
 - **PHQ-15:** clinician-assisted backend is deployed and fail-closed; no clinic is auto-enabled;
 - **EUROHIS-QOL:** hold pending provenance/licensing review.
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
 
-Patient-facing delivery V1 was merged by #484 into `main@dc6ab7d` and validated pre/post-merge, but is not yet deployed. Remote eligibility is versioned/registry-driven and remains separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
+CAGE Clinician-Assisted V1 follows the same neutral boundary. The upstream Nexus scorer is not copied verbatim: missing answers must fail closed, positive screening language must remain non-diagnostic, and automatic conduct suggestions are not ported.
+
+Patient-facing delivery V1 is in production via #484 + hotfix #486 and remains registry-driven/versioned. Remote eligibility stays separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
 
 ### Wave 2 — contextual/specialized screening
 

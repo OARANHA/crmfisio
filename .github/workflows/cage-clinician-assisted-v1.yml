@@ -1,0 +1,65 @@
+name: CAGE Clinician-Assisted V1
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/_shared/clinical-instrument-engine.ts"
+      - "supabase/functions/clinical-instrument-clinician-assisted/index.ts"
+      - "supabase-migrations/20260916_cage_clinician_assisted_v1.sql"
+      - "supabase-verifiers/VERIFY_20260916_CAGE_CLINICIAN_ASSISTED_V1.sql"
+      - "tests/sql/cage_clinician_assisted_v1_cases.sql"
+      - "scripts/build-cage-clinician-assisted-v1-sql-test.py"
+      - "scripts/test-cage-clinician-assisted-v1.sh"
+      - "src/lib/nexus/clinicianAssistedInstrumentCatalog.ts"
+      - "src/lib/nexus/clinicianAssistedInstrumentCatalog.test.ts"
+      - "src/lib/nexus/publicSelfAssessmentCatalog.test.ts"
+      - "src/lib/clinicalInstrumentClinicianAssisted.ts"
+      - "src/lib/clinicalInstrumentClinicianAssisted.test.ts"
+      - "src/lib/clinicalInstrumentClinicianAssistedBoundary.test.js"
+      - "src/lib/clinicalInstrumentServerEngine.test.ts"
+      - "src/components/ClinicianAssistedInstrumentApplyNow.tsx"
+      - "docs/CAGE_CLINICIAN_ASSISTED_V1.md"
+      - "docs/NEXUS_TOOLS_MODULES_CANONICAL_MAP.md"
+      - ".github/workflows/cage-clinician-assisted-v1.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/_shared/clinical-instrument-engine.ts"
+      - "supabase-migrations/20260916_cage_clinician_assisted_v1.sql"
+      - "supabase-verifiers/VERIFY_20260916_CAGE_CLINICIAN_ASSISTED_V1.sql"
+      - "scripts/test-cage-clinician-assisted-v1.sh"
+  workflow_dispatch:
+
+jobs:
+  cage-postgres16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: cage_clinician_assisted_v1_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated PostgreSQL 16 database
+        env:
+          PGDATABASE: postgres
+        run: createdb cage_clinician_assisted_v1_test
+      - name: Run CAGE clinician-assisted gate
+        run: bash scripts/test-cage-clinician-assisted-v1.sh
