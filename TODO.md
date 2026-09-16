@@ -104,7 +104,8 @@ Requisitos associados:
 - [x] **Enviar ao paciente V1 — código/CI** — #484 mergeada em `main@dc6ab7d`, CI pré/pós-merge verde.
 - [x] **Enviar ao paciente V1 — rollout produtivo** — #484 + hotfix #486; migration/constraint, Edge Functions, frontend, verifier e smoke transacional validados em produção; nenhum convite/mensagem real criado pelo smoke.
 - [x] **CAGE Clinician-Assisted V1 — código/CI (#488)** — mergeada e validada na `main`, fail-closed, sem auto-enable e sem `patient_self`.
-- [ ] **CAGE Clinician-Assisted V1 — rollout produtivo** — aplicar migration + shared Edge engine/frontend conforme runbook, executar verifier e smoke rollback-only; manter clínica desabilitada até decisão explícita do owner/admin.
+- [x] **CAGE Clinician-Assisted V1 — rollout produtivo** — migration, shared Edge engine, frontend, verifier e smoke transacional validados em produção; nenhuma clínica foi habilitada permanentemente e `patient_self` permanece ausente.
+- [ ] **CAGE — enablement por clínica** — decisão explícita de `owner/admin`; fora do rollout técnico e sem auto-enable.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos
