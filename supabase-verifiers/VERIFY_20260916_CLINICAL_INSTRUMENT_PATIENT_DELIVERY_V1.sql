@@ -30,6 +30,25 @@ END;
 $$;
 DO $$
 DECLARE
+  v_def text;
+BEGIN
+  SELECT pg_get_constraintdef(c.oid)
+    INTO v_def
+  FROM pg_constraint c
+  WHERE c.conrelid='public.wa_logs'::regclass
+    AND c.conname='wa_logs_template_check'
+    AND c.contype='c';
+
+  IF v_def IS NULL
+     OR position('clinical_instrument_patient_self' IN v_def)=0
+     OR position('nexus_autoavaliacao' IN v_def)=0
+     OR position('confirmacao' IN v_def)=0 THEN
+    RAISE EXCEPTION 'patient_delivery_v1_wa_template_constraint_invalid';
+  END IF;
+END;
+$$;
+DO $$
+DECLARE
   v_key text;
 BEGIN
   FOREACH v_key IN ARRAY ARRAY['phq9','gad7'] LOOP
