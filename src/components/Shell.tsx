@@ -19,7 +19,7 @@ import { IconLock, IconX, IconShield, IconWhats, IconCheck } from './icons';
 import { useColorTheme, type ColorTheme } from '../lib/colorTheme';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { professionalIdentityLabel } from '../lib/professionalIdentity';
-import { hasProfessionalCapability } from '../lib/nexusClinical';
+import { hasProfessionalCapability, type NexusCapabilityStatus } from '../lib/nexusClinical';
 import {
   isModuleVisibleByEntitlement,
   loadCurrentClinicModuleVisibility,
@@ -271,7 +271,7 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
   const [entitlementVisibility, setEntitlementVisibility] = useState<ModuleEntitlementVisibility>({});
-  const [nexusVisible, setNexusVisible] = useState(false);
+  const [nexusStatus, setNexusStatus] = useState<NexusCapabilityStatus>('denied');
   const { theme, toggleTheme } = useColorTheme();
   const effectiveUserId = effectiveUser?.id;
   const effectiveUserRole = effectiveUser?.role;
@@ -299,16 +299,17 @@ export function Shell() {
 
   useEffect(() => {
     let active = true;
-    setNexusVisible(false);
+    setNexusStatus('denied');
     if (!effectiveUserId || !canViewClinical) return () => { active = false; };
 
+    setNexusStatus('loading');
     void hasProfessionalCapability('nexus.access')
       .then((allowed) => {
-        if (active) setNexusVisible(allowed);
+        if (active) setNexusStatus(allowed ? 'allowed' : 'denied');
       })
       .catch((cause) => {
         console.error('[Nexus] navigation authorization:', cause);
-        if (active) setNexusVisible(false);
+        if (active) setNexusStatus('error');
       });
 
     return () => { active = false; };
@@ -324,7 +325,7 @@ export function Shell() {
 
   const items = NAV.filter((n) =>
     (canView(n.key) || (effectiveUser.role === 'recep' && n.key === 'dashboard'))
-    && (!n.nexus || nexusVisible)
+    && (!n.nexus || nexusStatus === 'allowed')
     && isModuleVisibleByEntitlement(n.key, entitlementVisibility)
     && isNavigationPresentationSafe(n.to, presentationContext),
   );

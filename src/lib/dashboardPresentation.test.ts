@@ -35,6 +35,7 @@ describe('dashboard semantic resolution', () => {
   it('waits for Nexus authorization before choosing the psychiatry presentation', () => {
     expect(resolveDashboardPresentation({ ...base, psychiatryRelevant: true, nexusStatus: 'loading' })).toBe('loading');
     expect(resolveDashboardPresentation({ ...base, psychiatryRelevant: true, nexusStatus: 'denied' })).toBe('clinician');
+    expect(resolveDashboardPresentation({ ...base, psychiatryRelevant: true, nexusStatus: 'error' })).toBe('clinician');
     expect(resolveDashboardPresentation({ ...base, psychiatryRelevant: true, nexusStatus: 'allowed' })).toBe('psychiatry');
   });
 

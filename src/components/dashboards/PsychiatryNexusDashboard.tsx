@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useProfessionalIdentity } from '../../hooks/useProfessionalIdentity';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
 import { resolveNexusClinicalTools } from '../../lib/nexus/clinicalToolRegistry';
-import { hasProfessionalCapability } from '../../lib/nexusClinical';
+import { hasProfessionalCapability, type NexusCapabilityStatus } from '../../lib/nexusClinical';
 import { Card, Chip, IconChevronR } from '../../lib/ui';
 import { Reveal } from '../Reveal';
 import { ClinicianDashboard } from './ClinicianDashboard';
@@ -21,31 +21,40 @@ function PsychiatryNexusContext() {
   const { user } = useCurrentUserAccess();
   const { identity, loading: identityLoading } = useProfessionalIdentity(user?.id);
   const [capabilities, setCapabilities] = useState<NexusHomeCapabilities | null>(null);
+  const [capabilityStatus, setCapabilityStatus] = useState<NexusCapabilityStatus>('loading');
 
   useEffect(() => {
     let active = true;
     if (!user?.id) {
       setCapabilities({ eem: false, scales: false });
+      setCapabilityStatus('denied');
       return () => { active = false; };
     }
 
     setCapabilities(null);
+    setCapabilityStatus('loading');
     void Promise.all([
       hasProfessionalCapability('nexus.eem'),
       hasProfessionalCapability('nexus.scales'),
     ])
       .then(([eem, scales]) => {
-        if (active) setCapabilities({ eem, scales });
+        if (active) {
+          setCapabilities({ eem, scales });
+          setCapabilityStatus('allowed');
+        }
       })
       .catch((error) => {
         console.error('[Nexus] clinician Home capabilities:', error);
-        if (active) setCapabilities({ eem: false, scales: false });
+        if (active) {
+          setCapabilities(null);
+          setCapabilityStatus('error');
+        }
       });
 
     return () => { active = false; };
   }, [user?.id]);
 
-  const resolving = identityLoading || capabilities === null;
+  const resolving = identityLoading || capabilityStatus === 'loading';
 
   if (resolving) {
     return (
@@ -60,6 +69,12 @@ function PsychiatryNexusContext() {
       </Reveal>
     );
   }
+
+  if (capabilityStatus === 'error') {
+    return <Reveal delay={145}><Card className="border-amber/25"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber">Nexus clínico</p><p className="mt-2 text-[12.5px] text-fog">Não foi possível verificar as capabilities Nexus. Os recursos permanecem ocultos por segurança até a autorização poder ser confirmada.</p></Card></Reveal>;
+  }
+
+  if (!capabilities) return null;
 
   const tools = resolveNexusClinicalTools({
     state: 'ready',

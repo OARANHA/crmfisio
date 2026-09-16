@@ -28,6 +28,10 @@ describe('solo owner clinician frontend boundary', () => {
     expect(presentation).toContain("if (input.attendStatus !== 'allowed') return 'generic';");
     expect(presentation).toContain("if (input.attendStatus === 'loading') return 'loading';");
     expect(presentation).toContain("if (input.role !== 'professional' && input.role !== 'owner' && input.role !== 'admin') return 'generic';");
-    expect(dashboard).toContain("if (presentation === 'clinician') return <ClinicianDashboard />;");
+    expect(dashboard).toContain("if (presentation === 'clinician') return <>");
+    expect(dashboard).toContain("nexusStatus === 'error'");
+    expect(dashboard).toContain('Os recursos Nexus permanecem ocultos por segurança');
+    expect(dashboard).toContain('attendCapability.error');
+    expect(dashboard).toContain('A área clínica permanece indisponível até a autorização poder ser confirmada');
   });
 });

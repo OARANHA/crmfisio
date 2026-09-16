@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ClinicianDashboard } from '../components/dashboards/ClinicianDashboard';
 import { PsychiatryNexusDashboard } from '../components/dashboards/PsychiatryNexusDashboard';
 import { ReceptionDashboard } from '../components/dashboards/ReceptionDashboard';
-import { useClinicalCapability } from '../hooks/useClinicalCapability';
+import { useClinicalCapability, type ClinicalCapabilityStatus } from '../hooks/useClinicalCapability';
 import { useProfessionalIdentity } from '../hooks/useProfessionalIdentity';
 import { useAuth } from '../lib/useAuth';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
@@ -18,23 +18,23 @@ export function DashboardRoleAware() {
   const { context: presentationContext } = usePresentationContext();
   const { identity, loading: identityLoading } = useProfessionalIdentity(user?.id);
   const attendCapability = useClinicalCapability('clinical.attend', user?.id);
-  const [nexusAllowed, setNexusAllowed] = useState<boolean | null>(null);
+  const [nexusStatus, setNexusStatus] = useState<ClinicalCapabilityStatus>('loading');
 
   useEffect(() => {
     let active = true;
     if (!user?.id) {
-      setNexusAllowed(false);
+      setNexusStatus('denied');
       return () => { active = false; };
     }
 
-    setNexusAllowed(null);
+    setNexusStatus('loading');
     void hasProfessionalCapability('nexus.access')
       .then((allowed) => {
-        if (active) setNexusAllowed(allowed);
+        if (active) setNexusStatus(allowed ? 'allowed' : 'denied');
       })
       .catch((error) => {
         console.error('[Nexus] dashboard capability:', error);
-        if (active) setNexusAllowed(false);
+        if (active) setNexusStatus('error');
       });
 
     return () => { active = false; };
@@ -48,13 +48,20 @@ export function DashboardRoleAware() {
     attendStatus: attendCapability.status,
     identityLoading,
     psychiatryRelevant: isPsychiatristIdentity(identity),
-    nexusStatus: nexusAllowed === null ? 'loading' : nexusAllowed ? 'allowed' : 'denied',
+    nexusStatus,
   });
 
   if (presentation === 'loading') return <DashboardResolutionSkeleton />;
   if (presentation === 'reception') return <ReceptionDashboard />;
   if (presentation === 'psychiatry') return <PsychiatryNexusDashboard />;
-  if (presentation === 'clinician') return <ClinicianDashboard />;
+  if (presentation === 'clinician') return <>
+    {nexusStatus === 'error' && isPsychiatristIdentity(identity) && <DashboardVerificationWarning message="Não foi possível verificar o acesso ao Nexus. Os recursos Nexus permanecem ocultos por segurança até a autorização poder ser confirmada." />}
+    <ClinicianDashboard />
+  </>;
+  if (attendCapability.error) return <>
+    <DashboardVerificationWarning message="Não foi possível verificar suas permissões clínicas. A área clínica permanece indisponível até a autorização poder ser confirmada." />
+    <Dashboard />
+  </>;
   return <Dashboard />;
 }
 
@@ -77,4 +84,8 @@ function DashboardResolutionSkeleton() {
       </div>
     </div>
   );
+}
+
+function DashboardVerificationWarning({ message }: { message: string }) {
+  return <div className="mb-4 rounded-xl border border-amber/25 bg-amber/[0.04] px-4 py-3 text-[12px] text-fog">{message}</div>;
 }

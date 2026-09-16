@@ -15,7 +15,7 @@ const encounterRecordSource = readFileSync(resolve(here, '../components/Clinical
 describe('Consultório / Gestão presentation boundary', () => {
   it('layers presentation-safe navigation after real module, Nexus and entitlement visibility', () => {
     const moduleGate = shellSource.indexOf('(canView(n.key)');
-    const nexusGate = shellSource.indexOf('(!n.nexus || nexusVisible)', moduleGate);
+    const nexusGate = shellSource.indexOf("(!n.nexus || nexusStatus === 'allowed')", moduleGate);
     const entitlementGate = shellSource.indexOf('isModuleVisibleByEntitlement(n.key, entitlementVisibility)', nexusGate);
     const presentationFilter = shellSource.indexOf('isNavigationPresentationSafe(n.to, presentationContext)', entitlementGate);
 

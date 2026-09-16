@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 export type NexusSeverity = 'low' | 'moderate' | 'high' | 'severe';
 export type NexusRedFlagSeverity = 'warning' | 'critical';
 export type NexusResultStatus = 'draft' | 'finalized';
+export type NexusCapabilityStatus = 'loading' | 'allowed' | 'denied' | 'error';
 export type NexusClinicalLifecycleState = 'draft' | 'legacy-frozen' | 'processed' | 'reviewed' | 'signed';
 
 export type NexusEvidenceSnapshot = {
