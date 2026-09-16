@@ -9,6 +9,7 @@ describe('clinician-assisted instrument question catalog', () => {
     expect(getPublicSelfAssessmentDefinition('phq15')).toBeNull();
     expect(getPublicSelfAssessmentDefinition('cage')).toBeNull();
     expect(getPublicSelfAssessmentDefinition('pcl5')).toBeNull();
+    expect(getPublicSelfAssessmentDefinition('pcptsd5')).toBeNull();
   });
 
   it('exposes CAGE only to the clinician-assisted surface with four explicit yes/no items', () => {
@@ -30,6 +31,19 @@ describe('clinician-assisted instrument question catalog', () => {
     expect(definition?.instructions).toContain('experiência traumática já tiver sido avaliada por outro meio');
     expect(definition?.instructions).toContain('não estabelece diagnóstico');
     expect(definition?.questions.every((question) => question.options.map((option) => option.value).join(',') === '0,1,2,3,4')).toBe(true);
+  });
+
+
+  it('exposes PC-PTSD-5 only to the clinician-assisted surface with a trauma gate plus five binary symptoms', () => {
+    const definition = getClinicianAssistedInstrumentDefinition('pcptsd5');
+    expect(definition?.ruleVersion).toBe('nexus-pcptsd5-ptbr-ops-2026-09-16');
+    expect(definition?.gate).toEqual({ questionId: 'q0', continueWhenValue: 1 });
+    expect(definition?.questions).toHaveLength(6);
+    expect(definition?.itemCountLabel).toBe('5 itens + gate de trauma');
+    expect(definition?.instructions).toContain('Tradução operacional PT-BR');
+    expect(definition?.instructions).toContain('não foi identificada validação brasileira');
+    expect(definition?.instructions).toContain('cutoff operacional versionado é ≥ 4');
+    expect(definition?.questions.every((question) => question.options.map((option) => option.value).join(',') === '0,1')).toBe(true);
   });
 
   it('exposes PHQ-15 only to the clinician-assisted surface', () => {

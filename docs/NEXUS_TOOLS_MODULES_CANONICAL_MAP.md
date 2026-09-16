@@ -171,8 +171,8 @@ These must remain one validated engine identity/version across administration mo
 
 #### Trauma / PTSD
 
-- PCL-5;
-- PC-PTSD-5.
+- PCL-5 — PROD / VERIFIED;
+- PC-PTSD-5 — clinician-assisted V1 em implementação, com tradução operacional PT-BR explicitamente não apresentada como validação brasileira.
 
 #### Suicide / safety
 
@@ -335,6 +335,7 @@ Execution status as of 2026-09-16:
 - **PHQ-15:** clinician-assisted backend is deployed and fail-closed; no clinic is auto-enabled;
 - **EUROHIS-QOL:** hold pending provenance/licensing review.
 - **PCL-5:** #491 is PROD / VERIFIED as of 2026-09-16. V1 uses the versioned Brazilian cutoff, remains clinician-assisted only, has no `patient_self`, and no tenant is auto-enabled; explicit owner/admin enablement is still required.
+- **PC-PTSD-5:** clinician-assisted V1 is in implementation. It preserves the trauma gate + five binary symptom items, uses an operational PT-BR translation with no Brazilian validation claim, freezes cutoff `>=4` from external evidence, creates no `patient_self` contract and does not auto-enable any tenant.
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
 

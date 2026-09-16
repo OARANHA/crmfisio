@@ -7,6 +7,7 @@ import {
   PHQ9_PROCESSOR,
   PHQ15_PROCESSOR,
   PCL5_PROCESSOR,
+  PCPTSD5_PROCESSOR,
 } from '../../supabase/functions/_shared/clinical-instrument-engine';
 
 describe('shared clinical instrument server engine', () => {
@@ -50,6 +51,13 @@ describe('shared clinical instrument server engine', () => {
         toolKey: 'pcl5',
         ruleKey: 'nexus.pcl5',
         ruleVersion: 'nexus-pcl5-br-2026-09-16',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+      {
+        toolKey: 'pcptsd5',
+        ruleKey: 'nexus.pcptsd5',
+        ruleVersion: 'nexus-pcptsd5-ptbr-ops-2026-09-16',
         moduleKey: 'scales',
         requiredCapability: 'nexus.scales',
       },
@@ -162,6 +170,32 @@ describe('shared clinical instrument server engine', () => {
     expect(negative.interpretation).toContain('não exclui TEPT');
   });
 
+
+  it('honors the PC-PTSD-5 trauma gate and persists only canonical answers for the path actually administered', () => {
+    const gatedOut = PCPTSD5_PROCESSOR.calculate({ q0: 0, q1: 1, q2: 1 });
+    expect(gatedOut.totalScore).toBe(0);
+    expect(gatedOut.maxScore).toBe(5);
+    expect(gatedOut.answersArray).toEqual([0]);
+    expect(gatedOut.canonicalAnswers).toEqual({ q0: 0 });
+    expect(gatedOut.classification).toContain('gate não confirmado');
+    expect(gatedOut.interpretation).toContain('não possui validação brasileira');
+
+    const positive = PCPTSD5_PROCESSOR.calculate({ q0: 1, q1: 1, q2: 1, q3: 1, q4: 1, q5: 0 });
+    expect(positive.totalScore).toBe(4);
+    expect(positive.maxScore).toBe(5);
+    expect(positive.answersArray).toEqual([1, 1, 1, 1, 1, 0]);
+    expect(positive.canonicalAnswers).toEqual({ q0: 1, q1: 1, q2: 1, q3: 1, q4: 1, q5: 0 });
+    expect(positive.classification).toContain('cutoff operacional PC-PTSD-5 ≥ 4');
+    expect(positive.interpretation).toContain('não estabelece diagnóstico');
+    expect(positive.interpretation).toContain('não constituem validação brasileira');
+    expect(positive.redFlags).toEqual([]);
+
+    const belowCutoff = PCPTSD5_PROCESSOR.calculate({ q0: 1, q1: 1, q2: 1, q3: 1, q4: 0, q5: 0 });
+    expect(belowCutoff.totalScore).toBe(3);
+    expect(belowCutoff.classification).toContain('abaixo do cutoff');
+    expect(belowCutoff.interpretation).toContain('não exclui TEPT');
+  });
+
   it('fails closed on incomplete, out-of-range or unknown instruments', () => {
     expect(() => PHQ9_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-9 incompleto');
     expect(() => GAD7_PROCESSOR.calculate({
@@ -179,6 +213,8 @@ describe('shared clinical instrument server engine', () => {
     expect(() => CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 1, q4: 2 })).toThrow('CAGE incompleto ou com resposta fora da faixa 0-1');
     expect(() => PCL5_PROCESSOR.calculate({ q1: 0 })).toThrow('PCL-5 incompleto');
     expect(() => PCL5_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`q${index + 1}`, index === 19 ? 5 : 0])))).toThrow('PCL-5 incompleto ou com resposta fora da faixa 0-4');
+    expect(() => PCPTSD5_PROCESSOR.calculate({ q0: 2 })).toThrow('PC-PTSD-5 incompleto ou com resposta fora da faixa 0-1');
+    expect(() => PCPTSD5_PROCESSOR.calculate({ q0: 1, q1: 1, q2: 1 })).toThrow('PC-PTSD-5 incompleto ou com resposta fora da faixa 0-1');
     expect(getClinicalInstrumentProcessor('unknown')).toBeNull();
   });
 });

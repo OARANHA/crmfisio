@@ -24,6 +24,7 @@ export type ClinicalInstrumentCalculated = {
   interpretation: string;
   recommendations: string[];
   answersArray: number[];
+  canonicalAnswers?: Record<string, number>;
   soapText: string;
   redFlags?: ClinicalInstrumentSafetySignal[];
 };
@@ -318,12 +319,74 @@ export const PCL5_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
   },
 };
 
+export const PCPTSD5_RULE_VERSION = 'nexus-pcptsd5-ptbr-ops-2026-09-16';
+export const PCPTSD5_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
+  toolKey: 'pcptsd5',
+  ruleKey: 'nexus.pcptsd5',
+  ruleVersion: PCPTSD5_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'pcptsd5-prins-2016', title: 'The Primary Care PTSD Screen for DSM-5: Development and Evaluation Within a Veteran Primary Care Sample', source: 'Prins A et al. J Gen Intern Med. 2016;31(10):1206-1211.', year: 2016, version: PCPTSD5_RULE_VERSION },
+    { evidenceKey: 'pcptsd5-bovin-2021', title: 'Diagnostic accuracy and acceptability of the PC-PTSD-5 among US Veterans', source: 'Bovin MJ et al. JAMA Netw Open. 2021;4(2):e2036733.', year: 2021, version: PCPTSD5_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const traumaExposure = requireIntegerRange(answers, ['q0'], 0, 1, 'PC-PTSD-5')[0];
+    if (traumaExposure === 0) {
+      return {
+        totalScore: 0,
+        maxScore: 5,
+        classification: 'Trauma gate não confirmado; rastreio encerrado',
+        severity: 'low',
+        interpretation: 'A exposição a evento potencialmente traumático não foi confirmada no gate inicial. Pelo desenho do PC-PTSD-5, o rastreio sintomático termina nesse ponto com escore 0. Isso não substitui avaliação clínica de história de trauma quando houver dúvida ou indicação. A tradução PT-BR desta implementação é operacional e não possui validação brasileira publicada identificada nesta revisão.',
+        recommendations: [
+          CLINICIAN_REVIEW_NOTICE,
+          'Não interpretar o escore 0 como exclusão clínica de trauma; ele reflete apenas o encerramento do PC-PTSD-5 após resposta negativa ao gate de exposição.',
+        ],
+        answersArray: [0],
+        canonicalAnswers: { q0: 0 },
+        soapText: 'PC-PTSD-5: trauma gate negativo; rastreio encerrado com escore 0/5 | Instrumento de rastreio; não diagnóstico',
+        redFlags: [],
+      };
+    }
+
+    const ids = ['q1', 'q2', 'q3', 'q4', 'q5'];
+    const values = requireIntegerRange(answers, ids, 0, 1, 'PC-PTSD-5');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    const positive = totalScore >= 4;
+    const classification = positive
+      ? 'Rastreio positivo pelo cutoff operacional PC-PTSD-5 ≥ 4'
+      : 'Escore abaixo do cutoff operacional PC-PTSD-5 ≥ 4';
+    const interpretation = positive
+      ? 'Quatro ou cinco respostas afirmativas atingem o cutoff operacional versionado desta implementação, apoiado por estudos de atenção primária dos EUA. O resultado indica necessidade de avaliação clínica adicional e não estabelece diagnóstico de TEPT. Este cutoff e esta tradução PT-BR não constituem validação brasileira.'
+      : 'O escore ficou abaixo de 4. Um resultado abaixo do cutoff não exclui TEPT ou sofrimento relacionado a trauma; limiares mais baixos, como 3, podem ser considerados em contextos que priorizam sensibilidade e dispõem de avaliação subsequente. O cutoff operacional e a tradução PT-BR desta implementação não foram validados em amostra brasileira nesta revisão.';
+    return {
+      totalScore,
+      maxScore: 5,
+      classification,
+      severity: positive ? 'moderate' : 'low',
+      interpretation,
+      recommendations: [
+        CLINICIAN_REVIEW_NOTICE,
+        'Interpretar o PC-PTSD-5 como rastreio breve após confirmação de exposição traumática; um resultado positivo deve ser seguido de avaliação clínica apropriada quando indicado.',
+        'O cutoff 4 é a regra operacional versionada desta implementação com base em evidência externa; o profissional pode considerar o trade-off de sensibilidade/especificidade no contexto clínico sem alterar o resultado persistido.',
+        'A tradução PT-BR é operacional e não deve ser apresentada como versão brasileira validada.',
+      ],
+      answersArray: [1, ...values],
+      canonicalAnswers: { q0: 1, ...Object.fromEntries(values.map((value, index) => [`q${index + 1}`, value])) },
+      soapText: `PC-PTSD-5: ${totalScore}/5 (${classification}) | Trauma gate: sim | Itens: [${values.join(', ')}] | Rastreio pós-traumático; não diagnóstico | Cutoff operacional: 4`,
+      redFlags: [],
+    };
+  },
+};
+
 export const CLINICAL_INSTRUMENT_PROCESSORS: readonly ClinicalInstrumentProcessorDefinition[] = [
   PHQ9_PROCESSOR,
   GAD7_PROCESSOR,
   PHQ15_PROCESSOR,
   CAGE_PROCESSOR,
   PCL5_PROCESSOR,
+  PCPTSD5_PROCESSOR,
 ];
 
 export function getClinicalInstrumentProcessor(

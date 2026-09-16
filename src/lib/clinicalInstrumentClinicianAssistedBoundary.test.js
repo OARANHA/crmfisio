@@ -24,6 +24,9 @@ const cageMigration = read(
 const pcl5Migration = read(
   "../../supabase-migrations/20260916_pcl5_clinician_assisted_v1.sql",
 );
+const pcptsd5Migration = read(
+  "../../supabase-migrations/20260916_pcptsd5_clinician_assisted_v1.sql",
+);
 const uiAdapter = read("./clinicalInstrumentClinicianAssisted.ts");
 const assistedCatalog = read("./nexus/clinicianAssistedInstrumentCatalog.ts");
 const publicCatalog = read("./nexus/publicSelfAssessmentCatalog.ts");
@@ -74,11 +77,15 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(engine).toContain("ruleVersion: CAGE_RULE_VERSION");
     expect(engine).toMatch(/ruleKey:\s*["']nexus\.pcl5["']/);
     expect(engine).toContain("ruleVersion: PCL5_RULE_VERSION");
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.pcptsd5["']/);
+    expect(engine).toContain("ruleVersion: PCPTSD5_RULE_VERSION");
     expect(assistedCatalog).toMatch(/toolKey:\s*["']phq15["']/);
     expect(assistedCatalog).toMatch(/toolKey:\s*["']cage["']/);
     expect(assistedCatalog).toMatch(/toolKey:\s*["']pcl5["']/);
+    expect(assistedCatalog).toMatch(/toolKey:\s*["']pcptsd5["']/);
     expect(publicCatalog).not.toContain("'phq15'");
     expect(publicCatalog).not.toContain("'pcl5'");
+    expect(publicCatalog).not.toContain("'pcptsd5'");
   });
 
   it("adds PHQ-15 as an additive neutral catalog contract without auto-grants", () => {
@@ -116,11 +123,24 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(pcl5Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinical_instrument_patient_self_contracts/i);
   });
 
+
+  it("adds PC-PTSD-5 as an operational PT-BR assisted-only contract without auto-grants or patient-self exposure", () => {
+    expect(pcptsd5Migration).toContain(
+      "'scales', 'pcptsd5', 'nexus.pcptsd5', 'nexus-pcptsd5-ptbr-ops-2026-09-16', 'nexus.scales'",
+    );
+    expect(pcptsd5Migration).toContain("'pcptsd5', 'nexus', 'scales', 'pcptsd5'");
+    expect(pcptsd5Migration).toContain('no Brazilian validation');
+    expect(pcptsd5Migration).not.toMatch(/INSERT\s+INTO\s+public\.professional_capabilities/i);
+    expect(pcptsd5Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i);
+    expect(pcptsd5Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinical_instrument_patient_self_contracts/i);
+  });
+
   it("persists only canonical validated answers instead of arbitrary browser keys", () => {
-    expect(edge).toContain("const canonicalAnswers = Object.fromEntries(");
+    expect(edge).toContain("const canonicalAnswers = calculated.canonicalAnswers ?? Object.fromEntries(");
     expect(edge).toContain(
       "calculated.answersArray.map((value, index) => [`q${index + 1}`, value])",
     );
+    expect(engine).toContain('canonicalAnswers: { q0: 0 }');
     expect(edge).toContain("p_answers: canonicalAnswers");
     expect(edge).not.toContain("p_answers: answers,");
   });
@@ -222,6 +242,14 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(ui).not.toContain(".reduce(");
     expect(ui).not.toContain("totalScore =");
     expect(ui).not.toContain("classification =");
+  });
+
+  it("clears gated symptom answers when a clinician changes the trauma gate to the stopping response", () => {
+    expect(ui).toContain('const answerQuestion = (questionId: string, value: number) =>');
+    expect(ui).toContain('definition?.gate?.questionId === questionId');
+    expect(ui).toContain('value !== definition.gate.continueWhenValue');
+    expect(ui).toContain('return { [questionId]: value };');
+    expect(ui).toContain('onClick={() => answerQuestion(question.id, option.value)}');
   });
 
   it("creates one request id per application and preserves it for retry", () => {

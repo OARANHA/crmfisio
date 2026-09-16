@@ -15,7 +15,7 @@ type ApplySession = {
   requestId: string;
 };
 
-const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false, cage: false, pcl5: false };
+const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false, cage: false, pcl5: false, pcptsd5: false };
 
 export function ClinicianAssistedInstrumentApplyNow({
   appointmentId,
@@ -63,10 +63,13 @@ export function ClinicianAssistedInstrumentApplyNow({
     .filter((definition): definition is NonNullable<typeof definition> => Boolean(definition)), [availability]);
 
   const definition = session ? getClinicianAssistedInstrumentDefinition(session.instrumentKey) : null;
-  const answeredCount = definition
-    ? definition.questions.filter((question) => Number.isInteger(answers[question.id])).length
-    : 0;
-  const complete = Boolean(definition && answeredCount === definition.questions.length);
+  const activeQuestions = definition
+    ? definition.gate && answers[definition.gate.questionId] !== definition.gate.continueWhenValue
+      ? definition.questions.filter((question) => question.id === definition.gate?.questionId)
+      : definition.questions
+    : [];
+  const answeredCount = activeQuestions.filter((question) => Number.isInteger(answers[question.id])).length;
+  const complete = Boolean(definition && activeQuestions.length > 0 && answeredCount === activeQuestions.length);
 
   const begin = (instrumentKey: ClinicianAssistedInstrumentKey) => {
     setSession({ instrumentKey, requestId: crypto.randomUUID() });
@@ -82,12 +85,21 @@ export function ClinicianAssistedInstrumentApplyNow({
     setSubmitError(null);
   };
 
+  const answerQuestion = (questionId: string, value: number) => {
+    setAnswers((current) => {
+      if (definition?.gate?.questionId === questionId && value !== definition.gate.continueWhenValue) {
+        return { [questionId]: value };
+      }
+      return { ...current, [questionId]: value };
+    });
+  };
+
   const submit = async () => {
     if (!session || !definition || !complete || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const canonicalAnswers = Object.fromEntries(definition.questions.map((question) => [question.id, answers[question.id]]));
+      const canonicalAnswers = Object.fromEntries(activeQuestions.map((question) => [question.id, answers[question.id]]));
       const administration = await submitClinicianAssistedInstrument({
         appointmentId,
         instrumentKey: session.instrumentKey,
@@ -127,11 +139,11 @@ export function ClinicianAssistedInstrumentApplyNow({
             <h3 className="mt-1 font-display text-[17px] font-semibold text-paper">{definition.acronym}</h3>
             <p className="mt-1 text-[11.5px] leading-relaxed text-fog">{definition.instructions}</p>
           </div>
-          <Chip className="border-aqua/30 text-aqua">{answeredCount}/{definition.questions.length} respondidos</Chip>
+          <Chip className="border-aqua/30 text-aqua">{answeredCount}/{activeQuestions.length} respondidos</Chip>
         </div>
 
         <div className="mt-4 space-y-3">
-          {definition.questions.map((question) => (
+          {activeQuestions.map((question) => (
             <fieldset key={question.id} className="rounded-xl border border-line/70 bg-panel p-3.5">
               <legend className="px-1 text-[12.5px] font-medium leading-relaxed text-paper">{question.text}</legend>
               <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -143,7 +155,7 @@ export function ClinicianAssistedInstrumentApplyNow({
                       type="button"
                       aria-pressed={selected}
                       disabled={submitting}
-                      onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.value }))}
+                      onClick={() => answerQuestion(question.id, option.value)}
                       className={`rounded-xl border px-3 py-2.5 text-left text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'border-mint/55 bg-mint/[0.09] text-paper' : 'border-line/70 bg-deep/30 text-fog hover:border-aqua/35 hover:text-paper'}`}
                     >
                       <span className="block text-[9.5px] font-semibold uppercase tracking-[0.08em] text-aqua">{option.value}</span>
@@ -181,7 +193,7 @@ export function ClinicianAssistedInstrumentApplyNow({
         {availableDefinitions.map((item) => (
           <div key={item.toolKey} className="rounded-xl border border-line/70 bg-panel p-3.5">
             <p className="font-display text-[14px] font-semibold text-paper">{item.acronym}</p>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.questions.length} itens · respostas estruturadas {Math.min(...item.questions.flatMap((question) => question.options.map((option) => option.value)))}–{Math.max(...item.questions.flatMap((question) => question.options.map((option) => option.value)))} · rastreio clínico</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-fog">{item.itemCountLabel ?? `${item.questions.length} itens`} · respostas estruturadas {Math.min(...item.questions.flatMap((question) => question.options.map((option) => option.value)))}–{Math.max(...item.questions.flatMap((question) => question.options.map((option) => option.value)))} · rastreio clínico</p>
             <button type="button" onClick={() => begin(item.toolKey)} className="mt-3 rounded-lg bg-mint px-3.5 py-2 text-[11px] font-semibold text-on-accent">Aplicar agora</button>
           </div>
         ))}
