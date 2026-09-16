@@ -1,8 +1,10 @@
 # PCL-5 Clinician-Assisted V1
 
-**Status:** implementation candidate / NOT PROD.
+**Status:** PR #491 OPEN / NOT PROD.
 **Base:** `main@0de7a02d296f1e30be052a6f2eeb74f1807ae4ed`.
 **Branch:** `feat/pcl5-clinician-assisted-v1`.
+**Implementation commit:** `33143f5525eeba8c444ef0da0df8bbc96b9791d4`.
+**PR:** `#491` OPEN.
 
 ## Decision
 
