@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
@@ -12,7 +13,7 @@ import {
   type PlatformAutomationRun,
   type PlatformAutomationSetting,
 } from '../lib/platformAdmin';
-import { validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 
 const SETTING_META: Record<PlatformAutomationKey, { title: string; description: string; group: string; critical?: boolean }> = {
   'automation.enabled': { title: 'Automação global', description: 'Chave-mestra do orquestrador da plataforma.', group: 'Orquestração', critical: true },
@@ -53,7 +54,7 @@ function auditTitle(action: string) {
 export function PlatformAdminPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>('checking');
   const [settings, setSettings] = useState<PlatformAutomationSetting[]>([]);
   const [runs, setRuns] = useState<PlatformAutomationRun[]>([]);
   const [audit, setAudit] = useState<PlatformAuditEntry[]>([]);
@@ -67,7 +68,7 @@ export function PlatformAdminPage() {
   const activeSessionUserIdRef = useRef<string | null>(null);
 
   const clearGovernanceSession = useCallback(() => {
-    setAuthorized(null);
+    setAccessStatus('checking');
     setSettings([]);
     setRuns([]);
     setAudit([]);
@@ -77,9 +78,15 @@ export function PlatformAdminPage() {
     setLoadingData(true);
     setError(null);
     try {
-      const allowed = await validatePlatformAdminAccess();
-      setAuthorized(allowed);
-      if (!allowed) {
+      const resolution = await resolvePlatformAdminAccess();
+      if (resolution.status === 'error') {
+        console.error('[Platform Admin] governance authorization:', resolution.cause);
+        setAccessStatus('error');
+        setSettings([]); setRuns([]); setAudit([]);
+        return;
+      }
+      setAccessStatus(resolution.status);
+      if (resolution.status === 'denied') {
         setSettings([]); setRuns([]); setAudit([]);
         return;
       }
@@ -93,7 +100,7 @@ export function PlatformAdminPage() {
       setAudit(nextAudit);
       setAuditLimit(nextAuditLimit);
     } catch (cause) {
-      console.error('[Platform Admin] governance load:', cause);
+      console.error('[Platform Admin] governance data load:', cause);
       setError('Não foi possível carregar a governança da plataforma.');
     } finally {
       setLoadingData(false);
@@ -209,8 +216,9 @@ export function PlatformAdminPage() {
     );
   }
 
-  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
-  if (!authorized) return <div className="app-surface min-h-screen grid place-items-center p-5"><div className="w-full max-w-lg rounded-[24px] border border-pulse/30 bg-panel p-7"><p className="text-pulse">Acesso negado</p><h1 className="mt-2 font-display text-2xl font-bold">Esta conta não é Platform Admin</h1></div></div>;
+  if (accessStatus === 'checking') return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
+  if (accessStatus === 'error') return <PlatformAdminAccessError onRetry={() => void refresh(AUDIT_STEP)} />;
+  if (accessStatus === 'denied') return <div className="app-surface min-h-screen grid place-items-center p-5"><div className="w-full max-w-lg rounded-[24px] border border-pulse/30 bg-panel p-7"><p className="text-pulse">Acesso negado</p><h1 className="mt-2 font-display text-2xl font-bold">Esta conta não é Platform Admin</h1></div></div>;
 
   return (
     <PlatformAdminShell eyebrow="MedicsPro Platform Admin" title="Governança" description="Controle automações, acompanhe a saúde operacional e revise mudanças administrativas sem transformar a tela em um log infinito." actions={<button onClick={() => void refresh(AUDIT_STEP)} disabled={loadingData} className="rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[11px] font-semibold text-fog hover:border-mint/35 hover:text-paper disabled:opacity-50">Atualizar dados</button>}>

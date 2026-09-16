@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 import {
@@ -12,7 +13,7 @@ import {
   type PlatformAutomationSetting,
   type PlatformClinicSummary,
 } from '../lib/platformAdmin';
-import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { getCachedPlatformAdminAccessStatus, resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 import { loadClinicAccessRequests, type ClinicAccessRequest } from '../lib/platformAccessRequests';
 
 type DashboardData = {
@@ -43,7 +44,7 @@ function auditLabel(action: string) {
 }
 
 export function PlatformAdminHomePage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
+  const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>(() => getCachedPlatformAdminAccessStatus());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -71,27 +72,28 @@ export function PlatformAdminHomePage() {
   }, []);
 
   const validate = useCallback(async () => {
-    try {
-      const allowed = await validatePlatformAdminAccess();
-      setAuthorized(allowed);
-      if (allowed) await refresh();
-    } catch (cause) {
-      console.error('[Platform Admin] home authorization:', cause);
-      setAuthorized(false);
+    setAccessStatus('checking');
+    const resolution = await resolvePlatformAdminAccess();
+    if (resolution.status === 'error') {
+      console.error('[Platform Admin] home authorization:', resolution.cause);
+      setAccessStatus('error');
+      return;
     }
+    setAccessStatus(resolution.status);
+    if (resolution.status === 'allowed') await refresh();
   }, [refresh]);
 
   useEffect(() => {
     let active = true;
     void platformSupabase.auth.getSession().then(({ data: sessionData }) => {
       if (!active) return;
-      if (!sessionData.session) setAuthorized(false);
+      if (!sessionData.session) setAccessStatus('denied');
       else void validate();
     });
     const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       if (!session) {
-        setAuthorized(false);
+        setAccessStatus('denied');
         setData(EMPTY_DATA);
       } else {
         void validate();
@@ -109,7 +111,7 @@ export function PlatformAdminHomePage() {
     const { error: signInError } = await platformSupabase.auth.signInWithPassword({ email: email.trim(), password });
     if (signInError) {
       setError(signInError.message);
-      setAuthorized(false);
+      setAccessStatus('denied');
       return;
     }
     await validate();
@@ -127,9 +129,10 @@ export function PlatformAdminHomePage() {
   const activePercent = data.clinics.length ? Math.round((activeClinics / data.clinics.length) * 100) : 0;
   const onboardingAttention = data.pendingRequests.length > 0;
 
-  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão da plataforma…</div>;
+  if (accessStatus === 'checking') return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando sessão da plataforma…</div>;
+  if (accessStatus === 'error') return <PlatformAdminAccessError onRetry={() => void validate()} />;
 
-  if (!authorized) {
+  if (accessStatus === 'denied') {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
         <form onSubmit={signIn} className="w-full max-w-md overflow-hidden rounded-[28px] border border-line bg-panel shadow-[0_28px_90px_rgba(3,16,48,0.13)]">
