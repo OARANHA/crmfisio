@@ -239,10 +239,49 @@ export const PHQ15_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
   },
 };
 
+
+export const CAGE_RULE_VERSION = 'nexus-cage-2026-09-16';
+export const CAGE_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
+  toolKey: 'cage',
+  ruleKey: 'nexus.cage',
+  ruleVersion: CAGE_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'cage-ewing-1984', title: 'Detecting alcoholism: The CAGE questionnaire', source: 'Ewing JA. JAMA. 1984;252(14):1905-1907.', year: 1984, version: CAGE_RULE_VERSION },
+    { evidenceKey: 'cage-brazil-validation-1983', title: 'Validação brasileira do CAGE', source: 'Masur J, Monteiro MG. Braz J Med Biol Res. 1983;16(3):215-218.', year: 1983, version: CAGE_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const values = requireIntegerRange(answers, ['q1', 'q2', 'q3', 'q4'], 0, 1, 'CAGE');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    const positive = totalScore >= 2;
+    const classification = positive ? 'Rastreio positivo pelo corte CAGE ≥ 2' : 'Rastreio negativo pelo corte CAGE ≥ 2';
+    const interpretation = positive
+      ? 'Duas ou mais respostas afirmativas configuram rastreio positivo pelo corte clássico do CAGE. O resultado não estabelece diagnóstico de transtorno por uso de álcool ou dependência e deve ser contextualizado clinicamente.'
+      : 'Zero ou uma resposta afirmativa não atinge o corte clássico ≥ 2. Um resultado abaixo do corte não exclui uso de risco, dano relacionado ao álcool ou necessidade de avaliação clínica conforme o contexto.';
+    return {
+      totalScore,
+      maxScore: 4,
+      classification,
+      severity: positive ? 'moderate' : 'low',
+      interpretation,
+      recommendations: [
+        CLINICIAN_REVIEW_NOTICE,
+        'Interpretar o CAGE como rastreio histórico de problemas relacionados ao álcool; não inferir diagnóstico, gravidade atual ou conduta apenas pelo escore.',
+        'Se houver preocupação clínica, complementar a história de uso de álcool e utilizar avaliação apropriada ao objetivo e à população atendida.',
+      ],
+      answersArray: values,
+      soapText: `CAGE: ${totalScore}/4 respostas afirmativas (${classification}) | Respostas: [${values.join(', ')}] | Instrumento de rastreio; interpretar clinicamente | Fonte: Ewing, 1984; validação BR: Masur & Monteiro, 1983`,
+      redFlags: [],
+    };
+  },
+};
+
 export const CLINICAL_INSTRUMENT_PROCESSORS: readonly ClinicalInstrumentProcessorDefinition[] = [
   PHQ9_PROCESSOR,
   GAD7_PROCESSOR,
   PHQ15_PROCESSOR,
+  CAGE_PROCESSOR,
 ];
 
 export function getClinicalInstrumentProcessor(

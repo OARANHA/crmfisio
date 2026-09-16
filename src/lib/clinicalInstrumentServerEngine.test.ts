@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CAGE_PROCESSOR,
   CLINICAL_INSTRUMENT_PROCESSORS,
   GAD7_PROCESSOR,
   getClinicalInstrumentProcessor,
@@ -34,6 +35,13 @@ describe('shared clinical instrument server engine', () => {
         toolKey: 'phq15',
         ruleKey: 'nexus.phq15',
         ruleVersion: 'nexus-phq15-2026-09-13',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+      {
+        toolKey: 'cage',
+        ruleKey: 'nexus.cage',
+        ruleVersion: 'nexus-cage-2026-09-16',
         moduleKey: 'scales',
         requiredCapability: 'nexus.scales',
       },
@@ -112,6 +120,22 @@ describe('shared clinical instrument server engine', () => {
     expect(calculated.recommendations.join(' ')).toContain('não diferencia causa orgânica');
   });
 
+
+  it('scores CAGE only with four explicit binary answers and keeps screening language non-diagnostic', () => {
+    const positive = CAGE_PROCESSOR.calculate({ q1: 1, q2: 1, q3: 0, q4: 0 });
+    expect(positive.totalScore).toBe(2);
+    expect(positive.maxScore).toBe(4);
+    expect(positive.classification).toContain('Rastreio positivo');
+    expect(positive.severity).toBe('moderate');
+    expect(positive.interpretation).toContain('não estabelece diagnóstico');
+    expect(positive.redFlags).toEqual([]);
+
+    const negative = CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 0, q4: 0 });
+    expect(negative.totalScore).toBe(1);
+    expect(negative.classification).toContain('Rastreio negativo');
+    expect(negative.interpretation).toContain('não exclui uso de risco');
+  });
+
   it('fails closed on incomplete, out-of-range or unknown instruments', () => {
     expect(() => PHQ9_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-9 incompleto');
     expect(() => GAD7_PROCESSOR.calculate({
@@ -125,6 +149,8 @@ describe('shared clinical instrument server engine', () => {
     })).toThrow('GAD-7 incompleto ou com resposta fora da faixa 0-3');
     expect(() => PHQ15_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-15 incompleto');
     expect(() => PHQ15_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 15 }, (_, index) => [`q${index + 1}`, index === 14 ? 3 : 0])))).toThrow('PHQ-15 incompleto ou com resposta fora da faixa 0-2');
+    expect(() => CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 1 })).toThrow('CAGE incompleto');
+    expect(() => CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 1, q4: 2 })).toThrow('CAGE incompleto ou com resposta fora da faixa 0-1');
     expect(getClinicalInstrumentProcessor('unknown')).toBeNull();
   });
 });

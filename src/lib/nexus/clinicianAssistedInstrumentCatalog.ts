@@ -5,7 +5,7 @@ import {
 } from './publicSelfAssessmentCatalog';
 
 export type ClinicianAssistedInstrumentDefinition = {
-  toolKey: 'phq9' | 'gad7' | 'phq15';
+  toolKey: 'phq9' | 'gad7' | 'phq15' | 'cage';
   ruleVersion: string;
   acronym: string;
   instructions: string;
@@ -42,11 +42,30 @@ const PHQ15: ClinicianAssistedInstrumentDefinition = {
   ],
 };
 
+const CAGE_OPTIONS: PublicSelfAssessmentOption[] = [
+  { label: 'Não', value: 0 },
+  { label: 'Sim', value: 1 },
+];
+
+const CAGE: ClinicianAssistedInstrumentDefinition = {
+  toolKey: 'cage',
+  ruleVersion: 'nexus-cage-2026-09-16',
+  acronym: 'CAGE',
+  instructions: 'Versão operacional Nexus/MedicsPro. Registre Sim ou Não para as quatro perguntas. O CAGE é um instrumento de rastreio e não estabelece diagnóstico de transtorno por uso de álcool.',
+  questions: [
+    { id: 'q1', text: '1. Você já sentiu que deveria diminuir a quantidade de bebida?', options: CAGE_OPTIONS },
+    { id: 'q2', text: '2. As pessoas já o(a) irritaram criticando seu modo de beber?', options: CAGE_OPTIONS },
+    { id: 'q3', text: '3. Você já se sentiu culpado(a) ou chateado(a) consigo mesmo(a) pela maneira como bebe?', options: CAGE_OPTIONS },
+    { id: 'q4', text: '4. Você já teve que beber pela manhã para acalmar os nervos ou se livrar de uma ressaca?', options: CAGE_OPTIONS },
+  ],
+};
+
 export function getClinicianAssistedInstrumentDefinition(
   toolKey: string | undefined,
 ): ClinicianAssistedInstrumentDefinition | null {
   if (!toolKey) return null;
   if (toolKey === 'phq15') return PHQ15;
+  if (toolKey === 'cage') return CAGE;
   const publicDefinition = getPublicSelfAssessmentDefinition(toolKey);
   return publicDefinition as ClinicianAssistedInstrumentDefinition | null;
 }

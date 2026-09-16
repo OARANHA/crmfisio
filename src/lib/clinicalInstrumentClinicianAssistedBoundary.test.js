@@ -18,6 +18,9 @@ const migration = read(
 const phq15Migration = read(
   "../../supabase-migrations/20260913_phq15_clinician_assisted_v1.sql",
 );
+const cageMigration = read(
+  "../../supabase-migrations/20260916_cage_clinician_assisted_v1.sql",
+);
 const uiAdapter = read("./clinicalInstrumentClinicianAssisted.ts");
 const assistedCatalog = read("./nexus/clinicianAssistedInstrumentCatalog.ts");
 const publicCatalog = read("./nexus/publicSelfAssessmentCatalog.ts");
@@ -39,7 +42,7 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(edge).not.toContain("patientId");
   });
 
-  it("reuses the shared server-side engine while keeping PHQ-15 assisted-only", () => {
+  it("reuses the shared server-side engine while keeping PHQ-15 and CAGE assisted-only", () => {
     expect(edge).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).not.toContain("const PHQ9:");
@@ -58,13 +61,16 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(processor).toContain(
       "admin.rpc('complete_clinical_instrument_patient_self_processing'",
     );
-    expect(engine).toContain("ruleKey: 'nexus.phq9'");
-    expect(engine).toContain("ruleKey: 'nexus.gad7'");
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.phq9["']/);
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.gad7["']/);
     expect(engine).toContain("ruleVersion: PHQ9_RULE_VERSION");
-    expect(engine).toContain("flagCode: 'phq9.item9.positive'");
-    expect(engine).toContain("ruleKey: 'nexus.phq15'");
+    expect(engine).toMatch(/flagCode:\s*["']phq9\.item9\.positive["']/);
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.phq15["']/);
     expect(engine).toContain("ruleVersion: PHQ15_RULE_VERSION");
-    expect(assistedCatalog).toContain("toolKey: 'phq15'");
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.cage["']/);
+    expect(engine).toContain("ruleVersion: CAGE_RULE_VERSION");
+    expect(assistedCatalog).toMatch(/toolKey:\s*["']phq15["']/);
+    expect(assistedCatalog).toMatch(/toolKey:\s*["']cage["']/);
     expect(publicCatalog).not.toContain("'phq15'");
   });
 
@@ -79,6 +85,17 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(phq15Migration).not.toMatch(
       /INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i,
     );
+  });
+
+
+  it("adds CAGE as an additive neutral catalog contract without auto-grants or patient-self exposure", () => {
+    expect(cageMigration).toContain(
+      "'scales', 'cage', 'nexus.cage', 'nexus-cage-2026-09-16', 'nexus.scales'",
+    );
+    expect(cageMigration).toContain("'cage', 'nexus', 'scales', 'cage'");
+    expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.professional_capabilities/i);
+    expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i);
+    expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.clinical_instrument_patient_self_contracts/i);
   });
 
   it("persists only canonical validated answers instead of arbitrary browser keys", () => {
