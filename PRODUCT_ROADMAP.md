@@ -207,7 +207,7 @@ Mostrar somente o necessário ao atendimento atual, como particular/pacote e est
 
 Instrumentos como PHQ-9/GAD-7 são potencialmente multiprofissionais conforme finalidade clínica, protocolo/configuração e contexto. Exemplos de contextos relevantes incluem Psiquiatria, Medicina de Família/APS, Clínica Médica, equipes de saúde mental, Enfermagem em APS/Saúde da Família e outros profissionais quando houver indicação/protocolo apropriado.
 
-Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**. Enfermagem ainda não foi adicionada à identidade profissional suportada pelo runtime nesta slice.
+Esses exemplos orientam relevância; **não são ACL e não fazem auto-grant**. A lista de identidades profissionais efetivamente suportadas deve ser lida do runtime canônico, não inferida deste roadmap.
 
 Estado canônico:
 
@@ -219,25 +219,25 @@ Estado canônico:
 [x] Patient Delivery V1 — #484 + hotfix #486 / PROD / VERIFIED
 ```
 
-### 3.1 Clinician-Assisted Administration
+### 3.1 Clinician-Assisted Administration — foundation entregue
 
-Próxima slice deste eixo: permitir a administração presencial do mesmo instrumento durante o atendimento, sem depender de celular/WhatsApp.
+A administração presencial usa a boundary clínica neutra e o ledger canônico, sem depender de celular/WhatsApp.
 
-Contrato esperado:
+Contrato preservado:
 
 - respostas pertencem ao paciente;
 - profissional administra/registra as respostas;
 - `appointment_id` quando houver Encounter;
 - instrumento e versão explícitos;
-- mesmo scoring validado do self-assessment;
-- provenance diferenciada, conceitualmente `patient_self` ou `clinician_assisted`;
-- autoria do ato profissional preservada;
+- scoring/semântica pertencem à engine versionada;
+- provenance diferencia `clinician_assisted` de `patient_self`;
+- autoria do ato profissional permanece preservada;
 - resultado não equivale a diagnóstico automático;
-- nenhuma flexibilização da persistência doctor-only Nexus apenas para obter multiprofissionalidade; se necessário, persistência clínica neutra será slice própria.
+- `nexus.*` não é concedido como atalho para multiprofissionalidade.
 
-### 3.2 Encounter Instrument UX
+### 3.2 Encounter Instrument UX — foundation entregue
 
-Depois da operação canônica existir, expor no atendimento:
+No atendimento, instrumentos elegíveis podem expor:
 
 ```text
 PHQ-9
@@ -255,7 +255,7 @@ Requisito de segurança do PHQ-9: resposta positiva ao item 9 deve permanecer vi
 
 ### 3.3 Consultório V5 integration/polish
 
-Direção de UX futura:
+A composição estrutural atual segue; o polish/ergonomia continua guiado por evidência do piloto:
 
 ```text
 um Encounter
