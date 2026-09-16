@@ -2,8 +2,8 @@
 
 > Fonte editorial para um manual futuro coerente. Não substitui código/documentação técnica; registra comportamento visível e estado real de validação.
 
-**Atualizado em:** 2026-09-12/13  
-**Base de referência:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`
+**Reconciliado em:** 2026-09-16
+**Regra de referência:** confirmar `origin/main` + `docs/CURRENT_STATE.md` antes de publicar o manual; não usar SHA histórico como versão atual.
 
 ## Regra editorial
 
@@ -211,19 +211,24 @@ Fontes técnicas:
 - `docs/CLINICAL_REFERRAL_RENDERER_V1.md`
 - `docs/CLINICAL_REFERRAL_INTERNAL_V1.md`
 
-### Ainda não documentar como disponível
+### Continuidade operacional D2-E4
 
-O fluxo abaixo é **D2-E4 / planejado**, não produto validado ainda:
+A foundation D2-E4 de continuidade/agendamento seguro está **VALIDADA EM PRODUÇÃO**. Ela preserva o referral emitido como snapshot imutável, usa operação/eventos separados e vincula o agendamento ao Appointment canônico por boundary server-side de destino exato.
+
+Para o manual, documentar apenas a superfície de agendamento realmente visível e revalidada na versão implantada. **Não** transformar a existência técnica de D2-E4 em uma inbox fictícia.
+
+Ainda não documentar como disponíveis, sem nova evidência de produto:
 
 ```text
-Recebidos
-→ aceitar / recusar
-→ agendar
-→ atender
-→ concluir
+Inbox dedicada / Recebidos
+→ aceitar / recusar com UX própria
+→ fila operacional completa do destinatário/área
+→ contrarreferência
 ```
 
-Também não documentar contrarreferência, envio automático externo, diretório externo, assinatura ICP-Brasil ou Nexus auto-referral como existentes.
+Também não documentar envio automático externo, diretório externo, assinatura ICP-Brasil ou Nexus auto-referral como existentes.
+
+Fonte técnica adicional: `docs/CLINICAL_REFERRAL_INTERNAL_V1.md`.
 
 ---
 

@@ -1,5 +1,7 @@
 # Core Real — release notes
 
+> **Registro histórico.** Este arquivo preserva o estado descrito em cada data e não deve ser usado como snapshot atual. Para continuidade vigente, leia `AGENTS.md` e `docs/CURRENT_STATE.md`; afirmações como "slice futura" abaixo são verdade histórica da release correspondente, não prioridade atual.
+
 ## 2026-09-10 — Multiprofessional clinical runtime / Encounter / privacy shell
 
 ### Multiprofessional clinical foundation

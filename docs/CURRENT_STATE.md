@@ -5,7 +5,8 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-16
-**Base canônica funcional:** `main@44e392ef2df7e5b1fca1cf373246fb500eb7254b`
+**Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
+**Último SHA funcional com rollout registrado nesta sequência:** `44e392ef2df7e5b1fca1cf373246fb500eb7254b` (#491). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
 
 ## Estado clínico resumido
 

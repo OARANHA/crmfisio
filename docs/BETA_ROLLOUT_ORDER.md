@@ -1,6 +1,6 @@
 # MedicsPro Beta — ordem controlada de rollout
 
-**Estado em 2026-09-10.** Este documento organiza continuidade operacional. Ele não autoriza deploy ou alteração de produção por si só.
+**Reconciliado em 2026-09-16.** Este documento preserva guardrails de rollout/beta; **não é fonte de prioridade atual**. Para estado e próximas slices, use `docs/CURRENT_STATE.md` + `TODO.md`. Ele não autoriza deploy ou alteração de produção por si só.
 
 ## Princípios
 
@@ -103,20 +103,11 @@ Resolução:
 
 Falhas financeiras inesperadas de integridade permanecem fail-closed e devem interromper o rollout.
 
-## 4. Próximas slices de produto no piloto
+## 4. Seleção da próxima slice no piloto
 
-Depois das evidências curtas acima:
+Não manter uma fila duplicada neste runbook. A próxima slice vem do `TODO.md` e do estado observado em `docs/CURRENT_STATE.md`, depois de confirmar a `origin/main` atual.
 
-1. Encounter UX / ergonomia observada com profissionais reais;
-2. [x] correction/addendum auditável para Encounter Record finalizado (#481);
-3. [x] histórico neutro de instrumentos clinician-assisted (#482);
-4. **Instrument Delivery remota (`Enviar ao paciente`) — próxima slice;** `Aplicar agora` já está entregue;
-5. documentos clínicos ainda ausentes conforme evidência;
-6. Finance Configuration (solo/equipe, categorias, parceiro %/fixo com histórico/effective dates);
-7. onboarding/pilot friction;
-8. financeiro avançado/integracões conforme necessidade observada.
-
-Cada slice precisa de PR, CI e rollout próprios quando alterar comportamento/schema.
+Escolha uma vertical slice por vez, preserve os boundaries existentes e exija PR/CI + rollout separado quando houver mudança de comportamento/schema. Foundations já entregues não voltam à fila sem evidência concreta de regressão.
 
 ## 5. Critério para ampliar o beta
 

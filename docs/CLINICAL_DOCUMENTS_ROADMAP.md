@@ -2,8 +2,8 @@
 
 > Continuidade canônica para documentos clínicos. Código, schema e runtime prevalecem se este arquivo envelhecer.
 
-**Base canônica:** `main@2ecc17a7efc6d02a94e738bf5b17d748402d8c99`  
-**Estado:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-C PROD / D2-D PROD / D2-E0–E3.1 PROD / D2-E4 PRÓXIMO
+**Regra de base:** sempre resolver a `origin/main` atual; SHAs históricos neste documento não são instrução de checkout.
+**Estado reconciliado em 2026-09-16:** D1 CONCLUÍDO / D2-A PROD / D2-B PROD / D2-C PROD / D2-D PROD / D2-E0–E3.1 PROD / D2-E4 V1 PROD
 
 ---
 
@@ -162,56 +162,34 @@ Produção confirmou destino interno real, preview correto, emissão e impressã
 
 # D2-E4 — Referral Operational Continuity
 
-**PRÓXIMO.**
+**V1 VALIDADA EM PRODUÇÃO.**
 
-Objetivo: transformar um encaminhamento interno emitido em continuidade operacional rastreável sem alterar o documento clínico.
+A V1 transforma um encaminhamento interno emitido em continuidade operacional rastreável sem alterar o documento clínico. Usa `clinical_referral_operations` e eventos operacionais separados do lifecycle documental, mantendo uma operação por referral interno e vínculo estável ao appointment canônico.
 
-Fluxo-alvo:
+O agendamento cross-professional somente atravessa o boundary por `schedule_clinical_referral_operation(...)`, que revalida tenant, paciente, ator, referral emitido, destino fixo/imutável e profissional alvo e executa a criação canônica do appointment com prova same-transaction/exact-target. INSERT direto para outro profissional continua bloqueado.
 
-```text
-referral interno emitido
-→ recebido
-→ aceito / recusado
-→ agendamento vinculado
-→ atendimento
-→ conclusão
-```
+## Invariantes entregues
 
-## Boundary obrigatório
+- documento `referral` emitido e snapshots permanecem imutáveis;
+- workflow operacional não adiciona estados de recebimento/agendamento ao `clinical_documents.status`;
+- mesma clínica/paciente/destino são revalidados;
+- Agenda/Appointment continuam donos de data, hora e lifecycle do atendimento;
+- o vínculo referral → operation → appointment é auditável/idempotente;
+- a exceção cross-professional não é reutilizável fora da mesma transação e não abre bypass genérico de appointment.
 
-D2-E4 deve usar entidade operacional própria, ligada ao `clinical_documents.id` emitido. Nunca adicionar `received`, `accepted`, `scheduled`, `attended` ou `completed` ao `clinical_documents.status`.
+## Expansões que **não** devem ser inferidas da V1
 
-Regras:
-
-- apenas `referral` **issued** e interno origina workflow;
-- mesmo tenant sempre;
-- destino específico só é operável pelo profissional alvo ou por autoridade operacional explicitamente definida;
-- destino por área pode ser roteado/assumido por profissional elegível da mesma clínica, mas profissão/especialidade continuam roteamento, não ACL de prontuário;
-- aceitar referral não concede automaticamente leitura histórica do prontuário;
-- scheduling deve reutilizar Agenda/Appointment canônicos;
-- handoff para atendimento respeita `clinical.attend`, profissional atribuído e guard temporal;
-- conclusão é auditável e, quando houver atendimento resultante, guarda vínculo estável com o appointment;
-- documento emitido e seus snapshots nunca mudam por causa do workflow.
-
-## Decomposição recomendada
-
-Para reduzir risco, D2-E4 pode ser implementado em micro-slices sem mudar o contrato de produto:
+O alvo amplo abaixo continua composto de slices separadas e não está todo disponível apenas porque D2-E4 V1 está em produção:
 
 ```text
-D2-E4.0 Operational Foundation
-  referral work item + lifecycle operacional + RLS/RPC/auditoria
-
-D2-E4.1 Inbox / Accept / Decline
-  fila do profissional/área e transições humanas
-
-D2-E4.2 Schedule Link
-  vínculo controlado com Agenda/Appointment canônico
-
-D2-E4.3 Attend / Complete
-  handoff clínico + conclusão rastreável
+Inbox dedicada / Recebidos
+→ aceitar / recusar com UX própria
+→ filas/roteamento operacional por destinatário/área
+→ mensageria/reconciliação específica
+→ contrarreferência e políticas adicionais
 ```
 
-A separação é de engenharia; para o usuário continua sendo um único fluxo de continuidade interna.
+Essas expansões devem reutilizar a foundation D2-E4 já validada, nunca reabrir o documento emitido nem criar scheduler paralelo.
 
 ---
 
