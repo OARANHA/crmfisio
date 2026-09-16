@@ -1,6 +1,6 @@
 # PCL-5 Clinician-Assisted V1
 
-**Status:** MERGED / MAIN VALIDATED / NOT PROD.
+**Status:** PROD / VERIFIED / TENANT ENABLEMENT REQUIRED.
 **Base:** `main@0de7a02d296f1e30be052a6f2eeb74f1807ae4ed`.
 **Branch:** `feat/pcl5-clinician-assisted-v1`.
 **Implementation commit:** `33143f5525eeba8c444ef0da0df8bbc96b9791d4`.
@@ -59,6 +59,21 @@ Local gates are green: PostgreSQL 16 and PostgreSQL 17.6 behavior/replay/verifie
 
 The database harness also proves that the migration changes no existing clinic settings or professional capabilities and creates no PCL-5 patient-self contract.
 
-## Production state
+## Production validation — 2026-09-16
 
-No PCL-5 production migration, Edge/frontend rollout, tenant enablement or patient-self delivery has been performed yet. Production rollout remains a separate controlled step.
+Production rollout completed against PostgreSQL 17.6 with the functional runtime from `44e392ef2df7e5b1fca1cf373246fb500eb7254b`.
+
+- migration applied with COMMIT;
+- PCL-5 verifier: PASS;
+- base clinician-assisted verifier: PASS;
+- CAGE regression verifier: PASS;
+- shared Edge engine promoted to SHA256 `0155e0c4fdabcc1793cf4c34fa72c5cc8d117c5d4ed782d71b55fafc6f53c1e3`;
+- Edge Runtime returned healthy and unauthenticated clinician-assisted / Nexus processor calls returned 401;
+- frontend was already auto-promoted after merge and served the PCL-5 version/text markers successfully;
+- transactional writer smoke produced 36/80, idempotent replay succeeded, forged engine version was blocked, and the transaction was rolled back;
+- final residue: `settings=0`, `administrations=0`, `patient_self=0`;
+- no clinic was enabled and no real patient PCL-5 administration was created.
+
+Operational evidence is retained on the production host under `/opt/medicspro-rollouts/20260916T184801Z-pcl5-v1`.
+
+Tenant enablement remains an explicit owner/admin decision after the technical rollout.
