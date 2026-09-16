@@ -277,11 +277,53 @@ export const CAGE_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
   },
 };
 
+export const PCL5_RULE_VERSION = 'nexus-pcl5-br-2026-09-16';
+export const PCL5_PROCESSOR: ClinicalInstrumentProcessorDefinition = {
+  toolKey: 'pcl5',
+  ruleKey: 'nexus.pcl5',
+  ruleVersion: PCL5_RULE_VERSION,
+  moduleKey: 'scales',
+  requiredCapability: 'nexus.scales',
+  evidence: [
+    { evidenceKey: 'pcl5-blevins-2015', title: 'The PTSD Checklist for DSM-5: Development and Initial Psychometric Evaluation', source: 'Blevins CA et al. J Trauma Stress. 2015;28(6):489-498.', year: 2015, version: PCL5_RULE_VERSION },
+    { evidenceKey: 'pcl5-brazil-adaptation-2017', title: 'Adaptação transcultural brasileira do PCL-5', source: 'Osório FL et al. Arch Clin Psychiatry (São Paulo). 2017;44(1).', year: 2017, version: PCL5_RULE_VERSION },
+    { evidenceKey: 'pcl5-brazil-psychometrics-2019', title: 'Propriedades psicométricas e utilidade diagnóstica da versão brasileira do PCL-5', source: 'Pereira-Lima K et al. Eur J Psychotraumatol. 2019;10(1):1581020. Cutoff 36 com maior eficiência global na amostra estudada.', year: 2019, version: PCL5_RULE_VERSION },
+  ],
+  calculate: (answers) => {
+    const ids = Array.from({ length: 20 }, (_, index) => `q${index + 1}`);
+    const values = requireIntegerRange(answers, ids, 0, 4, 'PCL-5');
+    const totalScore = values.reduce((sum, value) => sum + value, 0);
+    const positive = totalScore >= 36;
+    const classification = positive
+      ? 'Rastreio positivo pelo corte brasileiro PCL-5 ≥ 36'
+      : 'Escore abaixo do corte brasileiro PCL-5 ≥ 36';
+    const interpretation = positive
+      ? 'O escore atinge o ponto de corte de 36 que apresentou melhor eficiência global na validação brasileira estudada. Isso indica necessidade de avaliação clínica adicional e não estabelece diagnóstico de TEPT isoladamente.'
+      : 'O escore está abaixo de 36. Resultado abaixo do corte não exclui TEPT, sofrimento pós-traumático ou necessidade de avaliação conforme contexto, evento índice e julgamento clínico.';
+    return {
+      totalScore,
+      maxScore: 80,
+      classification,
+      severity: positive ? 'moderate' : 'low',
+      interpretation,
+      recommendations: [
+        CLINICIAN_REVIEW_NOTICE,
+        'Confirmar que os itens foram respondidos em relação a um evento traumático de referência clinicamente apropriado; o PCL-5 não substitui a avaliação do Critério A.',
+        'Interpretar escore e clusters no contexto clínico. Um rastreio positivo deve ser seguido de avaliação diagnóstica apropriada quando indicado.',
+      ],
+      answersArray: values,
+      soapText: `PCL-5: ${totalScore}/80 pts (${classification}) | Respostas: [${values.join(', ')}] | Rastreio pós-traumático; não diagnóstico | Cutoff BR operacional: 36`,
+      redFlags: [],
+    };
+  },
+};
+
 export const CLINICAL_INSTRUMENT_PROCESSORS: readonly ClinicalInstrumentProcessorDefinition[] = [
   PHQ9_PROCESSOR,
   GAD7_PROCESSOR,
   PHQ15_PROCESSOR,
   CAGE_PROCESSOR,
+  PCL5_PROCESSOR,
 ];
 
 export function getClinicalInstrumentProcessor(

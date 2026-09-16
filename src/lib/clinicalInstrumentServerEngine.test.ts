@@ -6,6 +6,7 @@ import {
   getClinicalInstrumentProcessor,
   PHQ9_PROCESSOR,
   PHQ15_PROCESSOR,
+  PCL5_PROCESSOR,
 } from '../../supabase/functions/_shared/clinical-instrument-engine';
 
 describe('shared clinical instrument server engine', () => {
@@ -42,6 +43,13 @@ describe('shared clinical instrument server engine', () => {
         toolKey: 'cage',
         ruleKey: 'nexus.cage',
         ruleVersion: 'nexus-cage-2026-09-16',
+        moduleKey: 'scales',
+        requiredCapability: 'nexus.scales',
+      },
+      {
+        toolKey: 'pcl5',
+        ruleKey: 'nexus.pcl5',
+        ruleVersion: 'nexus-pcl5-br-2026-09-16',
         moduleKey: 'scales',
         requiredCapability: 'nexus.scales',
       },
@@ -136,6 +144,24 @@ describe('shared clinical instrument server engine', () => {
     expect(negative.interpretation).toContain('não exclui uso de risco');
   });
 
+
+  it('scores PCL-5 with the versioned Brazilian cutoff and keeps screening language non-diagnostic', () => {
+    const answers = Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`q${index + 1}`, index < 18 ? 2 : 0]));
+    const positive = PCL5_PROCESSOR.calculate(answers);
+    expect(positive.totalScore).toBe(36);
+    expect(positive.maxScore).toBe(80);
+    expect(positive.classification).toContain('Rastreio positivo');
+    expect(positive.severity).toBe('moderate');
+    expect(positive.interpretation).toContain('não estabelece diagnóstico');
+    expect(positive.recommendations.join(' ')).toContain('Critério A');
+    expect(positive.redFlags).toEqual([]);
+
+    const negative = PCL5_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`q${index + 1}`, index < 17 ? 2 : 0])));
+    expect(negative.totalScore).toBe(34);
+    expect(negative.classification).toContain('abaixo do corte');
+    expect(negative.interpretation).toContain('não exclui TEPT');
+  });
+
   it('fails closed on incomplete, out-of-range or unknown instruments', () => {
     expect(() => PHQ9_PROCESSOR.calculate({ q1: 0 })).toThrow('PHQ-9 incompleto');
     expect(() => GAD7_PROCESSOR.calculate({
@@ -151,6 +177,8 @@ describe('shared clinical instrument server engine', () => {
     expect(() => PHQ15_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 15 }, (_, index) => [`q${index + 1}`, index === 14 ? 3 : 0])))).toThrow('PHQ-15 incompleto ou com resposta fora da faixa 0-2');
     expect(() => CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 1 })).toThrow('CAGE incompleto');
     expect(() => CAGE_PROCESSOR.calculate({ q1: 1, q2: 0, q3: 1, q4: 2 })).toThrow('CAGE incompleto ou com resposta fora da faixa 0-1');
+    expect(() => PCL5_PROCESSOR.calculate({ q1: 0 })).toThrow('PCL-5 incompleto');
+    expect(() => PCL5_PROCESSOR.calculate(Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`q${index + 1}`, index === 19 ? 5 : 0])))).toThrow('PCL-5 incompleto ou com resposta fora da faixa 0-4');
     expect(getClinicalInstrumentProcessor('unknown')).toBeNull();
   });
 });
