@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-16
-**Base canônica:** `main@dc6ab7da99a022a76c305c1a45e4e3e907eec525`
+**Base canônica:** `main@68615b0d3379b1af337a7f76f907bb3f0f52e7a0`
 
 ## Estado clínico resumido
 
@@ -24,12 +24,12 @@ Encounter Auto-Entry / Presentation handoff #478                PROD
 Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
-Clinical Instrument Patient Delivery V1                         MERGED / MAIN VALIDATED / NOT PROD
+Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 ```
 
-## Pós-merge — Clinical Instrument Patient Delivery V1
+## Produção — Clinical Instrument Patient Delivery V1
 
-**Status:** MERGED / MAIN VALIDATED — PR #484 mergeada por squash; ainda sem migration, Edge deploy ou frontend rollout em produção.
+**Status:** PRODUÇÃO / VERIFIED — #484 mergeada; rollout técnico concluído após hotfix #486 do `wa_logs_template_check`.
 
 ```text
 previous main:                   8b1bdbb3856f9d2c320e9dc737f4ec1263090095
@@ -44,7 +44,11 @@ Patient Delivery boundary tests: 8/8 PASS
 full frontend suite:             116 files / 628 tests PASS
 typecheck/lint/build:            PASS
 dependency audit:               0 vulnerabilities
-production:                     UNTOUCHED
+production:                     PROD / VERIFIED
+hotfix:                         #486 MERGED / APPLIED
+production verifier:            PASS
+transactional smoke:            PASS / ROLLBACK / 0 residue
+patient_self registry:          PHQ-9/GAD-7 active; clinic enablement remains explicit
 ```
 
 A árvore do squash em `main@dc6ab7d` é idêntica à árvore final revisada da PR. O gate final local passou, o CI da PR fechou 49/49 verde e os quatro workflows disparados pelo push pós-merge também concluíram com sucesso.
@@ -53,7 +57,7 @@ A V1 cria um registry versionado `patient_self`, mantém convites Nexus históri
 
 A UI de `Instrumentos` passa a compor `Aplicar agora -> Enviar ao paciente -> Histórico`, sem conceder `nexus.*`. O histórico neutro evolui para `clinician_assisted + patient_self` e continua sem expor respostas, snapshots, SOAP ou evidence.
 
-**Próximo passo seguro:** preparar e revisar adversarialmente o runbook de rollout produtivo separado (migration -> verifier -> Edge Functions -> frontend -> smoke controlado). Não tratar o merge como deploy.
+**Próximo passo seguro:** observar uso real no piloto e manter novos instrumentos `patient_self` fail-closed até contrato/versionamento/revisão clínica explícitos; não ampliar a lista remota por mera presença no Nexus.
 
 ---
 
@@ -77,7 +81,7 @@ A UI mostra histórico em `Instrumentos` e no prontuário longitudinal, preserva
 
 O ciclo normal de engenharia do MedicsPro também foi consolidado em `/opt/medicspro-lab` no `28server`: workspace Node/Git isolado + PostgreSQL 16 efêmero em rede Docker própria, sem Docker socket, sem volumes/env de produção e com GitHub `repo + workflow`. O Wandora deixa de ser a bancada normal do MedicsPro.
 
-**Próximo gap clínico escolhido:** `Enviar ao paciente` V1 está mergeado e validado na main; produção permanece no estado #482 até rollout explícito e verificado da #484.
+**Próximo gap clínico escolhido:** `Enviar ao paciente` V1 já está em produção e verificado; próximos instrumentos remotos dependem de contrato explícito e revisão de segurança/direitos/população.
 
 ---
 
@@ -102,7 +106,7 @@ A Evolution oficial vinculada a Encounter Record finalizado passou a ser estrutu
 
 No prontuário longitudinal, Retificações e adendos aparecem como atos posteriores vinculados ao atendimento finalizado; o original permanece preservado.
 
-**Gap seguinte após #481:** fechado pela #482; `Enviar ao paciente` V1 está implementado/validado no lab, ainda não em produção.
+**Gap seguinte após #481:** fechado pela #482 e pela entrega produtiva da Patient Delivery V1 (#484 + hotfix #486).
 
 ---
 
@@ -133,7 +137,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está mergeado na #484, ainda sem rollout.
+**Gap seguinte após #478/#479:** #481/#482 e Patient Delivery V1 (#484 + #486) estão em produção e verificadas.
 
 ---
 
