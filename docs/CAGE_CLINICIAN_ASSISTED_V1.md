@@ -1,9 +1,11 @@
 # CAGE Clinician-Assisted V1
 
-**Status:** PR #488 OPEN / NOT PROD.
+**Status:** #488 MERGED / MAIN VALIDATED / NOT PROD.
 **Base:** `main@b99c5ca24b3c57e07475eb96acfb8dcb8e691366`.
 **Branch:** `feat/cage-clinician-assisted-v1`.
 **Implementation commit:** `4422152` (pre-continuity-doc update).
+**PR:** `#488` MERGED.
+**Merge/main SHA:** `4a574681ec97c0893619b95158afb79791fd6fe6`.
 
 ## Decision
 
