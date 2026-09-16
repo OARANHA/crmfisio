@@ -6,7 +6,7 @@ import {
 
 describe('clinician-assisted instrument browser boundary', () => {
   it('exposes only the neutral clinician-assisted keys', () => {
-    expect(CLINICIAN_ASSISTED_INSTRUMENT_KEYS).toEqual(['phq9', 'gad7', 'phq15', 'cage']);
+    expect(CLINICIAN_ASSISTED_INSTRUMENT_KEYS).toEqual(['phq9', 'gad7', 'phq15', 'cage', 'pcl5']);
   });
 
   it('builds the minimal Edge payload without tenant, patient, actor, engine or score authority', () => {

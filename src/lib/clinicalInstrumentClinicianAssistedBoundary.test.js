@@ -21,6 +21,9 @@ const phq15Migration = read(
 const cageMigration = read(
   "../../supabase-migrations/20260916_cage_clinician_assisted_v1.sql",
 );
+const pcl5Migration = read(
+  "../../supabase-migrations/20260916_pcl5_clinician_assisted_v1.sql",
+);
 const uiAdapter = read("./clinicalInstrumentClinicianAssisted.ts");
 const assistedCatalog = read("./nexus/clinicianAssistedInstrumentCatalog.ts");
 const publicCatalog = read("./nexus/publicSelfAssessmentCatalog.ts");
@@ -42,7 +45,7 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(edge).not.toContain("patientId");
   });
 
-  it("reuses the shared server-side engine while keeping PHQ-15 and CAGE assisted-only", () => {
+  it("reuses the shared server-side engine while keeping PHQ-15, CAGE and PCL-5 assisted-only", () => {
     expect(edge).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).toContain("../_shared/clinical-instrument-engine.ts");
     expect(processor).not.toContain("const PHQ9:");
@@ -69,9 +72,13 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(engine).toContain("ruleVersion: PHQ15_RULE_VERSION");
     expect(engine).toMatch(/ruleKey:\s*["']nexus\.cage["']/);
     expect(engine).toContain("ruleVersion: CAGE_RULE_VERSION");
+    expect(engine).toMatch(/ruleKey:\s*["']nexus\.pcl5["']/);
+    expect(engine).toContain("ruleVersion: PCL5_RULE_VERSION");
     expect(assistedCatalog).toMatch(/toolKey:\s*["']phq15["']/);
     expect(assistedCatalog).toMatch(/toolKey:\s*["']cage["']/);
+    expect(assistedCatalog).toMatch(/toolKey:\s*["']pcl5["']/);
     expect(publicCatalog).not.toContain("'phq15'");
+    expect(publicCatalog).not.toContain("'pcl5'");
   });
 
   it("adds PHQ-15 as an additive neutral catalog contract without auto-grants", () => {
@@ -96,6 +103,17 @@ describe("Clinician-Assisted Administration V1 boundary", () => {
     expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.professional_capabilities/i);
     expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i);
     expect(cageMigration).not.toMatch(/INSERT\s+INTO\s+public\.clinical_instrument_patient_self_contracts/i);
+  });
+
+
+  it("adds PCL-5 as a versioned Brazilian neutral catalog contract without auto-grants or patient-self exposure", () => {
+    expect(pcl5Migration).toContain(
+      "'scales', 'pcl5', 'nexus.pcl5', 'nexus-pcl5-br-2026-09-16', 'nexus.scales'",
+    );
+    expect(pcl5Migration).toContain("'pcl5', 'nexus', 'scales', 'pcl5'");
+    expect(pcl5Migration).not.toMatch(/INSERT\s+INTO\s+public\.professional_capabilities/i);
+    expect(pcl5Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinic_clinical_instrument_settings/i);
+    expect(pcl5Migration).not.toMatch(/INSERT\s+INTO\s+public\.clinical_instrument_patient_self_contracts/i);
   });
 
   it("persists only canonical validated answers instead of arbitrary browser keys", () => {

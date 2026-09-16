@@ -7,6 +7,7 @@ export const CLINICIAN_ASSISTED_INSTRUMENT_KEYS = [
   "gad7",
   "phq15",
   "cage",
+  "pcl5",
 ] as const;
 export type ClinicianAssistedInstrumentKey =
   (typeof CLINICIAN_ASSISTED_INSTRUMENT_KEYS)[number];
