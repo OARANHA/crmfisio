@@ -5,6 +5,7 @@ import { resolveClinicalEncounterWorkspace } from '../lib/clinicalEncounterUx';
 import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import type { Patient } from '../lib/types';
 import { ClinicalEncounterWorkspaceV4 } from './ClinicalEncounterWorkspaceV4';
+import { ClinicalEncounterAddendumTimeline } from './ClinicalEncounterAddendumTimeline';
 import { ClinicalWorkspace } from './ClinicalWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
@@ -18,7 +19,10 @@ export function ClinicalWorkspaceV3({ patient, initialSessionId = null }: { pati
   );
 
   const historicalWorkspace = (
-    <ClinicalWorkspace patient={patient} initialSessionId={resolution.focusedSessionId} />
+    <>
+      <ClinicalWorkspace patient={patient} initialSessionId={resolution.focusedSessionId} />
+      <ClinicalEncounterAddendumTimeline patientId={patient.id} />
+    </>
   );
 
   if (resolution.mode === 'encounter' && resolution.encounter) {

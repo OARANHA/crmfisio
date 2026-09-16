@@ -167,3 +167,7 @@ SQL
 echo "concurrency: shared appointment advisory lock serialized legacy insert and #394 finalization"
 
 "${PSQL[@]}" -f supabase-verifiers/VERIFY_20260910_CLINICAL_ENCOUNTER_RECORD_FOUNDATION.sql
+
+if [[ "${SKIP_ENCOUNTER_RECORD_ADDENDUM_V1:-0}" != "1" ]]; then
+  ENCOUNTER_RECORD_FOUNDATION_READY=1 bash scripts/test-clinical-encounter-record-addendum-v1.sh
+fi
