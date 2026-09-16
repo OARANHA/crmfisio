@@ -91,7 +91,7 @@ Sequência canônica:
 
 1. [x] **Clinical Instrument Authorization Foundation (#399)** — efetiva no stack verificado; catálogo neutro expõe explicitamente apenas `phq9`/`gad7`, reutilizando a engine Nexus por referência técnica.
 2. [x] **Clinician-Assisted Administration** — PHQ-9/GAD-7 usam o mesmo engine/versionamento/scoring, com provenance `clinician_assisted` e `appointment_id`; PHQ-15 está instalado no mesmo caminho, fail-closed até habilitação explícita do tenant.
-3. [x] **Encounter Instrument UX — Aplicar agora** — disponível no workspace Instrumentos. **Enviar ao paciente** permanece boundary separada; a V1 está implementada/validada no lab, mas ainda não foi entregue em produção.
+3. [x] **Encounter Instrument UX — Aplicar agora + Enviar ao paciente** — disponíveis no workspace Instrumentos; Patient Delivery V1 está em produção, com boundary separado e registry/versionamento próprios.
 4. [x] **Consultório V5 integration/polish estrutural** — Instrumentos integrados ao Cockpit/Encounter sem portar arquitetura/autorização/autosave/checkout legados; validação prolongada com profissionais reais continua no trilho de piloto.
 
 Requisitos associados:
@@ -102,7 +102,7 @@ Requisitos associados:
 - [x] Provenance diferencia `patient_self` de `clinician_assisted`.
 - [x] #482 — histórico neutro de instrumentos clinician-assisted em produção, sem leitura direta do ledger Nexus e sem acoplar UI multiprofissional a `nexus.*`.
 - [x] **Enviar ao paciente V1 — código/CI** — #484 mergeada em `main@dc6ab7d`, CI pré/pós-merge verde.
-- [ ] **Enviar ao paciente V1 — rollout produtivo** — migration, verifier, Edge Functions, frontend e smoke controlado ainda pendentes.
+- [x] **Enviar ao paciente V1 — rollout produtivo** — #484 + hotfix #486; migration/constraint, Edge Functions, frontend, verifier e smoke transacional validados em produção; nenhum convite/mensagem real criado pelo smoke.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos
@@ -347,7 +347,7 @@ Não tratar como TODO implícito sem evidência de necessidade:
 
 Explicitamente **não tratar como entregue**:
 
-- rollout produtivo de `Enviar ao paciente` ou qualquer boundary de entrega remota ainda não validada em produção;
+- expansão de `Enviar ao paciente` para novos instrumentos sem contrato `patient_self`, revisão clínica, direitos/versão/população e safety específicos;
 - habilitação automática de PHQ-15 sem decisão explícita do tenant;
 - novos instrumentos sem definição/versionamento/authorization canônicos;
 - Enfermagem como identidade profissional suportada;

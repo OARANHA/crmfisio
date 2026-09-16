@@ -216,7 +216,7 @@ Estado canônico:
 [x] Clinician-Assisted Administration
 [x] Encounter Instrument UX
 [x] Consultório V5 integration/polish estrutural
-[x] Patient Delivery V1 — #484 mergeada / main validada; rollout produtivo pendente
+[x] Patient Delivery V1 — #484 + hotfix #486 / PROD / VERIFIED
 ```
 
 ### 3.1 Clinician-Assisted Administration
@@ -247,7 +247,7 @@ GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
 
-`Enviar ao paciente` V1 foi mergeado pela #484 em `main@dc6ab7d`, mas ainda não foi entregue em produção. A V1 conserva criação contextual dentro do Encounter ativo como decisão conservadora; isso não transforma esse requisito em regra universal para futuras modalidades remotas.
+`Enviar ao paciente` V1 foi entregue em produção pela #484, com hotfix #486 para compatibilizar `wa_logs_template_check`. Migration, verifier, Edge, frontend e smoke transacional foram validados; o smoke terminou em `ROLLBACK` sem convite, `wa_log` ou administração real persistidos. A V1 conserva criação contextual dentro do Encounter ativo como decisão conservadora; isso não transforma esse requisito em regra universal para futuras modalidades remotas.
 
 O modo de aplicação não muda identidade, versão nem scoring do instrumento. A UI deve diferenciar autorização de relevância.
 

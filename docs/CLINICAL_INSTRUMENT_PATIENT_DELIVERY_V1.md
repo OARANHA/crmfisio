@@ -1,6 +1,6 @@
 # Clinical Instrument Patient Delivery V1
 
-**Status:** PR #484 mergeada; rollout técnico iniciado em produção, com entrega `patient_self` temporariamente desabilitada por registry enquanto o hotfix do constraint `wa_logs_template_check` é validado.
+**Status:** PRODUÇÃO / VERIFIED — #484 entregue; hotfix #486 aplicado para compatibilizar `wa_logs_template_check`; contratos `patient_self` reativados após verifier e smoke transacional aprovados.
 **Base de implementação:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`.
 **Merge:** `#484 -> main@dc6ab7da99a022a76c305c1a45e4e3e907eec525`.
 **Branch:** `feat/clinical-instrument-patient-delivery-v1`.
@@ -100,7 +100,7 @@ No estado atual da branch:
 - histórico longitudinal neutro projeta `clinician_assisted` + `patient_self` sem respostas brutas;
 - full suite final: 116 arquivos / 628 testes; typecheck, lint, build, dependency audit e `git diff --check` passaram no mesmo estado candidato a commit;
 - hotfix de produção: fixture passou a reproduzir o constraint legado real; PostgreSQL 16 e PostgreSQL 17.6 aprovam behavior + replay + verifier; definição futura/desconhecida do constraint falha fechado;
-- produção: backend/frontend da #484 presentes, porém contratos `patient_self` permanecem temporariamente `active=false` até aplicação e smoke final do hotfix.
+- produção: backend/frontend da #484 presentes; hotfix #486 aplicado; verifier formal PASS; smoke produtivo transacional PASS com replay idempotente e `ROLLBACK`; contratos `phq9`/`gad7` reativados, mantendo enablement por clínica explícito.
 
 O gate canônico da slice é `.github/workflows/clinical-instrument-patient-delivery-v1.yml`.
 
