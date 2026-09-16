@@ -103,7 +103,7 @@ Requisitos associados:
 - [x] #482 — histórico neutro de instrumentos clinician-assisted em produção, sem leitura direta do ledger Nexus e sem acoplar UI multiprofissional a `nexus.*`.
 - [x] **Enviar ao paciente V1 — código/CI** — #484 mergeada em `main@dc6ab7d`, CI pré/pós-merge verde.
 - [x] **Enviar ao paciente V1 — rollout produtivo** — #484 + hotfix #486; migration/constraint, Edge Functions, frontend, verifier e smoke transacional validados em produção; nenhum convite/mensagem real criado pelo smoke.
-- [ ] **CAGE Clinician-Assisted V1** — primeira nova ferramenta da expansão Nexus restante; implementação em `feat/cage-clinician-assisted-v1`, fail-closed, sem auto-enable e sem `patient_self` nesta slice.
+- [ ] **CAGE Clinician-Assisted V1 (#488)** — primeira nova ferramenta da expansão Nexus restante; PR aberta, fail-closed, sem auto-enable e sem `patient_self` nesta slice.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos

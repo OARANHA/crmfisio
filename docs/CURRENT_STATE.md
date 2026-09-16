@@ -25,12 +25,12 @@ Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
-CAGE Clinician-Assisted V1                                      IN IMPLEMENTATION / NOT PROD
+CAGE Clinician-Assisted V1 #488                                 PR OPEN / NOT PROD
 ```
 
 ## Slice em andamento — CAGE Clinician-Assisted V1
 
-**Status:** implementação em `feat/cage-clinician-assisted-v1`; ainda sem PR/merge/produção.
+**Status:** PR #488 aberta em `feat/cage-clinician-assisted-v1`; implementação `4422152`; ainda sem merge/produção.
 
 CAGE foi selecionado como primeira ferramenta nova da expansão Nexus restante após revisão de direitos/proveniência. A V1 usa somente `Aplicar agora`, exige quatro respostas binárias explícitas, mantém cutoff canônico `>=2` como **rastreio** e não como diagnóstico, não auto-habilita clínicas e não cria contrato `patient_self`.
 

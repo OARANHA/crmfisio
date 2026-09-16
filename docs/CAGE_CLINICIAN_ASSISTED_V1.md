@@ -1,8 +1,9 @@
 # CAGE Clinician-Assisted V1
 
-**Status:** implementation candidate; not merged and not production.
+**Status:** PR #488 OPEN / NOT PROD.
 **Base:** `main@b99c5ca24b3c57e07475eb96acfb8dcb8e691366`.
 **Branch:** `feat/cage-clinician-assisted-v1`.
+**Implementation commit:** `4422152` (pre-continuity-doc update).
 
 ## Decision
 
