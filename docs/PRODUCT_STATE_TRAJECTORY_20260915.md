@@ -1,7 +1,7 @@
 # MedicsPro — Estado efetivo e trajetória de produto
 
 **Reconciliação:** 2026-09-15
-**Árvore reconciliada:** `main@46ef897461fe813f8b2c2f75507a8f919019fcb1` após #478 e #479
+**Árvore reconciliada:** `main@830743de877e89577d266d5f9cc4bd33e1d3bbff` após #478, #479, #481 e #482
 **Critério:** runtime/código + schema/backend + evidência de produção prevalecem sobre roadmap histórico.
 
 Este documento existe porque `CURRENT_STATE`, `TODO` e `PRODUCT_ROADMAP` acumulam snapshots de momentos diferentes. Quando houver conflito, não considerar uma feature entregue apenas por existir uma tela, nem considerar aberta uma feature que já possua contrato/runtime/produção comprovados.
@@ -75,7 +75,8 @@ Hoje existem:
 - PHQ-9 e GAD-7 clinician-assisted com persistência neutra imutável, provenance e scoring compartilhado;
 - workspace `Instrumentos` no Encounter com `Aplicar agora` click-first;
 - safety signal do PHQ-9 item 9 preservado server-side;
-- PHQ-15 adicionado ao mesmo caminho canônico.
+- PHQ-15 adicionado ao mesmo caminho canônico;
+- histórico longitudinal neutro de administrações clinician-assisted em `Instrumentos` e no prontuário longitudinal (#482), autorizado pelo boundary de leitura do prontuário e sem exposição de respostas/snapshots Nexus.
 
 PHQ-15 está **PROD / fail-closed**: migration, verifier e engine estão instalados, mas nenhuma clínica foi habilitada automaticamente. Falta habilitação explícita de tenant + primeiro smoke humano autenticado.
 
@@ -161,7 +162,7 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 2. Medir cliques, tempo e fricções reais no fluxo de atendimento.
 3. [x] **Cobertura deste atendimento** por RPC contextual, sem expor Financeiro global (#479).
 4. [x] Correction/Addendum V1 append-only para Encounter Record finalizado (#481).
-5. **Melhorar histórico neutro de instrumentos clinician-assisted sem abrir leitura direta do ledger.**
+5. [x] **Histórico neutro de instrumentos clinician-assisted** sem leitura direta do ledger (#482).
 6. Fechar `Enviar ao paciente` como boundary separada; `Aplicar agora` já está entregue.
 
 ## Fase B — configuração clínica/operacional
@@ -201,6 +202,6 @@ Não fabricar usuários/roles ou atos clínicos apenas para pintar checklist de 
 
 # Próxima slice escolhida
 
-**Neutral Clinician-Assisted Instrument History V1.**
+**Enviar ao paciente V1.**
 
-Motivo: autoentrada (#478), cobertura contextual (#479) e Correction/Addendum append-only (#481) já estão em produção. O próximo gap de ergonomia clínica é permitir leitura longitudinal neutra de instrumentos clinician-assisted sem expor o ledger Nexus diretamente, sem transformar relevância em autorização e sem duplicar engine/versionamento/scoring.
+Motivo: `Aplicar agora` e o histórico neutro clinician-assisted (#482) já estão em produção. O próximo gap é fechar a entrega remota como boundary contextual separada: convite versionado vinculado a tenant/paciente/instrumento, expiração e idempotência explícitas, processamento pela engine canônica e resultado longitudinal com provenance `patient_self`, sem conceder `nexus.*` ao profissional apenas para enviar.

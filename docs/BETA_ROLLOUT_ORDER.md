@@ -108,9 +108,9 @@ Falhas financeiras inesperadas de integridade permanecem fail-closed e devem int
 Depois das evidências curtas acima:
 
 1. Encounter UX / ergonomia observada com profissionais reais;
-2. correction/addendum auditável para Encounter Record finalizado;
-3. histórico neutro de instrumentos clinician-assisted;
-4. Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+2. [x] correction/addendum auditável para Encounter Record finalizado (#481);
+3. [x] histórico neutro de instrumentos clinician-assisted (#482);
+4. **Instrument Delivery remota (`Enviar ao paciente`) — próxima slice;** `Aplicar agora` já está entregue;
 5. documentos clínicos ainda ausentes conforme evidência;
 6. Finance Configuration (solo/equipe, categorias, parceiro %/fixo com histórico/effective dates);
 7. onboarding/pilot friction;

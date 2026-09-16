@@ -135,9 +135,9 @@ Assessment Engine já possui foundation estruturada. Avaliações padrão, model
 
 0. fechar evidência visual/autenticada residual #396 e piloto humano; #389 runtime e #394 pós-finalização já possuem prova de produção;
 1. Encounter UX / ergonomia observada em uso real;
-2. correction/addendum auditável para Encounter Record finalizado;
-3. histórico neutro de instrumentos clinician-assisted;
-4. Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+2. [x] correction/addendum auditável para Encounter Record finalizado (#481);
+3. [x] histórico neutro de instrumentos clinician-assisted (#482);
+4. **Instrument Delivery remota (`Enviar ao paciente`) — próxima slice;** `Aplicar agora` já está entregue;
 5. documentos clínicos ainda ausentes conforme piloto;
 6. Finance Configuration: solo/team, categorias, parceiro %/fixo com history/effective dates;
 7. onboarding/pilot friction;
