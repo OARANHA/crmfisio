@@ -28,13 +28,13 @@ Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
-PC-PTSD-5 Clinician-Assisted V1 #495                              MERGED / MAIN VALIDATED / NOT PROD
+PC-PTSD-5 Clinician-Assisted V1 #495                              PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 ```
 
 
-## Main validada — PC-PTSD-5 Clinician-Assisted V1
+## Produção — PC-PTSD-5 Clinician-Assisted V1
 
-**Status:** #495 mergeada por squash em `main@f62b221d05a568f363595e93ad945f4e1df84c5c`; head final revisado `82505f60b3bc47e29df21b0f4fd479e4965fa000`; PR CI 24/24 verde; pós-merge 7/7 workflows de push verdes; **produção ainda não alterada por migration/enablement**.
+**Status:** #495 mergeada por squash em `main@f62b221d05a568f363595e93ad945f4e1df84c5c`; rollout técnico verificado em produção em 2026-09-16 a partir de `main@b7c6877f510fb9744c4cc29b1a998ab564b3547f`; nenhuma clínica foi habilitada permanentemente.
 
 A V1 adiciona somente `Aplicar agora` pelo boundary neutro existente: `clinical.instrument.apply` + enablement explícito da clínica + próprio Encounter ativo. Não concede `nexus.*`, não altera `professional_capabilities`, não auto-habilita clínica e não cria contrato `patient_self`.
 
@@ -42,9 +42,9 @@ Contrato versionado: `nexus-pcptsd5-ptbr-ops-2026-09-16`. Há gate de exposiçã
 
 A redação PT-BR é explicitamente **tradução operacional**, não “versão brasileira validada”. Nesta revisão não foi identificada validação brasileira publicada nem tradução oficial PT-BR do VA. O cutoff operacional `>=4` é congelado com base em evidência externa; o resultado permanece rastreio e nunca produz diagnóstico, prescrição, encaminhamento ou conduta automática.
 
-Gates concluídos antes do merge: PostgreSQL 16 PASS; PostgreSQL 17.6 PASS; migration replay/default-deny/enable-disable/idempotência/forged-version/snapshots canônicos PASS; full suite 116 arquivos / 638 testes PASS; typecheck/lint/build/diff-check PASS; PR CI 24/24 PASS; pós-merge 7/7 workflows de push PASS. Dependency audit mantém 2 advisories moderados preexistentes em Vitest/@vitest-mocker; nenhum arquivo de dependência foi alterado nesta slice.
+Gates de engenharia: PostgreSQL 16/17.6 PASS; migration replay/default-deny/enable-disable/idempotência/forged-version/snapshots canônicos PASS; full suite 116 arquivos / 638 testes PASS; typecheck/lint/build/diff-check PASS; PR CI 24/24 e pós-merge 7/7 PASS. Em produção, migration deu COMMIT; verifiers base, CAGE, PCL-5 e PC-PTSD-5 passaram; shared Edge engine e writer clinician-assisted foram promovidos e permaneceram healthy; endpoints anônimos continuaram 401; frontend HTTP 200 contém chave/nome/versão PC-PTSD-5; smoke transacional real do writer/replay/forged-version passou com ROLLBACK. Estado final: `contract=1`, `catalog=1`, `settings=0`, `administrations=0`, `patient_self=0`.
 
-**Próximo passo seguro:** rollout produtivo separado e controlado. Migration/verifier e promoção de runtime devem manter `settings=0`, `administrations=0`, `patient_self=0`; tenant enablement continua uma decisão posterior e explícita.
+**Próximo passo seguro:** tenant enablement somente por decisão explícita de `owner/admin` e após revisão clínica/local apropriada. O rollout técnico não habilitou nenhuma clínica e não executou aplicação real em paciente.
 
 ---
 

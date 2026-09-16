@@ -1,6 +1,6 @@
 # PC-PTSD-5 Clinician-Assisted V1
 
-**Status:** #495 MERGED / MAIN VALIDATED / NÃO PROD.
+**Status:** #495 MERGED / PROD / VERIFIED / TENANT ENABLEMENT REQUIRED.
 **Base de desenvolvimento:** resolver sempre a `origin/main` atual; a slice foi reconciliada contra `main@97184b14dffecc46b5c67a00d21946fd21b0cdfd` em 2026-09-16.
 **Branch:** `feat/pcptsd5-clinician-assisted-v1`.
 **Head final revisado da PR:** `82505f60b3bc47e29df21b0f4fd479e4965fa000`.
@@ -78,8 +78,20 @@ O Edge scorer é autoridade sobre score/classificação/interpretação. Chaves 
 - typecheck, lint, build e `git diff --check`: PASS;
 - dependency audit: 2 advisories moderados preexistentes em Vitest/@vitest-mocker, sem mudança de dependências nesta slice; correção automática exigiria major/breaking upgrade e não foi misturada aqui.
 
-PR CI concluiu 24/24 verde antes do merge e os 7 workflows disparados pelo push da `main` também concluíram com sucesso. O próximo gate é rollout produtivo separado; merge não equivale a produção.
+PR CI concluiu 24/24 verde antes do merge e os 7 workflows disparados pelo push da `main` também concluíram com sucesso. O rollout produtivo posterior foi executado separadamente e validado; merge e produção continuam evidências distintas.
 
 ## Produção
 
-Nenhuma alteração de produção é autorizada por este documento. Rollout, se aprovado após merge/CI, deve ser separado: migration + verifier read-only + Edge shared engine/frontend + smoke transacional com rollback e zero resíduos. Nenhuma clínica deve ser auto-habilitada.
+Rollout técnico concluído e verificado em 2026-09-16, com `main@b7c6877f510fb9744c4cc29b1a998ab564b3547f` como árvore canônica observada no início do rollout.
+
+- PostgreSQL 17.6; migration aplicada com `COMMIT`;
+- verifiers clinician-assisted base, CAGE, PCL-5 e PC-PTSD-5: PASS;
+- shared Edge engine promovida com SHA256 `6dd8b6c9382992ad2c7ceeecb6b4aac3ef20dd83f35e4c900408a3b953f96dab`;
+- writer `clinical-instrument-clinician-assisted` promovido com SHA256 `f053d2ee293a078f4b19f4915f4b9e49e61b4df4190f92a6b8848ad8fa3d7ee3`;
+- Edge `healthy`; chamadas anônimas aos endpoints clinician-assisted e Nexus processor continuam `401`;
+- frontend observado em produção com HTTP `200` e marcadores `pcptsd5`, `PC-PTSD-5` e `nexus-pcptsd5-ptbr-ops-2026-09-16`;
+- smoke transacional do writer: primeira gravação PASS, replay idempotente PASS, versão forjada BLOCKED, seguido de `ROLLBACK`;
+- estado final: `contract=1`, `catalog=1`, `settings=0`, `administrations=0`, `patient_self=0`;
+- nenhuma clínica habilitada e nenhuma aplicação real PC-PTSD-5 em paciente realizada pelo rollout.
+
+Tenant enablement permanece uma decisão posterior e explícita de `owner/admin`; o rollout técnico não autoriza auto-enable.

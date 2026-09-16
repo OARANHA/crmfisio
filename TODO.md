@@ -110,7 +110,7 @@ Requisitos associados:
 - [x] **PCL-5 Clinician-Assisted V1 — rollout produtivo** — migration, verifiers base/CAGE/PCL-5, shared Edge engine, frontend e smoke transacional validados em produção; ROLLBACK com `settings=0`, `administrations=0`, `patient_self=0`.
 - [ ] **PCL-5 — enablement por clínica** — decisão explícita de `owner/admin`; fora do rollout técnico e sem auto-enable.
 - [x] **PC-PTSD-5 Clinician-Assisted V1 — código/CI (#495)** — mergeada em `main@f62b221d`; PR CI 24/24 e pós-merge 7/7, gates locais PostgreSQL 16/17.6, 116 arquivos/638 testes, typecheck/lint/build verdes; gate de trauma + 5 itens binários, tradução operacional PT-BR sem alegação de validação brasileira, cutoff operacional externo `>=4`, sem auto-enable e sem `patient_self`.
-- [ ] **PC-PTSD-5 Clinician-Assisted V1 — rollout produtivo** — migration/verifier + shared Edge engine/frontend quando aplicável + smoke transacional ainda pendentes; nenhuma clínica deve ser auto-habilitada.
+- [x] **PC-PTSD-5 Clinician-Assisted V1 — rollout produtivo** — migration aplicada; verifiers base/CAGE/PCL-5/PC-PTSD-5 verdes; shared Edge engine + writer promovidos; frontend observado; smoke writer/replay/forged-version PASS com ROLLBACK; estado final `contract=1`, `catalog=1`, `settings=0`, `administrations=0`, `patient_self=0`.
 - [ ] **PC-PTSD-5 — enablement por clínica** — decisão explícita de `owner/admin` somente após rollout técnico e revisão clínica/local apropriada; fora do merge da #495.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
