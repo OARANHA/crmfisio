@@ -1,10 +1,12 @@
 # PCL-5 Clinician-Assisted V1
 
-**Status:** PR #491 OPEN / NOT PROD.
+**Status:** MERGED / MAIN VALIDATED / NOT PROD.
 **Base:** `main@0de7a02d296f1e30be052a6f2eeb74f1807ae4ed`.
 **Branch:** `feat/pcl5-clinician-assisted-v1`.
 **Implementation commit:** `33143f5525eeba8c444ef0da0df8bbc96b9791d4`.
-**PR:** `#491` OPEN.
+**PR:** `#491` MERGED.
+**Final PR head:** `58ebddb1d9cb69d9993adfb14898756b40ee4e63`.
+**Squash merge / functional main:** `44e392ef2df7e5b1fca1cf373246fb500eb7254b`.
 
 ## Decision
 
@@ -51,8 +53,12 @@ Authorization remains neutral: `clinical.instrument.apply` + explicit clinic ena
 
 No clinic setting is inserted by migration. No professional capability is granted.
 
-## Verification before merge
+## Verification
 
-Local candidate gates are green: PostgreSQL 16 and PostgreSQL 17.6 behavior/replay/verifier, forged-version negative control, focused tests 29/29, full suite 116 files / 634 tests, typecheck, lint, build, dependency audit with 0 vulnerabilities and `git diff --check`. GitHub PR/CI and merge remain pending.
+Local gates are green: PostgreSQL 16 and PostgreSQL 17.6 behavior/replay/verifier, forged-version negative control, focused tests 29/29, full suite 116 files / 634 tests, typecheck, lint, build, dependency audit with 0 vulnerabilities and `git diff --check`. GitHub PR CI completed 51/51 and the six push workflows triggered by the squash merge completed without failure. The main tree is identical to the final reviewed PR-head tree.
 
 The database harness also proves that the migration changes no existing clinic settings or professional capabilities and creates no PCL-5 patient-self contract.
+
+## Production state
+
+No PCL-5 production migration, Edge/frontend rollout, tenant enablement or patient-self delivery has been performed yet. Production rollout remains a separate controlled step.
