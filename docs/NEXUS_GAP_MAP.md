@@ -116,7 +116,7 @@ Fonte executável: U:`ALL_SCALES` contém 11 definições de `scalesData.ts` e 1
 | CAGE | **PROD / VERIFIED / tenant enablement required (#488)** | Clinician-assisted only; cutoff `>=2`; sem auto-enable e sem `patient_self` |
 | MDQ | Ainda não incorporado | Redesenhar: upstream usa somente soma ≥7 dos 13 itens; não coleta simultaneidade/prejuízo na definição lida |
 | PCL-5 | **PROD / VERIFIED / tenant enablement required (#491)** | Regra versionada `nexus-pcl5-br-2026-09-16`; cutoff operacional BR `>=36`; migration/Edge/frontend/verifiers/smoke validados; `settings=0`, `administrations=0`, `patient_self=0`; sem auto-enable |
-| PC-PTSD-5 | **Em implementação clinician-assisted V1** | Gate de trauma + 5 itens; tradução operacional PT-BR sem validação brasileira reclamada; cutoff operacional externo `>=4`; fail-closed, sem auto-enable e sem `patient_self` |
+| PC-PTSD-5 | **MERGED / main validada / não PROD (#495)** | Gate de trauma + 5 itens; tradução operacional PT-BR sem validação brasileira reclamada; cutoff operacional externo `>=4`; fail-closed, sem auto-enable e sem `patient_self` |
 | EPDS | Ainda não incorporado | Candidato conforme população piloto; inversões, item 10 e contexto perinatal |
 | SRQ-20 | Ainda não incorporado | Adiar: população/corte e flag do item de segurança |
 | HAM-A | Ainda não incorporado | Adiar: instrumento profissional, faixa e ancoragem dos itens |
