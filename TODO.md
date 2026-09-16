@@ -109,7 +109,7 @@ Requisitos associados:
 - [x] **PCL-5 Clinician-Assisted V1 — código/CI (#491)** — mergeada em `main@44e392ef`, PR CI 51/51 e pós-merge 6/6; clinician-assisted only, cutoff brasileiro versionado `>=36`, sem auto-enable e sem `patient_self`.
 - [x] **PCL-5 Clinician-Assisted V1 — rollout produtivo** — migration, verifiers base/CAGE/PCL-5, shared Edge engine, frontend e smoke transacional validados em produção; ROLLBACK com `settings=0`, `administrations=0`, `patient_self=0`.
 - [ ] **PCL-5 — enablement por clínica** — decisão explícita de `owner/admin`; fora do rollout técnico e sem auto-enable.
-- [ ] **PC-PTSD-5 Clinician-Assisted V1 — código/CI** — em implementação; gate de trauma + 5 itens binários, tradução operacional PT-BR sem alegação de validação brasileira, cutoff operacional externo `>=4`, sem auto-enable e sem `patient_self`.
+- [ ] **PC-PTSD-5 Clinician-Assisted V1 — código/CI (#495)** — PR aberta; gates locais PostgreSQL 16/17.6, 116 arquivos/638 testes, typecheck/lint/build verdes; gate de trauma + 5 itens binários, tradução operacional PT-BR sem alegação de validação brasileira, cutoff operacional externo `>=4`, sem auto-enable e sem `patient_self`.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos

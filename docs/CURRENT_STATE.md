@@ -28,7 +28,25 @@ Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
+PC-PTSD-5 Clinician-Assisted V1 #495                              PR OPEN / LOCAL GATES GREEN / NOT PROD
 ```
+
+
+## Slice em andamento — PC-PTSD-5 Clinician-Assisted V1
+
+**Status:** PR #495 aberta em `feat/pcptsd5-clinician-assisted-v1`; base `main@97184b14dffecc46b5c67a00d21946fd21b0cdfd`; implementation head inicial `2603fbed070a635d1669238eb18b4c76c9d3cd5a`; **produção não alterada**.
+
+A V1 adiciona somente `Aplicar agora` pelo boundary neutro existente: `clinical.instrument.apply` + enablement explícito da clínica + próprio Encounter ativo. Não concede `nexus.*`, não altera `professional_capabilities`, não auto-habilita clínica e não cria contrato `patient_self`.
+
+Contrato versionado: `nexus-pcptsd5-ptbr-ops-2026-09-16`. Há gate de exposição traumática (`q0`) seguido de cinco itens binários `q1..q5` quando o gate é positivo. Gate negativo encerra em `0/5` e persiste somente `q0`; gate positivo persiste exatamente `q0..q5`. A UI limpa respostas sintomáticas anteriores quando o gate muda para a resposta de parada, evitando reaproveitamento silencioso se o gate for reaberto depois.
+
+A redação PT-BR é explicitamente **tradução operacional**, não “versão brasileira validada”. Nesta revisão não foi identificada validação brasileira publicada nem tradução oficial PT-BR do VA. O cutoff operacional `>=4` é congelado com base em evidência externa; o resultado permanece rastreio e nunca produz diagnóstico, prescrição, encaminhamento ou conduta automática.
+
+Gates locais concluídos: PostgreSQL 16 PASS; PostgreSQL 17.6 PASS; migration replay/default-deny/enable-disable/idempotência/forged-version/snapshots canônicos PASS; full suite 116 arquivos / 638 testes PASS; typecheck/lint/build/diff-check PASS. Dependency audit mantém 2 advisories moderados preexistentes em Vitest/@vitest-mocker; nenhum arquivo de dependência foi alterado nesta slice.
+
+**Próximo gate:** CI da PR #495. Mesmo após eventual merge, rollout produtivo deve ser separado e manter `settings=0`, `administrations=0`, `patient_self=0` até decisão explícita de tenant enablement.
+
+---
 
 ## Produção — PCL-5 Clinician-Assisted V1
 

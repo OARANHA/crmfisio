@@ -1,8 +1,10 @@
 # PC-PTSD-5 Clinician-Assisted V1
 
-**Status:** IMPLEMENTAÇÃO / NÃO PROD.
+**Status:** PR #495 OPEN / LOCAL GATES GREEN / NÃO PROD.
 **Base de desenvolvimento:** resolver sempre a `origin/main` atual; a slice foi reconciliada contra `main@97184b14dffecc46b5c67a00d21946fd21b0cdfd` em 2026-09-16.
 **Branch:** `feat/pcptsd5-clinician-assisted-v1`.
+**Implementation head inicial da PR:** `2603fbed070a635d1669238eb18b4c76c9d3cd5a`.
+**PR:** `#495` OPEN.
 
 ## Decisão
 
@@ -60,19 +62,22 @@ O browser mostra primeiro somente o gate. Se negativo, os cinco sintomas não s�
 
 O Edge scorer é autoridade sobre score/classificação/interpretação. Chaves extras do browser são descartadas do snapshot canônico.
 
-## Validação exigida antes de merge
+## Validação local concluída
 
-- PostgreSQL 16 behavior/replay/idempotency/verifier;
-- PostgreSQL 17.x quando disponível no lab;
-- negative gate persiste somente `q0`;
-- positive gate persiste exatamente `q0..q5`;
-- forged engine version bloqueada;
-- migration replay idempotente;
-- nenhuma capability ou clinic setting existente alterada;
-- `patient_self=0` para `pcptsd5`;
-- testes focados de engine/catalog/UI boundary;
-- full suite, typecheck, lint, build e dependency audit;
-- PR CI completa antes de merge.
+- PostgreSQL 16 behavior/replay/idempotency/verifier: PASS (`PCPTSD5_CLINICIAN_ASSISTED_V1_POSTGRES16_OK`);
+- PostgreSQL 17.6 behavior + replay + authorization + writer + forged-version + verifier: PASS;
+- negative gate persiste somente `q0`: PASS;
+- positive gate persiste exatamente `q0..q5`: PASS;
+- trocar o gate para a resposta de parada limpa sintomas previamente preenchidos: PASS;
+- forged engine version bloqueada: PASS;
+- migration replay idempotente: PASS;
+- nenhuma capability ou clinic setting existente alterada: PASS;
+- `patient_self` permanece ausente para `pcptsd5`: PASS;
+- full suite final: 116 arquivos / 638 testes PASS;
+- typecheck, lint, build e `git diff --check`: PASS;
+- dependency audit: 2 advisories moderados preexistentes em Vitest/@vitest-mocker, sem mudança de dependências nesta slice; correção automática exigiria major/breaking upgrade e não foi misturada aqui.
+
+PR CI ainda precisa concluir antes de qualquer decisão de merge.
 
 ## Produção
 
