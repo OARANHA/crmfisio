@@ -1,6 +1,6 @@
 # Neutral Clinician-Assisted Instrument History V1
 
-**Status desta revisão:** implementação de repositório validada; rollout de produção ainda não executado.
+**Status desta revisão:** PRODUÇÃO / VERIFIED — #482 mergeada em `main@830743de877e89577d266d5f9cc4bd33e1d3bbff`; migration aplicada, verifier aprovado e frontend observado em produção.
 
 ## Objetivo
 
@@ -69,3 +69,13 @@ Os cenários provam:
 - patient id nulo falha explicitamente;
 - safety signal é reduzido a flags booleanas;
 - nenhuma autoridade Nexus/apply/raw-ledger entra na projeção.
+
+## Evidência de produção
+
+- migration aplicada com `COMMIT`;
+- `VERIFY CLINICIAN-ASSISTED INSTRUMENT HISTORY V1 PRODUCTION OK`;
+- RPC disponível para `authenticated` e negada para `anon`;
+- `authenticated` continua sem SELECT/INSERT direto no ledger;
+- zero administrações reais foram fabricadas para smoke;
+- frontend sincronizado/redeployado automaticamente pelo Portainer;
+- nova UI presente no bundle, rotas principais HTTP 200, zero HTTP 5xx, zero erros Nginx, zero restarts e `OOM=false` no período observado.

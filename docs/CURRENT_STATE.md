@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-15
-**Base canônica:** `main@84446b68f4f195ca0441bf341c28a517b773d438`
+**Base canônica:** `main@830743de877e89577d266d5f9cc4bd33e1d3bbff`
 
 ## Estado clínico resumido
 
@@ -23,9 +23,34 @@ PHQ-15 Clinician-Assisted V1                                  PROD BACKEND / FAI
 Encounter Auto-Entry / Presentation handoff #478                PROD
 Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
+Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 ```
 
-## Último rollout — Encounter Record Correction/Addendum V1
+## Último rollout — Neutral Clinician-Assisted Instrument History V1
+
+**Status:** PRODUÇÃO — #482 mergeada, migration aplicada, verifier aprovado e frontend observado.
+
+```text
+#482 Neutral Instrument History: PROD
+main canônica:                  830743de877e89577d266d5f9cc4bd33e1d3bbff
+DB migration:                   APPLIED / COMMIT
+production verifier:            PASSED
+real administrations created:   0
+public routes:                  HTTP 200
+HTTP 5xx / Nginx errors:        0 / 0
+```
+
+`list_patient_clinician_assisted_instrument_history(uuid)` projeta somente histórico longitudinal neutro para quem já pode ler o prontuário via `can_access_patient_clinical_record()`. A leitura não exige `clinical.instrument.apply` nem `nexus.access`, e o browser continua sem SELECT/INSERT direto em `clinical_instrument_administrations`.
+
+A UI mostra histórico em `Instrumentos` e no prontuário longitudinal, preservando separação entre **aplicar instrumento** e **ler resultado histórico**. Respostas, snapshots brutos, evidence, SOAP e internals Nexus não são expostos.
+
+O ciclo normal de engenharia do MedicsPro também foi consolidado em `/opt/medicspro-lab` no `28server`: workspace Node/Git isolado + PostgreSQL 16 efêmero em rede Docker própria, sem Docker socket, sem volumes/env de produção e com GitHub `repo + workflow`. O Wandora deixa de ser a bancada normal do MedicsPro.
+
+**Próximo gap clínico escolhido:** `Enviar ao paciente` V1 como boundary contextual separada da aplicação clinician-assisted.
+
+---
+
+## Rollout anterior — Encounter Record Correction/Addendum V1
 
 **Status:** PRODUÇÃO — #481 mergeada, migration aplicada, verifier e smoke de imutabilidade aprovados, frontend observado.
 
@@ -46,7 +71,7 @@ A Evolution oficial vinculada a Encounter Record finalizado passou a ser estrutu
 
 No prontuário longitudinal, Retificações e adendos aparecem como atos posteriores vinculados ao atendimento finalizado; o original permanece preservado.
 
-**Próximo gap clínico escolhido:** histórico neutro de instrumentos clinician-assisted, sem abrir leitura direta do ledger Nexus.
+**Gap seguinte após #481:** fechado pela #482; o próximo foco passa a ser `Enviar ao paciente` V1.
 
 ---
 
@@ -77,7 +102,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Gap seguinte após #478/#479:** fechado pela #481; o próximo foco clínico passa a ser histórico neutro de instrumentos clinician-assisted.
+**Gap seguinte após #478/#479:** #481 e #482 já fecharam correção/adendo e histórico neutro; o próximo foco clínico é `Enviar ao paciente` V1.
 
 ---
 
