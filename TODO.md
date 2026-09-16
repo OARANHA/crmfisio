@@ -91,7 +91,7 @@ Sequência canônica:
 
 1. [x] **Clinical Instrument Authorization Foundation (#399)** — efetiva no stack verificado; catálogo neutro expõe explicitamente apenas `phq9`/`gad7`, reutilizando a engine Nexus por referência técnica.
 2. [x] **Clinician-Assisted Administration** — PHQ-9/GAD-7 usam o mesmo engine/versionamento/scoring, com provenance `clinician_assisted` e `appointment_id`; PHQ-15 está instalado no mesmo caminho, fail-closed até habilitação explícita do tenant.
-3. [x] **Encounter Instrument UX — Aplicar agora** — disponível no workspace Instrumentos. **Enviar ao paciente** continua uma boundary separada e ainda aberta.
+3. [x] **Encounter Instrument UX — Aplicar agora** — disponível no workspace Instrumentos. **Enviar ao paciente** permanece boundary separada; a V1 está implementada/validada no lab, mas ainda não foi entregue em produção.
 4. [x] **Consultório V5 integration/polish estrutural** — Instrumentos integrados ao Cockpit/Encounter sem portar arquitetura/autorização/autosave/checkout legados; validação prolongada com profissionais reais continua no trilho de piloto.
 
 Requisitos associados:
@@ -101,7 +101,7 @@ Requisitos associados:
 - [x] Definição/versão/scoring de PHQ-9/GAD-7 continuam compartilhados com a engine canônica; não existe instrumento duplicado.
 - [x] Provenance diferencia `patient_self` de `clinician_assisted`.
 - [x] #482 — histórico neutro de instrumentos clinician-assisted em produção, sem leitura direta do ledger Nexus e sem acoplar UI multiprofissional a `nexus.*`.
-- [ ] Desenhar/fechar `Enviar ao paciente` como boundary contextual separado.
+- [ ] **Enviar ao paciente V1** — implementação registry-driven e boundary contextual validadas no lab em `feat/clinical-instrument-patient-delivery-v1`; PR #484 aberta e em CI; pendente merge/rollout, portanto ainda não entregue em produção.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos
@@ -203,6 +203,7 @@ Nenhum toggle sensível deve existir apenas na UI sem contrato/enforcement real.
 Separar responsabilidades:
 
 **Platform Admin**
+
 - [ ] provider/health global;
 - [ ] instâncias;
 - [ ] consumo/limites;
@@ -210,6 +211,7 @@ Separar responsabilidades:
 - [ ] falhas/webhooks.
 
 **Admin da clínica**
+
 - [ ] conectar/configurar número/instância;
 - [ ] QR quando aplicável;
 - [ ] templates;
@@ -218,6 +220,7 @@ Separar responsabilidades:
 - [ ] credenciais BYOC quando esse modelo existir.
 
 **Usuário operacional**
+
 - [ ] ações autorizadas no contexto do paciente/appointment.
 
 Preservar fila/idempotência/reconciliação atuais; não portar a simplicidade do histórico como arquitetura.

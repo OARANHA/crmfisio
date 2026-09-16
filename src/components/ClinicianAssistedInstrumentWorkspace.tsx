@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import type { ClinicianAssistedAdministration } from '../lib/clinicalInstrumentClinicianAssisted';
-import { ClinicianAssistedInstrumentApplyNow } from './ClinicianAssistedInstrumentApplyNow';
-import { ClinicianAssistedInstrumentHistory } from './ClinicianAssistedInstrumentHistory';
+import { useState } from "react";
+import type { ClinicianAssistedAdministration } from "../lib/clinicalInstrumentClinicianAssisted";
+import { ClinicianAssistedInstrumentApplyNow } from "./ClinicianAssistedInstrumentApplyNow";
+import { ClinicalInstrumentPatientDelivery } from "./ClinicalInstrumentPatientDelivery";
+import { ClinicianAssistedInstrumentHistory } from "./ClinicianAssistedInstrumentHistory";
 
 export function ClinicianAssistedInstrumentWorkspace({
   appointmentId,
@@ -21,6 +22,10 @@ export function ClinicianAssistedInstrumentWorkspace({
       <ClinicianAssistedInstrumentApplyNow
         appointmentId={appointmentId}
         onRecorded={handleRecorded}
+      />
+      <ClinicalInstrumentPatientDelivery
+        appointmentId={appointmentId}
+        onStatusRefresh={() => setHistoryRevision((current) => current + 1)}
       />
       <ClinicianAssistedInstrumentHistory
         patientId={patientId}

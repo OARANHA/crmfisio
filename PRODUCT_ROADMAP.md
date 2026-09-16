@@ -213,9 +213,10 @@ Estado canônico:
 
 ```text
 [x] Clinical Instrument Authorization Foundation (#399)
-[ ] Clinician-Assisted Administration
-[ ] Encounter Instrument UX
-[ ] Consultório V5 integration/polish
+[x] Clinician-Assisted Administration
+[x] Encounter Instrument UX
+[x] Consultório V5 integration/polish estrutural
+[ ] Patient Delivery V1 — validado no lab; PR #484 aberta/em CI; pendente merge/rollout
 ```
 
 ### 3.1 Clinician-Assisted Administration
@@ -246,7 +247,7 @@ GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
 
-`Enviar ao paciente` ainda requer boundary próprio e não deve herdar automaticamente o requisito de appointment ativo do Apply in Encounter.
+`Enviar ao paciente` possui implementação V1 própria na branch `feat/clinical-instrument-patient-delivery-v1`, ainda não entregue em produção. A V1 conserva criação contextual dentro do Encounter ativo como decisão conservadora; isso não transforma esse requisito em regra universal para futuras modalidades remotas.
 
 O modo de aplicação não muda identidade, versão nem scoring do instrumento. A UI deve diferenciar autorização de relevância.
 
