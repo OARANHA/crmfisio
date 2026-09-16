@@ -66,6 +66,18 @@ Before changing a meaningful flow, inspect the relevant combination of `README.m
 
 For continuity, read `docs/CURRENT_STATE.md` immediately after this file. It is a dated snapshot, not a higher authority than current code/schema.
 
+Authority depends on the question being answered:
+
+- for **what code/contract is canonical now**, verify the current `origin/main` and inspect code, schema, migrations, RPC/RLS, Edge Functions, verifiers and tests;
+- for **what is actually deployed**, observed production/runtime evidence plus the applicable rollout verifier/smoke is authoritative; a merge to `main` does not prove deployment;
+- for **current continuity/status**, use `docs/CURRENT_STATE.md`;
+- for **open work**, use `TODO.md`;
+- for **future direction**, use `PRODUCT_ROADMAP.md`; roadmap text does not prove implementation;
+- for **domain contracts**, use the relevant canonical document under `docs/` together with the executable implementation;
+- conversations, prompts, memories, historical release notes and old snapshots are context only and never outrank the repository/runtime evidence above.
+
+Do not pin new work to a SHA copied from a snapshot. Resolve the current `origin/main` first. `docs/CURRENT_STATE.md` is the only general-purpose document that should carry detailed mutable operational status; `README.md`, `docs/WORK_CONTEXT.md` and prompt/router documents should point to it rather than copy a changing backlog or "next slice" list.
+
 Documentation can be stale. Code can also contain legacy assumptions. When two sources disagree, do not silently choose one: identify the divergence and determine the intended canonical behavior from the strongest evidence.
 
 Never invent tables, columns, RPCs, environment variables, routes, policies, roles, providers or infrastructure.
@@ -324,7 +336,7 @@ The clinician records this once. After explicit human review/confirmation, the c
 
 **Do not add a second universal Evolution textarea/form to the new flow.** Evolution is the official materialized longitudinal record after confirmation, while legacy Evolution rows remain supported for appointments that already follow the old path.
 
-Finalized Encounter Record is historical/read-only. A future correction/addendum feature must be explicit and auditable; never silently overwrite or fabricate backfill for historical encounters.
+Finalized Encounter Record is historical/read-only. Corrections/addenda use the canonical explicit, append-only and auditable mechanism; never silently overwrite or fabricate backfill for historical encounters.
 
 ### Standard assessments
 
@@ -356,7 +368,7 @@ For instruments such as PHQ-9/GAD-7:
 - administration mode does not change the identity/version of the instrument;
 - do not duplicate the same validated PHQ-9/GAD-7 as a second implementation in Assessment Engine just to cross a product boundary.
 
-Assessment Engine remains the multiprofessional reference for structured assessments. Preserve validated PHQ-9/GAD-7 version/scoring already present while a future clinical-instrument facade/persistence contract is decided.
+Assessment Engine remains the multiprofessional reference for structured assessments. Clinical instruments use their neutral clinical-instrument boundary/persistence and must not be duplicated inside Assessment Engine merely to cross a product boundary. Preserve the validated instrument identity/version/scoring contract across administration modes.
 
 ### Nexus medical advanced boundary
 
@@ -369,24 +381,15 @@ Preserve:
 - the current meaning of `nexus.eem`;
 - medical identity/entitlement/capability requirements where current Nexus boundaries require them.
 
-Do **not** relax C-06 to let non-medical professionals use PHQ-9/GAD-7, and do **not** grant `nexus.*` merely so a professional can administer an instrument. The future solution is a neutral clinical-instrument authorization boundary outside the `nexus.*` namespace, with Nexus advanced capabilities remaining fail-closed.
+Do **not** relax C-06 to broaden the advanced Nexus boundary to actors who do not satisfy its medical requirements, and do **not** grant `nexus.*` merely so a professional can administer a neutral clinical instrument. The canonical neutral clinical-instrument boundary lives outside the `nexus.*` namespace, while Nexus advanced capabilities remain fail-closed.
 
-No `clinical.instrument.apply` capability exists merely because this architecture is documented. Capability creation and matrix changes require a future implementation slice and verifier.
+`clinical.instrument.apply` is the explicit neutral application capability in the canonical runtime. Its existence does not grant Nexus access, does not auto-enable an instrument for a clinic and does not replace Encounter/resource boundaries. Never auto-grant it from profession, specialty or documentation.
 
-### Instrument Delivery — future direction
+### Clinical Instrument administration and delivery
 
-The future sequence is:
+The canonical architecture composes a shared/versioned instrument engine with distinct authorization, clinic enablement, Encounter context and provenance. Clinician-assisted administration and patient-self delivery are administration modes over that contract, not separate copies of the instrument.
 
-```text
-1. Clinical Instrument Authorization Foundation
-2. Clinician-Assisted Administration
-3. Encounter Instrument UX
-4. Consultório V5 integration/polish
-```
-
-None of these items is implemented by documentation alone.
-
-The future Encounter UX should expose the same instrument through explicit administration modes:
+The Encounter may expose the same eligible instrument through explicit administration modes:
 
 ```text
 PHQ-9
@@ -402,13 +405,13 @@ When clinician-assisted, the answers still belong to the patient; the profession
 
 ### PHQ-9 safety contract
 
-For future PHQ-9 administration, a positive response to item 9 must remain visible and trigger explicit attention for clinical evaluation. It must not be buried in the total score, treated as an automatic diagnosis, or generate automatic conduct/prescription. Preserve the original answer.
+For PHQ-9 administration, a positive response to item 9 must remain visible and trigger explicit attention for clinical evaluation. It must not be buried in the total score, treated as an automatic diagnosis, or generate automatic conduct/prescription. Preserve the original answer.
 
-This is a future product/safety contract, not authorization to infer diagnosis or prescribe behavior from the instrument alone.
+This safety contract is not authorization to infer diagnosis or prescribe behavior from the instrument alone.
 
-### Consultório V5 direction
+### Consultório composition
 
-Without implementing it yet, the desired Clinical Cockpit composition is:
+The structural Clinical Cockpit composition follows:
 
 ```text
 one Encounter
@@ -488,25 +491,13 @@ Do not polish low-value details while important workflow leaks remain. Do not in
 
 ---
 
-## 13. Current release focus — pilot hardening after #396
+## 13. Release focus and mutable priority
 
-The major foundations through #396 are closed unless evidence shows a real regression. Do not restart foundational rewrites merely because a newer design is possible.
+Closed foundations must not be restarted merely because a newer design is possible. Reopen a foundation only with reproduced regression, a new incompatible requirement or explicit architectural evidence.
 
-Current sequence:
+Do **not** encode a changing feature sequence in this operating manual. At the start of each mission, resolve the current `origin/main`, then read `docs/CURRENT_STATE.md` for operational continuity and `TODO.md` for actually open work. Use `PRODUCT_ROADMAP.md` only for direction and prioritization, never as proof that a feature is absent, implemented or deployed.
 
-0. close short operational evidence gaps for #394/#389/#396 and observability;
-1. improve Encounter/clinical-professional ergonomics from real-pilot evidence;
-2. add **Cobertura deste atendimento** without exposing global finance in Consultório;
-3. evolve clinical instruments in this order: **Clinical Instrument Authorization Foundation → Clinician-Assisted Administration → Encounter Instrument UX → Consultório V5 integration/polish**;
-4. build Prescription V1;
-5. add other medical documents only as the pilot justifies them;
-6. evolve Finance Configuration for solo/team, categories and partner compensation with history/effective dates;
-7. remove onboarding/pilot friction;
-8. then expand advanced finance/integrations according to evidence.
-
-The four clinical-instrument slices above are future work. Do not mark them implemented, do not create `clinical.instrument.apply` from documentation, do not alter the capability matrix, and do not grant `nexus.*` as a shortcut.
-
-A feature is not pilot-ready because a screen exists. It must survive realistic data, permissions, empty/loading/error states and operational mistakes.
+Prefer the smallest coherent open slice that improves the controlled pilot while preserving current boundaries. A feature is not pilot-ready because a screen exists; it must survive realistic data, permissions, empty/loading/error states and operational mistakes.
 
 ### Canonical continuity rules — do not regress
 
