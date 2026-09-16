@@ -23,7 +23,7 @@ import { Btn, Chip } from '../lib/ui';
 import { useToast } from '../lib/toastContext';
 import { ActiveEncounterClinicalTools } from './ActiveEncounterClinicalTools';
 import { ClinicalAssessmentRunner } from './ClinicalAssessmentRunner';
-import { ClinicianAssistedInstrumentApplyNow } from './ClinicianAssistedInstrumentApplyNow';
+import { ClinicianAssistedInstrumentWorkspace } from './ClinicianAssistedInstrumentWorkspace';
 import { ClinicalEncounterRecordEditor } from './ClinicalEncounterRecordEditor';
 import { EncounterCoverageContextCard } from './EncounterCoverageContextCard';
 import { ClinicalExamOrderWorkspace } from './ClinicalExamOrderWorkspace';
@@ -294,7 +294,7 @@ export function ClinicalEncounterWorkspaceV4({
           </EncounterSection>}
 
           {activeWorkspace === 'instruments' && <EncounterSection id="encounter-instruments" eyebrow="Instrumentos clínicos" title="Instrumentos" detail="Aplique instrumentos estruturados habilitados pela clínica sem misturá-los às anamneses e avaliações.">
-            <ClinicianAssistedInstrumentApplyNow appointmentId={canonicalEncounter.id} />
+            <ClinicianAssistedInstrumentWorkspace appointmentId={canonicalEncounter.id} patientId={patient.id} />
           </EncounterSection>}
 
           {activeWorkspace === 'prescription' && prescriptionRelevant && <EncounterSection id="encounter-prescription" eyebrow="Documento clínico" title="Prescrição" detail="Crie, revise e emita prescrições medicamentosas dentro do atendimento atual.">

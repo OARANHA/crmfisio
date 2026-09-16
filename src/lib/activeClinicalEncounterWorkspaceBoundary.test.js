@@ -95,8 +95,8 @@ describe('Active Clinical Encounter workspace boundary', () => {
     expect(documentsStart).toBeGreaterThan(prescriptionStart);
     expect(nexusStart).toBeGreaterThan(documentsStart);
     expect(encounterWorkspace.slice(assessmentStart, instrumentsStart)).toContain('<ClinicalAssessmentRunner patient={patient} presentation="encounter" />');
-    expect(encounterWorkspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentApplyNow');
-    expect(encounterWorkspace.slice(instrumentsStart, prescriptionStart)).toContain('<ClinicianAssistedInstrumentApplyNow appointmentId={canonicalEncounter.id} />');
+    expect(encounterWorkspace.slice(assessmentStart, instrumentsStart)).not.toContain('ClinicianAssistedInstrumentWorkspace');
+    expect(encounterWorkspace.slice(instrumentsStart, prescriptionStart)).toContain('<ClinicianAssistedInstrumentWorkspace appointmentId={canonicalEncounter.id} patientId={patient.id} />');
     expect(encounterWorkspace.slice(instrumentsStart, prescriptionStart)).not.toContain('ClinicalAssessmentRunner');
     expect(encounterWorkspace).toContain("type ClinicalDocumentWorkspace = 'guidance' | 'referral';");
     expect(encounterWorkspace).toContain("{ id: 'guidance', label: 'Orientação terapêutica' }");

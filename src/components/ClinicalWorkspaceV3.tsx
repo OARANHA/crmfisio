@@ -6,6 +6,7 @@ import { useCurrentUserAccess } from '../lib/currentUserAccess';
 import type { Patient } from '../lib/types';
 import { ClinicalEncounterWorkspaceV4 } from './ClinicalEncounterWorkspaceV4';
 import { ClinicalEncounterAddendumTimeline } from './ClinicalEncounterAddendumTimeline';
+import { ClinicianAssistedInstrumentHistory } from './ClinicianAssistedInstrumentHistory';
 import { ClinicalWorkspace } from './ClinicalWorkspace';
 import { NexusRecordIncorporationPanel } from './NexusRecordIncorporationPanel';
 
@@ -21,6 +22,7 @@ export function ClinicalWorkspaceV3({ patient, initialSessionId = null }: { pati
   const historicalWorkspace = (
     <>
       <ClinicalWorkspace patient={patient} initialSessionId={resolution.focusedSessionId} />
+      <ClinicianAssistedInstrumentHistory patientId={patient.id} />
       <ClinicalEncounterAddendumTimeline patientId={patient.id} />
     </>
   );

@@ -17,7 +17,13 @@ type ApplySession = {
 
 const EMPTY_AVAILABILITY: ClinicianAssistedInstrumentAvailability = { phq9: false, gad7: false, phq15: false };
 
-export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appointmentId: string }) {
+export function ClinicianAssistedInstrumentApplyNow({
+  appointmentId,
+  onRecorded,
+}: {
+  appointmentId: string;
+  onRecorded?: (administration: ClinicianAssistedAdministration) => void;
+}) {
   const [availability, setAvailability] = useState<ClinicianAssistedInstrumentAvailability>(EMPTY_AVAILABILITY);
   const [availabilityState, setAvailabilityState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [session, setSession] = useState<ApplySession | null>(null);
@@ -89,6 +95,7 @@ export function ClinicianAssistedInstrumentApplyNow({ appointmentId }: { appoint
         answers: canonicalAnswers,
       });
       setResult(administration);
+      onRecorded?.(administration);
     } catch (error) {
       console.error('[MedicsPro] aplicar instrumento clínico:', error);
       setSubmitError('Não foi possível registrar este instrumento. Você pode tentar novamente sem duplicar a aplicação.');

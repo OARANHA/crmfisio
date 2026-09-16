@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-15
-**Base canônica:** `main@46ef897461fe813f8b2c2f75507a8f919019fcb1`
+**Base canônica:** `main@84446b68f4f195ca0441bf341c28a517b773d438`
 
 ## Estado clínico resumido
 
@@ -22,9 +22,35 @@ Clinic Referral Authoring Policy V1                           PROD
 PHQ-15 Clinician-Assisted V1                                  PROD BACKEND / FAIL-CLOSED VALIDATED
 Encounter Auto-Entry / Presentation handoff #478                PROD
 Encounter Coverage Context V1 #479                              PROD / VERIFIED
+Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 ```
 
-## Último rollout — Encounter Auto-Entry + Coverage Context
+## Último rollout — Encounter Record Correction/Addendum V1
+
+**Status:** PRODUÇÃO — #481 mergeada, migration aplicada, verifier e smoke de imutabilidade aprovados, frontend observado.
+
+```text
+#481 Correction/Addendum: PROD
+main canônica:           84446b68f4f195ca0441bf341c28a517b773d438
+DB migration:            APPLIED / COMMIT
+production verifier:     PASSED
+immutability smoke:      PASS / ROLLBACK
+real addenda created:    0
+frontend webroot:        50/50 files byte-identical
+HTTP 5xx / Nginx errors: 0 / 0
+```
+
+`clinical_encounter_record_addenda` é append-only. Browser autenticado possui leitura sujeita a RLS, mas nenhum INSERT/UPDATE/DELETE direto; escrita ocorre somente por `create_clinical_encounter_record_addendum(...)`. A V1 exige autor original + identidade clínica válida + `clinical.attend` + `clinical.evolution.write`, sem bypass de owner/admin.
+
+A Evolution oficial vinculada a Encounter Record finalizado passou a ser estruturalmente imutável. O smoke produtivo provou essa negação dentro de transação revertida, sem criar retificação/adendo real e sem tocar appointment, pacote, payment ou fila financeira.
+
+No prontuário longitudinal, Retificações e adendos aparecem como atos posteriores vinculados ao atendimento finalizado; o original permanece preservado.
+
+**Próximo gap clínico escolhido:** histórico neutro de instrumentos clinician-assisted, sem abrir leitura direta do ledger Nexus.
+
+---
+
+## Rollout anterior — Encounter Auto-Entry + Coverage Context
 
 **Status:** PRODUÇÃO — #478 e #479 mergeadas, RPC aplicada e frontend observado.
 
@@ -51,7 +77,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Próximo gap clínico estrutural:** correction/addendum auditável para Encounter Record finalizado, sem sobrescrever histórico.
+**Gap seguinte após #478/#479:** fechado pela #481; o próximo foco clínico passa a ser histórico neutro de instrumentos clinician-assisted.
 
 ---
 
