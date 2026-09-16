@@ -334,7 +334,7 @@ Execution status as of 2026-09-16:
 - **CAGE:** clinician-assisted V1 is deployed and verified in production via #488; no clinic is auto-enabled and no `patient_self` contract is created;
 - **PHQ-15:** clinician-assisted backend is deployed and fail-closed; no clinic is auto-enabled;
 - **EUROHIS-QOL:** hold pending provenance/licensing review.
-- **PCL-5:** #491 merged and main-validated on 2026-09-16; VA public-domain provenance and published Brazilian adaptation/psychometrics support the choice. V1 uses a versioned Brazilian cutoff, no `patient_self`, and remains NOT PROD pending a separate controlled rollout.
+- **PCL-5:** #491 is PROD / VERIFIED as of 2026-09-16. V1 uses the versioned Brazilian cutoff, remains clinician-assisted only, has no `patient_self`, and no tenant is auto-enabled; explicit owner/admin enablement is still required.
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
 

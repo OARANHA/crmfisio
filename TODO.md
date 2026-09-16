@@ -107,7 +107,8 @@ Requisitos associados:
 - [x] **CAGE Clinician-Assisted V1 — rollout produtivo** — migration, shared Edge engine, frontend, verifier e smoke transacional validados em produção; nenhuma clínica foi habilitada permanentemente e `patient_self` permanece ausente.
 - [ ] **CAGE — enablement por clínica** — decisão explícita de `owner/admin`; fora do rollout técnico e sem auto-enable.
 - [x] **PCL-5 Clinician-Assisted V1 — código/CI (#491)** — mergeada em `main@44e392ef`, PR CI 51/51 e pós-merge 6/6; clinician-assisted only, cutoff brasileiro versionado `>=36`, sem auto-enable e sem `patient_self`.
-- [ ] **PCL-5 Clinician-Assisted V1 — rollout produtivo** — migration/verifier, shared Edge engine/frontend e smoke transacional ainda pendentes; nenhuma clínica deve ser auto-habilitada.
+- [x] **PCL-5 Clinician-Assisted V1 — rollout produtivo** — migration, verifiers base/CAGE/PCL-5, shared Edge engine, frontend e smoke transacional validados em produção; ROLLBACK com `settings=0`, `administrations=0`, `patient_self=0`.
+- [ ] **PCL-5 — enablement por clínica** — decisão explícita de `owner/admin`; fora do rollout técnico e sem auto-enable.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos

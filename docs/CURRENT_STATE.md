@@ -26,18 +26,18 @@ Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
-PCL-5 Clinician-Assisted V1 #491                                 MERGED / MAIN VALIDATED / NOT PROD
+PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 ```
 
-## Main validada — PCL-5 Clinician-Assisted V1
+## Produção — PCL-5 Clinician-Assisted V1
 
-**Status:** #491 mergeada por squash; `main@44e392ef2df7e5b1fca1cf373246fb500eb7254b`; árvore da main idêntica ao head final revisado `58ebddb1d9cb69d9993adfb14898756b40ee4e63`; produção ainda não alterada.
+**Status:** #491 mergeada por squash e rollout produtivo verificado em 2026-09-16; runtime funcional `44e392ef2df7e5b1fca1cf373246fb500eb7254b`; nenhuma clínica foi habilitada permanentemente.
 
 PCL-5 foi escolhido após nova revisão dos instrumentos Nexus restantes: ISI permanece dependente de licença do titular/Mapi e os instrumentos WHO da Wave 1 continuam exigindo revisão de permissão comercial. PCL-5 é public domain via VA e possui adaptação/validação brasileira publicada.
 
 A V1 é somente `Aplicar agora`, exige 20 respostas `0..4`, usa regra versionada `nexus-pcl5-br-2026-09-16` com cutoff operacional `>=36` da validação brasileira, não infere diagnóstico, não auto-habilita clínicas e não cria contrato `patient_self`.
 
-Gates aprovados: testes focados 29/29; PostgreSQL 16 e PostgreSQL 17.6 (behavior + replay + authorization + writer + forged-version negative control + verifier); full suite 116 arquivos / 634 testes; typecheck, lint, build e dependency audit com 0 vulnerabilidades; PR CI 51/51; pós-merge 6/6 workflows de push concluídos sem falha. Próximo passo seguro: rollout produtivo separado e controlado. Produção permanece intocada.
+Gates aprovados: testes focados 29/29; PostgreSQL 16 e PostgreSQL 17.6; full suite 116 arquivos / 634 testes; typecheck, lint, build e dependency audit com 0 vulnerabilidades; PR CI 51/51; pós-merge 6/6 workflows de push. Em produção, migration e verifiers base/CAGE/PCL-5 passaram; shared Edge engine foi promovido e voltou healthy; frontend já estava auto-promovido com marcadores PCL-5; smoke transacional do writer/replay/forged-version passou com ROLLBACK. Estado final: `contract=1`, `catalog=1`, `settings=0`, `administrations=0`, `patient_self=0`.
 
 ---
 

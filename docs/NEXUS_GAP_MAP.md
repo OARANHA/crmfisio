@@ -115,7 +115,7 @@ Fonte executável: U:`ALL_SCALES` contém 11 definições de `scalesData.ts` e 1
 | AUDIT-C | Ainda não incorporado | Candidato P1 junto do AUDIT; contexto e limiares por população explicitados |
 | CAGE | Ainda não incorporado | Adiar se AUDIT/AUDIT-C atender piloto, evitando redundância de interface |
 | MDQ | Ainda não incorporado | Redesenhar: upstream usa somente soma ≥7 dos 13 itens; não coleta simultaneidade/prejuízo na definição lida |
-| PCL-5 | **Mergeado / main validada / não PROD (#491)** | Regra versionada `nexus-pcl5-br-2026-09-16`; forma brasileira sem Critério A somente após trauma avaliado por outro meio; cutoff operacional BR `>=36`; fail-closed, sem `patient_self`; rollout produtivo separado pendente |
+| PCL-5 | **PROD / VERIFIED / tenant enablement required (#491)** | Regra versionada `nexus-pcl5-br-2026-09-16`; cutoff operacional BR `>=36`; migration/Edge/frontend/verifiers/smoke validados; `settings=0`, `administrations=0`, `patient_self=0`; sem auto-enable |
 | PC-PTSD-5 | Ainda não incorporado | Adiar: contexto de trauma e interpretação de rastreio |
 | EPDS | Ainda não incorporado | Candidato conforme população piloto; inversões, item 10 e contexto perinatal |
 | SRQ-20 | Ainda não incorporado | Adiar: população/corte e flag do item de segurança |
