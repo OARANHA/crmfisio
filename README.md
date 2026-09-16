@@ -45,7 +45,7 @@ O novo atendimento usa um **Encounter Record** ligado ao appointment, paciente, 
 
 Após revisão e confirmação humana, o fluxo materializa a **Evolution oficial determinística** e finaliza o appointment na mesma boundary clínica. Não existe uma segunda Evolution universal obrigatória no novo fluxo.
 
-Registros finalizados são históricos. Correção/adendo auditável de um Encounter Record finalizado ainda é uma slice futura; não há backfill fictício de atendimentos históricos.
+Registros finalizados são históricos e imutáveis. Correções/adendos posteriores usam mecanismo explícito, append-only e auditável; o registro original não é sobrescrito e não há backfill fictício de atendimentos históricos.
 
 ---
 

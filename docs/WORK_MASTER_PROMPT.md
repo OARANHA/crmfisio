@@ -10,7 +10,7 @@ Antes de alterar qualquer código:
 
 1. leia integralmente `AGENTS.md`;
 2. leia `docs/CURRENT_STATE.md`;
-3. use `docs/WORK_CONTEXT.md` para contexto adicional;
+3. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
 4. verifique o HEAD atual da `main`;
 5. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
 6. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
@@ -74,7 +74,7 @@ Após revisão e confirmação humana:
 
 Não existe segunda Evolution universal obrigatória no fluxo novo.
 
-Finalized Encounter Record é histórico; correction/addendum auditável é uma slice futura.
+Finalized Encounter Record é histórico e imutável; correction/addendum usa mecanismo explícito, append-only e auditável, sem sobrescrever o original.
 
 ## Invariante financeiro
 
@@ -102,13 +102,9 @@ Trocar contexto não altera role, JWT, tenant, RLS, capability, entitlement ou `
 
 #478 implementou autoentrada somente no handoff explícito de iniciar/continuar o próprio Encounter. Nunca ampliar isso para heurística de rota/query, abertura de paciente ou mera existência de appointment ativo.
 
-## Estado de produção relevante
+## Estado de produção
 
-Em 2026-09-10, a migration #394 já foi aplicada em produção e o verifier production-safe passou com `VERIFY #394 PRODUCTION OK`.
-
-Não reaplique #394 com base em documentação antiga. O verifier `...FOUNDATION.sql` pertence ao harness de 34 casos; o verifier `...PRODUCTION.sql` é o read-only apropriado para schema real.
-
-A prova read-only pós-finalização do #394 foi registrada em produção em 2026-09-15. No mesmo dia, `CHARGE` e `WAIVE` do #389 foram exercidos no runtime real dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos; a exceção real continua decisão econômica da clínica.
+Não copie estado de produção para este prompt. Antes de qualquer rollout, leia `docs/CURRENT_STATE.md`, confirme a `origin/main` atual e verifique o runtime/schema real com o verifier/smoke apropriado. Uma PR mergeada não prova deploy; um snapshot antigo não autoriza reaplicar migration.
 
 ## Forma de trabalhar
 
@@ -145,21 +141,9 @@ Não declarar produção, smoke ou piloto como validados somente porque CI estru
 
 ## Prioridade atual
 
-O objetivo é **beta controlado com profissionais reais**, não crescimento indiscriminado de features.
+O objetivo permanece **beta controlado com profissionais reais**, não crescimento indiscriminado de features. A prioridade mutável deve ser lida de `TODO.md` e `docs/CURRENT_STATE.md` no início da missão; não manter uma sequência duplicada neste prompt.
 
-Sequência recomendada:
-
-0. fechar evidência visual/autenticada residual #396 e piloto humano; #389 runtime e #394 pós-finalização já possuem prova de produção;
-1. Encounter UX / ergonomia observada em uso real;
-2. [x] correction/addendum auditável para Encounter Record finalizado (#481);
-3. [x] histórico neutro de instrumentos clinician-assisted (#482);
-4. **Instrument Delivery remota (`Enviar ao paciente`) — próxima slice;** `Aplicar agora` já está entregue;
-5. documentos clínicos ainda ausentes conforme evidência do piloto;
-6. Finance Configuration: solo/team, categorias e parceiro %/fixo com history/effective dates;
-7. onboarding/pilot friction;
-8. financeiro avançado/integracões conforme demanda observada.
-
-Evite desviar para grandes expansões sem justificativa de impacto no beta.
+Evite desviar para grandes expansões sem justificativa de impacto no beta e não recrie foundation já entregue sem evidência de regressão.
 
 ## Critério de conclusão
 

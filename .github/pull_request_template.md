@@ -18,6 +18,7 @@ Antes do merge, confirme:
 - [ ] `docs/CURRENT_STATE.md` foi lido;
 - [ ] o documento do domínio foi revisado;
 - [ ] `docs/CURRENT_STATE.md` foi atualizado se esta PR muda estado atual relevante;
+- [ ] estado mutável/"próxima slice" não foi duplicado em `AGENTS.md`, `README.md`, `docs/WORK_CONTEXT.md` ou prompts/routers;
 - [ ] `docs/MANUAL_SOURCE_MAP.md` foi atualizado se esta PR muda comportamento visível ao usuário;
 - [ ] `TODO.md` / `PRODUCT_ROADMAP.md` foram atualizados quando a prioridade/estado do roadmap mudou;
 - [ ] nenhum item foi marcado `VALIDADO EM PRODUÇÃO` sem evidência real de produção;

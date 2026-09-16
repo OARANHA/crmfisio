@@ -1,157 +1,49 @@
-# MedicsPro — Work Context
+# MedicsPro — Work Context Router
 
-Snapshot de handoff para execução assistida por ChatGPT Work.
+> Este arquivo é um roteador de continuidade para execução assistida. Ele **não é snapshot de estado**, não substitui `AGENTS.md`/`docs/CURRENT_STATE.md` e não deve carregar uma lista mutável de "próximas slices".
 
-> **Leia `AGENTS.md` primeiro e `docs/CURRENT_STATE.md` em seguida.** Este arquivo não substitui código, schema ou o banco real. Quando houver divergência, inspecione a implementação atual e corrija a documentação — não force o produto a obedecer um snapshot envelhecido.
+## Ordem obrigatória de leitura
 
-## Fonte canônica
+1. `AGENTS.md` — regras operacionais, invariantes e hierarquia de fontes;
+2. resolver a `origin/main` atual — não reutilizar SHA de conversa/snapshot;
+3. `docs/CURRENT_STATE.md` — estado operacional e evidência de rollout;
+4. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
+5. documento(s) canônico(s) do domínio tocado;
+6. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
 
-- **`OARANHA/crmfisio`** — runtime/produto canônico e único destino de implementação.
-- **`OARANHA/nexus`** — upstream/laboratório de inteligência clínica; não é segundo runtime.
-- **`OARANHA/medicspro`** — referência histórica obrigatória de UX/workflow para domínios equivalentes, nunca arquitetura/autorização atual.
+Se houver divergência, não force o runtime a obedecer este arquivo. Inspecione a implementação/evidência real e corrija a documentação apropriada.
 
-Regra: **não portar o velho MedicsPro; absorver o que ele entendia bem sobre o profissional.**
+## Autoridade dos repositórios
 
-## Produto atual
+- **`OARANHA/crmfisio`** — produto/runtime canônico e único destino de implementação;
+- **`OARANHA/nexus`** — upstream/laboratório de inteligência clínica; nunca segundo runtime;
+- **`OARANHA/medicspro`** — referência histórica de UX/workflow para equivalentes maduros; nunca autoridade de arquitetura, tenancy ou autorização atual.
 
-MedicsPro é SaaS multiprofissional para clínicas: ERP + CRM + Agenda + EHR/Prontuário + Financeiro + Automação + relacionamento com paciente.
+Regra institucional: **não portar o velho MedicsPro; absorver o que ele entendia bem sobre o profissional.**
 
-Fluxo central:
+## Distinções que nunca podem ser colapsadas
 
-**Paciente → Agenda → Atendimento → Prontuário → Documentos → Financeiro → Comunicação**
+```text
+main mergeada != produção observada
+roadmap != implementação
+UI visibility != authorization
+PresentationContext != authorization
+ENGINE != AUTHORIZATION != RELEVANCE
+role != profissão
+platform entitlement != clinic configuration != user authorization
+```
 
-Papéis operacionais:
+Nexus avançado permanece `nexus.*` fail-closed. Instrumentos clínicos neutros usam boundaries/capabilities próprios e não recebem `nexus.*` como atalho.
 
-- `owner`
-- `admin`
-- `professional`
-- `recep`
-- `financeiro`
+Encounter Record continua a unidade editável do novo atendimento; Evolution oficial é a materialização após confirmação humana. Registros finalizados não são sobrescritos; correções/adendos usam mecanismo explícito e auditável.
 
-`platform_admin` é domínio separado. Role não é profissão. `professional_id` é referência clínica canônica; `fisio_id` é compatibilidade residual onde ainda existir.
+## Protocolo para nova missão
 
-Parceiro/repasse é relação econômica futura, não role/autorização.
+- verificar `origin/main` e working tree antes de criar branch;
+- não misturar uma nova slice com workspace sujo de outra tarefa;
+- procurar implementação canônica existente antes de criar caminho paralelo;
+- aplicar decisão → segunda revisão adversarial → execução → validação;
+- manter mudanças de produção separadas e explicitamente verificadas;
+- reportar separadamente `IMPLEMENTADO`, `MERGEADO`, `DEPLOYADO` e `VALIDADO EM PRODUÇÃO`.
 
-## Foundations clínicas já fechadas
-
-- #390 — Clinician Daily Home;
-- #391 — Agenda Role-Aware V4;
-- #392 — Clinical Encounter UX V4;
-- #393 — Legacy Clinical Reconciliation V4.1;
-- #394 — Encounter Clinical Record Foundation;
-- #395 — production-safe verifier;
-- #396 — Consultório / Gestão Privacy Shell;
-- Nexus C-01–C-06.
-
-Não descrever essas foundations como backlog a recriar sem evidência real de regressão.
-
-## Encounter canônico
-
-O Encounter Record é a unidade editável do novo atendimento.
-
-Conteúdo:
-
-- motivo/demandas;
-- HDA/história atual;
-- achados/exame;
-- avaliação clínica/problemas;
-- plano/conduta;
-- observações.
-
-Após revisão/confirmacão humana:
-
-**Encounter Record → Evolution oficial determinística → appointment finalizado**
-
-Não existe segunda Evolution universal obrigatória no fluxo novo. Finalized Encounter Record é histórico. Correction/addendum auditável ainda é futuro. Não criar backfill fictício.
-
-## Produção #394
-
-Em 2026-09-10:
-
-- migration #394 aplicada em produção;
-- production-safe verifier passou: `VERIFY #394 PRODUCTION OK`;
-- Clinical Foundation passou;
-- Clinical Authorization passou;
-- Financial Exception Resolution #389 passou.
-
-O smoke de draft comprovou persistência, refresh/navegação e revision; antes da finalização havia 1 record, 0 Evolutions, 0 payments e 0 financial exceptions.
-
-Em 2026-09-15, a prova read-only pós-finalização foi observada em produção: único Record `finalized`, Evolution única/ativa corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. Nenhum conteúdo clínico foi lido e nenhuma mutation foi executada.
-
-## Financeiro
-
-A afirmação antiga “pacote inválido bloqueia finalização clínica” está obsoleta.
-
-Após #388:
-
-- `package_exhausted`, `package_expired`, `package_not_eligible` são falhas esperadas de cobertura;
-- uma finalização clínica válida pode permanecer concluída;
-- registrar `appointment_financial_exception`;
-- não consumir cobertura gratuitamente/silenciosamente.
-
-#389 resolve explicitamente:
-
-- owner/admin: `CHARGE|WAIVE`;
-- financeiro: `CHARGE`;
-- recep/professional: sem resolução.
-
-O verifier #388 já foi reconciliado com #389: o harness executa #388 antes e depois da migration #389 e passou em PostgreSQL 16 em 2026-09-15, preservando a imutabilidade direta da fila e a superfície canônica de resolução.
-
-Em 2026-09-15, CHARGE/WAIVE foram exercidos no runtime de produção dentro de transações revertidas, com autenticação, idempotência e ausência de resíduos. A exceção real `package_exhausted` permanece aberta apenas como decisão econômica.
-
-## Presentation Context
-
-`PresentationContext = clinical | management` é presentation/privacy state.
-
-**PresentationContext != authorization.**
-
-- professional: Consultório-only;
-- owner/admin: Consultório + Gestão apenas com identidade clínica válida + `clinical.attend`;
-- recep/financeiro: Gestão-only.
-
-Consultório oculta Financeiro global, CRM gerencial, Relatórios administrativos e Configurações. URL direta continua sob guards reais e recebe privacy boundary.
-
-Trocar contexto não muda role, JWT, tenant, RLS, capability, entitlement ou `canView`. Preferência local isolada por `user_id + clinic_id`.
-
-#478 entregou autoentrada segura somente no handoff explícito de iniciar/continuar o próprio Encounter; `PresentationContext` continua sem poder de autorização.
-
-## Nexus
-
-Nexus já está integrado ao runtime MedicsPro. Não “integrar um produto Nexus separado”.
-
-Boundary médico-only/fail-closed:
-
-**entitlement + capability + identidade médica válida + relação assistencial + autorização server-side**
-
-Especialidade informa relevância, não autorização. Não liberar por role.
-
-Prescrição é workflow/documento MedicsPro; suporte de decisão medicamentosa pode pertencer ao domínio Nexus quando priorizado.
-
-## Assessment
-
-Assessment Engine já possui foundation estruturada. Avaliações padrão, modelos próprios e componentes como body map devem continuar no mesmo engine/versionamento/autoria, não virar prontuários paralelos por profissão.
-
-## Próxima sequência recomendada
-
-0. fechar evidência visual/autenticada residual #396 e piloto humano; #389 runtime e #394 pós-finalização já possuem prova de produção;
-1. Encounter UX / ergonomia observada em uso real;
-2. [x] correction/addendum auditável para Encounter Record finalizado (#481);
-3. [x] histórico neutro de instrumentos clinician-assisted (#482);
-4. **Instrument Delivery remota (`Enviar ao paciente`) — próxima slice;** `Aplicar agora` já está entregue;
-5. documentos clínicos ainda ausentes conforme piloto;
-6. Finance Configuration: solo/team, categorias, parceiro %/fixo com history/effective dates;
-7. onboarding/pilot friction;
-8. financeiro avançado/integracões conforme evidência.
-
-## Protocolo para novo trabalho
-
-1. ler `AGENTS.md`;
-2. ler `docs/CURRENT_STATE.md`;
-3. verificar `main` real;
-4. inspecionar código/schema/testes relevantes;
-5. comparar com histórico/upstream somente quando aplicável;
-6. não criar caminho paralelo ao canônico;
-7. implementar a menor slice segura;
-8. validar e reportar apenas evidência realmente observada.
-
-`main` é potencialmente deployável. Migrations/Edge Functions/produção exigem rollout explícito e autorização correspondente.
+O estado atual, próximos passos e rollout pertencem a `docs/CURRENT_STATE.md` e `TODO.md`, não a este arquivo.
