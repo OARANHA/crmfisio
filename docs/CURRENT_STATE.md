@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-16
-**Base canônica:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`
+**Base canônica:** `main@dc6ab7da99a022a76c305c1a45e4e3e907eec525`
 
 ## Estado clínico resumido
 
@@ -24,17 +24,20 @@ Encounter Auto-Entry / Presentation handoff #478                PROD
 Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
-Clinical Instrument Patient Delivery V1                         LAB VALIDATED / NOT PROD
+Clinical Instrument Patient Delivery V1                         MERGED / MAIN VALIDATED / NOT PROD
 ```
 
-## Em revisão — Clinical Instrument Patient Delivery V1
+## Pós-merge — Clinical Instrument Patient Delivery V1
 
-**Status:** IMPLEMENTADO E VALIDADO NO LAB — PR #484 aberta a partir de `feat/clinical-instrument-patient-delivery-v1`; ainda sem merge/deploy/migration em produção.
+**Status:** MERGED / MAIN VALIDATED — PR #484 mergeada por squash; ainda sem migration, Edge deploy ou frontend rollout em produção.
 
 ```text
-base main:                       8b1bdbb3856f9d2c320e9dc737f4ec1263090095
-PR:                              #484 OPEN
-implementation commit:           e8d26aad2119815ae39a27a3781d0981fd3f822a
+previous main:                   8b1bdbb3856f9d2c320e9dc737f4ec1263090095
+PR:                              #484 MERGED
+merge SHA / main:                dc6ab7da99a022a76c305c1a45e4e3e907eec525
+PR final head:                   920a649474d3273036398c74539056d33567d7f6
+PR CI:                           49/49 PASS
+post-merge push workflows:       4/4 PASS
 PostgreSQL 16 behavior/replay:  PASS
 production-safe verifier:       PASS no banco descartável
 Patient Delivery boundary tests: 8/8 PASS
@@ -44,13 +47,13 @@ dependency audit:               0 vulnerabilities
 production:                     UNTOUCHED
 ```
 
-O gate final completo foi repetido após o ajuste de compatibilidade e após a reconciliação documental; suíte, typecheck, lint, build, dependency audit e `git diff --check` passaram no mesmo estado candidato a commit.
+A árvore do squash em `main@dc6ab7d` é idêntica à árvore final revisada da PR. O gate final local passou, o CI da PR fechou 49/49 verde e os quatro workflows disparados pelo push pós-merge também concluíram com sucesso.
 
 A V1 cria um registry versionado `patient_self`, mantém convites Nexus históricos como `authority_source='nexus'` e usa `authority_source='clinical_instrument'` para a fachada neutra. O mesmo transporte de token/página pública/WhatsApp é reutilizado, mas claims/writers são separados por autoridade e o ledger clínico neutro recebe `provenance='patient_self'`.
 
 A UI de `Instrumentos` passa a compor `Aplicar agora -> Enviar ao paciente -> Histórico`, sem conceder `nexus.*`. O histórico neutro evolui para `clinician_assisted + patient_self` e continua sem expor respostas, snapshots, SOAP ou evidence.
 
-**Próximo passo seguro:** concluir gate final no estado documental, commit/push, abrir PR e exigir CI canônico. Só depois de merge haverá runbook separado para migration/Edge/frontend e smoke produtivo.
+**Próximo passo seguro:** preparar e revisar adversarialmente o runbook de rollout produtivo separado (migration -> verifier -> Edge Functions -> frontend -> smoke controlado). Não tratar o merge como deploy.
 
 ---
 
@@ -74,7 +77,7 @@ A UI mostra histórico em `Instrumentos` e no prontuário longitudinal, preserva
 
 O ciclo normal de engenharia do MedicsPro também foi consolidado em `/opt/medicspro-lab` no `28server`: workspace Node/Git isolado + PostgreSQL 16 efêmero em rede Docker própria, sem Docker socket, sem volumes/env de produção e com GitHub `repo + workflow`. O Wandora deixa de ser a bancada normal do MedicsPro.
 
-**Próximo gap clínico escolhido:** implementação de `Enviar ao paciente` V1 está validada no lab e está em revisão na PR #484/CI; produção permanece no estado #482 até rollout explícito.
+**Próximo gap clínico escolhido:** `Enviar ao paciente` V1 está mergeado e validado na main; produção permanece no estado #482 até rollout explícito e verificado da #484.
 
 ---
 
@@ -130,7 +133,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está na PR #484/CI, sem rollout.
+**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está mergeado na #484, ainda sem rollout.
 
 ---
 

@@ -1,7 +1,8 @@
 # Clinical Instrument Patient Delivery V1
 
-**Status:** implementação concluída e validada no MedicsPro Lab; PR #484 aberta; ainda sem merge/rollout de produção.
-**Base:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`.
+**Status:** PR #484 mergeada e `main` pós-merge validada; ainda sem rollout de produção.
+**Base de implementação:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`.
+**Merge:** `#484 -> main@dc6ab7da99a022a76c305c1a45e4e3e907eec525`.
 **Branch:** `feat/clinical-instrument-patient-delivery-v1`.
 **PR:** #484.
 **Implementation commit:** `e8d26aad2119815ae39a27a3781d0981fd3f822a`.
@@ -87,6 +88,8 @@ O inventário Nexus atual possui múltiplas ondas de candidatos. Nem todo instru
 - mera existência no Nexus nunca habilita exposição multiprofissional ou envio remoto.
 
 ## Validação de implementação
+
+Validação pós-merge: PR CI `49/49` PASS; quatro workflows de push da `main` PASS; árvore do squash byte-identical à árvore final revisada da PR. Produção permaneceu intocada.
 
 No estado atual da branch:
 

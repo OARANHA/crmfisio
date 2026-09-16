@@ -216,7 +216,7 @@ Estado canônico:
 [x] Clinician-Assisted Administration
 [x] Encounter Instrument UX
 [x] Consultório V5 integration/polish estrutural
-[ ] Patient Delivery V1 — validado no lab; PR #484 aberta/em CI; pendente merge/rollout
+[x] Patient Delivery V1 — #484 mergeada / main validada; rollout produtivo pendente
 ```
 
 ### 3.1 Clinician-Assisted Administration
@@ -247,7 +247,7 @@ GAD-7
 [Aplicar agora] [Enviar ao paciente]
 ```
 
-`Enviar ao paciente` possui implementação V1 própria na branch `feat/clinical-instrument-patient-delivery-v1`, ainda não entregue em produção. A V1 conserva criação contextual dentro do Encounter ativo como decisão conservadora; isso não transforma esse requisito em regra universal para futuras modalidades remotas.
+`Enviar ao paciente` V1 foi mergeado pela #484 em `main@dc6ab7d`, mas ainda não foi entregue em produção. A V1 conserva criação contextual dentro do Encounter ativo como decisão conservadora; isso não transforma esse requisito em regra universal para futuras modalidades remotas.
 
 O modo de aplicação não muda identidade, versão nem scoring do instrumento. A UI deve diferenciar autorização de relevância.
 
