@@ -113,15 +113,15 @@ Fonte executável: U:`ALL_SCALES` contém 11 definições de `scalesData.ts` e 1
 | EUROHIS-QOL | Ainda não incorporado | Adiar: itens 1–5 não aceitam zero; direção de melhora e cálculo próprios |
 | WHOQOL-SRPB | Ainda não incorporado | Adiar: comprovar versão/itens e escopo; não inferir equivalência com instrumento completo pelo nome |
 | AUDIT-C | Ainda não incorporado | Candidato P1 junto do AUDIT; contexto e limiares por população explicitados |
-| CAGE | Ainda não incorporado | Adiar se AUDIT/AUDIT-C atender piloto, evitando redundância de interface |
+| CAGE | **PROD / VERIFIED / tenant enablement required (#488)** | Clinician-assisted only; cutoff `>=2`; sem auto-enable e sem `patient_self` |
 | MDQ | Ainda não incorporado | Redesenhar: upstream usa somente soma ≥7 dos 13 itens; não coleta simultaneidade/prejuízo na definição lida |
 | PCL-5 | **PROD / VERIFIED / tenant enablement required (#491)** | Regra versionada `nexus-pcl5-br-2026-09-16`; cutoff operacional BR `>=36`; migration/Edge/frontend/verifiers/smoke validados; `settings=0`, `administrations=0`, `patient_self=0`; sem auto-enable |
-| PC-PTSD-5 | Ainda não incorporado | Adiar: contexto de trauma e interpretação de rastreio |
+| PC-PTSD-5 | **Em implementação clinician-assisted V1** | Gate de trauma + 5 itens; tradução operacional PT-BR sem validação brasileira reclamada; cutoff operacional externo `>=4`; fail-closed, sem auto-enable e sem `patient_self` |
 | EPDS | Ainda não incorporado | Candidato conforme população piloto; inversões, item 10 e contexto perinatal |
 | SRQ-20 | Ainda não incorporado | Adiar: população/corte e flag do item de segurança |
 | HAM-A | Ainda não incorporado | Adiar: instrumento profissional, faixa e ancoragem dos itens |
 | ISI | Ainda não incorporado | Candidato de baixa complexidade relativa; validar faixas e período |
-| PHQ-15 | Ainda não incorporado | Adiar: contexto somático e interpretação sem inferência diagnóstica |
+| PHQ-15 | **PROD backend / fail-closed validated** | Clinician-assisted via boundary neutra; nenhuma clínica auto-habilitada; interpretação somática sem inferência etiológica/diagnóstica |
 
 Essas decisões são prioridades de produto condicionadas ao piloto, não recomendações clínicas ao paciente. Ter texto bibliográfico junto de uma função não comprova fidelidade à versão validada.
 

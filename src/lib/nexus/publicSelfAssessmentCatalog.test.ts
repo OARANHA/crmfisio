@@ -20,6 +20,7 @@ describe('public Nexus self-assessment catalog', () => {
     expect(getPublicSelfAssessmentDefinition('phq15')).toBeNull();
     expect(getPublicSelfAssessmentDefinition('pcl5')).toBeNull();
     expect(getPublicSelfAssessmentDefinition('cage')).toBeNull();
+    expect(getPublicSelfAssessmentDefinition('pcptsd5')).toBeNull();
     expect(getPublicSelfAssessmentDefinition('hcl32')).toBeNull();
     expect(getPublicSelfAssessmentDefinition(undefined)).toBeNull();
   });

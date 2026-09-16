@@ -5,11 +5,13 @@ import {
 } from './publicSelfAssessmentCatalog';
 
 export type ClinicianAssistedInstrumentDefinition = {
-  toolKey: 'phq9' | 'gad7' | 'phq15' | 'cage' | 'pcl5';
+  toolKey: 'phq9' | 'gad7' | 'phq15' | 'cage' | 'pcl5' | 'pcptsd5';
   ruleVersion: string;
   acronym: string;
   instructions: string;
   questions: PublicSelfAssessmentQuestion[];
+  gate?: { questionId: string; continueWhenValue: number };
+  itemCountLabel?: string;
 };
 
 const PHQ15_OPTIONS: PublicSelfAssessmentOption[] = [
@@ -97,6 +99,28 @@ const PCL5: ClinicianAssistedInstrumentDefinition = {
   ],
 };
 
+const PCPTSD5_OPTIONS: PublicSelfAssessmentOption[] = [
+  { label: 'Não', value: 0 },
+  { label: 'Sim', value: 1 },
+];
+
+const PCPTSD5: ClinicianAssistedInstrumentDefinition = {
+  toolKey: 'pcptsd5',
+  ruleVersion: 'nexus-pcptsd5-ptbr-ops-2026-09-16',
+  acronym: 'PC-PTSD-5',
+  instructions: 'Tradução operacional PT-BR do instrumento público do VA para aplicação assistida; nesta revisão não foi identificada validação brasileira publicada desta tradução. Primeiro confirme o gate de exposição a evento potencialmente traumático. Se a resposta for Não, o rastreio termina com escore 0. Se for Sim, registre os cinco sintomas referentes ao último mês. O cutoff operacional versionado é ≥ 4 com base em evidência externa; o resultado é rastreio e não estabelece diagnóstico.',
+  gate: { questionId: 'q0', continueWhenValue: 1 },
+  itemCountLabel: '5 itens + gate de trauma',
+  questions: [
+    { id: 'q0', text: 'Gate de trauma. Às vezes acontecem eventos especialmente assustadores, horríveis ou traumáticos — por exemplo acidente grave ou incêndio, agressão física ou sexual, desastre, guerra, testemunhar morte/ferimento grave ou perder alguém por homicídio/suicídio. Você já vivenciou esse tipo de evento?', options: PCPTSD5_OPTIONS },
+    { id: 'q1', text: '1. Teve pesadelos sobre o evento ou pensou sobre ele quando não queria?', options: PCPTSD5_OPTIONS },
+    { id: 'q2', text: '2. Esforçou-se muito para não pensar sobre o evento ou evitou situações que lembravam o fato?', options: PCPTSD5_OPTIONS },
+    { id: 'q3', text: '3. Esteve constantemente em guarda, vigilante ou se assustou com muita facilidade?', options: PCPTSD5_OPTIONS },
+    { id: 'q4', text: '4. Sentiu-se anestesiado(a) ou distante de outras pessoas, atividades ou ambiente ao redor?', options: PCPTSD5_OPTIONS },
+    { id: 'q5', text: '5. Sentiu culpa ou não conseguiu parar de culpar a si mesmo(a) ou a terceiros pelo evento?', options: PCPTSD5_OPTIONS },
+  ],
+};
+
 export function getClinicianAssistedInstrumentDefinition(
   toolKey: string | undefined,
 ): ClinicianAssistedInstrumentDefinition | null {
@@ -104,6 +128,7 @@ export function getClinicianAssistedInstrumentDefinition(
   if (toolKey === 'phq15') return PHQ15;
   if (toolKey === 'cage') return CAGE;
   if (toolKey === 'pcl5') return PCL5;
+  if (toolKey === 'pcptsd5') return PCPTSD5;
   const publicDefinition = getPublicSelfAssessmentDefinition(toolKey);
   return publicDefinition as ClinicianAssistedInstrumentDefinition | null;
 }

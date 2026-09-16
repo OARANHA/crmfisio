@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   // Persist only the validated canonical questions. Extra browser keys are never
   // allowed to become part of the clinical snapshot merely because the scorer
   // ignored them.
-  const canonicalAnswers = Object.fromEntries(
+  const canonicalAnswers = calculated.canonicalAnswers ?? Object.fromEntries(
     calculated.answersArray.map((value, index) => [`q${index + 1}`, value]),
   );
 
