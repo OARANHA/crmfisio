@@ -1,10 +1,11 @@
 # PC-PTSD-5 Clinician-Assisted V1
 
-**Status:** PR #495 OPEN / LOCAL GATES GREEN / NÃO PROD.
+**Status:** #495 MERGED / MAIN VALIDATED / NÃO PROD.
 **Base de desenvolvimento:** resolver sempre a `origin/main` atual; a slice foi reconciliada contra `main@97184b14dffecc46b5c67a00d21946fd21b0cdfd` em 2026-09-16.
 **Branch:** `feat/pcptsd5-clinician-assisted-v1`.
-**Implementation head inicial da PR:** `2603fbed070a635d1669238eb18b4c76c9d3cd5a`.
-**PR:** `#495` OPEN.
+**Head final revisado da PR:** `82505f60b3bc47e29df21b0f4fd479e4965fa000`.
+**Merge/main:** `f62b221d05a568f363595e93ad945f4e1df84c5c`.
+**PR:** `#495` MERGED, CI 24/24 PASS; pós-merge 7/7 workflows de push PASS.
 
 ## Decisão
 
@@ -77,7 +78,7 @@ O Edge scorer é autoridade sobre score/classificação/interpretação. Chaves 
 - typecheck, lint, build e `git diff --check`: PASS;
 - dependency audit: 2 advisories moderados preexistentes em Vitest/@vitest-mocker, sem mudança de dependências nesta slice; correção automática exigiria major/breaking upgrade e não foi misturada aqui.
 
-PR CI ainda precisa concluir antes de qualquer decisão de merge.
+PR CI concluiu 24/24 verde antes do merge e os 7 workflows disparados pelo push da `main` também concluíram com sucesso. O próximo gate é rollout produtivo separado; merge não equivale a produção.
 
 ## Produção
 
