@@ -29,10 +29,12 @@ Clinical Instrument Patient Delivery V1                         LAB VALIDATED / 
 
 ## Em revisão — Clinical Instrument Patient Delivery V1
 
-**Status:** IMPLEMENTADO E VALIDADO NO LAB — branch `feat/clinical-instrument-patient-delivery-v1`; ainda sem PR/merge/deploy/migration em produção.
+**Status:** IMPLEMENTADO E VALIDADO NO LAB — PR #484 aberta a partir de `feat/clinical-instrument-patient-delivery-v1`; ainda sem merge/deploy/migration em produção.
 
 ```text
 base main:                       8b1bdbb3856f9d2c320e9dc737f4ec1263090095
+PR:                              #484 OPEN
+implementation commit:           e8d26aad2119815ae39a27a3781d0981fd3f822a
 PostgreSQL 16 behavior/replay:  PASS
 production-safe verifier:       PASS no banco descartável
 Patient Delivery boundary tests: 8/8 PASS
@@ -72,7 +74,7 @@ A UI mostra histórico em `Instrumentos` e no prontuário longitudinal, preserva
 
 O ciclo normal de engenharia do MedicsPro também foi consolidado em `/opt/medicspro-lab` no `28server`: workspace Node/Git isolado + PostgreSQL 16 efêmero em rede Docker própria, sem Docker socket, sem volumes/env de produção e com GitHub `repo + workflow`. O Wandora deixa de ser a bancada normal do MedicsPro.
 
-**Próximo gap clínico escolhido:** implementação de `Enviar ao paciente` V1 está validada no lab e aguarda PR/CI; produção permanece no estado #482 até rollout explícito.
+**Próximo gap clínico escolhido:** implementação de `Enviar ao paciente` V1 está validada no lab e está em revisão na PR #484/CI; produção permanece no estado #482 até rollout explícito.
 
 ---
 
@@ -128,7 +130,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está na etapa de PR/CI, sem rollout.
+**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está na PR #484/CI, sem rollout.
 
 ---
 

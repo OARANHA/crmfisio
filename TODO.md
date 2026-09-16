@@ -101,7 +101,7 @@ Requisitos associados:
 - [x] Definição/versão/scoring de PHQ-9/GAD-7 continuam compartilhados com a engine canônica; não existe instrumento duplicado.
 - [x] Provenance diferencia `patient_self` de `clinician_assisted`.
 - [x] #482 — histórico neutro de instrumentos clinician-assisted em produção, sem leitura direta do ledger Nexus e sem acoplar UI multiprofissional a `nexus.*`.
-- [ ] **Enviar ao paciente V1** — implementação registry-driven e boundary contextual validadas no lab em `feat/clinical-instrument-patient-delivery-v1`; pendente PR/CI/merge/rollout, portanto ainda não entregue em produção.
+- [ ] **Enviar ao paciente V1** — implementação registry-driven e boundary contextual validadas no lab em `feat/clinical-instrument-patient-delivery-v1`; PR #484 aberta e em CI; pendente merge/rollout, portanto ainda não entregue em produção.
 - [x] Resposta positiva ao item 9 do PHQ-9 permanece safety signal para avaliação clínica, sem equivaler isoladamente a diagnóstico e sem gerar conduta/prescrição automática.
 
 ## P1 — Documentos clínicos

@@ -1,8 +1,10 @@
 # Clinical Instrument Patient Delivery V1
 
-**Status:** implementação concluída e validada no MedicsPro Lab; ainda sem PR/merge/rollout de produção.
+**Status:** implementação concluída e validada no MedicsPro Lab; PR #484 aberta; ainda sem merge/rollout de produção.
 **Base:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`.
 **Branch:** `feat/clinical-instrument-patient-delivery-v1`.
+**PR:** #484.
+**Implementation commit:** `e8d26aad2119815ae39a27a3781d0981fd3f822a`.
 
 ## Objetivo
 

@@ -216,7 +216,7 @@ Estado canônico:
 [x] Clinician-Assisted Administration
 [x] Encounter Instrument UX
 [x] Consultório V5 integration/polish estrutural
-[ ] Patient Delivery V1 — validado no lab; pendente PR/CI/rollout
+[ ] Patient Delivery V1 — validado no lab; PR #484 aberta/em CI; pendente merge/rollout
 ```
 
 ### 3.1 Clinician-Assisted Administration

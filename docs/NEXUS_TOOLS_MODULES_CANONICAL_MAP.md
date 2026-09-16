@@ -336,7 +336,7 @@ Execution status as of 2026-09-13:
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
 
-Patient-facing delivery V1 is implemented on `feat/clinical-instrument-patient-delivery-v1` and validated in the lab, but is not yet deployed. Remote eligibility is versioned/registry-driven and remains separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
+Patient-facing delivery V1 is implemented on `feat/clinical-instrument-patient-delivery-v1`, validated in the lab and under review in PR #484, but is not yet deployed. Remote eligibility is versioned/registry-driven and remains separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
 
 ### Wave 2 — contextual/specialized screening
 
