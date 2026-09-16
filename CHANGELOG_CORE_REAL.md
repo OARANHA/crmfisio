@@ -36,7 +36,7 @@
 ### Finalização clínica e financeiro
 
 - #388 separa sucesso clínico de falhas **esperadas** de cobertura.
-- `package_exhausted`, `package_expired`, `package_not_eligible` passam a gerar `appointment_financial_exception` sem apagar uma finalização clínica válida e sem consumo gratuito silencioso.
+- `package_exhausted`, `package_expired` e `package_not_eligible` passam a gerar `appointment_financial_exception` sem apagar uma finalização clínica válida e sem consumo gratuito silencioso.
 - Falhas financeiras inesperadas de integridade continuam fail-closed/atômicas.
 - #389 adiciona resolução explícita: owner/admin `CHARGE|WAIVE`, financeiro `CHARGE`, recep/professional sem resolução.
 - Parceiro/repasse não é role nem autorização.
