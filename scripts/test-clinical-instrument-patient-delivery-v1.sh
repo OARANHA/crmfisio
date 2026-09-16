@@ -20,12 +20,22 @@ from pathlib import Path
 import re
 
 migration = Path('supabase-migrations/20260916_clinical_instrument_patient_delivery_v1.sql').read_text()
+hotfix = Path('supabase-migrations/20260916_clinical_instrument_patient_delivery_wa_template_hotfix.sql').read_text()
 edge = Path('supabase/functions/clinical-instrument-patient-delivery/index.ts').read_text()
 processor = Path('supabase/functions/nexus-self-assessment-processor/index.ts').read_text()
 client = Path('src/lib/clinicalInstrumentPatientDelivery.ts').read_text()
 ui = Path('src/components/ClinicalInstrumentPatientDelivery.tsx').read_text()
 history = Path('src/lib/clinicalInstrumentClinicianAssisted.ts').read_text()
 public_catalog = Path('src/lib/nexus/publicSelfAssessmentCatalog.ts').read_text()
+
+
+for token in [
+    'wa_logs_template_check',
+    'clinical_instrument_patient_self',
+    'patient_delivery_wa_template_hotfix_unknown_constraint',
+]:
+    if token not in hotfix:
+        raise SystemExit(f'Patient Delivery static safety failed: hotfix missing {token}')
 
 for token in [
     'clinical_instrument_patient_self_contracts',

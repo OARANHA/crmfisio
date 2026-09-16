@@ -1,6 +1,6 @@
 # Clinical Instrument Patient Delivery V1
 
-**Status:** PR #484 mergeada e `main` pós-merge validada; ainda sem rollout de produção.
+**Status:** PR #484 mergeada; rollout técnico iniciado em produção, com entrega `patient_self` temporariamente desabilitada por registry enquanto o hotfix do constraint `wa_logs_template_check` é validado.
 **Base de implementação:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`.
 **Merge:** `#484 -> main@dc6ab7da99a022a76c305c1a45e4e3e907eec525`.
 **Branch:** `feat/clinical-instrument-patient-delivery-v1`.
@@ -89,7 +89,7 @@ O inventário Nexus atual possui múltiplas ondas de candidatos. Nem todo instru
 
 ## Validação de implementação
 
-Validação pós-merge: PR CI `49/49` PASS; quatro workflows de push da `main` PASS; árvore do squash byte-identical à árvore final revisada da PR. Produção permaneceu intocada.
+Validação pós-merge da #484: PR CI `49/49` PASS; quatro workflows de push da `main` PASS; árvore do squash byte-identical à árvore final revisada da PR. No rollout produtivo, migration principal, verifier, Edge Functions e frontend foram aplicados/validados; o smoke transacional detectou que o constraint legado `wa_logs_template_check` ainda não aceitava `clinical_instrument_patient_self`. A transação abortou sem resíduos e sem envio real. O registry `patient_self` foi então desabilitado temporariamente até o hotfix.
 
 No estado atual da branch:
 
@@ -99,7 +99,8 @@ No estado atual da branch:
 - UI `Enviar ao paciente` é registry-driven e não contém branches de autorização PHQ-9/GAD-7;
 - histórico longitudinal neutro projeta `clinician_assisted` + `patient_self` sem respostas brutas;
 - full suite final: 116 arquivos / 628 testes; typecheck, lint, build, dependency audit e `git diff --check` passaram no mesmo estado candidato a commit;
-- produção permanece intocada.
+- hotfix de produção: fixture passou a reproduzir o constraint legado real; PostgreSQL 16 e PostgreSQL 17.6 aprovam behavior + replay + verifier; definição futura/desconhecida do constraint falha fechado;
+- produção: backend/frontend da #484 presentes, porém contratos `patient_self` permanecem temporariamente `active=false` até aplicação e smoke final do hotfix.
 
 O gate canônico da slice é `.github/workflows/clinical-instrument-patient-delivery-v1.yml`.
 

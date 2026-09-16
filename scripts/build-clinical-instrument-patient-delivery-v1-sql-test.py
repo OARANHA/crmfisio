@@ -49,7 +49,8 @@ CREATE TABLE public.wa_logs (
   patient_id uuid NOT NULL REFERENCES public.patients(id),
   appointment_id uuid REFERENCES public.appointments(id),
   self_assessment_invite_id uuid REFERENCES public.nexus_self_assessment_invites(id),
-  template text NOT NULL CHECK (template IN ('confirmacao','nps','reativacao','vaga_espera','nexus_autoavaliacao','clinical_instrument_patient_self')),
+  template text NOT NULL,
+  CONSTRAINT wa_logs_template_check CHECK (template IN ('confirmacao','nps','reativacao','vaga_espera','nexus_autoavaliacao')),
   mensagem text NOT NULL,
   enviado_em timestamptz NOT NULL DEFAULT now(),
   status text NOT NULL DEFAULT 'fila',
@@ -112,4 +113,7 @@ print(
 migration = migrations / "20260916_clinical_instrument_patient_delivery_v1.sql"
 print(migration.read_text())
 print(migration.read_text())
+hotfix = migrations / "20260916_clinical_instrument_patient_delivery_wa_template_hotfix.sql"
+print(hotfix.read_text())
+print(hotfix.read_text())
 print((root / "tests/sql/clinical_instrument_patient_delivery_v1_cases.sql").read_text())
