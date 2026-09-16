@@ -41,3 +41,7 @@ node_modules/
 .next/
 dist/
 build/
+
+# Python bytecode
+__pycache__/
+*.pyc

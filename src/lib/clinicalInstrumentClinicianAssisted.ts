@@ -1,13 +1,18 @@
-import { supabase } from './supabaseClient';
+import { supabase } from "./supabaseClient";
 
 const db = supabase as any;
 
-export const CLINICIAN_ASSISTED_INSTRUMENT_KEYS = ['phq9', 'gad7', 'phq15'] as const;
-export type ClinicianAssistedInstrumentKey = typeof CLINICIAN_ASSISTED_INSTRUMENT_KEYS[number];
+export const CLINICIAN_ASSISTED_INSTRUMENT_KEYS = [
+  "phq9",
+  "gad7",
+  "phq15",
+] as const;
+export type ClinicianAssistedInstrumentKey =
+  (typeof CLINICIAN_ASSISTED_INSTRUMENT_KEYS)[number];
 
 export type ClinicianAssistedSafetySignal = {
   flagCode: string;
-  severity: 'warning' | 'critical';
+  severity: "warning" | "critical";
   title: string;
   message: string;
   requiredAction?: string;
@@ -18,7 +23,7 @@ export type ClinicianAssistedAdministration = {
   appointmentId: string;
   patientId: string;
   instrumentKey: ClinicianAssistedInstrumentKey;
-  provenance: 'clinician_assisted';
+  provenance: "clinician_assisted";
   engineRuleKey: string;
   engineRuleVersion: string;
   totalScore: number;
@@ -37,13 +42,13 @@ export type ClinicianAssistedAdministration = {
   replayed: boolean;
 };
 
-export type ClinicianAssistedInstrumentHistoryItem = {
+export type ClinicalInstrumentHistoryItem = {
   id: string;
   appointmentId: string;
   professionalId: string;
   instrumentKey: string;
   engineRuleVersion: string;
-  provenance: 'clinician_assisted';
+  provenance: "clinician_assisted" | "patient_self";
   totalScore: number;
   maxScore: number;
   classification: string;
@@ -54,7 +59,10 @@ export type ClinicianAssistedInstrumentHistoryItem = {
   completedAt: string;
 };
 
-export type ClinicianAssistedInstrumentAvailability = Record<ClinicianAssistedInstrumentKey, boolean>;
+export type ClinicianAssistedInstrumentAvailability = Record<
+  ClinicianAssistedInstrumentKey,
+  boolean
+>;
 
 export type ClinicianAssistedRequestPayload = {
   appointmentId: string;
@@ -75,14 +83,19 @@ export function buildClinicianAssistedRequestPayload(
 export async function loadClinicianAssistedInstrumentAvailability(
   appointmentId: string,
 ): Promise<ClinicianAssistedInstrumentAvailability> {
-  const entries = await Promise.all(CLINICIAN_ASSISTED_INSTRUMENT_KEYS.map(async (instrumentKey) => {
-    const { data, error } = await db.rpc('can_apply_clinical_instrument_in_encounter', {
-      p_appointment_id: appointmentId,
-      p_instrument_key: instrumentKey,
-    });
-    if (error) throw error;
-    return [instrumentKey, data === true] as const;
-  }));
+  const entries = await Promise.all(
+    CLINICIAN_ASSISTED_INSTRUMENT_KEYS.map(async (instrumentKey) => {
+      const { data, error } = await db.rpc(
+        "can_apply_clinical_instrument_in_encounter",
+        {
+          p_appointment_id: appointmentId,
+          p_instrument_key: instrumentKey,
+        },
+      );
+      if (error) throw error;
+      return [instrumentKey, data === true] as const;
+    }),
+  );
 
   return Object.fromEntries(entries) as ClinicianAssistedInstrumentAvailability;
 }
@@ -90,22 +103,31 @@ export async function loadClinicianAssistedInstrumentAvailability(
 export async function submitClinicianAssistedInstrument(
   payload: ClinicianAssistedRequestPayload,
 ): Promise<ClinicianAssistedAdministration> {
-  const { data, error } = await supabase.functions.invoke('clinical-instrument-clinician-assisted', {
-    body: payload,
-  });
+  const { data, error } = await supabase.functions.invoke(
+    "clinical-instrument-clinician-assisted",
+    {
+      body: payload,
+    },
+  );
   if (error) throw error;
 
-  const administration = (data as { administration?: ClinicianAssistedAdministration } | null)?.administration;
-  if (!administration) throw new Error('Administração clínica não retornada pelo servidor');
+  const administration = (
+    data as { administration?: ClinicianAssistedAdministration } | null
+  )?.administration;
+  if (!administration)
+    throw new Error("Administração clínica não retornada pelo servidor");
   return administration;
 }
 
-export async function loadClinicianAssistedInstrumentHistory(
+export async function loadClinicalInstrumentHistory(
   patientId: string,
-): Promise<ClinicianAssistedInstrumentHistoryItem[]> {
-  const { data, error } = await db.rpc('list_patient_clinician_assisted_instrument_history', {
-    p_patient_id: patientId,
-  });
+): Promise<ClinicalInstrumentHistoryItem[]> {
+  const { data, error } = await db.rpc(
+    "list_patient_clinical_instrument_history",
+    {
+      p_patient_id: patientId,
+    },
+  );
   if (error) throw error;
 
   return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
@@ -114,7 +136,10 @@ export async function loadClinicianAssistedInstrumentHistory(
     professionalId: String(row.professional_id),
     instrumentKey: String(row.instrument_key),
     engineRuleVersion: String(row.engine_rule_version),
-    provenance: 'clinician_assisted' as const,
+    provenance:
+      row.provenance === "patient_self"
+        ? ("patient_self" as const)
+        : ("clinician_assisted" as const),
     totalScore: Number(row.total_score),
     maxScore: Number(row.max_score),
     classification: String(row.classification),

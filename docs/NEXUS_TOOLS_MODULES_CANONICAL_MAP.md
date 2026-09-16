@@ -331,10 +331,12 @@ Execution status as of 2026-09-13:
 - **ISI:** blocked pending commercial-use licensing/permission review;
 - **SRQ-20:** hold pending rights/provenance confirmation;
 - **AUDIT-C/CAGE:** hold pending rights/version reconciliation;
-- **PHQ-15:** first implementable candidate; clinician-assisted V1 is being implemented on `feat/phq15-clinician-assisted-v1`, not yet deployed;
+- **PHQ-15:** clinician-assisted backend is deployed and fail-closed; no clinic is auto-enabled;
 - **EUROHIS-QOL:** hold pending provenance/licensing review.
 
 PHQ-15 follows the neutral clinician-assisted boundary (`clinical.instrument.apply` + explicit clinic setting + Encounter context). `nexus.scales` remains engine provenance metadata and is not the authorization gate for the neutral act.
+
+Patient-facing delivery V1 is implemented on `feat/clinical-instrument-patient-delivery-v1` and validated in the lab, but is not yet deployed. Remote eligibility is versioned/registry-driven and remains separate from Nexus authorization: `patient_self` transport can reuse Nexus engine/scoring while `nexus.*` stays fail-closed.
 
 ### Wave 2 — contextual/specialized screening
 

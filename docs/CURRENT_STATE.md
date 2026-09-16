@@ -4,8 +4,8 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-15
-**Base canônica:** `main@830743de877e89577d266d5f9cc4bd33e1d3bbff`
+**Data do snapshot:** 2026-09-16
+**Base canônica:** `main@8b1bdbb3856f9d2c320e9dc737f4ec1263090095`
 
 ## Estado clínico resumido
 
@@ -24,7 +24,33 @@ Encounter Auto-Entry / Presentation handoff #478                PROD
 Encounter Coverage Context V1 #479                              PROD / VERIFIED
 Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
+Clinical Instrument Patient Delivery V1                         LAB VALIDATED / NOT PROD
 ```
+
+## Em revisão — Clinical Instrument Patient Delivery V1
+
+**Status:** IMPLEMENTADO E VALIDADO NO LAB — branch `feat/clinical-instrument-patient-delivery-v1`; ainda sem PR/merge/deploy/migration em produção.
+
+```text
+base main:                       8b1bdbb3856f9d2c320e9dc737f4ec1263090095
+PostgreSQL 16 behavior/replay:  PASS
+production-safe verifier:       PASS no banco descartável
+Patient Delivery boundary tests: 8/8 PASS
+full frontend suite:             116 files / 628 tests PASS
+typecheck/lint/build:            PASS
+dependency audit:               0 vulnerabilities
+production:                     UNTOUCHED
+```
+
+O gate final completo foi repetido após o ajuste de compatibilidade e após a reconciliação documental; suíte, typecheck, lint, build, dependency audit e `git diff --check` passaram no mesmo estado candidato a commit.
+
+A V1 cria um registry versionado `patient_self`, mantém convites Nexus históricos como `authority_source='nexus'` e usa `authority_source='clinical_instrument'` para a fachada neutra. O mesmo transporte de token/página pública/WhatsApp é reutilizado, mas claims/writers são separados por autoridade e o ledger clínico neutro recebe `provenance='patient_self'`.
+
+A UI de `Instrumentos` passa a compor `Aplicar agora -> Enviar ao paciente -> Histórico`, sem conceder `nexus.*`. O histórico neutro evolui para `clinician_assisted + patient_self` e continua sem expor respostas, snapshots, SOAP ou evidence.
+
+**Próximo passo seguro:** concluir gate final no estado documental, commit/push, abrir PR e exigir CI canônico. Só depois de merge haverá runbook separado para migration/Edge/frontend e smoke produtivo.
+
+---
 
 ## Último rollout — Neutral Clinician-Assisted Instrument History V1
 
@@ -46,7 +72,7 @@ A UI mostra histórico em `Instrumentos` e no prontuário longitudinal, preserva
 
 O ciclo normal de engenharia do MedicsPro também foi consolidado em `/opt/medicspro-lab` no `28server`: workspace Node/Git isolado + PostgreSQL 16 efêmero em rede Docker própria, sem Docker socket, sem volumes/env de produção e com GitHub `repo + workflow`. O Wandora deixa de ser a bancada normal do MedicsPro.
 
-**Próximo gap clínico escolhido:** `Enviar ao paciente` V1 como boundary contextual separada da aplicação clinician-assisted.
+**Próximo gap clínico escolhido:** implementação de `Enviar ao paciente` V1 está validada no lab e aguarda PR/CI; produção permanece no estado #482 até rollout explícito.
 
 ---
 
@@ -71,7 +97,7 @@ A Evolution oficial vinculada a Encounter Record finalizado passou a ser estrutu
 
 No prontuário longitudinal, Retificações e adendos aparecem como atos posteriores vinculados ao atendimento finalizado; o original permanece preservado.
 
-**Gap seguinte após #481:** fechado pela #482; o próximo foco passa a ser `Enviar ao paciente` V1.
+**Gap seguinte após #481:** fechado pela #482; `Enviar ao paciente` V1 está implementado/validado no lab, ainda não em produção.
 
 ---
 
@@ -102,7 +128,7 @@ Paciente em contexto
 
 O card de Encerramento é resumo/atalho; não cria um segundo caminho de finalização. A conclusão clínica continua independente do acerto administrativo.
 
-**Gap seguinte após #478/#479:** #481 e #482 já fecharam correção/adendo e histórico neutro; o próximo foco clínico é `Enviar ao paciente` V1.
+**Gap seguinte após #478/#479:** #481/#482 estão em produção; `Enviar ao paciente` V1 está na etapa de PR/CI, sem rollout.
 
 ---
 

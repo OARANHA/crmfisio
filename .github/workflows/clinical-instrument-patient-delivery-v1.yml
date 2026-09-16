@@ -1,0 +1,76 @@
+name: Clinical Instrument Patient Delivery V1
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/nexus-self-assessment-processor/index.ts"
+      - "supabase/functions/clinical-instrument-patient-delivery/index.ts"
+      - "supabase-migrations/20260916_clinical_instrument_patient_delivery_v1.sql"
+      - "supabase-verifiers/VERIFY_20260916_CLINICAL_INSTRUMENT_PATIENT_DELIVERY_V1.sql"
+      - "tests/sql/clinical_instrument_patient_delivery_v1_cases.sql"
+      - "scripts/build-clinical-instrument-patient-delivery-v1-sql-test.py"
+      - "scripts/test-clinical-instrument-patient-delivery-v1.sh"
+      - "src/lib/clinicalInstrumentPatientDelivery.ts"
+      - "src/lib/clinicalInstrumentPatientDeliveryBoundary.test.js"
+      - "src/lib/clinicalInstrumentClinicianAssisted.ts"
+      - "src/lib/clinicalInstrumentHistoryBoundary.test.js"
+      - "src/lib/clinicalInstrumentClinicianAssistedBoundary.test.js"
+      - "src/components/ClinicalInstrumentPatientDelivery.tsx"
+      - "src/components/ClinicianAssistedInstrumentHistory.tsx"
+      - "src/components/ClinicianAssistedInstrumentWorkspace.tsx"
+      - "src/lib/nexus/publicSelfAssessmentCatalog.ts"
+      - "docs/CLINICAL_INSTRUMENT_PATIENT_DELIVERY_V1.md"
+      - "docs/CURRENT_STATE.md"
+      - "docs/NEXUS_TOOLS_MODULES_CANONICAL_MAP.md"
+      - ".github/workflows/clinical-instrument-patient-delivery-v1.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/nexus-self-assessment-processor/index.ts"
+      - "supabase/functions/clinical-instrument-patient-delivery/index.ts"
+      - "supabase-migrations/20260916_clinical_instrument_patient_delivery_v1.sql"
+      - "supabase-verifiers/VERIFY_20260916_CLINICAL_INSTRUMENT_PATIENT_DELIVERY_V1.sql"
+      - "tests/sql/clinical_instrument_patient_delivery_v1_cases.sql"
+      - "scripts/build-clinical-instrument-patient-delivery-v1-sql-test.py"
+      - "scripts/test-clinical-instrument-patient-delivery-v1.sh"
+      - "src/lib/clinicalInstrumentPatientDelivery.ts"
+      - "src/lib/clinicalInstrumentClinicianAssisted.ts"
+      - "src/components/ClinicalInstrumentPatientDelivery.tsx"
+      - "src/components/ClinicianAssistedInstrumentHistory.tsx"
+      - "src/components/ClinicianAssistedInstrumentWorkspace.tsx"
+      - ".github/workflows/clinical-instrument-patient-delivery-v1.yml"
+  workflow_dispatch:
+
+jobs:
+  patient-delivery-postgres16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinical_instrument_patient_delivery_v1_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated PostgreSQL 16 database
+        env:
+          PGDATABASE: postgres
+        run: createdb clinical_instrument_patient_delivery_v1_test
+      - name: Run Patient Delivery V1 gate
+        run: bash scripts/test-clinical-instrument-patient-delivery-v1.sh
