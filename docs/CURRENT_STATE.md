@@ -5,7 +5,7 @@
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
 **Data do snapshot:** 2026-09-16
-**Base canônica:** `main@68615b0d3379b1af337a7f76f907bb3f0f52e7a0`
+**Base canônica funcional:** `main@44e392ef2df7e5b1fca1cf373246fb500eb7254b`
 
 ## Estado clínico resumido
 
@@ -26,18 +26,18 @@ Encounter Record Correction/Addendum V1 #481                   PROD / VERIFIED
 Neutral Clinician-Assisted Instrument History V1 #482           PROD / VERIFIED
 Clinical Instrument Patient Delivery V1                         PROD / VERIFIED
 CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
-PCL-5 Clinician-Assisted V1 #491                                 PR OPEN / NOT PROD
+PCL-5 Clinician-Assisted V1 #491                                 MERGED / MAIN VALIDATED / NOT PROD
 ```
 
-## Slice em andamento — PCL-5 Clinician-Assisted V1
+## Main validada — PCL-5 Clinician-Assisted V1
 
-**Status:** PR #491 aberta em `feat/pcl5-clinician-assisted-v1`; implementação `33143f5525eeba8c444ef0da0df8bbc96b9791d4`; ainda sem merge/produção.
+**Status:** #491 mergeada por squash; `main@44e392ef2df7e5b1fca1cf373246fb500eb7254b`; árvore da main idêntica ao head final revisado `58ebddb1d9cb69d9993adfb14898756b40ee4e63`; produção ainda não alterada.
 
 PCL-5 foi escolhido após nova revisão dos instrumentos Nexus restantes: ISI permanece dependente de licença do titular/Mapi e os instrumentos WHO da Wave 1 continuam exigindo revisão de permissão comercial. PCL-5 é public domain via VA e possui adaptação/validação brasileira publicada.
 
 A V1 é somente `Aplicar agora`, exige 20 respostas `0..4`, usa regra versionada `nexus-pcl5-br-2026-09-16` com cutoff operacional `>=36` da validação brasileira, não infere diagnóstico, não auto-habilita clínicas e não cria contrato `patient_self`.
 
-Gates locais aprovados: testes focados 29/29; PostgreSQL 16 e PostgreSQL 17.6 (behavior + replay + authorization + writer + forged-version negative control + verifier); full suite 116 arquivos / 634 testes; typecheck, lint, build e dependency audit com 0 vulnerabilidades. Agora falta CI GitHub/merge; produção permanece intocada.
+Gates aprovados: testes focados 29/29; PostgreSQL 16 e PostgreSQL 17.6 (behavior + replay + authorization + writer + forged-version negative control + verifier); full suite 116 arquivos / 634 testes; typecheck, lint, build e dependency audit com 0 vulnerabilidades; PR CI 51/51; pós-merge 6/6 workflows de push concluídos sem falha. Próximo passo seguro: rollout produtivo separado e controlado. Produção permanece intocada.
 
 ---
 
