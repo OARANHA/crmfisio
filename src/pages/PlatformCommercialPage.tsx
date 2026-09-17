@@ -1,21 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
-import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { getCachedPlatformAdminAccessStatus, resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 
 export function PlatformCommercialPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
+  const mountedRef = useRef(true);
+  const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>(() => getCachedPlatformAdminAccessStatus());
 
-  useEffect(() => {
-    let active = true;
-    void validatePlatformAdminAccess()
-      .then((allowed) => { if (active) setAuthorized(allowed); })
-      .catch(() => { if (active) setAuthorized(false); });
-    return () => { active = false; };
+  const validateAccess = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setAccessStatus('checking');
+    const resolution = await resolvePlatformAdminAccess();
+    if (!mountedRef.current) return;
+    if (resolution.status === 'error') console.error('[Platform Admin] commercial authorization:', resolution.cause);
+    setAccessStatus(resolution.status);
   }, []);
 
-  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
-  if (!authorized) return <AccessDenied />;
+  useEffect(() => {
+    void validateAccess();
+    return () => { mountedRef.current = false; };
+  }, [validateAccess]);
+
+  if (accessStatus === 'checking') return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
+  if (accessStatus === 'error') return <PlatformAdminAccessError onRetry={() => void validateAccess()} />;
+  if (accessStatus === 'denied') return <AccessDenied />;
 
   return (
     <PlatformAdminShell

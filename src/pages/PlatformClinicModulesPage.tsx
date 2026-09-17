@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import { PlatformClinicLifecyclePanel } from '../components/PlatformClinicLifecyclePanel';
 import { loadPlatformClinics, type PlatformClinicSummary } from '../lib/platformAdmin';
-import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { getCachedPlatformAdminAccessStatus, resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 import { platformSupabase } from '../lib/platformSupabaseClient';
 
 export function PlatformClinicModulesPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
+  const mountedRef = useRef(true);
+  const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>(() => getCachedPlatformAdminAccessStatus());
   const [clinics, setClinics] = useState<PlatformClinicSummary[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadOverview = async () => {
+  const loadOverview = useCallback(async () => {
     setLoadingClinics(true);
     setError(null);
     try {
@@ -24,46 +26,54 @@ export function PlatformClinicModulesPage() {
     } finally {
       setLoadingClinics(false);
     }
-  };
+  }, []);
+
+  const validateAccess = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setAccessStatus('checking');
+    const resolution = await resolvePlatformAdminAccess();
+    if (!mountedRef.current) return;
+    if (resolution.status === 'error') {
+      console.error('[Platform Admin] modules authorization:', resolution.cause);
+      setAccessStatus('error');
+      return;
+    }
+    setAccessStatus(resolution.status);
+    if (resolution.status === 'allowed') void loadOverview();
+  }, [loadOverview]);
 
   useEffect(() => {
     let active = true;
-    const validate = async () => {
-      try {
-        const allowed = await validatePlatformAdminAccess();
-        if (!active) return;
-        setAuthorized(allowed);
-        if (allowed) void loadOverview();
-      } catch (cause) {
-        console.error('[Platform Admin] modules authorization:', cause);
-        if (active) setAuthorized(false);
-      }
-    };
     void platformSupabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      if (!data.session) setAuthorized(false);
-      else void validate();
+      if (!data.session) setAccessStatus('denied');
+      else void validateAccess();
     });
     const { data: listener } = platformSupabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       if (!session) {
-        setAuthorized(false);
+        setAccessStatus('denied');
         setClinics([]);
-      } else void validate();
+      } else {
+        void validateAccess();
+      }
     });
     return () => {
       active = false;
+      mountedRef.current = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [validateAccess]);
+
 
   const activeClinics = useMemo(() => clinics.filter((clinic) => clinic.lifecycleStatus === 'active').length, [clinics]);
   const suspendedClinics = clinics.length - activeClinics;
   const newestClinic = useMemo(() => [...clinics].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0] ?? null, [clinics]);
 
-  if (authorized === null) return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
+  if (accessStatus === 'checking') return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
+  if (accessStatus === 'error') return <PlatformAdminAccessError onRetry={() => void validateAccess()} />;
 
-  if (!authorized) {
+  if (accessStatus === 'denied') {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
         <div className="w-full max-w-lg rounded-2xl border border-pulse/30 bg-panel p-7">

@@ -5,8 +5,20 @@ let cachedUserId: string | null = null;
 let cachedAllowed: boolean | null = null;
 let pendingValidation: Promise<boolean> | null = null;
 
+export type PlatformAdminAccessStatus = 'checking' | 'allowed' | 'denied' | 'error';
+
+export type PlatformAdminAccessResolution =
+  | { status: 'allowed' }
+  | { status: 'denied' }
+  | { status: 'error'; cause: unknown };
+
 export function getCachedPlatformAdminAccess(): boolean | null {
   return cachedAllowed;
+}
+
+export function getCachedPlatformAdminAccessStatus(): PlatformAdminAccessStatus {
+  if (cachedAllowed === null) return 'checking';
+  return cachedAllowed ? 'allowed' : 'denied';
 }
 
 export async function validatePlatformAdminAccess(): Promise<boolean> {
@@ -47,6 +59,14 @@ export async function validatePlatformAdminAccess(): Promise<boolean> {
     // A sign-in/sign-out event can start a newer validation before this one
     // finishes. Only clear the promise that belongs to this invocation.
     if (pendingValidation === validation) pendingValidation = null;
+  }
+}
+
+export async function resolvePlatformAdminAccess(): Promise<PlatformAdminAccessResolution> {
+  try {
+    return { status: (await validatePlatformAdminAccess()) ? 'allowed' : 'denied' };
+  } catch (cause) {
+    return { status: 'error', cause };
   }
 }
 

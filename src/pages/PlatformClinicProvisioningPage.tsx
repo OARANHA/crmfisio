@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { platformSupabase } from '../lib/platformSupabaseClient';
-import { getCachedPlatformAdminAccess, validatePlatformAdminAccess } from '../lib/platformAdminAccess';
+import { getCachedPlatformAdminAccessStatus, resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 import {
   loadClinicAccessRequests,
   rejectClinicAccessRequest,
@@ -25,7 +26,8 @@ function formatRequestedAt(value: string) {
 }
 
 export function PlatformClinicProvisioningPage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(() => getCachedPlatformAdminAccess());
+  const mountedRef = useRef(true);
+  const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>(() => getCachedPlatformAdminAccessStatus());
   const [busy, setBusy] = useState(false);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null);
@@ -38,7 +40,7 @@ export function PlatformClinicProvisioningPage() {
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
 
-  const refreshQueue = async () => {
+  const refreshQueue = useCallback(async () => {
     setLoadingQueue(true);
     try {
       setRequests(await loadClinicAccessRequests('pending'));
@@ -48,22 +50,26 @@ export function PlatformClinicProvisioningPage() {
     } finally {
       setLoadingQueue(false);
     }
-  };
+  }, []);
+
+  const validateAccess = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setAccessStatus('checking');
+    const resolution = await resolvePlatformAdminAccess();
+    if (!mountedRef.current) return;
+    if (resolution.status === 'error') {
+      console.error('[Platform Admin] provisioning authorization:', resolution.cause);
+      setAccessStatus('error');
+      return;
+    }
+    setAccessStatus(resolution.status);
+    if (resolution.status === 'allowed') void refreshQueue();
+  }, [refreshQueue]);
 
   useEffect(() => {
-    let active = true;
-    void validatePlatformAdminAccess()
-      .then((allowed) => {
-        if (!active) return;
-        setAuthorized(allowed);
-        if (allowed) void refreshQueue();
-      })
-      .catch((error) => {
-        console.error('[Platform Admin] provisioning authorization:', error);
-        if (active) setAuthorized(false);
-      });
-    return () => { active = false; };
-  }, []);
+    void validateAccess();
+    return () => { mountedRef.current = false; };
+  }, [validateAccess]);
 
   const canSubmit = useMemo(() => (
     clinicName.trim().length >= 2 &&
@@ -111,7 +117,7 @@ export function PlatformClinicProvisioningPage() {
 
   const provision = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canSubmit || busy || !authorized) return;
+    if (!canSubmit || busy || accessStatus !== 'allowed') return;
     setBusy(true);
     setMessage(null);
     try {
@@ -149,11 +155,13 @@ export function PlatformClinicProvisioningPage() {
     }
   };
 
-  if (authorized === null) {
+  if (accessStatus === 'checking') {
     return <div className="app-surface min-h-screen grid place-items-center text-fog">Validando privilégios da plataforma…</div>;
   }
 
-  if (!authorized) {
+  if (accessStatus === 'error') return <PlatformAdminAccessError onRetry={() => void validateAccess()} />;
+
+  if (accessStatus === 'denied') {
     return (
       <div className="app-surface min-h-screen grid place-items-center p-5">
         <div className="w-full max-w-lg rounded-[24px] border border-pulse/30 bg-panel p-7 shadow-[0_24px_80px_rgba(3,16,48,0.10)]">
