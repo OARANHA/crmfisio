@@ -31,8 +31,21 @@ PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED
 PC-PTSD-5 Clinician-Assisted V1 #495                              PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 Authorization/config tri-state UX hardening #498                PROD / VERIFIED
 Platform Admin access tri-state hardening #500                  PROD / VERIFIED
+PresentationContext eligibility error hardening #502              PROD / VERIFIED
 ```
 
+
+## Produção — PresentationContext eligibility error hardening #502
+
+**Status:** #502 mergeada por squash em `main@41dcb6addf3d8fc3482766829a6d1e8d2e74d569`; frontend promovido automaticamente e observado em produção em 2026-09-17. Frontend-only: nenhuma migration, RLS/RPC, grant, capability, entitlement ou Edge Function foi alterada.
+
+Durante o P0 de smoke do Consultório / Gestão (#396), foi reproduzido um drift semântico: falha técnica nos RPCs que verificam identidade clínica + `clinical.attend` de owner/admin permanecia fail-closed, porém era apresentada silenciosamente como Gestão-only. A #502 preserva `loading | allowed | denied | error` até o shell, mantém Consultório bloqueado em erro e expõe aviso + retry sem transformar PresentationContext em autorização.
+
+Gates: testes focados `30/30` PASS; full suite `118 arquivos / 646 testes` PASS; typecheck, lint, build e `git diff --check` PASS; PR CI `8/8` workflows PASS. Produção: auto-deploy concluído, bundle contém aviso/fail-closed/retry, `/`, `/platform`, `/agenda` e `/pacientes` HTTP `200`, container com `restarts=0`, `OOM=false` e `0` HTTP 5xx reais.
+
+**P0 #396 permanece aberto:** a correção remove o blocker técnico, mas ainda falta evidência visual/autenticada de owner/admin clinicamente elegível, professional Consultório-only, mobile/light-dark e URL administrativa protegida. Não tratar deploy técnico como validação humana do piloto.
+
+---
 
 ## Produção — Platform Admin access tri-state hardening #500
 

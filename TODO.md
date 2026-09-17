@@ -54,7 +54,7 @@ Não iniciar uma tela isolada quando a decisão depende de entitlement, configur
 - [x] Registrar prova read-only pós-finalização do smoke real do #394. Fechado em 2026-09-15: o único Encounter Record de produção está `finalized`, com `finalized_at`, exatamente uma Evolution ativa vinculada à mesma sessão/tenant/paciente/profissional, appointment `finalizado`, exatamente um lançamento financeiro coerente e zero `appointment_financial_exception`.
 - [x] Provar em produção o runtime `CHARGE` e `WAIVE` do #389 com autenticação real, idempotência e rollback sem resíduos. A exceção real `package_exhausted` continua pendente apenas como decisão econômica da clínica.
 - [x] Reconciliar o verifier #388 com #389. Fechado em 2026-09-15: o verifier #388 aceita o estado histórico pré-#389 e exige a composição auditada quando #389 existe; o harness PostgreSQL 16 prova ambos os estados e os controles negativos.
-- [ ] Fazer smoke visual e uso real suficiente do Consultório / Gestão (#396), especialmente owner/admin elegível, professional clinical-only, mobile e URL administrativa protegida.
+- [ ] Fazer smoke visual e uso real suficiente do Consultório / Gestão (#396), especialmente owner/admin elegível, professional clinical-only, mobile e URL administrativa protegida. O blocker técnico de erro de elegibilidade silenciosamente colapsado para Gestão-only foi fechado pela #502 e verificado em produção; a evidência visual/autenticada humana continua pendente.
 - [x] Consolidar observabilidade mínima dos fluxos de beta (#473), com operability check read-only e ausência de falha crítica no gate observado.
 
 **Não há rollout pendente de #399/#400 neste snapshot. Não reaplicar migrations nem repetir o repair apenas por documentação antiga.**
@@ -294,6 +294,7 @@ Somente depois das foundations anteriores:
 - [ ] Limpar consumidores residuais de `fisio_id`/nomenclaturas legadas onde houver alternativa segura; `professional_id` continua canônico.
 - [x] #498 — resolver o issue tri-state capability/configuration no domínio clínico/Nexus e na navegação por entitlement; `loading/allowed/denied/error` permanecem distintos, falha técnica não vira negação silenciosa, entitlement desconhecido não é apresentado como liberado e boundaries server-side permanecem inalterados. Rollout frontend observado em produção em 2026-09-16.
 - [x] #500 — preservar tri-state no frontend Platform Admin: `checking/allowed/denied/error`, com falha técnica fail-closed exibida como verificação indisponível/retry em vez de falsa negação; sem mudança de autoridade server-side. Produção verificada em 2026-09-16.
+- [x] #502 — preservar tri-state da elegibilidade clínica do PresentationContext para owner/admin; erro técnico mantém Consultório fail-closed, informa falha e oferece retry em vez de aparentar negação clínica. Produção verificada em 2026-09-17; P0 visual/autenticado #396 permanece aberto.
 - [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos; próximos achados devem ser reproduzidos antes de nova slice.
 - [ ] Não liberar Nexus por role, especialidade isolada, PresentationContext ou simples relevância de instrumento.
 
