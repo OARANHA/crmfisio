@@ -61,6 +61,13 @@ BEGIN
   IF v_effective IS NOT TRUE THEN RAISE EXCEPTION 'legacy finance fallback changed'; END IF;
   SELECT public.clinic_entitlement_allowed(v_clinic_b,'nexus.access') INTO v_effective;
   IF v_effective IS NOT FALSE THEN RAISE EXCEPTION 'legacy nexus fail-closed changed'; END IF;
+  PERFORM set_config('app.clinic_id', v_clinic_b::text, true);
+  IF public.current_nexus_entitlement_allowed() IS NOT FALSE THEN
+    RAISE EXCEPTION 'dedicated nexus helper must remain fail-closed without plan/override';
+  END IF;
+  IF public.assessment_custom_authoring_allowed(v_clinic_b) IS NOT FALSE THEN
+    RAISE EXCEPTION 'assessment authoring must remain fail-closed without plan/override';
+  END IF;
 
   INSERT INTO public.platform_clinic_entitlements(
     clinic_id,entitlement_key,enabled,source,updated_by
@@ -79,7 +86,7 @@ BEGIN
 
   v_version2 := public.platform_publish_plan_version(
     v_plan, 'Pilot 2', 'Segunda versão',
-    '{"nexus.access":false,"finance.access":false,"crm.access":true,"reports.access":true,"assessments.custom":false,"whatsapp.access":true}'::jsonb
+    '{"nexus.access":true,"finance.access":false,"crm.access":true,"reports.access":true,"assessments.custom":true,"whatsapp.access":true}'::jsonb
   );
   PERFORM public.platform_assign_clinic_plan(v_clinic_a, v_version2, 'active', now(), NULL, 'upgrade');
 
@@ -90,6 +97,54 @@ BEGIN
   END IF;
   SELECT public.clinic_entitlement_allowed(v_clinic_a,'finance.access') INTO v_effective;
   IF v_effective IS NOT FALSE THEN RAISE EXCEPTION 'new plan version baseline not effective'; END IF;
+
+  PERFORM set_config('app.clinic_id', v_clinic_a::text, true);
+  IF public.current_nexus_entitlement_allowed() IS NOT TRUE THEN
+    RAISE EXCEPTION 'nexus plan baseline should allow dedicated entitlement helper';
+  END IF;
+  INSERT INTO public.platform_clinic_entitlements(
+    clinic_id,entitlement_key,enabled,source,updated_by
+  ) VALUES (v_clinic_a,'nexus.access',false,'manual',v_admin);
+  IF public.current_nexus_entitlement_allowed() IS NOT FALSE THEN
+    RAISE EXCEPTION 'nexus explicit deny override must win plan baseline';
+  END IF;
+  IF NOT public.platform_reset_clinic_entitlement(v_clinic_a,'nexus.access') THEN
+    RAISE EXCEPTION 'nexus override reset should succeed';
+  END IF;
+  IF public.current_nexus_entitlement_allowed() IS NOT TRUE THEN
+    RAISE EXCEPTION 'nexus reset must return to plan baseline';
+  END IF;
+  IF pg_get_functiondef('public.current_nexus_entitlement_allowed()'::regprocedure)
+       NOT ILIKE '%platform_clinic_entitlements%'
+     OR pg_get_functiondef('public.current_nexus_entitlement_allowed()'::regprocedure)
+       NOT ILIKE '%entitlement_key = ''nexus.access''%'
+     OR pg_get_functiondef('public.current_nexus_entitlement_allowed()'::regprocedure)
+       NOT ILIKE '%enabled IS TRUE%' THEN
+    RAISE EXCEPTION 'nexus dedicated fail-closed structural contract changed';
+  END IF;
+
+  -- assessments.custom keeps its dedicated fail-closed authoring boundary while
+  -- accepting an explicit immutable plan baseline. It must not use the generic
+  -- rollout predicate, because no-plan authoring remains denied.
+  IF public.assessment_custom_authoring_allowed(v_clinic_a) IS NOT TRUE THEN
+    RAISE EXCEPTION 'assessment plan baseline should allow dedicated authoring predicate';
+  END IF;
+  INSERT INTO public.platform_clinic_entitlements(
+    clinic_id,entitlement_key,enabled,source,updated_by
+  ) VALUES (v_clinic_a,'assessments.custom',false,'manual',v_admin);
+  IF public.assessment_custom_authoring_allowed(v_clinic_a) IS NOT FALSE THEN
+    RAISE EXCEPTION 'assessment explicit deny override must win plan baseline';
+  END IF;
+  IF NOT public.platform_reset_clinic_entitlement(v_clinic_a,'assessments.custom') THEN
+    RAISE EXCEPTION 'assessment override reset should succeed';
+  END IF;
+  IF public.assessment_custom_authoring_allowed(v_clinic_a) IS NOT TRUE THEN
+    RAISE EXCEPTION 'assessment reset must return to plan baseline';
+  END IF;
+  IF pg_get_functiondef('public.assessment_custom_authoring_allowed(uuid)'::regprocedure)
+       ILIKE '%clinic_entitlement_allowed%' THEN
+    RAISE EXCEPTION 'assessment authoring must preserve dedicated fail-closed predicate';
+  END IF;
 
   -- Published plan snapshots are immutable.
   v_blocked := false;

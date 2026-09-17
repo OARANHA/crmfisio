@@ -663,7 +663,41 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT public.clinic_entitlement_allowed(public.current_clinic_id(), 'nexus.access')
+  -- Nexus keeps its dedicated fail-closed product boundary. The commercial plan
+  -- may grant the product only when no explicit clinic override exists; role,
+  -- capability and verified medical identity remain independent downstream gates.
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM public.platform_clinic_entitlements e
+      WHERE e.clinic_id = public.current_clinic_id()
+        AND e.entitlement_key = 'nexus.access'
+    ) THEN EXISTS (
+      SELECT 1
+      FROM public.platform_clinic_entitlements e
+      WHERE e.clinic_id = public.current_clinic_id()
+        AND e.entitlement_key = 'nexus.access'
+        AND e.enabled IS TRUE
+        AND (e.starts_at IS NULL OR e.starts_at <= now())
+        AND (e.expires_at IS NULL OR e.expires_at > now())
+    )
+    ELSE EXISTS (
+      SELECT 1
+      FROM public.clinic_plan_assignments a
+      JOIN public.platform_plan_versions pv
+        ON pv.id = a.plan_version_id
+       AND pv.published_at IS NOT NULL
+      JOIN public.platform_plan_entitlements pe
+        ON pe.plan_version_id = pv.id
+       AND pe.entitlement_key = 'nexus.access'
+       AND pe.enabled IS TRUE
+      WHERE a.clinic_id = public.current_clinic_id()
+        AND a.ends_at IS NULL
+        AND a.starts_at <= now()
+        AND a.status IN ('active','trialing')
+        AND (a.status <> 'trialing' OR (a.trial_ends_at IS NOT NULL AND a.trial_ends_at > now()))
+    )
+  END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.assessment_custom_authoring_allowed(p_clinic_id uuid)
@@ -673,7 +707,42 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT public.clinic_entitlement_allowed(p_clinic_id, 'assessments.custom')
+  -- Preserve the dedicated fail-closed authoring boundary. An explicit override
+  -- always wins, even when currently ineffective; only absence of an override
+  -- permits the immutable active/trial plan baseline to grant authoring. There
+  -- is deliberately no legacy rollout fallback for assessments.custom.
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM public.platform_clinic_entitlements e
+      WHERE e.clinic_id = p_clinic_id
+        AND e.entitlement_key = 'assessments.custom'
+    ) THEN EXISTS (
+      SELECT 1
+      FROM public.platform_clinic_entitlements e
+      WHERE e.clinic_id = p_clinic_id
+        AND e.entitlement_key = 'assessments.custom'
+        AND e.enabled = true
+        AND (e.starts_at IS NULL OR e.starts_at <= now())
+        AND (e.expires_at IS NULL OR e.expires_at > now())
+    )
+    ELSE EXISTS (
+      SELECT 1
+      FROM public.clinic_plan_assignments a
+      JOIN public.platform_plan_versions pv
+        ON pv.id = a.plan_version_id
+       AND pv.published_at IS NOT NULL
+      JOIN public.platform_plan_entitlements pe
+        ON pe.plan_version_id = pv.id
+       AND pe.entitlement_key = 'assessments.custom'
+       AND pe.enabled = true
+      WHERE a.clinic_id = p_clinic_id
+        AND a.ends_at IS NULL
+        AND a.starts_at <= now()
+        AND a.status IN ('active','trialing')
+        AND (a.status <> 'trialing' OR (a.trial_ends_at IS NOT NULL AND a.trial_ends_at > now()))
+    )
+  END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.current_clinic_entitlement_state(p_entitlement_key text)
