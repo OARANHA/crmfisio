@@ -21,23 +21,6 @@ export interface AutomationSettings {
   updatedAt: string;
 }
 
-export interface AutomationRun {
-  id: string;
-  startedAt: string;
-  finishedAt: string | null;
-  queuedConfirmations: number;
-  queuedNps: number;
-  queuedWaitlistOffers: number;
-  queuedReactivations: number;
-  expiredWaitlistOffers: number;
-  workerProcessed: number;
-  workerSent: number;
-  workerFailed: number;
-  clinicsProcessed: number;
-  status: 'queued' | 'completed' | 'failed';
-  errorMessage: string | null;
-}
-
 const mapSettings = (row: Record<string, unknown>): AutomationSettings => ({
   clinicId: String(row.clinic_id),
   confirmationsEnabled: Boolean(row.confirmations_enabled),
@@ -57,23 +40,6 @@ const mapSettings = (row: Record<string, unknown>): AutomationSettings => ({
   timezone: String(row.timezone ?? 'America/Sao_Paulo'),
   active: Boolean(row.active),
   updatedAt: String(row.updated_at ?? ''),
-});
-
-const mapRun = (row: Record<string, unknown>): AutomationRun => ({
-  id: String(row.id),
-  startedAt: String(row.started_at),
-  finishedAt: row.finished_at ? String(row.finished_at) : null,
-  queuedConfirmations: Number(row.queued_confirmations ?? 0),
-  queuedNps: Number(row.queued_nps ?? 0),
-  queuedWaitlistOffers: Number(row.queued_waitlist_offers ?? 0),
-  queuedReactivations: Number(row.queued_reactivations ?? 0),
-  expiredWaitlistOffers: Number(row.expired_waitlist_offers ?? 0),
-  workerProcessed: Number(row.worker_processed ?? 0),
-  workerSent: Number(row.worker_sent ?? 0),
-  workerFailed: Number(row.worker_failed ?? 0),
-  clinicsProcessed: Number(row.clinics_processed ?? 0),
-  status: row.status as AutomationRun['status'],
-  errorMessage: row.error_message ? String(row.error_message) : null,
 });
 
 export async function loadAutomationSettings() {
@@ -103,10 +69,4 @@ export async function saveAutomationSettings(settings: AutomationSettings) {
   };
   const { error } = await supabase.from('automation_settings' as never).update(payload as never).eq('clinic_id', settings.clinicId);
   if (error) throw error;
-}
-
-export async function loadAutomationRuns(limit = 8) {
-  const { data, error } = await supabase.from('automation_runs' as never).select('*').order('started_at', { ascending: false }).limit(limit);
-  if (error) throw error;
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(mapRun);
 }

@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { loadAutomationRuns, loadAutomationSettings, saveAutomationSettings, type AutomationRun, type AutomationSettings } from '../../lib/automation';
+import { loadAutomationSettings, saveAutomationSettings, type AutomationSettings } from '../../lib/automation';
 import { Btn, Card, CardHead, Chip } from '../../lib/ui';
 
 export function AutomationControlPanel({ onToast }: { onToast: (message: string, tone?: 'ok' | 'warn' | 'info') => void }) {
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
-  const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextSettings, nextRuns] = await Promise.all([loadAutomationSettings(), loadAutomationRuns()]);
+      const nextSettings = await loadAutomationSettings();
       setSettings(nextSettings);
-      setRuns(nextRuns);
     } catch (error) {
       console.error('[MedicsPro] automação:', error);
-      onToast('Não foi possível carregar a saúde das automações.', 'warn');
+      onToast('Não foi possível carregar a configuração da automação.', 'warn');
     } finally {
       setLoading(false);
     }
@@ -41,14 +37,12 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
     }
   };
 
-  const last = runs[0];
-  const lastTone = !last ? 'border-line text-fog' : last.status === 'completed' ? 'border-mint/45 text-mint' : last.status === 'failed' ? 'border-pulse/45 text-pulse' : 'border-amber/45 text-amber';
 
   return <Card>
     <CardHead
       title="Automação operacional"
       sub="confirmações, NPS, recuperação de vagas e continuidade do tratamento"
-      right={<div className="flex items-center gap-2"><Chip className={lastTone}>{!last ? 'sem execução' : last.status === 'completed' ? 'saudável' : last.status === 'failed' ? 'falha' : 'executando'}</Chip><Btn variant="ghost" className="!px-3 !py-1.5 !text-[11px]" disabled={loading} onClick={() => void refresh()}>Atualizar</Btn></div>}
+      right={<div className="flex items-center gap-2"><Chip className={!settings ? 'border-line text-fog' : settings.active ? 'border-mint/45 text-mint' : 'border-amber/45 text-amber'}>{loading ? 'carregando' : !settings ? 'configuração indisponível' : settings.active ? 'automação ativa' : 'automação pausada'}</Chip><Btn variant="ghost" className="!px-3 !py-1.5 !text-[11px]" disabled={loading} onClick={() => void refresh()}>Atualizar</Btn></div>}
     />
     <div className="p-5 space-y-4">
       {!settings && !loading && <p className="font-mono text-[11px] text-fog">A configuração será disponibilizada após a migration da automação.</p>}
@@ -99,16 +93,9 @@ export function AutomationControlPanel({ onToast }: { onToast: (message: string,
       </>}
 
       <div className="border-t border-line pt-4">
-        <div className="flex items-center justify-between mb-2"><span className="font-display font-semibold text-[12px]">Últimas execuções</span>{last && <span className="font-mono text-[10px] text-fog">última {formatDistanceToNow(new Date(last.startedAt), { addSuffix: true, locale: ptBR })}</span>}</div>
-        <div className="space-y-2">
-          {runs.length === 0 && <p className="font-mono text-[10.5px] text-fog">Nenhuma execução registrada ainda.</p>}
-          {runs.slice(0, 5).map((run) => <div key={run.id} className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-2 items-center border border-line px-3 py-2 text-[10.5px]">
-            <span className={`w-2 h-2 rounded-full ${run.status === 'completed' ? 'bg-mint' : run.status === 'failed' ? 'bg-pulse' : 'bg-amber'}`} />
-            <span className="font-mono text-fog">{new Date(run.startedAt).toLocaleString('pt-BR')} · {run.queuedConfirmations} confirmação(ões) · {run.queuedNps} NPS · {run.queuedWaitlistOffers} vaga(s) · {run.queuedReactivations} reativação(ões) · {run.workerSent}/{run.workerProcessed} enviados</span>
-            <span className="font-mono text-fog">{run.workerFailed ? `${run.workerFailed} falha(s)` : run.status}</span>
-            {run.errorMessage && <span className="md:col-start-2 md:col-span-2 text-pulse">{run.errorMessage}</span>}
-          </div>)}
-        </div>
+        <p className="font-mono text-[10.5px] leading-relaxed text-fog">
+          Esta tela configura somente as regras da clínica. A telemetria global das execuções é restrita ao Platform Admin e não é lida pelo contexto tenant.
+        </p>
       </div>
     </div>
   </Card>;
