@@ -38,7 +38,7 @@ function modeOf(item: PlatformClinicEntitlement): EntitlementMode {
 function modeLabel(item: PlatformClinicEntitlement): string {
   if (item.configured) return item.enabled ? 'Override · liberado' : 'Override · bloqueado';
   if (item.planConfigured) return item.planEnabled ? 'Plano · liberado' : 'Plano · bloqueado';
-  return item.key === 'nexus.access' ? 'Sem baseline · bloqueado' : 'Rollout herdado';
+  return item.effective ? 'Rollout herdado' : 'Sem baseline · bloqueado';
 }
 
 export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = false, clinicId, refreshToken = 0, onAuditChanged }: Props) {
@@ -79,7 +79,7 @@ export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = fals
     if (nextMode === 'inherited') {
       const fallback = item.planConfigured
         ? `a baseline do plano ${item.planKey ?? ''} v${item.planVersion ?? ''}`
-        : item.key === 'nexus.access' ? 'o estado sem baseline, que permanece bloqueado' : 'o rollout legado';
+        : item.effective ? 'o rollout legado' : 'o estado sem baseline, que permanece bloqueado';
       const message = `Remover o override explícito de ${ENTITLEMENT_META[item.key].title} para ${selectedClinic?.name ?? 'esta clínica'} e voltar para ${fallback}?`;
       if (!window.confirm(message)) return;
     }
@@ -128,9 +128,9 @@ export function PlatformClinicEntitlementsPanel({ clinics, clinicsLoading = fals
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-display text-[13.5px] font-semibold">{meta.title}</p><span className={`rounded-full border px-2 py-0.5 text-[9.5px] font-semibold ${statusClass}`}>{modeLabel(item)}</span></div><p className="mt-1.5 text-[10.5px] leading-relaxed text-fog">{meta.description}</p></div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-1.5" role="group" aria-label={`Estado de ${meta.title}`}>
-            {([['inherited', item.planConfigured ? 'Usar plano' : item.key === 'nexus.access' ? 'Sem override' : 'Herdar rollout'], ['enabled', 'Override on'], ['disabled', 'Override off']] as Array<[EntitlementMode, string]>).map(([candidate, label]) => <button key={candidate} type="button" disabled={busyKey !== null || loading} onClick={() => void setMode(item, candidate)} className={`rounded-lg border px-2 py-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-50 ${mode === candidate ? candidate === 'enabled' ? 'border-mint/45 bg-mint/[0.08] text-mint' : candidate === 'disabled' ? 'border-amber/45 bg-amber/[0.08] text-amber' : 'border-aqua/40 bg-aqua/[0.07] text-aqua' : 'border-line bg-panel/40 text-fog hover:text-paper'}`} aria-pressed={mode === candidate}>{label}</button>)}
+            {([['inherited', item.planConfigured ? 'Usar plano' : item.effective ? 'Herdar rollout' : 'Sem override'], ['enabled', 'Override on'], ['disabled', 'Override off']] as Array<[EntitlementMode, string]>).map(([candidate, label]) => <button key={candidate} type="button" disabled={busyKey !== null || loading} onClick={() => void setMode(item, candidate)} className={`rounded-lg border px-2 py-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-50 ${mode === candidate ? candidate === 'enabled' ? 'border-mint/45 bg-mint/[0.08] text-mint' : candidate === 'disabled' ? 'border-amber/45 bg-amber/[0.08] text-amber' : 'border-aqua/40 bg-aqua/[0.07] text-aqua' : 'border-line bg-panel/40 text-fog hover:text-paper'}`} aria-pressed={mode === candidate}>{label}</button>)}
           </div>
-          <p className="mt-3 border-t border-line/50 pt-2 text-[9.5px] text-fog/65">{item.configured ? `Override: ${item.source ?? 'manual'}` : item.planConfigured ? `Baseline: ${item.planKey} v${item.planVersion}` : 'Baseline: rollout legado'} · efetivo {item.effective ? 'liberado' : 'bloqueado'}{item.updatedAt ? ` · atualizado ${new Date(item.updatedAt).toLocaleString('pt-BR')}` : ''}</p>
+          <p className="mt-3 border-t border-line/50 pt-2 text-[9.5px] text-fog/65">{item.configured ? `Override: ${item.source ?? 'manual'}` : item.planConfigured ? `Baseline: ${item.planKey} v${item.planVersion}` : item.effective ? 'Baseline: rollout legado' : 'Baseline: sem baseline'} · efetivo {item.effective ? 'liberado' : 'bloqueado'}{item.updatedAt ? ` · atualizado ${new Date(item.updatedAt).toLocaleString('pt-BR')}` : ''}</p>
         </article>;
       })}
       {!loading && clinicId && entitlements.length === 0 && <div className="lg:col-span-2 2xl:col-span-3 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[11.5px] text-fog">Nenhum entitlement retornado para esta clínica.</div>}

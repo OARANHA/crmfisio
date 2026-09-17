@@ -7,6 +7,7 @@ import {
   loadPlatformPlans,
   publishPlatformPlanVersion,
   setPlatformPlanActive,
+  PlatformPlanCatalogUnavailableError,
   type PlatformClinicEntitlementKey,
   type PlatformClinicPlanAssignment,
   type PlatformClinicPlanStatus,
@@ -48,6 +49,7 @@ function formatDate(value: string | null) {
 export function PlatformClinicPlanPanel({ clinics, clinicId, onClinicIdChange, onAssignmentChanged }: Props) {
   const [plans, setPlans] = useState<PlatformPlanSummary[]>([]);
   const [assignment, setAssignment] = useState<PlatformClinicPlanAssignment | null>(null);
+  const [catalogAvailable, setCatalogAvailable] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,23 +66,43 @@ export function PlatformClinicPlanPanel({ clinics, clinicId, onClinicIdChange, o
   const activePlans = useMemo(() => plans.filter((plan) => plan.active), [plans]);
   const selectedClinic = useMemo(() => clinics.find((clinic) => clinic.id === clinicId) ?? null, [clinics, clinicId]);
 
-  const refreshPlans = useCallback(async () => {
-    const next = await loadPlatformPlans();
-    setPlans(next);
-    setSelectedVersionId((current) => next.some((plan) => plan.active && plan.versionId === current)
-      ? current
-      : next.find((plan) => plan.active)?.versionId || '');
+  const refreshPlans = useCallback(async (): Promise<boolean> => {
+    try {
+      const next = await loadPlatformPlans();
+      setPlans(next);
+      setSelectedVersionId((current) => next.some((plan) => plan.active && plan.versionId === current)
+        ? current
+        : next.find((plan) => plan.active)?.versionId || '');
+      return true;
+    } catch (cause) {
+      if (cause instanceof PlatformPlanCatalogUnavailableError) {
+        setPlans([]);
+        setSelectedVersionId('');
+        return false;
+      }
+      throw cause;
+    }
   }, []);
 
-  const refreshAssignment = useCallback(async () => {
-    if (!clinicId) { setAssignment(null); return; }
-    setAssignment(await loadPlatformClinicPlanAssignment(clinicId));
+  const refreshAssignment = useCallback(async (): Promise<boolean> => {
+    if (!clinicId) { setAssignment(null); return true; }
+    try {
+      setAssignment(await loadPlatformClinicPlanAssignment(clinicId));
+      return true;
+    } catch (cause) {
+      if (cause instanceof PlatformPlanCatalogUnavailableError) {
+        setAssignment(null);
+        return false;
+      }
+      throw cause;
+    }
   }, [clinicId]);
 
   const refresh = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setCatalogAvailable(null);
     try {
-      await Promise.all([refreshPlans(), refreshAssignment()]);
+      const [plansAvailable, assignmentAvailable] = await Promise.all([refreshPlans(), refreshAssignment()]);
+      setCatalogAvailable(plansAvailable && assignmentAvailable);
     } catch (cause) {
       console.error('[Platform Admin] plan catalog:', cause);
       setError('Não foi possível carregar o catálogo de planos.');
@@ -180,8 +202,10 @@ export function PlatformClinicPlanPanel({ clinics, clinicId, onClinicIdChange, o
     </div>
 
     {error && <div className="mt-4 rounded-xl border border-amber/35 bg-amber/[0.05] p-3 text-[12px] text-amber">{error}</div>}
+    {catalogAvailable === null && !error && <div className="mt-4 rounded-2xl border border-line bg-deep/35 px-4 py-4 text-[11px] text-fog">Verificando contrato do Plan Catalog…</div>}
+    {catalogAvailable === false && <div className="mt-4 rounded-2xl border border-aqua/25 bg-aqua/[0.05] px-4 py-4 text-[11px] leading-relaxed text-fog"><strong className="text-paper">Catálogo aguardando promoção do backend.</strong> Os entitlements existentes continuam disponíveis abaixo pelo contrato anterior, mas criar, versionar ou atribuir planos permanece desabilitado até a migration do Control Plane estar presente.</div>}
 
-    <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+    {catalogAvailable === true && <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
       <div className="rounded-2xl border border-line/70 bg-deep/35 p-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-aqua">Assignment atual</p>
         {assignment ? <div className="mt-3 space-y-3">
@@ -252,7 +276,7 @@ export function PlatformClinicPlanPanel({ clinics, clinicId, onClinicIdChange, o
           </div>
         </form>
       </div>
-    </div>
+    </div>}
 
     <div className="mt-4 rounded-xl border border-aqua/20 bg-aqua/[0.04] px-4 py-3 text-[10.5px] leading-relaxed text-fog"><strong className="text-paper">Boundary:</strong> plano/entitlement define produto disponível; não concede role, capability, identidade clínica nem acesso a prontuário.</div>
   </section>;

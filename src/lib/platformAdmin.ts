@@ -108,6 +108,26 @@ export type PlatformAuditEntry = {
 
 const db = platformSupabase as any;
 
+export class PlatformPlanCatalogUnavailableError extends Error {
+  constructor() {
+    super('Plan Catalog backend ainda não disponível');
+    this.name = 'PlatformPlanCatalogUnavailableError';
+  }
+}
+
+function isMissingRpcError(error: any, rpcName: string): boolean {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '');
+  return code === 'PGRST202'
+    || (code === '42883' && message.includes(rpcName))
+    || message.includes(`Could not find the function public.${rpcName}`);
+}
+
+function assertPlanCatalogRpcAvailable(error: any, rpcName: string): never {
+  if (isMissingRpcError(error, rpcName)) throw new PlatformPlanCatalogUnavailableError();
+  throw error;
+}
+
 export async function isPlatformAdmin(): Promise<boolean> {
   const { data, error } = await db.rpc('is_platform_admin');
   if (error) throw error;
@@ -199,7 +219,7 @@ export async function reactivatePlatformClinic(clinicId: string, reason: string)
 
 export async function loadPlatformPlans(): Promise<PlatformPlanSummary[]> {
   const { data, error } = await db.rpc('platform_list_plans');
-  if (error) throw error;
+  if (error) assertPlanCatalogRpcAvailable(error, 'platform_list_plans');
   return (data ?? []).map((row: any) => ({
     planId: String(row.plan_id),
     planKey: String(row.plan_key),
@@ -252,7 +272,7 @@ export async function setPlatformPlanActive(planId: string, active: boolean): Pr
 
 export async function loadPlatformClinicPlanAssignment(clinicId: string): Promise<PlatformClinicPlanAssignment | null> {
   const { data, error } = await db.rpc('platform_get_clinic_plan_assignment', { p_clinic_id: clinicId });
-  if (error) throw error;
+  if (error) assertPlanCatalogRpcAvailable(error, 'platform_get_clinic_plan_assignment');
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return null;
   return {
@@ -315,12 +335,50 @@ function mapClinicEntitlement(row: any): PlatformClinicEntitlement {
   };
 }
 
+function mapLegacyClinicEntitlement(row: any): PlatformClinicEntitlement {
+  const key = row.entitlement_key as PlatformClinicEntitlementKey;
+  const configured = Boolean(row.configured);
+  const enabled = Boolean(row.enabled);
+  const startsAt = row.starts_at ? String(row.starts_at) : null;
+  const expiresAt = row.expires_at ? String(row.expires_at) : null;
+  const now = Date.now();
+  const inEffectiveWindow = (!startsAt || new Date(startsAt).getTime() <= now)
+    && (!expiresAt || new Date(expiresAt).getTime() > now);
+  const rolloutAllowed = key === 'finance.access'
+    || key === 'crm.access'
+    || key === 'reports.access'
+    || key === 'whatsapp.access';
+
+  return {
+    key,
+    configured,
+    enabled,
+    source: row.source ? row.source as PlatformClinicEntitlementSource : null,
+    startsAt,
+    expiresAt,
+    updatedAt: row.updated_at ? String(row.updated_at) : null,
+    planConfigured: false,
+    planEnabled: false,
+    planKey: null,
+    planVersion: null,
+    effective: configured ? enabled && inEffectiveWindow : rolloutAllowed,
+    effectiveSource: configured ? 'override' : 'rollout',
+  };
+}
+
 export async function loadPlatformClinicEntitlements(clinicId: string): Promise<PlatformClinicEntitlement[]> {
-  const { data, error } = await db.rpc('platform_get_clinic_entitlements_v3', {
+  const current = await db.rpc('platform_get_clinic_entitlements_v3', {
     p_clinic_id: clinicId,
   });
-  if (error) throw error;
-  return (data ?? []).map(mapClinicEntitlement);
+  if (!current.error) return (current.data ?? []).map(mapClinicEntitlement);
+  if (!isMissingRpcError(current.error, 'platform_get_clinic_entitlements_v3')) throw current.error;
+
+  // Rolling deploy compatibility: main may auto-deploy the frontend before the
+  // manual Control Plane migration. Preserve the previous entitlement UI via V2
+  // only for an explicitly missing V3 RPC; authorization/network errors still fail.
+  const legacy = await db.rpc('platform_get_clinic_entitlements_v2', { p_clinic_id: clinicId });
+  if (legacy.error) throw legacy.error;
+  return (legacy.data ?? []).map(mapLegacyClinicEntitlement);
 }
 
 export async function setPlatformClinicEntitlement(input: {
