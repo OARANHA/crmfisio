@@ -30,8 +30,23 @@ CAGE Clinician-Assisted V1 #488                                 PROD / VERIFIED 
 PCL-5 Clinician-Assisted V1 #491                                 PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 PC-PTSD-5 Clinician-Assisted V1 #495                              PROD / VERIFIED / TENANT ENABLEMENT REQUIRED
 Authorization/config tri-state UX hardening #498                PROD / VERIFIED
+Platform Admin access tri-state hardening #500                  PROD / VERIFIED
 ```
 
+
+## Produção — Platform Admin access tri-state hardening #500
+
+**Status:** #500 mergeada por squash em `main@a5fd2d8afe198bf3386add5e25fcfeb454b72d54`; frontend promovido automaticamente e observado em produção em 2026-09-16. Nenhuma migration, RLS/RPC, grant, capability, entitlement ou Edge Function foi alterada.
+
+A slice fecha a auditoria residual do frontend Platform Admin sem ampliar autoridade: o acesso agora preserva explicitamente `checking / allowed / denied / error`. Falha técnica de sessão/RPC/rede permanece fail-closed, mas é apresentada como **verificação indisponível** com retry, em vez de ser convertida falsamente em `Acesso negado`. A decisão efetiva continua server-side por `isPlatformAdmin()`; o browser não escolhe `clinic_id`, não promove usuário e não recebe bypass clínico/financeiro.
+
+Gates locais antes do merge: testes focados `6/6` PASS, typecheck, lint, build e `git diff --check` PASS. PR #500 fechou com os workflows aplicáveis verdes e sem threads/reviews pendentes. Pós-merge, `origin/main` e o lab convergiram para o mesmo SHA.
+
+Produção: os 10 arquivos alterados pela #500 foram comprovados byte a byte contra a `main`; bundle ativo contém o tri-state e a cópia de erro; `/`, `/platform`, `/agenda` e `/pacientes` retornaram HTTP `200`; container novo observado com `restarts=0`, `OOM=false` e zero HTTP 5xx desde o start. O auto-update do Portainer concluiu sozinho, portanto nenhum deploy manual foi necessário.
+
+**Próximo passo seguro:** fechar o P0 de smoke visual/uso real do Consultório / Gestão (#396), especialmente owner/admin clinicamente elegível, professional clinical-only, mobile e URL administrativa protegida. Depois, retomar o Control Plane mínimo sem reabrir #500 sem evidência de regressão.
+
+---
 
 ## Produção — Authorization/config tri-state UX hardening #498
 
