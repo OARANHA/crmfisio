@@ -1,6 +1,6 @@
 # MedicsPro — Product Roadmap
 
-**Estado em 2026-09-15**
+**Estado em 2026-09-17**
 
 ## North Star
 
@@ -168,7 +168,7 @@ Antes de ampliar o piloto ou abrir várias foundations novas:
 - **fechado em 2026-09-15:** comprovação read-only pós-finalização do smoke real #394 observada em produção, sem leitura de conteúdo clínico: Record finalizado + Evolution única/ativa + appointment finalizado + efeito financeiro unitário/coerente + zero exceção financeira;
 - registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
 - **fechado em 2026-09-15:** o verifier #388 foi reconciliado com #389 e o harness PostgreSQL 16 prova o estado pré-#389 e a composição efetiva pós-#389 sem relaxar a imutabilidade da fila;
-- fazer smoke visual/uso real do Consultório/Gestão #396;
+- **fechado em 2026-09-17:** smoke visual/autenticado do Consultório/Gestão #396 em owner/admin elegível + professional clinical-only, desktop/mobile e light/dark, com privacy boundary de URL direta e sem overflow após #504/#505;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
 
 Não há rollout pendente de #399/#400 neste snapshot.

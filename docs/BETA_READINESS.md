@@ -8,7 +8,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 - 🟡 **YELLOW** — foundation existe, mas ainda depende de smoke, UX real, observabilidade ou validação operacional antes de ampliação.
 - 🔴 **RED** — blocker conhecido.
 
-## Estado em 2026-09-15
+## Estado em 2026-09-17
 
 | Gate | Status | Evidência / próxima ação |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Documento vivo para acompanhar a preparação do MedicsPro para uso por profissi
 | Resolução de exceção financeira | 🟢 estrutural | #389: owner/admin `CHARGE|WAIVE`; financeiro `CHARGE`; recep/professional sem resolução. |
 | Verifier #388 × #389 | 🟢 técnico | Em 2026-09-15 o harness PostgreSQL 16 provou #388 antes e depois de #389; o mesmo verifier permanece verde na composição efetiva e os controles negativos continuam falhando como esperado. |
 | Assessment Engine | 🟢 estrutural | Foundation de avaliações estruturadas, drafts/versionamento e integração ao atendimento já existe. |
-| Consultório / Gestão | 🟢 estrutural | #396 entrega privacy/presentation shell sem alterar autorização. |
+| Consultório / Gestão | 🟢 operacional | #396 preserva presentation != authorization; smoke autenticado em produção fechado em 2026-09-17 para owner/admin elegível + professional clinical-only, desktop/mobile light-dark e URL administrativa protegida. |
 | UX / design em uso real | 🟡 | Foundations visuais existem, mas ainda falta evidência suficiente de smoke visual e uso por profissionais reais para chamar UX de validada. |
 | Smoke pós-finalização #394 | 🟢 operacional/read-only | Em 2026-09-15, produção confirmou Record `finalized`, `finalized_at`, Evolution única/ativa e vinculada, appointment `finalizado`, efeito financeiro unitário/coerente e zero exceção financeira. |
 | Smoke CHARGE/WAIVE #389 | 🟢 runtime / 🟡 negócio | CHARGE e WAIVE foram exercidos em produção com autenticação real dentro de transações revertidas, provando idempotência e efeitos sem resíduos. A disposição da exceção real continua decisão econômica. |
@@ -176,8 +176,8 @@ A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conte�
 
 ## Próximo foco recomendado
 
-1. fechar evidência visual/autenticada residual do privacy shell #396; o runtime #389 já foi exercido em produção com rollback;
-2. executar piloto UX do Encounter/Consultório e remover fricções observadas;
+1. usar o privacy shell #396 já verificado como baseline e executar piloto UX do Encounter/Consultório, removendo fricções observadas;
+2. validar em uso real a ergonomia completa da jornada, sem confundir o P0 técnico fechado com validação externa de UX;
 3. validar em uso real a **Cobertura deste atendimento** já entregue pela #479, sem expor Financeiro global;
 4. fechar Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
 5. priorizar apenas documentos clínicos ainda ausentes conforme demanda do piloto;

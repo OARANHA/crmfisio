@@ -102,6 +102,16 @@ A #478 centralizou o handoff de Encounter e passou a chamar `setContext('clinica
 
 A #479 acrescentou `Cobertura deste atendimento` como projeção contextual read-only do próprio Encounter, sem `finance.access`, sem valores e sem ações financeiras.
 
+
+## Production validation
+
+The authenticated production P0 for #396 was closed on 2026-09-17 after #502/#504/#505. The smoke exercised a clinically eligible owner/admin and a clinical-only professional in desktop and 390 px mobile viewports, light and dark themes, direct administrative URL protection and presentation switching where allowed. Final harness result: `P0_396_SMOKE=PASS` / `SMOKE_EXIT=0`.
+
+The owner/admin eligibility helpers returned allowed, the professional never received a Gestão action, the mobile drawer retained the Consultório indicator, and the responsive pass no longer produced horizontal overflow. #504 fixed shrink behavior in Reveal wrappers; #505 removed the redundant clinical-only indicator from the narrow header while preserving it in the drawer and wider layouts.
+
+The smoke also exposed a separate `403` from tenant code reading global `automation_runs`. #506 corrected that composition drift without changing this PresentationContext contract: clinic users keep `automation_settings`, while platform-wide execution telemetry remains behind the Platform Admin RPC.
+
+
 ## Legacy MedicsPro UX audit
 
 The historical `OARANHA/medicspro` application was reopened as experience reference only.

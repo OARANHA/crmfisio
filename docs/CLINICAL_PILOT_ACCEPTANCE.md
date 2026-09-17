@@ -16,7 +16,7 @@ Contratos atuais:
 - draft usa revision/concorrência e não depende de autosave genérico;
 - após confirmação humana, Encounter Record materializa a Evolution oficial determinística e o appointment é finalizado;
 - não existe segunda Evolution universal obrigatória no novo fluxo;
-- histórico finalizado é read-only; correction/addendum ainda não existe;
+- histórico finalizado é read-only; correção/addendum usa o fluxo aditivo e auditável entregue pela #481, sem reescrever o registro finalizado;
 - leitura clínica continua sob relação assistencial/authorization server-side;
 - owner/admin não recebem autoria clínica implícita.
 
@@ -31,7 +31,9 @@ Durante o piloto, validar também #396:
 - URL administrativa continua passando por guards reais e privacy boundary;
 - PresentationContext nunca altera role, JWT, tenant, RLS, capability, entitlement ou `canView`.
 
-Autoentrada automática no Consultório ainda não faz parte do contrato e não deve ser simulada por rota/query.
+**Baseline verificada em produção em 2026-09-17:** o smoke autenticado do #396 passou para owner/admin clinicamente elegível e professional clinical-only em desktop/mobile e light/dark, incluindo URL administrativa protegida e mobile 390 px sem overflow após #504/#505. Esse fechamento técnico não substitui observação contínua da ergonomia por profissionais do piloto.
+
+A autoentrada contextual da #478 faz parte do contrato apenas após handoff explícito de iniciar/continuar o próprio Encounter. Ela não deve ser simulada por rota/query nem pela mera existência de appointment ativo.
 
 ## Roteiro vivo recomendado
 
