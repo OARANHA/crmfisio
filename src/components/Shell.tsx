@@ -244,6 +244,26 @@ function PresentationHeaderControl() {
   );
 }
 
+function PresentationEligibilityError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber/25 bg-amber/[0.055] p-4 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite">
+      <div>
+        <p className="font-display text-[13.5px] font-semibold text-paper">Não foi possível verificar o Modo Consultório</p>
+        <p className="mt-1 max-w-3xl text-[12.5px] leading-relaxed text-fog">
+          A Gestão continua disponível, mas o Consultório permanece bloqueado até a elegibilidade clínica ser confirmada.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="min-h-10 shrink-0 rounded-xl border border-line/75 bg-panel px-4 text-[12px] font-semibold text-paper transition-colors hover:border-line2 hover:bg-raise/55"
+      >
+        Tentar novamente
+      </button>
+    </section>
+  );
+}
+
 function PresentationResolvingState() {
   return (
     <div className="app-surface min-h-screen grid place-items-center px-5" aria-label="Preparando contexto da clínica" role="status" aria-live="polite">
@@ -266,7 +286,13 @@ export function Shell() {
   const { consents } = useClinical();
   const { unidades, unidadeSel, setUnidadeSel } = useInfrastructure();
   const { signOut, loading } = useAuth();
-  const { context: presentationContext, availableContexts, resolving: presentationResolving } = usePresentationContext();
+  const {
+    context: presentationContext,
+    availableContexts,
+    resolving: presentationResolving,
+    clinicalEligibilityStatus,
+    retryClinicalEligibility,
+  } = usePresentationContext();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('medicspro-sidebar-collapsed') === 'true');
@@ -338,6 +364,8 @@ export function Shell() {
     ? professionalIdentityLabel(identity)
     : (rm?.label || 'Carregando...');
   const showPresentationControl = presentationContext === 'clinical' || availableContexts.length > 1;
+  const showClinicalEligibilityError = (effectiveUserRole === 'owner' || effectiveUserRole === 'admin')
+    && clinicalEligibilityStatus === 'error';
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -442,6 +470,7 @@ export function Shell() {
           </div>
         </header>
         <main className="medicspro-workspace w-full min-w-0 px-5 py-8 text-ui-body sm:px-7 md:px-9 md:py-10 xl:px-12 xl:py-8">
+          {showClinicalEligibilityError && <PresentationEligibilityError onRetry={retryClinicalEligibility} />}
           <Suspense fallback={<RouteContentFallback />}>
             <Outlet />
           </Suspense>

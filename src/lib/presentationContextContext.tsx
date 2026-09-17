@@ -22,6 +22,8 @@ type PresentationContextValue = {
   context: PresentationContext;
   availableContexts: readonly PresentationContext[];
   resolving: boolean;
+  clinicalEligibilityStatus: ClinicalEligibilityStatus;
+  retryClinicalEligibility: () => void;
   setContext: (context: PresentationContext) => void;
 };
 
@@ -30,8 +32,9 @@ const PresentationContextContext = createContext<PresentationContextValue | null
 function useScopedClinicalManagerEligibility(
   userId: string | null,
   clinicId: string | null,
-): ClinicalEligibilityStatus {
+): { status: ClinicalEligibilityStatus; retry: () => void } {
   const key = userId && clinicId ? `${userId}:${clinicId}` : '';
+  const [attempt, setAttempt] = useState(0);
   const [resolution, setResolution] = useState<ClinicalEligibilityResolution>({
     key,
     status: key ? 'loading' : 'denied',
@@ -74,9 +77,13 @@ function useScopedClinicalManagerEligibility(
       });
 
     return () => { active = false; };
-  }, [clinicId, key, userId]);
+  }, [attempt, clinicId, key, userId]);
 
-  return status;
+  const retry = useCallback(() => {
+    if (key) setAttempt((current) => current + 1);
+  }, [key]);
+
+  return { status, retry };
 }
 
 export function PresentationContextProvider({ children }: { children: ReactNode }) {
@@ -85,7 +92,7 @@ export function PresentationContextProvider({ children }: { children: ReactNode 
   const userId = user?.id ?? null;
   const clinicId = profile?.clinic_id ?? null;
   const isClinicalManager = user?.role === 'owner' || user?.role === 'admin';
-  const eligibilityStatus = useScopedClinicalManagerEligibility(
+  const { status: eligibilityStatus, retry: retryClinicalEligibility } = useScopedClinicalManagerEligibility(
     isClinicalManager ? userId : null,
     isClinicalManager ? clinicId : null,
   );
@@ -124,8 +131,10 @@ export function PresentationContextProvider({ children }: { children: ReactNode 
     context,
     availableContexts,
     resolving,
+    clinicalEligibilityStatus: eligibilityStatus,
+    retryClinicalEligibility,
     setContext,
-  }), [availableContexts, context, resolving, setContext]);
+  }), [availableContexts, context, eligibilityStatus, resolving, retryClinicalEligibility, setContext]);
 
   return (
     <PresentationContextContext.Provider value={value}>
