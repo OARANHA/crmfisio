@@ -293,7 +293,8 @@ Somente depois das foundations anteriores:
 
 - [ ] Limpar consumidores residuais de `fisio_id`/nomenclaturas legadas onde houver alternativa segura; `professional_id` continua canônico.
 - [x] #498 — resolver o issue tri-state capability/configuration no domínio clínico/Nexus e na navegação por entitlement; `loading/allowed/denied/error` permanecem distintos, falha técnica não vira negação silenciosa, entitlement desconhecido não é apresentado como liberado e boundaries server-side permanecem inalterados. Rollout frontend observado em produção em 2026-09-16.
-- [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos.
+- [x] #500 — preservar tri-state no frontend Platform Admin: `checking/allowed/denied/error`, com falha técnica fail-closed exibida como verificação indisponível/retry em vez de falsa negação; sem mudança de autoridade server-side. Produção verificada em 2026-09-16.
+- [ ] Continuar auditando entitlement × clinic configuration × user authorization sem colapsar os três conceitos; próximos achados devem ser reproduzidos antes de nova slice.
 - [ ] Não liberar Nexus por role, especialidade isolada, PresentationContext ou simples relevância de instrumento.
 
 ## P1 — UX pilot / onboarding
