@@ -205,7 +205,7 @@ function PresentationHeaderControl() {
 
   if (context === 'clinical') {
     return (
-      <div className="flex items-center gap-2" aria-label="Modo Consultório">
+      <div className={`items-center gap-2 ${canSwitch ? 'flex' : 'hidden sm:flex'}`} aria-label="Modo Consultório">
         <span className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-mint/20 bg-mint/[0.065] px-2.5 text-[12px] font-semibold text-mint sm:px-3">
           <IconShield className="h-4 w-4" />
           <span className="hidden sm:inline">Modo Consultório</span>
