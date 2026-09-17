@@ -166,7 +166,7 @@ Fundação técnica pronta não equivale a UX validada por profissionais externo
 Antes de ampliar o piloto ou abrir várias foundations novas:
 
 - **fechado em 2026-09-15:** comprovação read-only pós-finalização do smoke real #394 observada em produção, sem leitura de conteúdo clínico: Record finalizado + Evolution única/ativa + appointment finalizado + efeito financeiro unitário/coerente + zero exceção financeira;
-- registrar smoke real de `CHARGE` e `WAIVE` do #389, se ainda pendente;
+- **fechado em 2026-09-15:** smoke real de `CHARGE` e `WAIVE` do #389 com autenticação real, idempotência e rollback sem resíduos;
 - **fechado em 2026-09-15:** o verifier #388 foi reconciliado com #389 e o harness PostgreSQL 16 prova o estado pré-#389 e a composição efetiva pós-#389 sem relaxar a imutabilidade da fila;
 - **fechado em 2026-09-17:** smoke visual/autenticado do Consultório/Gestão #396 em owner/admin elegível + professional clinical-only, desktop/mobile e light/dark, com privacy boundary de URL direta e sem overflow após #504/#505;
 - garantir observabilidade suficiente para distinguir erro clínico, financeiro, entitlement e UX.
@@ -270,9 +270,9 @@ um Encounter
 
 Absorver ergonomia do MedicsPro histórico sem portar Vue/Pinia/Mongo, autorização antiga, autosave antigo, checkout ou outros contratos legados.
 
-## 4. Prescription V1
+## 4. Prescription V1 — entregue
 
-Implementar a primeira fatia de prescrição com contrato canônico, autoria, emitente, lifecycle/histórico e regras server-side adequadas. UX histórica pode inspirar ergonomia; arquitetura e autorização atuais prevalecem.
+A primeira fatia de prescrição já está em produção com contrato canônico, autoria, emitente, lifecycle/histórico e regras server-side. Evoluções futuras devem partir desse contrato e da ergonomia observada no piloto; arquitetura e autorização atuais prevalecem.
 
 ## 5. Demais documentos conforme piloto
 

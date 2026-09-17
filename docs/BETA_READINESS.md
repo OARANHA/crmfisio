@@ -179,7 +179,7 @@ A listagem clinic-wide de pacientes deve permanecer operacional, enquanto conte�
 1. usar o privacy shell #396 já verificado como baseline e executar piloto UX do Encounter/Consultório, removendo fricções observadas;
 2. validar em uso real a ergonomia completa da jornada, sem confundir o P0 técnico fechado com validação externa de UX;
 3. validar em uso real a **Cobertura deste atendimento** já entregue pela #479, sem expor Financeiro global;
-4. fechar Instrument Delivery remota (`Enviar ao paciente`); `Aplicar agora` já está entregue;
+4. validar em uso real a Patient Delivery V1 já entregue; expansão para novos instrumentos continua condicionada a contrato `patient_self`, revisão clínica, direitos/versão/população e safety específicos;
 5. priorizar apenas documentos clínicos ainda ausentes conforme demanda do piloto;
 6. evoluir configuração financeira/parcerias sem criar role econômica;
 7. ampliar onboarding e integrações somente com evidência de necessidade.

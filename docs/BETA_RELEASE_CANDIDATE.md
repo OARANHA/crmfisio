@@ -112,13 +112,12 @@ Um snapshot documental não deve congelar para sempre um SHA técnico antigo com
 
 0. **fechado:** evidências operacionais curtas #394/#389/#396;
 1. Encounter UX / physician ergonomics;
-2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
-4. Prescription V1;
-5. demais documentos médicos conforme piloto;
-6. Finance Configuration com parceria/repasse como relação econômica, não role;
-7. onboarding/pilot friction;
-8. financeiro avançado/integracões conforme evidência.
+2. validar em uso real a **Cobertura deste atendimento** já entregue pela #479;
+3. validar em uso real a Patient Delivery V1 já entregue e expandi-la somente com contratos clínicos/rights/safety explícitos;
+4. priorizar apenas documentos clínicos ainda ausentes conforme demanda do piloto;
+5. Finance Configuration com parceria/repasse como relação econômica, não role;
+6. onboarding/pilot friction;
+7. financeiro avançado/integracões conforme evidência.
 
 ## Critério para chamar de Beta Candidate
 
