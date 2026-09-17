@@ -79,6 +79,19 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(clinicalBranch).toContain('Sair do Modo Consultório');
   });
 
+  it('keeps the redundant clinical-only header indicator out of narrow mobile flow', () => {
+    const headerControl = shellSource.slice(
+      shellSource.indexOf('function PresentationHeaderControl()'),
+      shellSource.indexOf('function PresentationResolvingState()'),
+    );
+    const clinicalBranch = headerControl.slice(
+      headerControl.indexOf("if (context === 'clinical')"),
+      headerControl.indexOf('if (!canSwitch)'),
+    );
+    expect(clinicalBranch).toContain("canSwitch ? 'flex' : 'hidden sm:flex'");
+    expect(shellSource).toContain('{showPresentationControl && <div className="px-4 pt-4"><PresentationModeControl /></div>}');
+  });
+
   it('offers entry into Consultório from management only when clinical context is available', () => {
     const headerControl = shellSource.slice(
       shellSource.indexOf('function PresentationHeaderControl()'),
