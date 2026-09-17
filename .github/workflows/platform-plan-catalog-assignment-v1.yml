@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase-migrations/20260917_platform_plan_catalog_assignment_v1.sql'
       - 'supabase-verifiers/VERIFY_20260917_PLATFORM_PLAN_CATALOG_ASSIGNMENT_V1.sql'
+      - 'supabase-verifiers/VERIFY_20260917_PLATFORM_PLAN_CATALOG_ASSIGNMENT_V1_PRODUCTION.sql'
       - 'tests/sql/platform_plan_catalog_assignment_v1_fixture.sql'
       - 'scripts/test-platform-plan-catalog-assignment-v1.sh'
       - 'supabase/functions/evolution-worker/index.ts'
