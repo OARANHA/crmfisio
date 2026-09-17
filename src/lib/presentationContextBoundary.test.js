@@ -102,6 +102,18 @@ describe('Consultório / Gestão presentation boundary', () => {
     expect(mobileHeader).toContain('setUnidadeSel');
   });
 
+  it('preserves technical eligibility errors as retryable fail-closed presentation state', () => {
+    expect(providerSource).toContain("status: 'error'");
+    expect(providerSource).toContain('clinicalEligibilityStatus: eligibilityStatus');
+    expect(providerSource).toContain('retryClinicalEligibility');
+    expect(providerSource).toContain('setAttempt((current) => current + 1)');
+    expect(shellSource).toContain("clinicalEligibilityStatus === 'error'");
+    expect(shellSource).toContain('Não foi possível verificar o Modo Consultório');
+    expect(shellSource).toContain('A Gestão continua disponível, mas o Consultório permanece bloqueado');
+    expect(shellSource).toContain('<PresentationEligibilityError onRetry={retryClinicalEligibility} />');
+    expect(shellSource).toContain('Tentar novamente');
+  });
+
   it('keeps eligibility resolution fail-closed without rendering administrative chrome', () => {
     expect(shellSource).toContain('if (presentationResolving) return <PresentationResolvingState />;');
     const resolvingState = shellSource.slice(
