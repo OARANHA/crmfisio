@@ -1,15 +1,15 @@
-# PR #508 — Plan Catalog + Clinic Plan Assignment V1 — checkpoint de validação
+# #508/#509 — Plan Catalog + Clinic Plan Assignment V1 — rollout produtivo
 
 Data: 2026-09-17
 
 ## Estado canônico
 
-- Base: `main@6796269d9372ecbc65f8a526550767c72a33e042`
-- Branch: `feat/platform-plan-catalog-assignment-v1`
-- PR: `#508`
-- Head funcional remoto: `3ebcf3e3c3eee559fae7d2db0fdb684953e33144`
-- Árvore funcional: `7802e9f55eefb8bbbe0066876b71f6f8c0916aaf`
-- CI final do head funcional: `9/9 PASS`
+- #508 squash merge: `d9ec815d6450328ec7f4081067dc4dc041e0e302`
+- #509 production-safe verifier squash merge: `51300dae05c0f90d03d6ed4e8790421037a6b009`
+- árvore canônica no rollout: `d3a11e25afe4c7c3a8d4e079954f722c10d9a37f`
+- PR CI #508: `9/9 PASS`
+- PR CI #509: `9/9 PASS`
+- PostgreSQL de produção: `17.6`
 
 ## Implementado
 
@@ -17,38 +17,38 @@ Plan Catalog versionado e imutável, assignment ativo/trial por clínica, baseli
 
 Precedência efetiva: `override explícito → plano ativo/trial → rollout legado`.
 
-`platform_clinic_entitlements` permanece a camada de override. Plano/entitlement não concede role, capability, identidade clínica ou acesso a prontuário.
+`platform_clinic_entitlements` permanece camada de override. Plano/entitlement não concede role, capability, identidade clínica ou acesso a prontuário. Os predicados dedicados de Nexus e `assessments.custom` continuam fail-closed.
 
-Os predicados dedicados de Nexus e `assessments.custom` continuam fail-closed. Nexus continua dependendo separadamente de identidade médica e capability; custom assessment continua sem rollout legado.
+## Rolling deploy provado
 
-## Segunda revisão adversarial
+O frontend #508 foi auto-promovido antes da migration e permaneceu saudável contra backend N. O bundle exibiu `Catálogo aguardando promoção do backend` e manteve ações de plano indisponíveis até os RPCs N+1 existirem. Após a migration, o mesmo frontend passou a encontrar o contrato novo sem redeploy manual.
 
-O frontend ficou compatível com backend N/N+1 para evitar quebra caso o auto-deploy do frontend anteceda a migration manual:
+## Rollout produtivo
 
-- V3 cai para V2 somente quando o RPC V3 está explicitamente ausente;
-- erros de autorização/rede não são mascarados;
-- ações de Plan Catalog permanecem indisponíveis até os RPCs N+1 existirem;
-- Nexus e custom assessment sem baseline aparecem bloqueados.
-
-## Evidência
-
-- PostgreSQL 16 migration replay + verifier: PASS
-- hardening Nexus/custom assessment: PASS
-- Evolution worker boundary: PASS
-- rolling-deploy boundary: `3/3 PASS`
-- full suite: `121 arquivos / 654 testes PASS`
-- typecheck/lint/build/diff-check: PASS
-- GitHub Actions: `9/9 PASS`
+- migration `20260917_platform_plan_catalog_assignment_v1.sql`: `COMMIT`;
+- verifier #509: `SET TRANSACTION READ ONLY` / `ROLLBACK` e PASS;
+- estado após migration: `plans=0`, `versions=0`, `assignments=0`;
+- overrides preexistentes: `13 manual`, `0 plan`;
+- hash lógico dos overrides antes/depois: `691ebb17dd4683a1dc699881cbf49ab6` — idêntico;
+- Evolution worker: promovido por bind mount atômico, hash live/container/repo `7fc4b02a3c1bc229f45b98633e8e79fcf36bdebdbc1eaacddc36e293f1af334a`;
+- worker sem segredo: HTTP `401`;
+- fila elegível/stale durante smoke: `0/0`;
+- Edge Runtime: healthy, `restarts=0`, `OOM=false`;
+- frontend: `/`, `/platform`, `/agenda`, `/pacientes` HTTP `200`, `restarts=0`, `OOM=false`;
+- actor-boundary read-only: Platform Admin lê catálogo + 6 entitlements; tenant normal é negado;
+- `beta-operability-check.sh`: `RC=0`, `no_critical_failure`.
 
 ## Estado operacional
 
 - IMPLEMENTADO: sim
-- MERGEADO: não
-- DEPLOYADO: não
-- VALIDADO EM PRODUÇÃO: não
-- migration de Plan Catalog: não aplicada em produção
-- Evolution worker deste slice: não promovido
+- MERGEADO: sim
+- DEPLOYADO: sim
+- VALIDADO EM PRODUÇÃO: sim
+- primeiro plano comercial criado: **não**
+- primeiro assignment real criado: **não**
+
+A ausência de planos é deliberada: nomes, preço e composição são decisão comercial de produto e não devem ser inventados por engenharia. Os 13 overrides manuais existentes continuam governando as clínicas exatamente como antes até assignment explícito.
 
 ## Próximo passo seguro
 
-Revisar threads/reviews/mergeability e o contrato real de deploy. Merge e rollout são etapas distintas. A migration continua manual/controlada após merge; não aplicar produção antes do precheck operacional.
+Definir pacotes comerciais conscientemente antes do primeiro assignment real. A próxima slice técnica canônica do programa é **Clinic Configuration Core V1**.
