@@ -16,7 +16,7 @@ export function Reveal({ children, className = '', delay = 0 }: { children: Reac
     return () => io.disconnect();
   }, []);
   return (
-    <div ref={ref} className={`rv ${inView ? 'is-in' : ''} ${className}`} style={{ '--rv-delay': `${delay}ms` } as CSSProperties}>
+    <div ref={ref} className={`rv min-w-0 ${inView ? 'is-in' : ''} ${className}`} style={{ '--rv-delay': `${delay}ms` } as CSSProperties}>
       {children}
     </div>
   );
