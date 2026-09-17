@@ -78,7 +78,7 @@ A finalização canônica executa em uma transação PostgreSQL:
 5. execução da cadeia clínica/financeira já existente;
 6. commit somente se os invariantes inesperados permanecerem íntegros.
 
-Um Encounter Record finalizado é histórico. Ele não volta a draft e não é reescrito silenciosamente. **Correction/addendum auditável ainda não está implementado** e deve ser uma slice própria.
+Um Encounter Record finalizado é histórico. Ele não volta a draft e não é reescrito silenciosamente. A correction/addendum auditável foi entregue posteriormente pela #481 como ledger append-only e writer RPC explícito; o Record original e a Evolution vinculada continuam imutáveis.
 
 ## Evolution materialization
 
@@ -229,7 +229,7 @@ Isso fecha o gap de evidência pós-finalização do #394 sem introduzir qualque
 
 Não fazem parte da foundation #394:
 
-- correction/addendum de registro finalizado;
+- correction/addendum de registro finalizado — deliberadamente fora da foundation #394 e entregue depois, em slice própria, pela #481;
 - problem list/diagnosis engine amplo;
 - Prescription V1 e demais documentos médicos;
 - instrument delivery unificado;

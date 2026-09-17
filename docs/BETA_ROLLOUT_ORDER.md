@@ -1,6 +1,6 @@
 # MedicsPro Beta — ordem controlada de rollout
 
-**Reconciliado em 2026-09-16.** Este documento preserva guardrails de rollout/beta; **não é fonte de prioridade atual**. Para estado e próximas slices, use `docs/CURRENT_STATE.md` + `TODO.md`. Ele não autoriza deploy ou alteração de produção por si só.
+**Reconciliado em 2026-09-17.** Este documento preserva guardrails de rollout/beta; **não é fonte de prioridade atual**. Para estado e próximas slices, use `docs/CURRENT_STATE.md` + `TODO.md`. Ele não autoriza deploy ou alteração de produção por si só.
 
 ## Princípios
 
@@ -33,7 +33,7 @@ Antes de ampliar piloto:
 1. **fechado em 2026-09-15:** inspeção read-only pós-finalização do smoke #394 observada em produção, com Record/Evolution/appointment/financeiro consistentes e sem exceção financeira;
 2. **fechado tecnicamente em 2026-09-15:** `CHARGE` e `WAIVE` exercidos em produção com autenticação real dentro de transações revertidas, idempotência e ausência de resíduos; a exceção real continua decisão econômica;
 3. **fechado em 2026-09-15:** revalidar a composição do verifier #388 com #389 em PostgreSQL 16; o gate passou antes e depois da migration #389, com controles negativos preservados;
-4. executar smoke visual/uso real do privacy shell #396;
+4. **fechado em 2026-09-17:** smoke visual/autenticado do privacy shell #396 em produção, com owner/admin elegível + professional clinical-only, desktop/mobile light-dark, URL administrativa protegida e ausência de overflow após #504/#505;
 5. confirmar observabilidade suficiente para diagnosticar falhas de beta.
 
 ### Estado conhecido do #394
@@ -81,6 +81,8 @@ Validar:
 - troca de contexto não altera role, JWT, tenant, RLS, capabilities, entitlements ou `canView`;
 - preferência isolada por `user_id + clinic_id`;
 - desktop/mobile e light/dark sem vazamento de chrome administrativo durante resolução.
+
+**Evidência operacional fechada em 2026-09-17:** o harness autenticado executado contra produção terminou com `P0_396_SMOKE=PASS` / `SMOKE_EXIT=0`. O owner/admin testado teve identidade clínica e `clinical.attend` confirmados pelo servidor; o professional permaneceu clinical-only; a URL `/config` foi protegida conforme o contexto; e mobile 390 px passou em light/dark sem overflow. A segunda revisão encontrou um `403` independente em telemetria global de automação, corrigido pela #506 sem ampliar autorização.
 
 A #478 adicionou autoentrada somente após handoff explícito de iniciar/continuar o próprio Encounter; ela não é inferida por rota/query nem concede autorização.
 

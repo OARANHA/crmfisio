@@ -107,7 +107,7 @@ Abrir um paciente com relação assistencial e appointment próprio `em_atendime
 - o profissional não é obrigado a preencher uma segunda Evolution universal;
 - `Revisar e concluir` deixa claro o efeito definitivo;
 - após confirmação humana, o comportamento esperado é Encounter Record finalizado + Evolution oficial determinística + appointment finalizado;
-- correção/addendum de finalizado não deve aparecer como edição silenciosa enquanto essa feature não existir;
+- correção/addendum de finalizado usa a superfície explícita/append-only da #481 e nunca aparece como edição silenciosa do registro original;
 - conteúdo histórico permanece read-only;
 - actor sem relação/autorização não recebe conteúdo clínico parcial enganoso.
 

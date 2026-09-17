@@ -1,6 +1,6 @@
 # MedicsPro Beta Release Candidate
 
-**Snapshot em 2026-09-10.** Este documento descreve a composição beta atual e seus gates. Não autoriza deploy ou produção.
+**Reconciliado em 2026-09-17.** Este documento descreve a composição beta e seus gates. Não autoriza deploy ou produção; estado vivo continua em `docs/CURRENT_STATE.md`.
 
 ## Composição canônica atual
 
@@ -49,7 +49,7 @@ Isso é evidência estrutural do rollout do #394. Não equivale automaticamente 
 
 O draft smoke observado comprovou persistência, refresh/navegação e revision; antes da finalização o cenário continha 1 Encounter Record, 0 Evolutions, 0 payments e 0 financial exceptions.
 
-Em 2026-09-15, a comprovação read-only pós-finalização foi registrada: o único Encounter Record estava `finalized`, com Evolution única/ativa corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. O smoke real `CHARGE`/`WAIVE` do #389 continua pendente até evidência observada.
+Em 2026-09-15, a comprovação read-only pós-finalização foi registrada: o único Encounter Record estava `finalized`, com Evolution única/ativa corretamente vinculada, appointment `finalizado`, um único lançamento financeiro coerente e zero exceção financeira. No mesmo fechamento operacional, `CHARGE` e `WAIVE` do #389 foram exercidos com autenticação real dentro de transações revertidas, provando idempotência e ausência de resíduos.
 
 ## Verifier #388 × #389 — dívida fechada
 
@@ -75,7 +75,7 @@ Usar a semântica atual de `FINANCIAL_PILOT_ACCEPTANCE.md`.
 
 Não esperar que pacote esgotado/vencido/não elegível bloqueie uma conclusão clínica válida. Esperar `appointment_financial_exception` sem consumo gratuito silencioso e resolução explícita posterior.
 
-Validar `CHARGE`/`WAIVE` por smoke real antes de considerar essas ações operacionalmente fechadas.
+O gate técnico de `CHARGE`/`WAIVE` foi fechado por smoke autenticado em produção com rollback; a disposição econômica de exceções reais continua decisão da clínica.
 
 ## Gate Consultório / Gestão
 
@@ -90,7 +90,9 @@ Validar em uso real:
 - isolamento local por `user_id + clinic_id`;
 - desktop/mobile, light/dark e resolving fail-closed.
 
-Autoentrada automática em Consultório permanece fora desta composição.
+**P0 #396 fechado em 2026-09-17:** o smoke autenticado em produção validou owner/admin clinicamente elegível, professional Consultório-only, desktop/mobile light-dark, privacy boundary de URL administrativa e ausência de overflow após #504/#505. O achado de telemetria `automation_runs` durante a revisão foi tratado separadamente pela #506 e não alterou autorização.
+
+A autoentrada contextual entregue pela #478 ocorre somente após handoff explícito de iniciar/continuar o próprio Encounter; rota/query ou mera existência de appointment ativo não concedem nem forçam Consultório.
 
 ## Gate técnico de cada novo HEAD
 
@@ -108,15 +110,14 @@ Um snapshot documental não deve congelar para sempre um SHA técnico antigo com
 
 ## Sequência recomendada a partir daqui
 
-0. fechar evidência operacional curta #394/#389/#396;
+0. **fechado:** evidências operacionais curtas #394/#389/#396;
 1. Encounter UX / physician ergonomics;
-2. Cobertura deste atendimento;
-3. Instrument Delivery (`Aplicar agora` + `Enviar ao paciente`);
-4. Prescription V1;
-5. demais documentos médicos conforme piloto;
-6. Finance Configuration com parceria/repasse como relação econômica, não role;
-7. onboarding/pilot friction;
-8. financeiro avançado/integracões conforme evidência.
+2. validar em uso real a **Cobertura deste atendimento** já entregue pela #479;
+3. validar em uso real a Patient Delivery V1 já entregue e expandi-la somente com contratos clínicos/rights/safety explícitos;
+4. priorizar apenas documentos clínicos ainda ausentes conforme demanda do piloto;
+5. Finance Configuration com parceria/repasse como relação econômica, não role;
+6. onboarding/pilot friction;
+7. financeiro avançado/integracões conforme evidência.
 
 ## Critério para chamar de Beta Candidate
 

@@ -4,9 +4,9 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-16
+**Data do snapshot:** 2026-09-17
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
-**Último SHA funcional com rollout registrado nesta sequência:** `a88bb8ac0f14d5b67222da6b42bdabea27269ac2` (#498). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
+**Último SHA funcional com rollout registrado nesta sequência:** `392fade1bec14e6767ad5578426c1ed606f0dc7c` (#506). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
 
 ## Estado clínico resumido
 
@@ -32,7 +32,24 @@ PC-PTSD-5 Clinician-Assisted V1 #495                              PROD / VERIFIE
 Authorization/config tri-state UX hardening #498                PROD / VERIFIED
 Platform Admin access tri-state hardening #500                  PROD / VERIFIED
 PresentationContext eligibility error hardening #502              PROD / VERIFIED
+Consultório / Gestão authenticated P0 #396/#504/#505                PROD / VERIFIED
+Tenant automation telemetry boundary #506                           PROD / VERIFIED
 ```
+
+
+## Produção — Consultório / Gestão authenticated P0 closure + tenant automation telemetry boundary #506
+
+**Status:** o P0 autenticado do Consultório / Gestão (#396) foi fechado em produção em 2026-09-17 após os hardenings #502, #504 e #505. O smoke foi executado contra `app.medicspro.com.br` com owner/admin clinicamente elegível e `professional` clinical-only, em desktop e viewport mobile de 390 px, nos temas light/dark. Resultado final: `P0_396_SMOKE=PASS` e `SMOKE_EXIT=0`.
+
+A prova confirmou: owner/admin com `current_user_has_valid_clinical_identity=true` + `clinical.attend=true` alterna Consultório/Gestão; Consultório oculta Financeiro global, CRM gerencial, Relatórios e Configurações; URL administrativa direta recebe o privacy boundary; `professional` permanece Consultório-only sem ação de Gestão; o estado `Modo Consultório` continua perceptível no drawer mobile; e não houve overflow horizontal após #504/#505. As credenciais temporárias do harness foram removidas ao final da execução.
+
+A segunda revisão adversarial do mesmo smoke encontrou um débito **independente do #396**: o owner/admin recebia `403` ao tentar ler `public.automation_runs` diretamente pelo browser. O banco estava correto: `20260904_platform_automation_observability_security.sql` já havia tornado essa tabela telemetria global exclusiva do Platform Admin e revogado `SELECT` de `authenticated`. A #506 removeu os consumidores tenant de `automation_runs`, preservou `automation_settings` clinic-scoped e manteve a telemetria global exclusivamente em `platform_get_automation_runs(integer)`. Nenhum grant, RLS, RPC, migration, Edge Function, role, capability ou entitlement foi ampliado.
+
+#506: PR CI `9/9` PASS; lab `120 arquivos / 651 testes` PASS, typecheck/lint/build/diff-check PASS e dependency audit sem vulnerabilidade high/critical. Squash merge em `main@392fade1bec14e6767ad5578426c1ed606f0dc7c`. Auto-deploy observado: frontend recriado às `2026-09-17T07:06:19Z`, `restarts=0`, `OOM=false`, `/`, `/agenda`, `/pacientes`, `/mensagens` e `/platform` HTTP `200`, zero HTTP 5xx/erros desde o start. No bundle ativo, `automation_runs` aparece somente no chunk de Platform Admin junto de `platform_get_automation_runs`; o chunk tenant de Mensagens contém apenas a nova cópia de configuração/telemetria separadas.
+
+**Próximo passo seguro:** tratar o privacy shell #396 como baseline verificado e avançar para observação de ergonomia/jornada clínica no piloto. Não repetir o smoke autenticado apenas por continuidade de chat; repetir somente diante de regressão ou mudança relevante no shell.
+
+---
 
 
 ## Produção — PresentationContext eligibility error hardening #502
@@ -43,7 +60,7 @@ Durante o P0 de smoke do Consultório / Gestão (#396), foi reproduzido um drift
 
 Gates: testes focados `30/30` PASS; full suite `118 arquivos / 646 testes` PASS; typecheck, lint, build e `git diff --check` PASS; PR CI `8/8` workflows PASS. Produção: auto-deploy concluído, bundle contém aviso/fail-closed/retry, `/`, `/platform`, `/agenda` e `/pacientes` HTTP `200`, container com `restarts=0`, `OOM=false` e `0` HTTP 5xx reais.
 
-**P0 #396 permanece aberto:** a correção remove o blocker técnico, mas ainda falta evidência visual/autenticada de owner/admin clinicamente elegível, professional Consultório-only, mobile/light-dark e URL administrativa protegida. Não tratar deploy técnico como validação humana do piloto.
+**P0 #396 fechado em 2026-09-17:** a evidência visual/autenticada foi executada após #504/#505 e está registrada na seção de fechamento acima. #502 continua sendo o hardening do estado de erro; o smoke posterior validou a composição real em produção.
 
 ---
 
@@ -57,7 +74,7 @@ Gates locais antes do merge: testes focados `6/6` PASS, typecheck, lint, build e
 
 Produção: os 10 arquivos alterados pela #500 foram comprovados byte a byte contra a `main`; bundle ativo contém o tri-state e a cópia de erro; `/`, `/platform`, `/agenda` e `/pacientes` retornaram HTTP `200`; container novo observado com `restarts=0`, `OOM=false` e zero HTTP 5xx desde o start. O auto-update do Portainer concluiu sozinho, portanto nenhum deploy manual foi necessário.
 
-**Próximo passo seguro:** fechar o P0 de smoke visual/uso real do Consultório / Gestão (#396), especialmente owner/admin clinicamente elegível, professional clinical-only, mobile e URL administrativa protegida. Depois, retomar o Control Plane mínimo sem reabrir #500 sem evidência de regressão.
+**Próximo passo seguro:** o P0 #396 já está fechado. Retomar o Control Plane mínimo ou a próxima slice indicada por `TODO.md`, sem reabrir #500/#502/#504/#505/#506 sem evidência de regressão.
 
 ---
 
