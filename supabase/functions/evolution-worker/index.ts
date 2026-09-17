@@ -30,26 +30,10 @@ type QueueRow = {
   telefone: string;
 };
 
-type EntitlementRow = {
-  clinic_id: string;
-  enabled: boolean;
-  starts_at: string | null;
-  expires_at: string | null;
-};
-
 type ClinicLifecycleRow = {
   id: string;
   lifecycle_status: string;
   deleted_at: string | null;
-};
-
-const entitlementEffective = (row: EntitlementRow | null | undefined, now = Date.now()) => {
-  // Controlled rollout: no explicit row means legacy access remains allowed.
-  if (!row) return true;
-  if (!row.enabled) return false;
-  if (row.starts_at && Date.parse(row.starts_at) > now) return false;
-  if (row.expires_at && Date.parse(row.expires_at) <= now) return false;
-  return true;
 };
 
 const clinicActive = (row: ClinicLifecycleRow | null | undefined) =>
@@ -101,23 +85,26 @@ Deno.serve(async (req) => {
 
   const rows = (data ?? []) as QueueRow[];
   const clinicIds = [...new Set(rows.map((row) => row.clinic_id).filter(Boolean))];
-  const entitlementByClinic = new Map<string, EntitlementRow>();
+  const entitlementAllowedByClinic = new Map<string, boolean>();
   const lifecycleByClinic = new Map<string, ClinicLifecycleRow>();
   if (clinicIds.length) {
-    const [entitlementResult, clinicResult] = await Promise.all([
-      admin
-        .from('platform_clinic_entitlements')
-        .select('clinic_id,enabled,starts_at,expires_at')
-        .in('clinic_id', clinicIds)
-        .eq('entitlement_key', 'whatsapp.access'),
+    const [entitlementResults, clinicResult] = await Promise.all([
+      Promise.all(clinicIds.map(async (clinicId) => {
+        const { data: allowed, error: entitlementError } = await admin.rpc('clinic_entitlement_allowed', {
+          p_clinic_id: clinicId,
+          p_entitlement_key: 'whatsapp.access',
+        });
+        return { clinicId, allowed: allowed === true, error: entitlementError };
+      })),
       admin
         .from('clinics')
         .select('id,lifecycle_status,deleted_at')
         .in('id', clinicIds),
     ]);
 
-    if (entitlementResult.error) {
-      console.error('[evolution-worker] queue entitlements:', entitlementResult.error);
+    const entitlementFailure = entitlementResults.find((result) => result.error);
+    if (entitlementFailure) {
+      console.error('[evolution-worker] queue entitlements:', entitlementFailure.error);
       return json({ error: 'Não foi possível validar os módulos WhatsApp da fila' }, 503);
     }
     if (clinicResult.error) {
@@ -125,7 +112,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Não foi possível validar as clínicas da fila' }, 503);
     }
 
-    for (const row of (entitlementResult.data ?? []) as EntitlementRow[]) entitlementByClinic.set(row.clinic_id, row);
+    for (const result of entitlementResults) entitlementAllowedByClinic.set(result.clinicId, result.allowed);
     for (const row of (clinicResult.data ?? []) as ClinicLifecycleRow[]) lifecycleByClinic.set(row.id, row);
   }
 
@@ -144,7 +131,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    if (!entitlementEffective(entitlementByClinic.get(row.clinic_id))) {
+    if (entitlementAllowedByClinic.get(row.clinic_id) !== true) {
       blocked += 1;
       await admin.from('wa_logs').update({
         status: 'fila',
