@@ -1,0 +1,64 @@
+name: Platform Plan Catalog + Assignment V1
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260917_platform_plan_catalog_assignment_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260917_PLATFORM_PLAN_CATALOG_ASSIGNMENT_V1.sql'
+      - 'tests/sql/platform_plan_catalog_assignment_v1_fixture.sql'
+      - 'scripts/test-platform-plan-catalog-assignment-v1.sh'
+      - 'supabase/functions/evolution-worker/index.ts'
+      - 'src/lib/platformAdmin.ts'
+      - 'src/components/PlatformClinicPlanPanel.tsx'
+      - 'src/components/PlatformClinicEntitlementsPanel.tsx'
+      - 'src/pages/PlatformClinicModulesPage.tsx'
+      - '.github/workflows/platform-plan-catalog-assignment-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: platform_plan_catalog_assignment_v1_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres platform_plan_catalog_assignment_v1_test
+      - name: Run migration replay and contract verifier
+        run: bash scripts/test-platform-plan-catalog-assignment-v1.sh
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check

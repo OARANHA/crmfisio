@@ -4,14 +4,19 @@ import { PlatformAdminAccessError } from '../components/PlatformAdminAccessError
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { PlatformClinicEntitlementsPanel } from '../components/PlatformClinicEntitlementsPanel';
 import { PlatformClinicLifecyclePanel } from '../components/PlatformClinicLifecyclePanel';
+import { PlatformClinicPlanPanel } from '../components/PlatformClinicPlanPanel';
 import { loadPlatformClinics, type PlatformClinicSummary } from '../lib/platformAdmin';
 import { getCachedPlatformAdminAccessStatus, resolvePlatformAdminAccess, type PlatformAdminAccessStatus } from '../lib/platformAdminAccess';
 import { platformSupabase } from '../lib/platformSupabaseClient';
+
+const SELECTED_CLINIC_STORAGE_KEY = 'medicspro-platform-selected-clinic';
 
 export function PlatformClinicModulesPage() {
   const mountedRef = useRef(true);
   const [accessStatus, setAccessStatus] = useState<PlatformAdminAccessStatus>(() => getCachedPlatformAdminAccessStatus());
   const [clinics, setClinics] = useState<PlatformClinicSummary[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState('');
+  const [planRevision, setPlanRevision] = useState(0);
   const [loadingClinics, setLoadingClinics] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +70,23 @@ export function PlatformClinicModulesPage() {
     };
   }, [validateAccess]);
 
+
+  useEffect(() => {
+    if (!clinics.length) { setSelectedClinicId(''); return; }
+    const stored = window.sessionStorage.getItem(SELECTED_CLINIC_STORAGE_KEY);
+    setSelectedClinicId((current) => {
+      const next = current && clinics.some((clinic) => clinic.id === current)
+        ? current
+        : stored && clinics.some((clinic) => clinic.id === stored) ? stored : clinics[0].id;
+      window.sessionStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, next);
+      return next;
+    });
+  }, [clinics]);
+
+  const changeSelectedClinic = (clinicId: string) => {
+    setSelectedClinicId(clinicId);
+    window.sessionStorage.setItem(SELECTED_CLINIC_STORAGE_KEY, clinicId);
+  };
 
   const activeClinics = useMemo(() => clinics.filter((clinic) => clinic.lifecycleStatus === 'active').length, [clinics]);
   const suspendedClinics = clinics.length - activeClinics;
@@ -130,7 +152,8 @@ export function PlatformClinicModulesPage() {
       </section>
 
       <PlatformClinicLifecyclePanel clinics={clinics} loading={loadingClinics} onClinicsChanged={setClinics} />
-      <PlatformClinicEntitlementsPanel clinics={clinics} clinicsLoading={loadingClinics} />
+      <PlatformClinicPlanPanel clinics={clinics} clinicId={selectedClinicId} onClinicIdChange={changeSelectedClinic} onAssignmentChanged={() => setPlanRevision((value) => value + 1)} />
+      <PlatformClinicEntitlementsPanel clinics={clinics} clinicsLoading={loadingClinics} clinicId={selectedClinicId} refreshToken={planRevision} />
     </PlatformAdminShell>
   );
 }
