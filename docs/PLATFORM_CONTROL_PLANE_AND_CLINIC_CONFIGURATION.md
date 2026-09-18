@@ -1,8 +1,8 @@
 # MedicsPro — Platform Control Plane, Clinic Configuration e Catálogos
 
 > Documento canônico de direção de produto para o domínio SaaS/administrativo.  
-> **Data da última reconciliação de direção:** 2026-09-18  
-> **Runtime canônico:** resolver sempre a `main` atual de `OARANHA/crmfisio`; estado operacional detalhado pertence a `docs/CURRENT_STATE.md`.  
+> **Data da última reconciliação de direção:** 2026-09-18
+> **Runtime canônico:** resolver sempre a `main` atual de `OARANHA/crmfisio`; estado operacional detalhado pertence a `docs/CURRENT_STATE.md`.
 > **Referência histórica auditada:** `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83`
 
 Este documento existe para que qualquer agente, inclusive em outra sessão, entenda a arquitetura de produto desejada para:
