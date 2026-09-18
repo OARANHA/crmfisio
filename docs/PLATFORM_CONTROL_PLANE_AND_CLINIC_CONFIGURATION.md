@@ -832,7 +832,7 @@ Somente depois das foundations anteriores:
 
 ---
 
-## 14. Dependências com o roadmap clínico
+## 15. Dependências com o roadmap clínico
 
 Este programa não substitui o roadmap clínico.
 
@@ -874,7 +874,7 @@ Resposta finalizada preserva versão histórica
 
 ---
 
-## 15. Gates para qualquer PR futuro deste eixo
+## 16. Gates para qualquer PR futuro deste eixo
 
 Antes de implementar:
 
@@ -906,7 +906,7 @@ Para mudança sensível de segurança/entitlement:
 
 ---
 
-## 16. Invariantes que futuros agentes não devem rediscutir sem evidência
+## 17. Invariantes que futuros agentes não devem rediscutir sem evidência
 
 1. `platform_admin` é domínio separado de `public.profiles.role`.
 2. Platform Admin administra o SaaS, não recebe prontuário universal.
@@ -925,40 +925,23 @@ Para mudança sensível de segurança/entitlement:
 
 ---
 
-## 17. Próximo passo recomendado quando este programa for retomado
+## 18. Próximo passo recomendado
 
-Não começar por uma tela isolada.
+Não repetir o inventário global de 2026-09-11 nem abrir uma nova tela isolada.
 
-O próximo agente deve primeiro produzir um **inventário comparativo Platform Admin atual × MedicsPro histórico**, cobrindo no mínimo:
+A próxima vertical é **Comunicação — Connection / Provider / Tenant Health Audit V1**:
 
-- Clinics/lifecycle;
-- Plans;
-- Features/entitlements;
-- Limits/usage;
-- Subscriptions;
-- WhatsApp;
-- API/integrations;
-- Surveys/templates;
-- Notifications;
-- Platform team/support.
+1. inspecionar Evolution/runtime e contratos MedicsPro atuais para instância, provider, status, webhook, opt-in e health;
+2. comparar somente este domínio com o WhatsApp histórico e classificar `preservar | evoluir | redesenhar | rejeitar`;
+3. separar Platform Admin × Clinic Admin × usuário operacional;
+4. provar o gap antes de criar migration/tabela/tela;
+5. implementar a menor slice que permita à clínica entender/configurar sua conexão sem expor segredo ou telemetria global.
 
-Para cada linha:
-
-```text
-estado atual
-contrato atual
-legado útil
-risco
-lacuna
-prioridade 80/20
-próxima slice mínima
-```
-
-Depois escolher **uma única vertical slice** com benefício operacional claro, sem abrir várias foundations simultaneamente.
+Depois de fechar Comunicação, seguir para **Agenda & Atendimento — serviços/procedimentos + duração/disponibilidade** e então **Finance Configuration / Compensation**.
 
 ---
 
-## 18. Nota de continuidade
+## 19. Nota de continuidade
 
 Este documento captura uma decisão de produto de longo prazo. Ele não significa que todos os itens estejam implementados.
 
