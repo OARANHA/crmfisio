@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { MessageActivity } from '../components/messages/MessageActivity';
 import { MessageRecipientSelector, type MessageRecipientCandidate } from '../components/messages/MessageRecipientSelector';
 import { MessageReviewQueue } from '../components/messages/MessageReviewQueue';
-import { MessageTemplatesEditor } from '../components/messages/MessageTemplatesEditor';
 import { buildReactivationSelection } from '../components/messages/reactivationEligibility';
 import { Reveal, CountUp } from '../components/Reveal';
 import { useMessageCenter } from '../hooks/useMessageCenter';
@@ -30,8 +29,8 @@ export function Mensagens() {
   const { appointments } = useAgenda();
   const canSend = access('mensagens') === 'full';
   const {
-    logs, templates, loading, queueSelectedConfirmations, queueSelectedNps,
-    queueSelectedReactivation, resolveReview, saveTemplate,
+    logs, loading, queueSelectedConfirmations, queueSelectedNps,
+    queueSelectedReactivation, resolveReview,
   } = useMessageCenter(user?.id);
 
   const confirmationSelection = useMemo(() => {
@@ -180,11 +179,6 @@ export function Mensagens() {
     catch (error) { console.error('[MedicsPro] concluir revisão WhatsApp:', error); toast('Não foi possível concluir a revisão.', 'warn'); }
   };
 
-  const persistTemplate = async (id: string, body: string) => {
-    try { await saveTemplate(id, body); toast('Modelo salvo para os próximos disparos.'); }
-    catch (error) { console.error('[MedicsPro] salvar modelo:', error); toast('Não foi possível salvar o modelo.', 'warn'); }
-  };
-
   return <div className="space-y-4">
     <Reveal><div className="flex flex-wrap items-center gap-3"><div><h1 className="medicspro-page-title">Mensagens</h1><p className="medicspro-page-subtitle">fila persistente · entrega reconciliável · respostas auditáveis</p></div><Chip className="border-mint/45 text-mint ml-auto">Evolution integrada</Chip>{operationalAttention > 0 && <Chip className="border-amber/45 text-amber">{operationalAttention} requerem atenção</Chip>}{queued > 0 && <Chip className="border-amber/45 text-amber">{queued} aguardando envio automático</Chip>}</div></Reveal>
 
@@ -215,9 +209,6 @@ export function Mensagens() {
 
     <Reveal delay={150}><MessageRecipientSelector title="Oportunidades de reativação" sub={`Classificação automática: entram pacientes cuja última sessão finalizada ocorreu há pelo menos ${REACTIVATION_INACTIVITY_DAYS} dias e que não possuem sessão futura. Não é necessário marcar o paciente manualmente como inativo. Novo contato só após ${REACTIVATION_COOLDOWN_DAYS} dias; PARAR/SAIR aplica opt-out.`} candidates={reactivationSelection.candidates} blockedSummary={reactivationBlockedText()} busy={loading} canSend={canSend} accent="amber" onSend={sendReactivation} /></Reveal>
 
-    <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 items-start">
-      <Reveal delay={180}><MessageTemplatesEditor templates={templates} busy={loading} onSave={persistTemplate} /></Reveal>
-      <Reveal delay={170}><MessageActivity logs={logs} patients={patients} /></Reveal>
-    </div>
+    <Reveal delay={170}><MessageActivity logs={logs} patients={patients} /></Reveal>
   </div>;
 }
