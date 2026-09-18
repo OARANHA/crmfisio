@@ -67,6 +67,12 @@ export async function saveAutomationSettings(settings: AutomationSettings) {
     timezone: settings.timezone,
     active: settings.active,
   };
-  const { error } = await supabase.from('automation_settings' as never).update(payload as never).eq('clinic_id', settings.clinicId);
+  const { data, error } = await supabase
+    .from('automation_settings' as never)
+    .update(payload as never)
+    .eq('clinic_id', settings.clinicId)
+    .select('clinic_id')
+    .maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error('A configuração não pôde ser alterada com o acesso atual.');
 }

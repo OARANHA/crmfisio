@@ -2,6 +2,9 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigPremium } from './ConfigPremium';
 
+vi.mock('../components/configuration/ClinicCommunicationAdmin', () => ({
+  ClinicCommunicationAdmin: () => <div data-testid="communication-admin">communication-admin</div>,
+}));
 vi.mock('../components/configuration/ClinicGeneralAdmin', () => ({
   ClinicGeneralAdmin: () => <div data-testid="clinic-general">clinic-general</div>,
 }));
@@ -40,7 +43,7 @@ describe('ConfigPremium', () => {
     expect(labels).toContain('Documentos clínicos');
     expect(labels).toContain('Termos');
     expect(labels).toContain('Governança');
-    expect(labels).not.toContain('Comunicação');
+    expect(labels).toContain('Comunicação');
     expect(labels).not.toContain('Financeiro');
     expect(labels).not.toContain('Integrações');
   });
@@ -66,6 +69,9 @@ describe('ConfigPremium', () => {
     clickSection(renderer, 'Termos');
     expect(renderer.root.findByProps({ 'data-testid': 'consent-admin' })).toBeTruthy();
     expect(renderer.root.findAllByProps({ 'data-testid': 'assessment-admin' })).toHaveLength(0);
+
+    clickSection(renderer, 'Comunicação');
+    expect(renderer.root.findByProps({ 'data-testid': 'communication-admin' })).toBeTruthy();
 
     clickSection(renderer, 'Governança');
     expect(renderer.root.findByProps({ 'data-testid': 'storage-admin' })).toBeTruthy();
