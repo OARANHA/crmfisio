@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { flushMessageOutbox, queueWaitlistOffer, queueWaitlistSlotOffers } from '../lib/messageOutbox';
+import { queueWaitlistOffer, queueWaitlistSlotOffers } from '../lib/messageOutbox';
 import { resolveClinicId } from '../lib/repository';
 import {
   claimWaitlistSlot, createWaitlistEntry, loadWaitlist, updateWaitlistEntry, updateWaitlistStatus,
@@ -103,13 +103,11 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
     setBusy(true);
     try {
       await queueWaitlistOffer(entry.id, slot.id, 30);
-      const dispatch = await flushMessageOutbox(1);
       await refresh(clinicId);
-      if (dispatch.sent === 1) toast(`Oferta enviada via WhatsApp para ${patientName(patients, entry.patientId)}.`);
-      else toast('A oferta foi registrada, mas o provedor não confirmou o envio. Verifique a central de Mensagens.', 'warn');
+      toast(`Oferta adicionada à fila segura para ${patientName(patients, entry.patientId)}. O envio será processado automaticamente.`);
     } catch (error) {
       console.error('[MedicsPro] ofertar vaga:', error);
-      toast('Não foi possível enviar a oferta. Verifique opt-in, telefone e conexão do WhatsApp.', 'warn');
+      toast('Não foi possível enfileirar a oferta. Verifique opt-in, telefone e disponibilidade do WhatsApp.', 'warn');
     } finally { setBusy(false); }
   };
 
@@ -121,9 +119,8 @@ export function WaitlistPanel({ unidades, rooms, onRecovered }: Props) {
         toast('Nenhum paciente elegível para esta vaga neste momento.', 'info');
         return;
       }
-      const dispatch = await flushMessageOutbox(queued);
       await refresh(clinicId);
-      toast(`${dispatch.sent} oferta(s) enviada(s). O primeiro SIM dentro de 30 minutos ocupa a vaga automaticamente.`);
+      toast(`${queued} oferta(s) adicionada(s) à fila segura. O envio será processado automaticamente; o primeiro SIM válido ocupa a vaga.`);
     } catch (error) {
       console.error('[MedicsPro] recuperação inteligente:', error);
       toast('Não foi possível iniciar a recuperação inteligente desta vaga.', 'warn');
