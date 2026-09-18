@@ -6,7 +6,7 @@
 
 **Data do snapshot:** 2026-09-17
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
-**Último SHA funcional com rollout registrado nesta sequência:** `392fade1bec14e6767ad5578426c1ed606f0dc7c` (#506). Commits documentais posteriores não mudam, por si só, o runtime funcional descrito aqui.
+**Último SHA funcional com rollout registrado nesta sequência:** `51300dae05c0f90d03d6ed4e8790421037a6b009` (#508 + hardening #509). O checkpoint documental #510 está em `main@34329109f93acddc6ffeea73a67312064daafb63` e não altera o runtime funcional.
 
 ## Estado clínico resumido
 
@@ -34,8 +34,21 @@ Platform Admin access tri-state hardening #500                  PROD / VERIFIED
 PresentationContext eligibility error hardening #502              PROD / VERIFIED
 Consultório / Gestão authenticated P0 #396/#504/#505                PROD / VERIFIED
 Tenant automation telemetry boundary #506                           PROD / VERIFIED
+Plan Catalog + Clinic Plan Assignment V1 #508/#509                   PROD / VERIFIED
 ```
 
+
+## Produção — Plan Catalog + Clinic Plan Assignment V1 #508 + verifier hardening #509
+
+**Status:** #508 squash-mergeada em `main@d9ec815d6450328ec7f4081067dc4dc041e0e302`; #509 production-safe verifier squash-mergeada em `main@51300dae05c0f90d03d6ed4e8790421037a6b009`. Rollout produtivo verificado em 2026-09-17 sobre PostgreSQL 17.6; checkpoint documental consolidado pela #510.
+
+A migration `20260917_platform_plan_catalog_assignment_v1.sql` foi aplicada com COMMIT e o verifier #509 passou em transação estritamente READ ONLY. Estado após rollout: `plans=0`, `versions=0`, `assignments=0`, 13 overrides manuais preservados e zero linhas `source='plan'`. O hash lógico dos overrides permaneceu idêntico antes/depois. O Evolution worker foi promovido para o resolver canônico; Edge Runtime e frontend permaneceram healthy, sem restart/OOM, e as rotas principais responderam HTTP 200.
+
+Boundary confirmado com atores reais: Platform Admin consegue ler catálogo e os seis entitlements efetivos; usuário normal de clínica é negado no Control Plane. O catálogo vazio é deliberado: nomes, preço e composição de pacotes são decisão comercial e não foram inventados por engenharia.
+
+**Próximo passo seguro:** reconciliar e estruturar `Clinic Configuration Core V1` sobre contratos existentes, preservando `PLATFORM ENTITLEMENT → CLINIC CONFIGURATION → USER AUTHORIZATION/CAPABILITY → RESOURCE/ENCOUNTER CONTEXT`. Não reabrir #508/#509 sem regressão observada.
+
+---
 
 ## Produção — Consultório / Gestão authenticated P0 closure + tenant automation telemetry boundary #506
 
