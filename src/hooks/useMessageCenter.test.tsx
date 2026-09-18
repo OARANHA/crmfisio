@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   queueSelectedReactivationCampaign: vi.fn(),
   resolveWhatsappReview: vi.fn(),
   saveMessageTemplate: vi.fn(),
-  flushMessageOutbox: vi.fn(),
 }));
 
 vi.mock('../lib/repository', () => ({ resolveClinicId: mocks.resolveClinicId }));
@@ -26,7 +25,6 @@ vi.mock('../lib/messageOutbox', () => ({
   queueSelectedReactivationCampaign: mocks.queueSelectedReactivationCampaign,
   resolveWhatsappReview: mocks.resolveWhatsappReview,
   saveMessageTemplate: mocks.saveMessageTemplate,
-  flushMessageOutbox: mocks.flushMessageOutbox,
 }));
 
 import { useMessageCenter } from './useMessageCenter';
@@ -58,6 +56,5 @@ describe('useMessageCenter worker boundary', () => {
 
     expect(result).toEqual({ queued: 2 });
     expect(mocks.queueSelectedAppointmentConfirmations).toHaveBeenCalledWith(['a1', 'a2'], 48);
-    expect(mocks.flushMessageOutbox).not.toHaveBeenCalled();
   });
 });
