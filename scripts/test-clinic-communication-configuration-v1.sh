@@ -20,6 +20,8 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X)
 "${PSQL[@]}" -f "$ROOT/tests/sql/clinic_communication_configuration_v1_fixture.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-migrations/20260917_clinic_communication_configuration_v1.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-migrations/20260917_clinic_communication_configuration_v1.sql"
+"${PSQL[@]}" -f "$ROOT/supabase-migrations/20260917_clinic_communication_configuration_acl_hardening.sql"
+"${PSQL[@]}" -f "$ROOT/supabase-migrations/20260917_clinic_communication_configuration_acl_hardening.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1_PRODUCTION.sql"
 
