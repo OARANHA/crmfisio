@@ -1,8 +1,8 @@
 # MedicsPro — Platform Control Plane, Clinic Configuration e Catálogos
 
 > Documento canônico de direção de produto para o domínio SaaS/administrativo.  
-> **Data:** 2026-09-11  
-> **Runtime canônico auditado:** `OARANHA/crmfisio` em `main@52c6bfa49cbdbf50e57220a712ca9d38654ab347`  
+> **Data da última reconciliação de direção:** 2026-09-18
+> **Runtime canônico:** resolver sempre a `main` atual de `OARANHA/crmfisio`; estado operacional detalhado pertence a `docs/CURRENT_STATE.md`.
 > **Referência histórica auditada:** `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83`
 
 Este documento existe para que qualquer agente, inclusive em outra sessão, entenda a arquitetura de produto desejada para:
@@ -18,7 +18,7 @@ Este documento existe para que qualquer agente, inclusive em outra sessão, ente
 
 Ele **não autoriza copiar a arquitetura do MedicsPro histórico**. `OARANHA/crmfisio` continua sendo o único runtime canônico. O histórico é fonte obrigatória de aprendizado de produto/UX/workflow quando existir equivalente maduro.
 
-> **Estado implementado em 2026-09-17:** Plan Catalog + Clinic Plan Assignment V1 está em produção/verificado (#508/#509). Clinic Configuration Core V1 já estava implementado/validado via #406/#407/#408; a evolução #512/#513 adicionou `Configurações → Comunicação`, moveu as automações tenant para a superfície administrativa e passou a exigir `whatsapp.access` também na policy server-side, com ACL least-privilege validado em produção. A precedência continua `override explícito → plano ativo/trial → rollout legado`, e entitlement, configuração e autorização permanecem camadas distintas.
+> **Baseline implementada até 2026-09-18:** Plan Catalog + Clinic Plan Assignment V1, Clinic Configuration Core V1 e Configurações → Comunicação estão em produção/verificados. Templates administrativos de Comunicação V1 foram instalados via #516 com RPC current-clinic, ACL fechado e auditoria; a Lista de Espera mantém delivery server-side via #515. A precedência continua `override explícito → plano ativo/trial → rollout legado`, e entitlement, configuração e autorização permanecem camadas distintas.
 
 ---
 
@@ -703,7 +703,21 @@ Regra institucional permanece:
 
 ---
 
-## 13. Programa de implementação — etapas canônicas
+## 13. Trajetória executável atual
+
+O programa abaixo continua válido como mapa arquitetural, mas várias foundations previstas em 2026-09-11 já foram entregues. A sequência operacional atual é:
+
+1. **Comunicação tenant:** auditar e completar conexão/provider, opt-in e health da própria clínica sem expor telemetria global;
+2. **Agenda & Atendimento:** serviços/procedimentos, duração e disponibilidade configuráveis;
+3. **Finance Configuration / Compensation:** regras econômicas configuráveis, versionadas e auditáveis antes de qualquer “Meus ganhos” para profissional;
+4. **Onboarding:** compor as configurações existentes em jornada guiada de primeira ativação;
+5. **Integrações financeiras/fiscais:** somente depois, conforme evidência do piloto.
+
+Não reabrir Plan Catalog, Clinic Configuration Core, Clinical Documents ou templates administrativos de Comunicação como foundations novas.
+
+---
+
+## 14. Programa de implementação — etapas canônicas
 
 Este programa é um **mapa de execução**, não ordem para interromper P0s em andamento. Fechar gates de produção já abertos antes de iniciar grandes foundations novas.
 
@@ -744,60 +758,39 @@ não implementar agora
 
 **Não criar tabelas nesta etapa se a necessidade ainda puder ser resolvida pela foundation existente.**
 
-### ETAPA 2 — Control Plane mínimo de produto
+### ETAPA 2 — Control Plane mínimo de produto — PARCIALMENTE ENTREGUE
 
-Objetivo: tornar o Platform Admin realmente capaz de operar o SaaS.
+Entregue: Plan Catalog/versionamento, Clinic Plan Assignment, baseline de entitlements, overrides/herança e reset para baseline.
 
-Prioridade 80/20:
-
-1. clínicas/lifecycle;
-2. plano;
-3. entitlements;
-4. limites;
-5. overrides;
-6. auditoria;
-7. consumo/saúde básica.
+Permanecem: lifecycle operacional/comercial, limites/usage, consumo/health, receita/assinaturas e auditoria das próximas mutations da plataforma.
 
 Só depois considerar feature registry genérico mais sofisticado.
 
-**Saída:** Platform Admin controla produto contratado sem tocar autorização clínica.
+**Saída alvo:** Platform Admin controla produto contratado sem tocar autorização clínica.
 
-### ETAPA 3 — Arquitetura de Configurações da Clínica
+### ETAPA 3 — Arquitetura de Configurações da Clínica — FOUNDATION ENTREGUE / DOMÍNIOS PARCIAIS
 
-Objetivo: organizar o tenant em domínios coerentes.
+A Information Architecture já existe no runtime. Geral, Equipe & Acessos, Agenda & Atendimento, Fluxos clínicos, Anamneses & Avaliações, Documentos clínicos, Termos, Comunicação e Governança possuem superfícies próprias.
 
-- definir Information Architecture da tela Configurações;
-- mapear dados/contratos existentes por domínio;
-- eliminar duplicação entre configuração, entitlement e ACL;
-- não inventar toggle frontend sem enforcement/contrato real quando ele for sensível.
+Próximas lacunas de maior valor: serviços/procedimentos + disponibilidade, Finance Configuration/compensation, Integrações e refinamentos tenant-side de Governança.
 
-**Saída:** shell/configuração consistente e extensível.
+**Saída alvo:** shell/configuração consistente e extensível sem duplicar entitlement ou ACL.
 
-### ETAPA 4 — WhatsApp como produto configurável
+### ETAPA 4 — WhatsApp como produto configurável — VERTICAL ATUAL
 
-Objetivo: separar provider da plataforma, configuração tenant e ação do usuário.
+Já entregue: fila/worker server-side, automações clinic-scoped, entitlement server-side, templates administrativos V1 e operações de confirmação/NPS/reativação/lista de espera sobre contratos existentes.
 
-- health/instância/provider no Platform Admin;
-- conexão/configuração no Admin da clínica;
-- envio/automação autorizada no domínio operacional;
-- consumo/limite conectado ao entitlement/plano;
-- observabilidade/reconciliação preservadas.
+Próxima slice deve começar por **auditoria real** de provider/conexão/instância, opt-in e health para Platform Admin × Clinic Admin, reaproveitando Evolution/runtime existentes e o equivalente histórico apenas como referência de UX.
 
-**Saída:** WhatsApp deixa de ser uma integração solta e vira capability SaaS operável.
+**Saída alvo:** WhatsApp vira capability SaaS operável sem segundo dispatcher e sem segredo global no browser.
 
-### ETAPA 5 — Catálogos e templates
+### ETAPA 5 — Catálogos e templates — FOUNDATIONS MÚLTIPLAS JÁ EXISTEM
 
-Objetivo: criar uma biblioteca MedicsPro reaproveitável sem quebrar versionamento clínico.
+Assessment Library, consentimentos, templates de prescrição/documentos e templates administrativos de Comunicação possuem contratos próprios. Não criar um engine universal paralelo.
 
-Sequência recomendada:
+Evoluir somente onde houver gap de produto comprovado, preservando versionamento/snapshot/autoria de cada domínio. Instrumentos validados continuam fora do construtor genérico.
 
-1. Avaliações padrão × Minhas avaliações sobre Assessment Engine existente;
-2. templates de comunicação;
-3. consentimentos/modelos onde a foundation atual permitir;
-4. documentos clínicos somente com contrato próprio de autoria/versionamento;
-5. instrumentos validados continuam fora do construtor genérico.
-
-**Saída:** conteúdo MedicsPro distribuível + personalização de clínica + histórico preservado.
+**Saída alvo:** conteúdo MedicsPro distribuível + personalização de clínica + histórico preservado.
 
 ### ETAPA 6 — Receita & Assinaturas da plataforma
 
@@ -839,7 +832,7 @@ Somente depois das foundations anteriores:
 
 ---
 
-## 14. Dependências com o roadmap clínico
+## 15. Dependências com o roadmap clínico
 
 Este programa não substitui o roadmap clínico.
 
@@ -881,7 +874,7 @@ Resposta finalizada preserva versão histórica
 
 ---
 
-## 15. Gates para qualquer PR futuro deste eixo
+## 16. Gates para qualquer PR futuro deste eixo
 
 Antes de implementar:
 
@@ -913,7 +906,7 @@ Para mudança sensível de segurança/entitlement:
 
 ---
 
-## 16. Invariantes que futuros agentes não devem rediscutir sem evidência
+## 17. Invariantes que futuros agentes não devem rediscutir sem evidência
 
 1. `platform_admin` é domínio separado de `public.profiles.role`.
 2. Platform Admin administra o SaaS, não recebe prontuário universal.
@@ -932,40 +925,23 @@ Para mudança sensível de segurança/entitlement:
 
 ---
 
-## 17. Próximo passo recomendado quando este programa for retomado
+## 18. Próximo passo recomendado
 
-Não começar por uma tela isolada.
+Não repetir o inventário global de 2026-09-11 nem abrir uma nova tela isolada.
 
-O próximo agente deve primeiro produzir um **inventário comparativo Platform Admin atual × MedicsPro histórico**, cobrindo no mínimo:
+A próxima vertical é **Comunicação — Connection / Provider / Tenant Health Audit V1**:
 
-- Clinics/lifecycle;
-- Plans;
-- Features/entitlements;
-- Limits/usage;
-- Subscriptions;
-- WhatsApp;
-- API/integrations;
-- Surveys/templates;
-- Notifications;
-- Platform team/support.
+1. inspecionar Evolution/runtime e contratos MedicsPro atuais para instância, provider, status, webhook, opt-in e health;
+2. comparar somente este domínio com o WhatsApp histórico e classificar `preservar | evoluir | redesenhar | rejeitar`;
+3. separar Platform Admin × Clinic Admin × usuário operacional;
+4. provar o gap antes de criar migration/tabela/tela;
+5. implementar a menor slice que permita à clínica entender/configurar sua conexão sem expor segredo ou telemetria global.
 
-Para cada linha:
-
-```text
-estado atual
-contrato atual
-legado útil
-risco
-lacuna
-prioridade 80/20
-próxima slice mínima
-```
-
-Depois escolher **uma única vertical slice** com benefício operacional claro, sem abrir várias foundations simultaneamente.
+Depois de fechar Comunicação, seguir para **Agenda & Atendimento — serviços/procedimentos + duração/disponibilidade** e então **Finance Configuration / Compensation**.
 
 ---
 
-## 18. Nota de continuidade
+## 19. Nota de continuidade
 
 Este documento captura uma decisão de produto de longo prazo. Ele não significa que todos os itens estejam implementados.
 

@@ -1,6 +1,6 @@
 # MedicsPro — Product Roadmap
 
-**Estado em 2026-09-17**
+**Estado em 2026-09-18**
 
 ## North Star
 
@@ -56,6 +56,20 @@ Referência canônica adicional para o trilho SaaS:
 
 [`docs/PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md`](docs/PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md)
 
+### Trajetória executável atual — 2026-09-18
+
+O produto já possui o ciclo central utilizável de clínica e não deve voltar a abrir foundations genéricas sem evidência de regressão. O foco imediato é **fechar verticalmente a experiência do tenant e do piloto**, uma área por vez.
+
+Sequência 80/20 atual:
+
+1. concluir Comunicação como produto tenant: conexão/provider, opt-in e health observável sem expor telemetria global;
+2. completar **Agenda & Atendimento** com serviços/procedimentos e regras de disponibilidade que a clínica realmente configura;
+3. criar **Finance Configuration / Compensation** configurável e auditável, removendo regra econômica fixa do frontend antes de expor “Meus ganhos”;
+4. reduzir onboarding/time-to-value usando as configurações já existentes;
+5. somente então ampliar pagamentos paciente→clínica, fiscal e demais integrações conforme evidência do piloto.
+
+Clinical Documents, Assessment/Instrument foundations, Plan Catalog, entitlement/configuration separation e templates administrativos de Comunicação são baseline entregue; evolução nesses eixos deve ser incremental e guiada por uso real.
+
 ---
 
 ## FOUNDATION DONE
@@ -77,10 +91,12 @@ Estas foundations não devem ser reabertas sem evidência concreta de regressão
 - onboarding/provisionamento de clínica existente como domínio próprio;
 - audit log da plataforma;
 - entitlements por clínica já existentes para `nexus.access`, `finance.access`, `crm.access`, `reports.access`, `assessments.custom`, `whatsapp.access`;
+- Plan Catalog + versões publicadas + Clinic Plan Assignment V1 em produção;
+- resolução efetiva `override explícito → plano ativo/trial → rollout legado` e reset para baseline já validados;
 - Nexus com default conservador quando não configurado;
 - separação explícita entre entitlement e autorização clínica.
 
-Isso **não** significa Control Plane completo. Planos, limites, overrides, assinaturas, provedores, catálogos e delegação de equipe de plataforma ainda possuem evolução futura descrita neste roadmap.
+Isso **não** significa Control Plane completo. Limites/usage, lifecycle comercial/assinaturas, saúde de provedores, receita SaaS e delegação da equipe de plataforma continuam como evolução futura.
 
 ### Nexus C-01–C-06
 
@@ -276,7 +292,7 @@ A primeira fatia de prescrição já está em produção com contrato canônico,
 
 ## 5. Demais documentos conforme piloto
 
-Priorizar atestado/declaração, solicitação de exames, relatório/laudo e outros documentos somente conforme demanda observada e requisitos aplicáveis. Evitar vários módulos superficiais ao mesmo tempo.
+Pedido de exames já pertence ao Clinical Documents engine entregue. Próximos candidatos são atestado/declaração, relatório/laudo e anexos/documentos do paciente **somente conforme demanda observada e requisitos aplicáveis**. Evitar vários módulos superficiais ao mesmo tempo.
 
 ## 6. Finance Configuration da clínica
 
@@ -312,14 +328,17 @@ Este programa organiza o futuro do control plane. Ele **não manda iniciar todas
 
 A referência detalhada é `docs/PLATFORM_CONTROL_PLANE_AND_CLINIC_CONFIGURATION.md`.
 
-## S0. Estado e continuidade — agora
+## S0. Estado e continuidade — baseline contínua
 
 Objetivo: nenhum agente trabalhar sobre snapshot obsoleto.
 
-- #399/#400 reconhecidas como efetivas;
-- repair pós-#400 registrado;
-- documentação alinhada;
-- P0s curtos permanecem prioritários antes de grandes foundations.
+- #399/#400 e repair pós-#400 registrados;
+- P0 Consultório/Gestão fechado em produção;
+- Plan Catalog + Clinic Plan Assignment V1 em produção;
+- Clinic Configuration Core e Comunicação administrativa em produção;
+- templates administrativos de Comunicação instalados via #516.
+
+Continuar reconciliando documentação a cada slice significativa, sem transformar S0 em programa de feature.
 
 ## S1. Inventário Platform Admin atual × histórico
 
@@ -352,20 +371,15 @@ Para cada domínio registrar:
 - próxima slice mínima;
 - classificação `preservar | evoluir | redesenhar | rejeitar`.
 
-## S2. Control Plane mínimo
+## S2. Control Plane mínimo — parcial, não reabrir o que já foi entregue
 
 Objetivo: Platform Admin operar o produto SaaS sem ganhar acesso clínico implícito.
 
-Ordem 80/20:
-
-1. clínicas/lifecycle;
-2. owner/onboarding;
-3. plano;
-4. entitlements;
-5. limites;
-6. overrides/herança;
-7. auditoria;
-8. consumo/health básico.
+Estado:
+- plano/versionamento/assignment: entregue;
+- entitlements e precedência de overrides: entregues;
+- provisioning/owner foundation: existente;
+- permanecem lifecycle operacional/comercial, limites/usage, consumo/health, receita/assinaturas e auditoria das próximas mutations.
 
 Modelo conceitual:
 
@@ -381,51 +395,37 @@ ENTITLEMENT EFETIVO
 
 Antes de criar feature registry genérico, provar que os entitlements atuais não bastam.
 
-## S3. Configurações da Clínica
+## S3. Configurações da Clínica — IA foundation entregue, domínios ainda evoluem
 
-Transformar Configurações em Information Architecture coerente:
+A área já possui IA funcional para Geral, Equipe & Acessos, Agenda & Atendimento, Fluxos clínicos, Anamneses & Avaliações, Documentos clínicos, Termos, Comunicação e Governança.
 
-```text
-Geral
-Equipe e acesso
-Agenda e atendimento
-Clínico
-Comunicação
-Financeiro
-Integrações
-Governança
-```
+Próximos gaps tenant de maior valor:
+- Agenda & Atendimento: serviços/procedimentos, duração e disponibilidade;
+- Comunicação: conexão/provider, opt-in e health;
+- Financeiro: categorias, meios e compensation/repasse configurável;
+- Integrações: pagamentos/fiscal/provider somente quando houver contrato canônico.
 
-Separar o que a plataforma permite do que a clínica escolhe e do que o usuário pode executar.
+Continuar separando o que a plataforma permite do que a clínica escolhe e do que o usuário pode executar.
 
-## S4. WhatsApp como capability SaaS
+## S4. WhatsApp como capability SaaS — vertical atual
 
-### Platform Admin
+Entregue:
+- motor server-side de fila/idempotência/reconciliação;
+- automações clinic-scoped em Configurações → Comunicação;
+- enforcement de `whatsapp.access`;
+- templates administrativos V1 owner/admin com RPC current-clinic, ACL fechado e auditoria;
+- Lista de Espera enqueue-only no browser, worker global server-only.
 
-- provider global;
-- health;
-- instâncias;
-- filas;
-- consumo/limite;
-- falhas/reconciliação;
-- webhooks/observabilidade.
+Próxima auditoria/implementação:
+- Platform Admin: provider/health/instâncias/filas/consumo sem acesso tenant-sensitive;
+- Admin da clínica: conexão/número/QR quando aplicável, opt-in e diagnóstico de saúde da própria conexão;
+- usuário operacional: manter ações somente dentro da autorização/contexto.
 
-### Admin da clínica
+Preservar o motor atual; não criar segundo dispatcher nem expor segredo/provider global ao browser.
 
-- conexão/número;
-- QR quando aplicável;
-- templates;
-- opt-in;
-- automações/preferências;
-- credenciais BYOC quando permitido.
+## S5. Catálogos e templates — foundations existentes, evolução incremental
 
-### Usuário operacional
-
-- envio/ações somente dentro da autorização e contexto.
-
-Preservar motor atual de idempotência, retry/reconciliação e server authority.
-
-## S5. Catálogos e templates
+Assessment Library, consentimentos, templates de documentos clínicos e templates administrativos de Comunicação já possuem foundations próprias. Não reconstruí-los como um “template engine” universal.
 
 Separar famílias:
 
