@@ -201,7 +201,7 @@ Organizar por domínio:
 - [ ] Equipe e acesso.
 - [ ] Agenda e atendimento: serviços/procedimentos, duração, recursos.
 - [ ] Clínico: Avaliações padrão, Minhas avaliações, instrumentos, documentos, consentimentos, protocolos.
-- [ ] Comunicação: WhatsApp, templates, automações, opt-in, NPS.
+- [ ] Comunicação: automações clinic-scoped reorganizadas e enforcement de `whatsapp.access`/ACL validados em produção via #512/#513; permanecem conexão/provider WhatsApp, templates, opt-in e evolução de NPS.
 - [ ] Financeiro: categorias, meios, parceiros/repasse e configurações permitidas.
 - [ ] Integrações.
 - [ ] Governança/LGPD/auditoria tenant-side.

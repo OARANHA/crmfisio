@@ -6,7 +6,7 @@
 
 **Data do snapshot:** 2026-09-17
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
-**Último SHA funcional com rollout registrado nesta sequência:** `51300dae05c0f90d03d6ed4e8790421037a6b009` (#508 + hardening #509). O checkpoint documental #510 está em `main@34329109f93acddc6ffeea73a67312064daafb63` e não altera o runtime funcional.
+**Último SHA funcional com rollout registrado nesta sequência:** `28a79a795e3adb3e081aa2cb7dd2d7b8895b097b` (#512 + ACL hardening #513), sobre a foundation de Clinic Configuration #406/#407/#408 e Plan Catalog #508/#509.
 
 ## Estado clínico resumido
 
@@ -35,8 +35,25 @@ PresentationContext eligibility error hardening #502              PROD / VERIFIE
 Consultório / Gestão authenticated P0 #396/#504/#505                PROD / VERIFIED
 Tenant automation telemetry boundary #506                           PROD / VERIFIED
 Plan Catalog + Clinic Plan Assignment V1 #508/#509                   PROD / VERIFIED
+Clinic Communication Configuration V1 #512/#513                        PROD / VERIFIED
 ```
 
+
+## Produção — Clinic Communication Configuration V1 #512 + ACL hardening #513
+
+**Status:** #512 squash-mergeada em `main@47dd1c24dd7ec4f255bff5df921a1b17782d2928`; #513 squash-mergeada em `main@28a79a795e3adb3e081aa2cb7dd2d7b8895b097b`. Frontend, policy e ACL hardening estão implantados e validados em produção em 2026-09-17.
+
+A #512 reorganizou a configuração tenant de comunicação sem criar nova foundation: `AutomationControlPanel` saiu da tela operacional `/mensagens` e passou para `Configurações → Comunicação`. A UI valida `whatsapp.access`, distingue negação contratual de falha técnica e o client de `automation_settings` exige retorno real da linha atualizada para não produzir sucesso falso quando RLS filtra uma mutação.
+
+No PostgreSQL, `automation_settings_write_admin` continua tenant-scoped e owner/admin-only, agora também exige `current_clinic_entitlement_allowed('whatsapp.access')`. A primeira execução do verifier production-safe da #512 encontrou um drift preexistente: os default privileges do Supabase self-hosted haviam deixado `anon` e `authenticated` com grants amplos na tabela. O verifier bloqueou a validação; nenhum dado foi alterado. A #513 corrigiu o ACL explicitamente: `anon` sem grants; `authenticated` somente `SELECT, INSERT, UPDATE`; `DELETE=false`; `service_role` preservado.
+
+Após o hotfix, `VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1_PRODUCTION.sql` passou integralmente em PostgreSQL 17.6. As 3 linhas de `automation_settings` permaneceram com o mesmo hash lógico antes/depois: `7890b62aca7862e2eb767fecec5a5418`. Produção final: frontend e banco `running`, `restarts=0`, `OOM=false`; `/`, `/config`, `/mensagens`, `/agenda` e `/pacientes` HTTP 200; bundle ativo contém os marcadores da nova configuração.
+
+**Boundary preservado:** `PLATFORM ENTITLEMENT → CLINIC CONFIGURATION → USER AUTHORIZATION`. A configuração da clínica não habilita o produto contratado e o módulo bloqueado não perde seu histórico/configuração persistida.
+
+**Próximo passo seguro:** Comunicação permanece um domínio parcialmente aberto. Não recriar automação nem entitlement. Auditar primeiro os contratos já existentes para conexão/provider WhatsApp, templates, opt-in/NPS e health antes de escolher a próxima micro-slice.
+
+---
 
 ## Produção — Plan Catalog + Clinic Plan Assignment V1 #508 + verifier hardening #509
 
@@ -46,7 +63,7 @@ A migration `20260917_platform_plan_catalog_assignment_v1.sql` foi aplicada com 
 
 Boundary confirmado com atores reais: Platform Admin consegue ler catálogo e os seis entitlements efetivos; usuário normal de clínica é negado no Control Plane. O catálogo vazio é deliberado: nomes, preço e composição de pacotes são decisão comercial e não foram inventados por engenharia.
 
-**Próximo passo seguro:** reconciliar e estruturar `Clinic Configuration Core V1` sobre contratos existentes, preservando `PLATFORM ENTITLEMENT → CLINIC CONFIGURATION → USER AUTHORIZATION/CAPABILITY → RESOURCE/ENCOUNTER CONTEXT`. Não reabrir #508/#509 sem regressão observada.
+**Continuidade:** a reauditoria posterior confirmou que `Clinic Configuration Core V1` já existia e estava em produção via #406/#407/#408. A evolução seguinte foi registrada em #512/#513 na seção acima; não recriar essa foundation.
 
 ---
 

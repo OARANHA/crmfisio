@@ -18,7 +18,7 @@ Este documento existe para que qualquer agente, inclusive em outra sessão, ente
 
 Ele **não autoriza copiar a arquitetura do MedicsPro histórico**. `OARANHA/crmfisio` continua sendo o único runtime canônico. O histórico é fonte obrigatória de aprendizado de produto/UX/workflow quando existir equivalente maduro.
 
-> **Estado implementado em 2026-09-17:** Plan Catalog + Clinic Plan Assignment V1 está em produção/verificado (#508/#509). A precedência efetiva é `override explícito → plano ativo/trial → rollout legado`; o catálogo produtivo começa deliberadamente vazio e os 13 overrides manuais preexistentes foram preservados. O próximo eixo técnico é `Clinic Configuration Core V1`, sem colapsar entitlement, configuração e autorização.
+> **Estado implementado em 2026-09-17:** Plan Catalog + Clinic Plan Assignment V1 está em produção/verificado (#508/#509). Clinic Configuration Core V1 já estava implementado/validado via #406/#407/#408; a evolução #512/#513 adicionou `Configurações → Comunicação`, moveu as automações tenant para a superfície administrativa e passou a exigir `whatsapp.access` também na policy server-side, com ACL least-privilege validado em produção. A precedência continua `override explícito → plano ativo/trial → rollout legado`, e entitlement, configuração e autorização permanecem camadas distintas.
 
 ---
 
