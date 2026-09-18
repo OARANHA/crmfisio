@@ -184,10 +184,10 @@ Prioridade 80/20:
 
 - [ ] lifecycle da clínica;
 - [ ] owner/onboarding;
-- [ ] plano;
-- [ ] entitlements;
+- [x] plano — #508 Plan Catalog + Clinic Plan Assignment V1 em produção/verificado; catálogo começa vazio por decisão comercial deliberada;
+- [x] entitlements — baseline de plano integrada aos seis entitlements canônicos atuais sem substituir configuração/autorização;
 - [ ] limites;
-- [ ] overrides explícitos/herança;
+- [x] overrides explícitos/herança — precedência `override → plano → rollout` e reset para baseline validados em produção;
 - [ ] auditoria de mutações da plataforma;
 - [ ] consumo/health básico por tenant.
 
