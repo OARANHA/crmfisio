@@ -1,6 +1,6 @@
 # MedicsPro — TODO canônico
 
-> Estado em **2026-09-17**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
+> Estado em **2026-09-18**. Este arquivo lista trabalho realmente aberto. Fundação já entregue não deve voltar para a fila sem evidência de regressão.
 
 Referências:
 
@@ -201,7 +201,7 @@ Organizar por domínio:
 - [ ] Equipe e acesso.
 - [ ] Agenda e atendimento: serviços/procedimentos, duração, recursos.
 - [ ] Clínico: Avaliações padrão, Minhas avaliações, instrumentos, documentos, consentimentos, protocolos.
-- [ ] Comunicação: automações clinic-scoped reorganizadas e enforcement de `whatsapp.access`/ACL validados em produção via #512/#513; permanecem conexão/provider WhatsApp, templates, opt-in e evolução de NPS.
+- [ ] Comunicação: automações clinic-scoped reorganizadas e enforcement de `whatsapp.access`/ACL validados em produção via #512/#513; administração segura dos templates V1 instalada via #516 (smoke humano do editor ainda pendente); permanecem conexão/provider WhatsApp, opt-in e evolução de NPS.
 - [ ] Financeiro: categorias, meios, parceiros/repasse e configurações permitidas.
 - [ ] Integrações.
 - [ ] Governança/LGPD/auditoria tenant-side.
@@ -224,7 +224,7 @@ Separar responsabilidades:
 
 - [ ] conectar/configurar número/instância;
 - [ ] QR quando aplicável;
-- [ ] templates;
+- [x] templates administrativos V1 — edição owner/admin em Configurações → Comunicação via #516, com RPC current-clinic e auditoria; lifecycle avançado/variáveis/preview continua no backlog de catálogo;
 - [ ] opt-in;
 - [ ] automações/preferências;
 - [ ] credenciais BYOC quando esse modelo existir.
