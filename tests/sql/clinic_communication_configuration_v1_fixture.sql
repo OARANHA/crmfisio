@@ -38,9 +38,9 @@ WITH CHECK (
   AND public.current_app_role() IN ('owner','admin')
 );
 
-REVOKE ALL ON TABLE public.automation_settings FROM PUBLIC, anon;
-GRANT SELECT, INSERT, UPDATE ON TABLE public.automation_settings TO authenticated;
-GRANT ALL ON TABLE public.automation_settings TO service_role;
+-- Production self-hosted Supabase grants broad default privileges on new public
+-- tables. Reproduce that ACL drift here so the hardening migration is required.
+GRANT ALL ON TABLE public.automation_settings TO anon, authenticated, service_role;
 
 INSERT INTO public.clinics (id, name, lifecycle_status) VALUES
   ('20000000-0000-0000-0000-000000000001', 'Clinic rollout', 'active'),

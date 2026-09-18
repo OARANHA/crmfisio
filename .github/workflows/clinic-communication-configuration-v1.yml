@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'supabase-migrations/20260917_clinic_communication_configuration_v1.sql'
+      - 'supabase-migrations/20260917_clinic_communication_configuration_acl_hardening.sql'
       - 'supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1.sql'
       - 'supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1_PRODUCTION.sql'
       - 'tests/sql/clinic_communication_configuration_v1_fixture.sql'
