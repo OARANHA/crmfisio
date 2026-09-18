@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AutomationControlPanel } from '../messages/AutomationControlPanel';
+import { MessageTemplatesEditor } from '../messages/MessageTemplatesEditor';
 import {
   isCurrentClinicEntitlementAllowed,
   loadCurrentClinicEntitlementState,
   type CurrentClinicEntitlementState,
 } from '../../lib/clinicEntitlement';
 import { useCurrentUserAccess } from '../../lib/currentUserAccess';
+import { loadMessageTemplates, saveMessageTemplate, type MessageTemplateRow } from '../../lib/messageOutbox';
 import { isClinicManager } from '../../lib/permissions';
 import { useToast } from '../../lib/toastContext';
 import { Btn, Chip } from '../../lib/ui';
@@ -17,6 +19,8 @@ export function ClinicCommunicationAdmin() {
   const [entitlement, setEntitlement] = useState<CurrentClinicEntitlementState | null>(null);
   const [loading, setLoading] = useState(canManage);
   const [error, setError] = useState(false);
+  const [templates, setTemplates] = useState<MessageTemplateRow[]>([]);
+  const [templateBusy, setTemplateBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!canManage) return;
@@ -24,10 +28,18 @@ export function ClinicCommunicationAdmin() {
     setError(false);
     setEntitlement(null);
     try {
-      setEntitlement(await loadCurrentClinicEntitlementState('whatsapp.access'));
+      const nextEntitlement = await loadCurrentClinicEntitlementState('whatsapp.access');
+      setEntitlement(nextEntitlement);
+      if (isCurrentClinicEntitlementAllowed(nextEntitlement)) {
+        setTemplates(await loadMessageTemplates());
+      } else {
+        setTemplates([]);
+      }
     } catch (cause) {
       console.error('[MedicsPro] configuração de comunicação:', cause);
+      setEntitlement(null);
       setError(true);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -42,6 +54,20 @@ export function ClinicCommunicationAdmin() {
   }
 
   const allowed = entitlement ? isCurrentClinicEntitlementAllowed(entitlement) : false;
+
+  const persistTemplate = async (id: string, body: string) => {
+    setTemplateBusy(true);
+    try {
+      await saveMessageTemplate(id, body);
+      setTemplates(await loadMessageTemplates());
+      toast('Modelo salvo e alteração registrada na auditoria.');
+    } catch (cause) {
+      console.error('[MedicsPro] salvar template de comunicação:', cause);
+      toast('Não foi possível salvar o modelo de comunicação.', 'warn');
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -62,7 +88,7 @@ export function ClinicCommunicationAdmin() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-amber/35 bg-amber/[0.05] px-4 py-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber">Validação indisponível</p>
-            <p className="mt-1 text-[12px] text-fog">Não foi possível confirmar o entitlement da clínica. A configuração permanece bloqueada por segurança.</p>
+            <p className="mt-1 text-[12px] text-fog">Não foi possível confirmar e carregar a configuração da clínica. A área permanece bloqueada por segurança.</p>
           </div>
           <Btn variant="ghost" onClick={() => void refresh()}>Tentar novamente</Btn>
         </div>
@@ -76,7 +102,12 @@ export function ClinicCommunicationAdmin() {
         </div>
       )}
 
-      {!loading && entitlement && allowed && <AutomationControlPanel onToast={toast} />}
+      {!loading && entitlement && allowed && (
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <AutomationControlPanel onToast={toast} />
+          <MessageTemplatesEditor templates={templates} busy={templateBusy} onSave={persistTemplate} />
+        </div>
+      )}
     </div>
   );
 }
