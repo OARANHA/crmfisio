@@ -1,0 +1,68 @@
+name: Clinic Communication Configuration V1
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260917_clinic_communication_configuration_v1.sql'
+      - 'supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1.sql'
+      - 'supabase-verifiers/VERIFY_20260917_CLINIC_COMMUNICATION_CONFIGURATION_V1_PRODUCTION.sql'
+      - 'tests/sql/clinic_communication_configuration_v1_fixture.sql'
+      - 'scripts/test-clinic-communication-configuration-v1.sh'
+      - 'src/components/configuration/ClinicCommunicationAdmin.tsx'
+      - 'src/components/configuration/ClinicCommunicationAdmin.test.tsx'
+      - 'src/pages/ConfigPremium.tsx'
+      - 'src/pages/ConfigPremium.test.tsx'
+      - 'src/pages/MensagensOperational.tsx'
+      - 'src/lib/automation.ts'
+      - 'src/lib/automation.test.ts'
+      - 'src/lib/automationTelemetryBoundary.test.js'
+      - '.github/workflows/clinic-communication-configuration-v1.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-16:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: clinic_communication_configuration_v1_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres clinic_communication_configuration_v1_test
+      - name: Run entitlement/configuration policy verifier
+        run: bash scripts/test-clinic-communication-configuration-v1.sh
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check

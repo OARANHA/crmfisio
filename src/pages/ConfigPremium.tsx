@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AssessmentTemplatesAdmin } from '../components/AssessmentTemplatesAdmin';
 import { ClinicClinicalFlowsAdmin } from '../components/configuration/ClinicClinicalFlowsAdmin';
+import { ClinicCommunicationAdmin } from '../components/configuration/ClinicCommunicationAdmin';
 import { ClinicGeneralAdmin } from '../components/configuration/ClinicGeneralAdmin';
 import { ConsentTemplatesAdmin } from '../components/ConsentTemplatesAdmin';
 import { InfrastructureAdmin } from '../components/InfrastructureAdmin';
@@ -9,7 +10,7 @@ import { StorageAdmin } from '../components/StorageAdmin';
 import { TeamAdmin } from '../components/TeamAdmin';
 import { Config } from './Config';
 
-type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'fluxos' | 'avaliacoes' | 'documentos' | 'termos' | 'governanca';
+type ConfigSection = 'geral' | 'equipe' | 'agenda' | 'fluxos' | 'avaliacoes' | 'documentos' | 'termos' | 'comunicacao' | 'governanca';
 
 const SECTION_META: Array<{
   key: ConfigSection;
@@ -23,6 +24,7 @@ const SECTION_META: Array<{
   { key: 'avaliacoes', title: 'Anamneses & Avaliações', description: 'Biblioteca clínica versionada' },
   { key: 'documentos', title: 'Documentos clínicos', description: 'Modelos de prescrição da clínica' },
   { key: 'termos', title: 'Termos', description: 'Modelos de consentimento' },
+  { key: 'comunicacao', title: 'Comunicação', description: 'Automações e preferências da clínica' },
   { key: 'governanca', title: 'Governança', description: 'Storage, RBAC, LGPD e auditoria' },
 ];
 
@@ -76,6 +78,7 @@ export function ConfigPremium() {
         {section === 'avaliacoes' && <AssessmentTemplatesAdmin />}
         {section === 'documentos' && <PrescriptionTemplatesAdmin />}
         {section === 'termos' && <ConsentTemplatesAdmin />}
+        {section === 'comunicacao' && <ClinicCommunicationAdmin />}
         {section === 'governanca' && (
           <div className="space-y-4">
             <StorageAdmin />
