@@ -159,24 +159,10 @@ User/Professional → executa ações autorizadas
 
 ### P1 — ETAPA 1: inventário Platform Admin atual × MedicsPro histórico
 
-Antes de novas foundations neste eixo:
+- [x] Inventário profundo inicial concluído em 2026-09-11; manter `docs/PLATFORM_AND_LEGACY_GAP_AUDIT_20260911.md` como referência.
+- [ ] Em cada nova slice com equivalente histórico, reabrir **somente o domínio relevante** no `OARANHA/medicspro` e registrar `preservar | evoluir | redesenhar | rejeitar` contra o runtime atual.
 
-- [x] Inventário profundo Platform Admin atual × MedicsPro histórico concluído em 2026-09-11; manter `docs/PLATFORM_AND_LEGACY_GAP_AUDIT_20260911.md` como referência antes de novas foundations.
-- [ ] Abrir diretamente no `OARANHA/medicspro@0fd709612598fa93a9cf0517b9ba924b1405ec83` os equivalentes de:
-  - Clinics/lifecycle;
-  - Plans;
-  - Features;
-  - Limits/usage;
-  - Subscriptions;
-  - WhatsApp;
-  - API Keys/integrations;
-  - Surveys/templates;
-  - Notifications;
-  - Platform team/support.
-- [ ] Para cada domínio registrar: estado atual, contrato atual, legado útil, risco, lacuna, prioridade 80/20 e próxima slice mínima.
-- [ ] Classificar `preservar | evoluir | redesenhar | rejeitar`.
-
-**Não começar por uma nova tela antes deste inventário.**
+**Não repetir uma auditoria global inteira antes de cada mudança; comparar o domínio específico antes de redesenhá-lo.**
 
 ### P1 — ETAPA 2: Control Plane mínimo
 
@@ -195,16 +181,15 @@ Antes de criar um feature registry genérico, provar que os entitlements atuais 
 
 ### P1 — ETAPA 3: arquitetura de Configurações da Clínica
 
-Organizar por domínio:
-
-- [ ] Geral: clínica, unidades, horários, dados fiscais.
-- [ ] Equipe e acesso.
-- [ ] Agenda e atendimento: serviços/procedimentos, duração, recursos.
-- [ ] Clínico: Avaliações padrão, Minhas avaliações, instrumentos, documentos, consentimentos, protocolos.
-- [ ] Comunicação: automações clinic-scoped reorganizadas e enforcement de `whatsapp.access`/ACL validados em produção via #512/#513; administração segura dos templates V1 instalada via #516 (smoke humano do editor ainda pendente); permanecem conexão/provider WhatsApp, opt-in e evolução de NPS.
-- [ ] Financeiro: categorias, meios, parceiros/repasse e configurações permitidas.
-- [ ] Integrações.
-- [ ] Governança/LGPD/auditoria tenant-side.
+- [x] IA/shell de Configurações por domínio.
+- [x] Geral — identidade, unidades e horário semanal; **dados fiscais permanecem abertos**.
+- [x] Equipe e acesso — usuários, papéis, identidade profissional, unidades e capabilities.
+- [ ] Agenda e atendimento — salas/recursos entregues; **serviços/procedimentos, duração e disponibilidade** permanecem abertos.
+- [x] Clínico — avaliações, instrumentos, documentos, consentimentos e políticas possuem foundations próprias; UX/catálogos evoluem por evidência.
+- [ ] Comunicação — automações + templates administrativos V1 entregues; **próxima vertical: conexão/provider, opt-in e health tenant**.
+- [ ] Financeiro — categorias, meios e **compensation/repasse configurável** permanecem abertos; não assumir comissão fixa.
+- [ ] Integrações — pagamentos/fiscal/provider conforme contratos escolhidos.
+- [ ] Governança — foundations LGPD/auditoria/storage existem; UX tenant-side e políticas configuráveis evoluem incrementalmente.
 
 Nenhum toggle sensível deve existir apenas na UI sem contrato/enforcement real.
 
@@ -226,7 +211,8 @@ Separar responsabilidades:
 - [ ] QR quando aplicável;
 - [x] templates administrativos V1 — edição owner/admin em Configurações → Comunicação via #516, com RPC current-clinic e auditoria; lifecycle avançado/variáveis/preview continua no backlog de catálogo;
 - [ ] opt-in;
-- [ ] automações/preferências;
+- [x] automações/preferências básicas em Configurações → Comunicação via #512/#513;
+- [ ] health/diagnóstico da própria conexão;
 - [ ] credenciais BYOC quando esse modelo existir.
 
 **Usuário operacional**
