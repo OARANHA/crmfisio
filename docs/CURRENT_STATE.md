@@ -4,9 +4,9 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-17
+**Data do snapshot:** 2026-09-18
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
-**Último SHA funcional com rollout registrado nesta sequência:** `28a79a795e3adb3e081aa2cb7dd2d7b8895b097b` (#512 + ACL hardening #513), sobre a foundation de Clinic Configuration #406/#407/#408 e Plan Catalog #508/#509.
+**Último SHA funcional com rollout registrado nesta sequência:** `47f9b1e1f6f509fe8f72641e2aad91f7350e23ae` (#516 Message Template Admin Boundary V1), após #515 e sobre a configuração de Comunicação #512/#513.ning #513), sobre a foundation de Clinic Configuration #406/#407/#408 e Plan Catalog #508/#509.
 
 ## Estado clínico resumido
 
@@ -38,6 +38,22 @@ Plan Catalog + Clinic Plan Assignment V1 #508/#509                   PROD / VERI
 Clinic Communication Configuration V1 #512/#513                        PROD / VERIFIED
 ```
 
+
+## Produção — Message Template Admin Boundary V1 #516 + worker browser boundary #515
+
+**Status técnico:** #515 squash-mergeada em `main@5eabf39a4c180837ff35cd572cf508b35aae7325` e observada no frontend produtivo. #516 squash-mergeada em `main@47f9b1e1f6f509fe8f72641e2aad91f7350e23ae`; frontend promovido e migration aplicada/verificada no PostgreSQL 17.6 em 2026-09-18. O smoke autenticado humano do editor em Configurações → Comunicação permanece como validação de UX, não como blocker estrutural do contrato instalado.
+
+#515 removeu o dispatch global do Evolution worker pelo browser no fluxo de lista de espera. A UI apenas enfileira a oferta e o envio permanece atrás da cadeia server-side `medicspro-automation → evolution-worker` com segredo interno.
+
+#516 moveu a edição de templates de comunicação da Central operacional de Mensagens para **Configurações → Comunicação** e fechou o acesso direto à tabela `message_templates` para `anon/authenticated`. Owner/admin com `whatsapp.access` usam agora as RPCs current-clinic `list_current_clinic_message_templates()` e `update_current_clinic_message_template(uuid,text)`; recepção/profissional não recebem autoridade administrativa por esse caminho. Alterações gravam `MESSAGE_TEMPLATE_UPDATED` no audit trail.
+
+**Evidência de rollout:** os 13 arquivos da #516 no source do Portainer foram comparados byte a byte com a main antes da promoção. O frontend novo ficou ativo com um único container `crmfisio-crmfisio-1`, `restarts=0`, `OOM=false`, e `/`, `/config`, `/mensagens`, `/agenda`, `/pacientes` responderam HTTP 200. A migration deu COMMIT e o production-safe verifier retornou `MESSAGE TEMPLATE ADMIN BOUNDARY V1 PRODUCTION VERIFY PASSED`. As 8 linhas de templates de 2 clínicas mantiveram o mesmo hash lógico `d9102eaa762af274221c59df742b8b49` antes/depois.
+
+**Boundary preservado:** operação diária de Mensagens não administra configuração; templates são configuração tenant administrativa; entitlement da plataforma, configuração da clínica e autorização do usuário continuam separados.
+
+**Próximo passo seguro:** não recriar templates/outbox. Completar o smoke autenticado do editor quando houver sessão de owner/admin disponível e continuar a auditoria de Comunicação pelos gaps ainda abertos: conexão/provider, opt-in/NPS e health/observabilidade adequados ao tenant.
+
+---
 
 ## Produção — Clinic Communication Configuration V1 #512 + ACL hardening #513
 
