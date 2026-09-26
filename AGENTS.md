@@ -56,6 +56,26 @@ Do not code from assumptions when the repository can answer the question.
 
 Do not confuse speed with haste. Prefer coherent vertical slices that can be safely tested by real clinics.
 
+### Canonical slice execution method
+
+For every significant slice, use [`docs/SLICE_EXECUTION_METHOD.md`](docs/SLICE_EXECUTION_METHOD.md) as the execution protocol:
+
+```text
+REAL NOW
+→ PROVEN EVIDENCE
+→ GAPS
+→ CAPABILITY AUTHORITY / REUSE GATE
+→ DECISION
+→ SECOND ADVERSARIAL REVIEW
+→ EXECUTION
+→ VALIDATION
+→ DOCUMENTATION
+```
+
+The repository, not chat memory, owns continuity. Active slices are indexed in `docs/SLICE_LEDGER.md`; each active slice should maintain its own evidence/decision record and a short `HANDOFF.md` that lets a new chat/agent restart from current evidence. Slice documents never outrank current code/schema/runtime evidence and do not replace `docs/CURRENT_STATE.md`, `TODO.md` or `PRODUCT_ROADMAP.md`.
+
+Use JEV only as an advisory second adversarial review for meaningful trade-offs or consequential actions. It never overrides deterministic project policy, authorization or required validation. Use MCP_WANDORA_VPS only when the needed truth is runtime/VPS evidence (deploy, container, service, worker, database-applied state, logs or health); do not use it to substitute repository analysis or architecture authority.
+
 ---
 
 ## 2. Sources of truth and repository discipline
