@@ -165,11 +165,12 @@ Leia nesta ordem ao assumir trabalho no projeto:
 
 1. [`AGENTS.md`](AGENTS.md) — regras operacionais e invariantes;
 2. [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) — snapshot curto da continuidade atual;
-3. [`docs/SLICE_EXECUTION_METHOD.md`](docs/SLICE_EXECUTION_METHOD.md) — método canônico de execução e handoff entre chats/agentes;
-4. [`docs/SLICE_LEDGER.md`](docs/SLICE_LEDGER.md) — índice das slices registradas e estágio metodológico;
-5. [`PRODUCT_ROADMAP.md`](PRODUCT_ROADMAP.md) — sequência de produto;
-6. [`TODO.md`](TODO.md) — pendências concretas;
-7. [`docs/BETA_READINESS.md`](docs/BETA_READINESS.md) — prontidão e gaps de piloto/beta.
+3. [`docs/doctrine/README.md`](docs/doctrine/README.md) — princípios estáveis de arquitetura, autoridade, IA e ações externas;
+4. [`docs/SLICE_EXECUTION_METHOD.md`](docs/SLICE_EXECUTION_METHOD.md) — método canônico de execução e handoff entre chats/agentes;
+5. [`docs/SLICE_LEDGER.md`](docs/SLICE_LEDGER.md) — índice das slices registradas e estágio metodológico;
+6. [`PRODUCT_ROADMAP.md`](PRODUCT_ROADMAP.md) — sequência de produto;
+7. [`TODO.md`](TODO.md) — pendências concretas;
+8. [`docs/BETA_READINESS.md`](docs/BETA_READINESS.md) — prontidão e gaps de piloto/beta.
 
 Documentos especializados ficam em `docs/`, incluindo Encounter Record, Presentation Context, aceitação clínica/financeira e rollout.
 
