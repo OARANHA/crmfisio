@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS public.contacts (
   clinic_id uuid NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
   name text NOT NULL CHECK (btrim(name) <> ''),
   phone text,
+  phone_normalized text,
   email text,
+  email_normalized text,
   patient_id uuid REFERENCES public.patients(id),
   source text,
   source_metadata jsonb NOT NULL DEFAULT '{}'::jsonb
@@ -25,7 +27,9 @@ CREATE TABLE IF NOT EXISTS public.contacts (
     anonymized_at IS NULL OR (
       name = 'Contato anonimizado'
       AND phone IS NULL
+      AND phone_normalized IS NULL
       AND email IS NULL
+      AND email_normalized IS NULL
       AND patient_id IS NULL
       AND source_metadata = '{}'::jsonb
     )
@@ -38,10 +42,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS contacts_active_patient_unique
 
 CREATE INDEX IF NOT EXISTS contacts_clinic_created_idx
   ON public.contacts (clinic_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS contacts_clinic_phone_idx
-  ON public.contacts (clinic_id, phone) WHERE phone IS NOT NULL AND deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS contacts_clinic_email_idx
-  ON public.contacts (clinic_id, email) WHERE email IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS contacts_clinic_phone_normalized_idx
+  ON public.contacts (clinic_id, phone_normalized)
+  WHERE phone_normalized IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS contacts_clinic_email_normalized_idx
+  ON public.contacts (clinic_id, email_normalized)
+  WHERE email_normalized IS NOT NULL AND deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS public.crm_pipelines (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +136,7 @@ CREATE TABLE IF NOT EXISTS public.crm_lead_activities (
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT crm_lead_activities_lead_fk
     FOREIGN KEY (clinic_id, lead_id)
-    REFERENCES public.crm_leads(clinic_id, id) ON DELETE CASCADE
+    REFERENCES public.crm_leads(clinic_id, id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS crm_lead_activities_lead_created_idx
@@ -155,6 +161,26 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.guard_crm_activity_integrity()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+BEGIN
+  IF NEW.actor_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = NEW.actor_id
+      AND p.clinic_id = NEW.clinic_id
+  ) THEN
+    RAISE EXCEPTION 'crm_activity_actor_tenant_mismatch' USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$;
 
 CREATE OR REPLACE FUNCTION public.guard_crm_lead_integrity()
 RETURNS trigger
@@ -236,6 +262,11 @@ CREATE TRIGGER trg_guard_crm_lead_integrity
 BEFORE INSERT OR UPDATE ON public.crm_leads
 FOR EACH ROW EXECUTE FUNCTION public.guard_crm_lead_integrity();
 
+DROP TRIGGER IF EXISTS trg_guard_crm_activity_integrity ON public.crm_lead_activities;
+CREATE TRIGGER trg_guard_crm_activity_integrity
+BEFORE INSERT OR UPDATE ON public.crm_lead_activities
+FOR EACH ROW EXECUTE FUNCTION public.guard_crm_activity_integrity();
+
 DROP TRIGGER IF EXISTS update_updated_at ON public.contacts;
 CREATE TRIGGER update_updated_at
 BEFORE UPDATE ON public.contacts
@@ -280,6 +311,7 @@ TO service_role;
 
 REVOKE ALL ON FUNCTION public.guard_crm_contact_integrity() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_crm_lead_integrity() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_crm_activity_integrity() FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.list_current_clinic_crm_pipeline_stages()
 RETURNS TABLE (
@@ -364,7 +396,11 @@ BEGIN
   RETURN QUERY
   SELECT
     l.id,
-    c.id, c.name, c.phone, c.email, c.patient_id,
+    c.id,
+    c.name,
+    CASE WHEN v_role IN ('owner', 'admin', 'recep') THEN c.phone ELSE NULL END,
+    CASE WHEN v_role IN ('owner', 'admin', 'recep') THEN c.email ELSE NULL END,
+    c.patient_id,
     p.id, p.name,
     s.id, s.name, s.stage_kind, s.position,
     l.owner_id, l.value_cents, l.source,
