@@ -5,11 +5,14 @@
 Leia:
 
 1. `AGENTS.md`
-2. `docs/SLICE_EXECUTION_METHOD.md`
-3. `docs/CURRENT_STATE.md`
-4. `docs/SLICE_LEDGER.md`
-5. `docs/DESKCOMM_ADOPTION_MATRIX.md`
-6. `docs/slices/MED-CRM-001/README.md`
+2. `docs/doctrine/README.md`
+3. `docs/doctrine/sistema-vivo.md`
+4. `docs/doctrine/autoridade-e-fronteiras.md`
+5. `docs/SLICE_EXECUTION_METHOD.md`
+6. `docs/CURRENT_STATE.md`
+7. `docs/SLICE_LEDGER.md`
+8. `docs/DESKCOMM_ADOPTION_MATRIX.md`
+9. `docs/slices/MED-CRM-001/README.md`
 
 Depois resolva a `origin/main` atual e repita REAL NOW.
 
@@ -65,8 +68,9 @@ Na main atual:
 2. localizar todos os tests/verifiers/RLS/RPCs do `crm.access`;
 3. confirmar se existe qualquer contact/lead foundation adicionada depois deste handoff;
 4. desenhar o schema e as domain operations sem escrever migration;
-5. submeter o design ao SECOND ADVERSARIAL REVIEW + JEV;
-6. atualizar a slice para `DESIGNED` somente se os boundaries estiverem fechados.
+5. responder o MEDICSPRO DOCTRINE GATE com artefatos concretos;
+6. submeter o design ao SECOND ADVERSARIAL REVIEW + JEV;
+7. atualizar a slice para `DESIGNED` somente se os boundaries estiverem fechados.
 
 ## Validation still required
 
@@ -89,8 +93,9 @@ Continue MED-CRM-001 in OARANHA/crmfisio.
 
 Do not rely on prior chat memory.
 
-Read AGENTS.md, docs/SLICE_EXECUTION_METHOD.md, docs/CURRENT_STATE.md,
-docs/SLICE_LEDGER.md, docs/DESKCOMM_ADOPTION_MATRIX.md,
+Read AGENTS.md, docs/doctrine/README.md, docs/doctrine/sistema-vivo.md,
+docs/doctrine/autoridade-e-fronteiras.md, docs/SLICE_EXECUTION_METHOD.md,
+docs/CURRENT_STATE.md, docs/SLICE_LEDGER.md, docs/DESKCOMM_ADOPTION_MATRIX.md,
 docs/slices/MED-CRM-001/README.md and HANDOFF.md.
 
 Resolve current origin/main and repeat REAL NOW before changing anything.
@@ -99,6 +104,6 @@ the Contact/Lead/Pipeline/Stage/Activity + Lead→Patient contract without writi
 a migration yet. Preserve clinic_id, Supabase, RLS/RBAC/capabilities/entitlements
 and the existing clinical/WhatsApp foundations.
 
-Use JEV for the SECOND ADVERSARIAL REVIEW of the proposed schema/boundaries.
+Apply the MEDICSPRO DOCTRINE GATE before JEV, then use JEV for the SECOND ADVERSARIAL REVIEW of the proposed schema/boundaries.
 Do not use MCP_WANDORA_VPS unless runtime/VPS evidence becomes necessary.
 ```
