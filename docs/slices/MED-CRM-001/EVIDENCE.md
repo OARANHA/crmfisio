@@ -1,0 +1,149 @@
+# MED-CRM-001 — Evidence
+
+**Readback:** `OARANHA/crmfisio main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`  
+**Scope:** design-only; no runtime/VPS evidence required.
+
+## E1 — Patient currently owns the mixed funnel field
+
+`supabase-schema.sql`:
+
+- `patients.funil_stage`;
+- values `lead | avaliacao | tratamento | alta`;
+- default `lead`;
+- index by `clinic_id, funil_stage`.
+
+Interpretation: current physical schema mixes pre-care/commercial language and patient care journey.
+
+## E2 — Patient Registry creates every Patient as `lead`
+
+`supabase-migrations/20260903_patient_registry_v2_polish.sql` explicitly inserts:
+
+```text
+funil_stage = 'lead'
+status       = 'ativo'
+```
+
+Therefore existing Patient with `funil_stage='lead'` is not proof of an historical Commercial Lead.
+
+This blocks automatic Patient→Lead backfill.
+
+## E3 — Patient Journey is partly clinical authority
+
+`patient_journey_events` is append-only to authenticated clients.
+
+`transition_patient_journey()`:
+
+- locks the Patient;
+- requires reason;
+- emits journey event;
+- changes Patient stage/status;
+- handles operational `lead→avaliacao`;
+- handles clinical `avaliacao→tratamento`, `tratamento→alta`, `alta→tratamento`.
+
+`20260909_clinical_authorization_reconciliation.sql` makes clinical transitions require same-transaction proof and clinical identity/capability.
+
+Conclusion: `patient_journey_events` must not be repurposed as generic commercial Lead activity.
+
+## E4 — Current CRM board is Patient-backed
+
+`src/pages/Crm.tsx`:
+
+- reads `usePatients()`;
+- groups Patient by `funilStage`;
+- displays NPS, churn/continuity and reactivation context;
+- uses `setFunilStage()` for drag/advance.
+
+This page mixes acquisition, care state, retention and satisfaction.
+
+## E5 — There are two current stage mutation paths
+
+Path A:
+
+```text
+Crm.tsx
+→ patientContext.setFunilStage
+→ repository.updatePatientStage
+→ UPDATE patients.funil_stage
+```
+
+Path B:
+
+```text
+PatientJourneyControl
+→ transition_patient_journey RPC
+→ patient_journey_events
+→ UPDATE patients.funil_stage
+```
+
+Migration 20260909 blocks direct authenticated clinical transitions without RPC proof, but non-clinical edits such as `lead→avaliacao` can still differ in side effects.
+
+Conclusion: current writer parity is incomplete.
+
+## E6 — Patient journey is consumed outside CRM
+
+`ReceptionPatients.tsx`:
+
+- filters Patient by `funilStage`;
+- shows stage metadata;
+- uses `PatientJourneyControl`.
+
+`PatientCareCockpit.tsx` shows Patient journey context.
+
+Therefore `funil_stage` cannot simply become Lead stage or be removed during Commercial Core foundation.
+
+## E7 — Reception quick-create creates Patient prematurely
+
+`ReceptionNewPatientModal` calls `addPatient()` and sends:
+
+- administrative identity;
+- fallback CPF when empty;
+- `funilStage='lead'`;
+- `status='ativo'`.
+
+This is a strong candidate for future pre-clinical Contact/Lead flow.
+
+It is not changed by the design-only slice.
+
+## E8 — Appointment is Patient-bound
+
+`supabase-schema.sql` has `appointments.paciente_id NOT NULL REFERENCES patients(id)`.
+
+Therefore MED-CRM-001 V1 does not schedule a pre-patient Lead directly.
+
+Evaluation scheduling requires explicit conversion/registration first.
+
+## E9 — Current authorization baseline
+
+Current product semantics:
+
+- `crm.access` entitlement gates the CRM route;
+- owner/admin/recep can mutate the operational CRM funnel;
+- professional and financeiro have read-only CRM UI access;
+- clinical authority is separate from CRM authority.
+
+New Lead domain must preserve this separation.
+
+## E10 — No dedicated Contact/Lead foundation found
+
+Tree readback at the stated main SHA found no canonical:
+
+- `contacts`;
+- `crm_leads`;
+- `crm_pipelines`;
+- `crm_stages`;
+- `crm_lead_activities`.
+
+This is a snapshot claim, not eternal absence. Recheck before implementation.
+
+## E11 — Product backlog already requires the separation
+
+`TODO.md`, P2 CRM requires keeping the clinic commercial funnel separate from the clinical record.
+
+MED-CRM-001 therefore implements an existing product direction rather than creating a parallel roadmap.
+
+## Evidence limits
+
+- No production database readback was necessary for design.
+- No claim is made that the proposed schema exists.
+- No provider proof is relevant yet.
+- Function bodies must be re-read on the implementation branch because later migrations may replace older definitions.
