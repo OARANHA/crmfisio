@@ -74,6 +74,8 @@ REAL NOW
 
 The repository, not chat memory, owns continuity. Active slices are indexed in `docs/SLICE_LEDGER.md`; each active slice should maintain its own evidence/decision record and a short `HANDOFF.md` that lets a new chat/agent restart from current evidence. Slice documents never outrank current code/schema/runtime evidence and do not replace `docs/CURRENT_STATE.md`, `TODO.md` or `PRODUCT_ROADMAP.md`.
 
+Stable design/acceptance principles live in [`docs/doctrine/`](docs/doctrine/README.md). Significant slices must apply the relevant doctrine during DECISION / SECOND ADVERSARIAL REVIEW / VALIDATION. Doctrine does not create authority, replace domain contracts or override executable evidence.
+
 Use JEV only as an advisory second adversarial review for meaningful trade-offs or consequential actions. It never overrides deterministic project policy, authorization or required validation. Use MCP_WANDORA_VPS only when the needed truth is runtime/VPS evidence (deploy, container, service, worker, database-applied state, logs or health); do not use it to substitute repository analysis or architecture authority.
 
 ---
