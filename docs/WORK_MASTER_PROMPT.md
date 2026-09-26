@@ -10,12 +10,13 @@ Antes de alterar qualquer código:
 
 1. leia integralmente `AGENTS.md`;
 2. leia `docs/CURRENT_STATE.md`;
-3. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
-4. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
-5. se a missão já tiver slice em `docs/SLICE_LEDGER.md`, leia o README + `HANDOFF.md` da slice;
-6. verifique o HEAD atual da `main`;
-7. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
-8. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
+3. leia `docs/doctrine/README.md` e as doutrinas relevantes;
+4. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
+5. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
+6. se a missão já tiver slice em `docs/SLICE_LEDGER.md`, leia o README + `HANDOFF.md` da slice;
+7. verifique o HEAD atual da `main`;
+8. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
+9. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
 
 ## Papel dos repositórios
 
@@ -137,7 +138,7 @@ REAL NOW
 → DOCUMENTATION
 ```
 
-JEV pode atuar como segunda opinião adversarial, mas não substitui policy, segurança, testes ou autoridade canônica. MCP_WANDORA_VPS deve ser usado apenas quando a pergunta depende de runtime/VPS real.
+Aplique também o MEDICSPRO DOCTRINE GATE da slice: sistema vivo, autoridade/fronteiras e as doutrinas especializadas relevantes. JEV pode atuar como segunda opinião adversarial, mas não substitui policy, segurança, testes ou autoridade canônica. MCP_WANDORA_VPS deve ser usado apenas quando a pergunta depende de runtime/VPS real.
 
 A continuidade entre chats pertence ao repositório: atualize o `HANDOFF.md` da slice com o próximo passo exato antes de encerrar.
 
