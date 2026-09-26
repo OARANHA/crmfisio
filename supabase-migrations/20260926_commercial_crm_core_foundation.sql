@@ -452,7 +452,7 @@ RETURNS TABLE (
   id uuid,
   pipeline_id uuid,
   name text,
-  position integer,
+  "position" integer,
   stage_kind text,
   archived_at timestamptz,
   created_at timestamptz,
