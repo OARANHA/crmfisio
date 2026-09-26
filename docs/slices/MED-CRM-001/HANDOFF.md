@@ -16,17 +16,20 @@ Leia:
 10. `docs/slices/MED-CRM-001/README.md`
 11. `docs/slices/MED-CRM-001/EVIDENCE.md`
 12. `docs/slices/MED-CRM-001/DECISION.md`
+13. `docs/slices/MED-CRM-001/IMPLEMENTATION-001.md`
 
 Depois resolva a `origin/main` atual e repita REAL NOW antes de implementar.
 
 ## Slice
 
 - ID: `MED-CRM-001`
-- status: `DESIGNED`
+- status: `IMPLEMENTING`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **não iniciada**;
+- execution: **foundation micro-slice em andamento**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
-- design branch: `docs/med-crm-001-design`.
+- design branch: `docs/med-crm-001-design`;
+- implementation branch: `feat/med-crm-001-commercial-core-foundation`;
+- implementation readback: `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`.
 
 ## Proven
 
@@ -75,35 +78,44 @@ Design review em 2026-09-26:
 
 A confiança moderada significa: manter os gates explícitos; não ampliar o design sem nova evidência.
 
+## Current implementation
+
+See [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md).
+
+Created on the implementation branch:
+
+- `supabase-migrations/20260926_commercial_crm_core_foundation.sql`;
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql`;
+- `tests/sql/commercial_crm_core_foundation_fixture.sql`;
+- `tests/sql/commercial_crm_core_foundation_cases.sql`;
+- `scripts/test-commercial-crm-core-foundation.sh`.
+
+No UI, mutation RPC, conversion, Inbox, automation or provider code is part of this micro-slice.
+
 ## Next exact step
 
-Abrir a primeira micro-slice de implementação **schema + authorization boundaries only**.
+1. execute the isolated PostgreSQL harness on 16 and 17;
+2. fix every SQL/verifier/case failure;
+3. run repository tests/typecheck/lint/build;
+4. inspect final diff against current main;
+5. open/review PR;
+6. only then consider the foundation `PROVED`.
 
-Antes de escrever migration:
-
-1. resolver main atual;
-2. re-read da função final Patient Registry em replay;
-3. confirmar audit helpers atuais;
-4. definir migration + production-safe verifier;
-5. criar apenas Contact/Pipeline/Stage/Lead/Activity foundation + RLS/ACL/projections;
-6. provar tenant isolation, direct-write denial e stage_kind source-of-truth;
-7. não construir board, Inbox, automação ou attribution no mesmo PR.
+Do not start the next mutation/board micro-slice while this one is unproved.
 
 ## Implementation validation required
 
-- fresh install/replay;
-- update replay;
-- PostgreSQL version(s) usadas pelo projeto;
-- cross-clinic RLS;
-- `crm.access`;
-- role matrix;
-- direct-write deny;
-- server-derived clinic;
-- contact↔patient link uniqueness;
-- activity append-only;
-- lost reason invariant;
-- conversion idempotency in later conversion micro-slice;
-- LGPD linked-data behavior before release;
+- migration replay/idempotency;
+- PostgreSQL 16 and 17;
+- cross-clinic relationship guards;
+- `crm.access` read gate;
+- role/read matrix;
+- raw authenticated DML denial;
+- Contact↔Patient link uniqueness;
+- no competing `crm_leads.status`;
+- open/won/lost semantics;
+- activity actor/lead tenant integrity;
+- no clinical columns/joins in CRM projection;
 - final repo gates.
 
 ## VPS/runtime
@@ -124,11 +136,11 @@ docs/CURRENT_STATE.md, docs/SLICE_LEDGER.md, docs/DESKCOMM_ADOPTION_MATRIX.md,
 docs/slices/MED-DOC-001/FINAL-ABSORPTION-SYNTHESIS.md and all files under
 docs/slices/MED-CRM-001/.
 
-MED-CRM-001 is DESIGNED but not implemented.
+MED-CRM-001 is IMPLEMENTING.
 Resolve current origin/main and repeat REAL NOW.
 
-Implement only the first micro-slice: schema + authorization boundaries for
-contacts, crm_pipelines, crm_stages, crm_leads and crm_lead_activities.
+The current micro-slice is feat/med-crm-001-commercial-core-foundation.
+Read IMPLEMENTATION-001.md and validate/fix that foundation before starting anything else.
 Do not build the CRM board, Inbox, automation, attribution or Lead→Patient conversion
 in the same change.
 
