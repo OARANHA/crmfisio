@@ -10,10 +10,13 @@ Antes de alterar qualquer código:
 
 1. leia integralmente `AGENTS.md`;
 2. leia `docs/CURRENT_STATE.md`;
-3. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
-4. verifique o HEAD atual da `main`;
-5. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
-6. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
+3. leia `docs/doctrine/README.md` e as doutrinas relevantes;
+4. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
+5. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
+6. se a missão já tiver slice em `docs/SLICE_LEDGER.md`, leia o README + `HANDOFF.md` da slice;
+7. verifique o HEAD atual da `main`;
+8. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
+9. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
 
 ## Papel dos repositórios
 
@@ -120,6 +123,24 @@ Atue como CTO + Staff Engineer + Product Engineer + Security Engineer + especial
 - mantenha UX moderna, clara e rápida.
 
 Nunca invente schema, RPC, route, role, environment variable, provider ou infraestrutura quando o repositório puder responder.
+
+Para slices significativas, siga explicitamente:
+
+```text
+REAL NOW
+→ PROVEN EVIDENCE
+→ GAPS
+→ CAPABILITY AUTHORITY / REUSE GATE
+→ DECISION
+→ SECOND ADVERSARIAL REVIEW
+→ EXECUTION
+→ VALIDATION
+→ DOCUMENTATION
+```
+
+Aplique também o MEDICSPRO DOCTRINE GATE da slice: sistema vivo, autoridade/fronteiras e as doutrinas especializadas relevantes. JEV pode atuar como segunda opinião adversarial, mas não substitui policy, segurança, testes ou autoridade canônica. MCP_WANDORA_VPS deve ser usado apenas quando a pergunta depende de runtime/VPS real.
+
+A continuidade entre chats pertence ao repositório: atualize o `HANDOFF.md` da slice com o próximo passo exato antes de encerrar.
 
 ## Git / validação
 

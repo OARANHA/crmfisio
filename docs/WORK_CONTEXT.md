@@ -7,9 +7,12 @@
 1. `AGENTS.md` — regras operacionais, invariantes e hierarquia de fontes;
 2. resolver a `origin/main` atual — não reutilizar SHA de conversa/snapshot;
 3. `docs/CURRENT_STATE.md` — estado operacional e evidência de rollout;
-4. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
-5. documento(s) canônico(s) do domínio tocado;
-6. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
+4. `docs/doctrine/README.md` — princípios estáveis e roteamento das doutrinas aplicáveis;
+5. `docs/SLICE_EXECUTION_METHOD.md` — método obrigatório para slices significativas;
+6. `docs/SLICE_LEDGER.md` + `docs/slices/<SLICE-ID>/` — somente quando a missão já pertence a uma slice registrada;
+7. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
+8. documento(s) canônico(s) do domínio tocado;
+9. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
 
 Se houver divergência, não force o runtime a obedecer este arquivo. Inspecione a implementação/evidência real e corrija a documentação apropriada.
 
@@ -42,7 +45,8 @@ Encounter Record continua a unidade editável do novo atendimento; Evolution ofi
 - verificar `origin/main` e working tree antes de criar branch;
 - não misturar uma nova slice com workspace sujo de outra tarefa;
 - procurar implementação canônica existente antes de criar caminho paralelo;
-- aplicar decisão → segunda revisão adversarial → execução → validação;
+- aplicar o ciclo `REAL NOW → PROVEN EVIDENCE → GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`;
+- quando houver slice registrada, atualizar seu `HANDOFF.md` para que outro chat/agente possa continuar sem memória da conversa;
 - manter mudanças de produção separadas e explicitamente verificadas;
 - reportar separadamente `IMPLEMENTADO`, `MERGEADO`, `DEPLOYADO` e `VALIDADO EM PRODUÇÃO`.
 
