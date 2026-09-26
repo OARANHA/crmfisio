@@ -38,7 +38,8 @@ Depois resolva a `origin/main` atual e repita REAL NOW antes de implementar.
 - `ReceptionPatients` cria Patient cedo demais para alguns casos pré-clínicos;
 - `PatientCareCockpit` e Recepção consomem a jornada Patient fora do CRM;
 - Appointment permanece Patient-bound;
-- TODO canônico já pede funil comercial separado do prontuário.
+- TODO canônico já pede funil comercial separado do prontuário;
+- Patient Registry V2/verifier ainda carregam vocabulário histórico `fisio`; a conversão futura exige readback/refactor do boundary final antes de reutilização.
 
 ## Design decisions
 
