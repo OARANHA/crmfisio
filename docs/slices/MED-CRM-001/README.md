@@ -1,183 +1,238 @@
 # MED-CRM-001 — Commercial Core
 
-**Status:** APPROVED  
+**Status:** DESIGNED  
 **Capability:** CRM commercial foundation  
 **Execution:** not started  
 **Created:** 2026-09-26  
-**Last planning readback:** MedicsPro `main` on 2026-09-26; execution must resolve the then-current main again.
+**Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`
 
 ## Objective
 
-Separar o domínio comercial do domínio clínico sem quebrar o CRM/patient journey existente.
+Separar o domínio comercial do domínio clínico sem quebrar a jornada Patient existente.
 
-Destino conceitual:
+Destino:
 
 ```text
 Contact
-   ↓
+   ↓ 1:N
 Lead
-   ↓ explicit conversion
+   ↓ explicit conversion/link
 Patient
 ```
 
-A slice deve preparar um Commercial Core tenant-scoped e auditável, mantendo Patient como identidade clínica.
+A slice cria a fundação para identidade pré-clínica/comunicacional, oportunidades comerciais e pipeline configurável, mantendo Patient como identidade clínica soberana.
 
 ## Non-goals
 
 - não substituir Patient/EHR/Encounter;
-- não migrar o runtime Deskcomm;
 - não trocar Evolution API;
-- não criar Inbox/social/agent platform nesta slice;
-- não remover imediatamente `patients.funil_stage`;
+- não alterar Appointment para aceitar Lead;
+- não criar Unified Inbox/social/agent platform;
 - não implementar attribution completa;
-- não alterar produção durante a fase de design.
+- não apagar `patients.funil_stage` ou `patient_journey_events` nesta primeira entrega;
+- não fabricar histórico comercial para Patients existentes;
+- não portar tenancy/auth/runtime Deskcomm.
 
-## 1. REAL NOW
+## REAL NOW
 
-Evidência reconciliada durante o planejamento:
+O readback detalhado está em [`EVIDENCE.md`](EVIDENCE.md).
 
-1. `supabase-schema.sql` ainda modela `patients.funil_stage` com valores `lead | avaliacao | tratamento | alta`.
-2. `20260901_patient_journey.sql` cria `patient_journey_events` e `transition_patient_journey(...)`, ou seja, a “jornada/funil” atual é ligada diretamente ao Patient.
-3. `20260907_crm_funnel_role_boundary.sql` protege mudança de `patients.funil_stage` por tenant, entitlement `crm.access` e roles `owner/admin/recep`.
-4. `src/pages/Crm.tsx` apresenta o CRM atual como jornada do paciente, com lead/avaliação/tratamento/alta, retenção/NPS/risco de abandono.
-5. A inspeção de base schema e dos nomes de migrations relevantes não encontrou uma foundation comercial dedicada `contacts/leads/lead_activities`. **Isso precisa ser reprovado contra a main atual antes de criar schema**, porque ausência em uma inspeção de planejamento não é prova eterna.
-6. Comunicação/WhatsApp já possui outbox/worker/webhook e boundaries server-side; essa foundation não deve ser recriada pelo Commercial Core.
+Conclusões principais:
 
-## 2. PROVEN EVIDENCE
+1. `patients.funil_stage` ainda mistura um estado técnico legado `lead` com etapas assistenciais `avaliacao/tratamento/alta`.
+2. `create_patient_registry_v2` cria todo Patient com `funil_stage='lead'`; portanto Patient em `lead` não prova que existiu uma oportunidade comercial.
+3. `patient_journey_events` e `transition_patient_journey()` são parte da jornada Patient e contêm atos assistenciais.
+4. migration `20260909_clinical_authorization_reconciliation.sql` protege transições clínicas com prova same-transaction.
+5. `Crm.tsx` ainda move `patients.funil_stage` via UPDATE direto; `PatientJourneyControl` usa a RPC canônica. Há assimetria de side effects em transições não clínicas como `lead→avaliacao`.
+6. `ReceptionPatients` possui cadastro rápido que cria Patient imediatamente, inclusive com `funilStage='lead'`.
+7. `PatientCareCockpit` e `ReceptionPatients` usam `funil_stage` fora da tela CRM, então a coluna não pode ser simplesmente reinterpretada como pipeline comercial.
+8. Appointment continua obrigatoriamente ligado a Patient.
+9. nenhum domínio dedicado Contact/Lead/Pipeline/Activity foi encontrado no tree da main.
+10. `TODO.md` já exige separar o funil comercial do prontuário clínico.
 
-| Evidência | O que prova | Limitação |
+## Proven evidence
+
+| Evidência | Prova | Limite |
 | --- | --- | --- |
-| `patients.funil_stage` | CRM atual está acoplado ao Patient | base schema pode carregar compatibilidade histórica |
-| `patient_journey_events` | há timeline/transição de jornada clínica/operacional | não é timeline comercial genérica |
-| CRM funnel role boundary | write de funil já tem entitlement + role server-side | modelo é patient-centric |
-| `Crm.tsx` | UX atual mistura aquisição e jornada assistencial | UI não define futuro schema |
-| Deskcomm auditado em `77f0eb7652282acb90a3d1febe83e0c2de645691` | separação Contact/Lead/Pipeline/Activity é implementada em referência madura | tenancy/auth/runtime não são portáveis |
+| `supabase-schema.sql` | Patient tem `funil_stage`; Appointment exige Patient | schema base inclui compatibilidade histórica |
+| `20260903_patient_registry_v2_polish.sql` | cadastro Patient cria `funil_stage='lead'` | implementação final deve ser re-lida antes de modificar |
+| `20260909_clinical_authorization_reconciliation.sql` | jornada clínica usa boundary própria e prova transacional | não cria Commercial Core |
+| `Crm.tsx` + patientContext/repository | quadro atual opera sobre Patients | UI atual é compatibilidade, não modelo alvo |
+| `PatientJourneyControl.tsx` | jornada Patient usa RPC + motivo/notas | só cobre essa superfície |
+| `ReceptionPatients.tsx` | recepção cria Patient antes de existir entidade pré-clínica | oportunidade de absorção pelo Contact/Lead futuro |
+| `TODO.md` | separação comercial/clínica é gap oficial | roadmap não prova implementação |
+| MED-DOC-001 | Contact != Lead != Patient; same mutation same side effects | referência de disciplina, não código |
 
-## 3. GAPS
+## Gaps
 
-- identidade de contato comercial sem criar Patient;
-- oportunidade Lead separada de pessoa/contato;
+- identidade pré-clínica sem criar Patient;
+- múltiplas oportunidades por Contact;
 - pipeline/stages configuráveis;
-- timeline comercial separada da timeline clínica;
+- timeline comercial append-only;
 - motivos de perda;
-- conversão explícita `Lead → Patient`;
-- modelo pronto para attribution;
-- boundary única para mutation por UI/API/IA/automação;
-- estratégia de compatibilidade com `patients.funil_stage` atual;
-- regras RLS/RBAC/entitlement para os novos objetos;
-- deduplicação/identity resolution de telefone/e-mail/social sem colapsar Patient prematuramente.
+- conversão explícita e idempotente para Patient;
+- RLS/RBAC/entitlement do novo domínio;
+- LGPD/export/anonymization de Contact/Lead;
+- paridade de mutation entre UI/API/IA/automação futuras;
+- cutover da tela `/crm` sem remover a jornada Patient;
+- eliminação futura do UPDATE direto de `patients.funil_stage` como operação comercial.
 
-## 4. CAPABILITY AUTHORITY / REUSE GATE
+## Capability authority / reuse gate
 
-| Capability | Autoridade | Reuso |
+| Capability | Autoridade | Decisão |
 | --- | --- | --- |
 | tenant / `clinic_id` | MedicsPro | preservar |
-| RBAC/RLS/entitlement `crm.access` | MedicsPro | preservar/estender |
-| Patient / clinical identity | MedicsPro | preservar |
-| Lead/Contact/Pipeline pattern | MedicsPro novo domínio | adaptar conceitos Deskcomm |
-| timeline clínica | MedicsPro | não misturar |
-| WhatsApp transport | MedicsPro + Evolution | fora desta slice |
-| attribution | futura capability MedicsPro | apenas preparar extensibilidade |
+| Patient / prontuário | domínio clínico MedicsPro | preservar |
+| Patient Journey | `transition_patient_journey` + Patient | preservar; não transformar em CRM comercial |
+| Contact | novo identity substrate tenant-scoped | criar uma vez e reutilizar por CRM/Inbox/canais futuros |
+| Lead/Pipeline/Stage/Activity | Commercial Core MedicsPro | construir/adaptar padrões Deskcomm |
+| CRM entitlement | `crm.access` | preservar |
+| WhatsApp transport | Evolution / communication domain | fora desta slice |
+| Appointment | Agenda/Patient | preservar Patient-bound em V1 |
+| Patient registry | boundary canônica MedicsPro | reutilizar/refatorar, nunca duplicar |
 
-### Reuse decision
+## Decision
 
-`ADAPT` os invariantes de Contact/Lead/Pipeline/Activity do Deskcomm.
+A decisão detalhada está em [`DECISION.md`](DECISION.md).
 
-`REJECT` tenancy, auth/RBAC, Next.js e provider coupling Deskcomm.
-
-## 5. DECISION
-
-A direção aprovada é:
+Resumo:
 
 ```text
-Contact = identidade comercial/comunicacional tenant-scoped
-Lead    = oportunidade comercial
-Patient = identidade clínica
+contacts
+  └─ 1:N crm_leads
+          └─ crm_stages → crm_pipelines
+          └─ crm_lead_activities
+
+contacts.patient_id             -- opcional, vínculo com Patient
+crm_leads.converted_patient_id  -- resultado da conversão
 ```
 
-A criação de Patient deve acontecer por operação explícita de conversão; mensagem, clique, formulário ou social identity isolados não criam automaticamente prontuário/paciente.
+Invariantes:
 
-### Compatibility
+- Contact != Lead != Patient;
+- Patient nunca depende da existência de Contact;
+- telefone/e-mail são sinais de matching, não identidade única;
+- um Contact pode ter vários Leads;
+- nenhuma migration cria Leads retroativamente para Patients;
+- `crm_stages.stage_kind` é a única fonte de `open|won|lost`; não haverá coluna `lead.status` concorrente;
+- toda mutation comercial relevante passa por uma única operação server-side e registra activity/audit;
+- direct writes autenticados nas tabelas de mutation são negados;
+- pipeline/stage config: owner/admin;
+- lead mutation: owner/admin/recep com `crm.access`;
+- professional/financeiro permanecem read-only onde o produto já permite CRM read;
+- CRM não recebe EHR/CID/evolution/documentos clínicos;
+- Appointment continua Patient-bound;
+- conversão Lead→Patient é explícita, atômica e idempotente.
 
-`patients.funil_stage` não será removido no primeiro passo. O design executável precisa definir:
+## Compatibility strategy
 
-- convivência temporária;
-- migração dos dados atuais;
-- consumidores existentes;
-- momento de depreciação;
-- semântica de `avaliacao/tratamento/alta` que pertence à jornada clínica e não ao pipeline comercial genérico.
+### Phase 0 — prove current boundaries
 
-## 6. SECOND ADVERSARIAL REVIEW
+Antes da primeira migration:
 
-Riscos já identificados:
+- re-read função final de Patient Registry no replay atual;
+- confirmar audit helpers atuais;
+- fechar verifier de tenant/RLS/ACL para novas tabelas.
 
-- duplicar identidade entre Contact e Patient;
-- telefone/e-mail não serem identidade forte o suficiente;
-- criar duas timelines concorrentes;
-- converter todos os Patients atuais em Leads artificialmente;
-- quebrar relatórios/NPS/churn ligados a `funil_stage`;
-- permitir CRM write a role que ganhe autoridade clínica por acidente;
-- bypass de `crm.access`;
-- migration grande demais para rollback seguro;
-- criar attribution antes de estabilizar o Commercial Core;
-- mover Lead por IA/API sem gerar os mesmos side effects da UI.
+### Phase 1 — schema comercial vazio
 
-### JEV
+Criar Contact + CRM tables/RLS/RPCs e pipeline default configurável.
 
-A organização documental/método foi submetida ao JEV em 2026-09-26 e recebeu `allow` com confiança 0.85. A decisão de schema/contratos deste Commercial Core ainda exige uma nova pergunta JEV depois do REAL NOW detalhado e antes da primeira migration.
+**Não fazer backfill de Lead.**
 
-### MEDICSPRO DOCTRINE GATE — aplicação inicial
+### Phase 2 — Commercial UI
 
-A slice deve responder concretamente antes de virar `DESIGNED`:
+`/crm` passa a operar `crm_leads`.
 
-| Pergunta | Direção inicial |
+A antiga jornada Patient permanece nas superfícies do Patient.
+
+### Phase 3 — reception pre-clinical flow
+
+Cadastro rápido de prospect passa a poder criar Contact/Lead sem Patient.
+
+Cadastro clínico formal continua no Patient Registry.
+
+### Phase 4 — explicit conversion
+
+Lead pode:
+
+- vincular a Patient existente; ou
+- criar Patient pelo mesmo core de Patient Registry.
+
+A operação atualiza Contact/Lead + activity/audit na mesma transaction.
+
+### Phase 5 — patient journey cleanup
+
+Retirar `patientContext.setFunilStage` da semântica comercial e impedir writers paralelos.
+
+`patients.funil_stage` permanece apenas como compatibilidade/jornada Patient até uma slice própria decidir sua evolução.
+
+## LGPD / data lifecycle contract
+
+Contact contém PII e deve ter lifecycle próprio.
+
+A implementação só pode ser liberada quando:
+
+1. Contact tiver soft-delete/anonymization explícitos;
+2. export/anonymization Patient incluir ou reconciliar Contact/Lead vinculados;
+3. a anonimização remover sinais de reidentificação comercial permitidos pelo contrato aplicável;
+4. audit operacional mínimo possa permanecer sem payload pessoal;
+5. nenhuma rotina trate `patient_id` como justificativa para copiar dado clínico para CRM.
+
+Esse contrato é gate de implementação, não débito opcional.
+
+## MEDICSPRO DOCTRINE GATE
+
+| Pergunta | Resposta concreta |
 | --- | --- |
-| Quem alimenta Contact/Lead? | WhatsApp/formulário/recepção/API/canais futuros, via boundaries próprias |
-| Quem consome? | CRM, Inbox, Agenda/booking e conversão explícita para Patient |
-| Que registro emite? | activity/event/audit comercial; não timeline clínica |
-| Onde fica visível? | CRM + contexto comercial do Inbox |
-| Qual é a porta? | superfícies CRM/Inbox autorizadas |
-| Qual anti-morte? | próximo passo, follow-up, lost ou converted — sem insistência automática indevida |
-| Onde configura? | pipeline/stages/sources pela clínica autorizada |
-| IA↔humano? | mesma domain operation + handoff estruturado |
-| Qual retorno? | stage outcome, appointment, show/no-show, conversion e revenue quando disponível |
-| Qual autoridade não ganha? | CRM não ganha acesso amplo ao EHR; Lead não vira Patient implicitamente |
+| Quem alimenta? | recepção, formulário/API futura, canais futuros e criação manual autorizada |
+| Quem consome? | CRM; futuro Inbox/Acquisition; conversão explícita para Patient |
+| Que registro emite? | `crm_lead_activities` + audit; eventos de domínio depois pelo mesmo writer |
+| Onde fica visível? | CRM commercial timeline; não prontuário |
+| Qual porta? | RPC/domain operation + projections autorizadas |
+| Anti-morte? | next step/lost/won/converted; follow-up só em slice futura |
+| Configuração? | pipelines/stages owner/admin |
+| IA↔humano? | futuro agente usa as mesmas domain operations; nenhum writer paralelo |
+| Retorno? | stage/outcome/conversion/appointment/revenue em slices subsequentes |
+| Autoridade reutilizada? | clinic_id, crm.access, RBAC/RLS, Patient Registry |
+| Autoridade que NÃO ganha? | CRM não ganha acesso clínico; provider não ganha domínio; Lead não cria Patient implicitamente |
+| Gates mecânicos? | tenant isolation, direct-write revoke, stage_kind consistency, append-only activity, conversion idempotency, no clinical columns in CRM projections |
 
-Doutrinas obrigatórias para o design: `sistema-vivo.md` e `autoridade-e-fronteiras.md`. `ia-humano-operacao.md` passa a ser obrigatória quando tools/agentes entrarem; `canais-e-acoes-externas.md` quando Inbox/channel seam entrar.
+## Second adversarial review
 
-## 7. EXECUTION
+JEV 2026-09-26:
 
-Não iniciada.
+- primeira rota: `deep_review`, probabilidade 0.80;
+- após refinamento de identity/LGPD/status/conversion: `allow`, probabilidade 0.56, confiança 0.42.
 
-O primeiro subpasso executável deve ser **design-only**:
+A confiança moderada é registrada deliberadamente. Implementação deve manter os gates acima e não ampliar escopo por inferência.
 
-1. resolver a main atual;
-2. inventariar todos os consumidores de `patients.funil_stage` e `patient_journey_events`;
-3. inventariar RPC/RLS/tests/entitlement do CRM;
-4. confirmar ausência/presença de contact/lead foundation;
-5. desenhar schema + domain operations + migration compatibility;
-6. responder o MEDICSPRO DOCTRINE GATE com artefatos concretos;
-7. executar SECOND ADVERSARIAL REVIEW/JEV;
-8. só então abrir a primeira migration/código.
+## Execution
 
-## 8. VALIDATION
+**Não iniciada.**
 
-Nesta preparação:
+A próxima slice de execução deve ser uma micro-slice de schema/boundaries, não a UI completa.
 
-- código de produto alterado: **não**;
-- migration aplicada: **não**;
-- runtime/VPS alterado: **não**;
-- validação de produto: **não aplicável ainda**.
+## Validation required before IMPLEMENTING
 
-A futura implementação deve incluir tenant isolation, roles, entitlement, migrations/verifiers, tests e compatibilidade de consumers existentes.
-
-## 9. DOCUMENTATION
-
-- método canônico: `docs/SLICE_EXECUTION_METHOD.md`;
-- ledger: `docs/SLICE_LEDGER.md`;
-- referência Deskcomm: `docs/DESKCOMM_ADOPTION_MATRIX.md`;
-- handoff: `docs/slices/MED-CRM-001/HANDOFF.md`.
+- fresh replay PostgreSQL;
+- upgrade replay;
+- cross-clinic RLS;
+- entitlement `crm.access`;
+- role matrix;
+- authenticated direct-write denial;
+- server-derived clinic_id;
+- Contact patient-link uniqueness;
+- stage_kind/source-of-truth invariant;
+- lost reason enforcement;
+- activity append-only;
+- conversion retry/idempotency/conflict;
+- Patient Registry reuse;
+- LGPD linked-data behavior;
+- final tree tests/typecheck/lint/build as applicable.
 
 ## Next exact step
 
-Executar readback detalhado do CRM na **main atual**, mapear todos os consumers de `patients.funil_stage`/jornada e produzir o design do Commercial Core antes de tocar schema.
+Abrir a primeira micro-slice de implementação para **schema + authorization boundaries only**.
+
+Não construir board/Inbox/automação na mesma mudança.
