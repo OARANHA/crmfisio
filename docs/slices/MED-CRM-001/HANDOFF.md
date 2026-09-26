@@ -92,21 +92,38 @@ Created on the implementation branch:
 
 No UI, mutation RPC, conversion, Inbox, automation or provider code is part of this micro-slice.
 
+## Runtime proof completed
+
+The isolated Commercial Core harness is now proven on:
+
+- PostgreSQL 16.15 — GREEN;
+- PostgreSQL 17.11 — GREEN.
+
+Both runs applied the migration twice, then passed the structural verifier and
+behavior cases. The first PostgreSQL 16 run exposed a `RETURNS TABLE(position
+integer)` parse failure. The public column name was preserved and quoted as
+`"position" integer`; the fix is commit
+`9f1bc6629fa7815172d9a81911d1ce4df29e5bda`.
+
+The proof ran through `medicspro-agent` on `28server` in an isolated
+`/opt/wandora/ops-workspace` runtime. No production PostgreSQL service/database
+was touched.
+
 ## Next exact step
 
-1. execute the isolated PostgreSQL harness on 16 and 17;
-2. fix every SQL/verifier/case failure;
-3. run repository tests/typecheck/lint/build;
-4. inspect final diff against current main;
-5. open/review PR;
-6. only then consider the foundation `PROVED`.
+1. reconcile repository-required workflows on the final PR head;
+2. inspect final diff against current main;
+3. update PR evidence/readback;
+4. only then consider the foundation `PROVED`.
 
-Do not start the next mutation/board micro-slice while this one is unproved.
+Do not start the next mutation/board micro-slice until final repository
+reconciliation is green.
 
 ## Implementation validation required
 
+Completed in isolated PostgreSQL 16 and 17 proof:
+
 - migration replay/idempotency;
-- PostgreSQL 16 and 17;
 - cross-clinic relationship guards;
 - `crm.access` read gate;
 - role/read matrix;
@@ -115,8 +132,12 @@ Do not start the next mutation/board micro-slice while this one is unproved.
 - no competing `crm_leads.status`;
 - open/won/lost semantics;
 - activity actor/lead tenant integrity;
-- no clinical columns/joins in CRM projection;
-- final repo gates.
+- no clinical columns/joins in CRM projection.
+
+Still required:
+
+- final repo gates on the final PR head;
+- final diff/readback against current main.
 
 ## VPS/runtime
 
