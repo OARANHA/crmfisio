@@ -12,7 +12,7 @@
 
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
-| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | DESIGNED | [slice](slices/MED-CRM-001/README.md) | primeira micro-slice: schema + authorization boundaries; sem board/Inbox/automação |
+| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | IMPLEMENTING | [slice](slices/MED-CRM-001/README.md) | provar IMPLEMENTATION-001 em PostgreSQL 16/17 + repo gates; sem iniciar board/Inbox/automação |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
