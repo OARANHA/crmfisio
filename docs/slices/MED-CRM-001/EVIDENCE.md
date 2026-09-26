@@ -141,6 +141,18 @@ This is a snapshot claim, not eternal absence. Recheck before implementation.
 
 MED-CRM-001 therefore implements an existing product direction rather than creating a parallel roadmap.
 
+## E12 — Patient Registry predates the canonical professional cutover
+
+The source migration and legacy verifier for Patient Registry V2 still contain the historical role vocabulary `fisio`.
+
+The later professional-role verifier proves the clinic role model itself is canonicalized, but the Patient Registry verifier does not prove that this specific RPC body was reconciled.
+
+Conclusion:
+
+> Lead→Patient conversion must not blindly call/copy the old registry function. The implementation micro-slice must read the final replayed function definition and either reuse a reconciled core or first repair/refactor that boundary.
+
+This is a prerequisite for conversion work, not a reason to expand the first schema-only micro-slice.
+
 ## Evidence limits
 
 - No production database readback was necessary for design.
