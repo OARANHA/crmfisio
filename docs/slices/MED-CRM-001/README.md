@@ -126,6 +126,25 @@ Riscos já identificados:
 
 A organização documental/método foi submetida ao JEV em 2026-09-26 e recebeu `allow` com confiança 0.85. A decisão de schema/contratos deste Commercial Core ainda exige uma nova pergunta JEV depois do REAL NOW detalhado e antes da primeira migration.
 
+### MEDICSPRO DOCTRINE GATE — aplicação inicial
+
+A slice deve responder concretamente antes de virar `DESIGNED`:
+
+| Pergunta | Direção inicial |
+| --- | --- |
+| Quem alimenta Contact/Lead? | WhatsApp/formulário/recepção/API/canais futuros, via boundaries próprias |
+| Quem consome? | CRM, Inbox, Agenda/booking e conversão explícita para Patient |
+| Que registro emite? | activity/event/audit comercial; não timeline clínica |
+| Onde fica visível? | CRM + contexto comercial do Inbox |
+| Qual é a porta? | superfícies CRM/Inbox autorizadas |
+| Qual anti-morte? | próximo passo, follow-up, lost ou converted — sem insistência automática indevida |
+| Onde configura? | pipeline/stages/sources pela clínica autorizada |
+| IA↔humano? | mesma domain operation + handoff estruturado |
+| Qual retorno? | stage outcome, appointment, show/no-show, conversion e revenue quando disponível |
+| Qual autoridade não ganha? | CRM não ganha acesso amplo ao EHR; Lead não vira Patient implicitamente |
+
+Doutrinas obrigatórias para o design: `sistema-vivo.md` e `autoridade-e-fronteiras.md`. `ia-humano-operacao.md` passa a ser obrigatória quando tools/agentes entrarem; `canais-e-acoes-externas.md` quando Inbox/channel seam entrar.
+
 ## 7. EXECUTION
 
 Não iniciada.
@@ -137,8 +156,9 @@ O primeiro subpasso executável deve ser **design-only**:
 3. inventariar RPC/RLS/tests/entitlement do CRM;
 4. confirmar ausência/presença de contact/lead foundation;
 5. desenhar schema + domain operations + migration compatibility;
-6. executar SECOND ADVERSARIAL REVIEW/JEV;
-7. só então abrir a primeira migration/código.
+6. responder o MEDICSPRO DOCTRINE GATE com artefatos concretos;
+7. executar SECOND ADVERSARIAL REVIEW/JEV;
+8. só então abrir a primeira migration/código.
 
 ## 8. VALIDATION
 
