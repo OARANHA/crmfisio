@@ -135,24 +135,59 @@ Expected database:
 
 ## Validation gate before merge
 
-Required:
+### Proven on PR #522
 
-- PostgreSQL 16 harness: pending;
-- PostgreSQL 17 harness: pending;
-- repository tests: pending;
-- typecheck: pending;
-- lint: pending;
-- build: pending;
-- final diff/readback: pending.
+Existing repository PR workflows are green: **8/8**.
 
-A dedicated new GitHub Actions workflow was not added in this pass. The harness is repository-native and must be executed before merge; do not treat existing unrelated CI as proof of the SQL contract.
+The `Clinical workflow CI / validate` job executed successfully:
+
+- `npm ci`;
+- `npm test`;
+- `npm run typecheck`;
+- `npm run lint`;
+- `npm run build`.
+
+The dependency-audit job also passed.
+
+The other seven clinical/Nexus regression workflows passed, so no known regression was introduced into the existing clinical boundaries.
+
+### Commercial Core SQL harness — still a hard blocker
+
+- PostgreSQL 16 harness: **NOT RUN**;
+- PostgreSQL 17 harness: **NOT RUN**.
+
+A dedicated GitHub Actions workflow for this harness was attempted but the repository-file action was blocked by OpenAI platform security controls. The block was not bypassed.
+
+A second isolated validation path was attempted through `MCP_WANDORA_VPS`:
+
+1. PR #522 was cloned successfully under `/opt/wandora/ops-workspace/med-crm-001-pr522`;
+2. the host has no `psql`;
+3. `postgres:16` and `postgres:17` images were not cached;
+4. `docker pull postgres:16` was denied by the governed Docker proxy with `405 Method Not Allowed`;
+5. the alternate `wandora-admin` target exposes no process allowlist;
+6. the temporary clone was removed successfully (`cleanup_ok`);
+7. no PostgreSQL image/container/database was created and no production service/database was touched.
+
+Therefore **PR #522 must not be merged yet**. Existing CI is valid application-regression evidence, but it is not proof of this new SQL contract.
+
+### Remaining required evidence
+
+- PostgreSQL 16: fixture → migration twice → verifier → behavior cases;
+- PostgreSQL 17: same sequence;
+- final diff/readback after any SQL fixes;
+- final PR checks after the last commit.
 
 ## Next exact step
 
-1. execute the PostgreSQL harness on 16 and 17;
-2. fix any migration/verifier/case failure;
-3. run application gates;
-4. open/review PR;
-5. only after all required evidence is green decide whether this micro-slice is `PROVED`.
+Run:
+
+```bash
+PGDATABASE=commercial_crm_core_foundation_test \
+  bash scripts/test-commercial-crm-core-foundation.sh
+```
+
+against isolated PostgreSQL 16 and 17 environments.
+
+If either run fails, fix the migration/verifier/cases and rerun both. Only after both database versions and final PR checks are green may this micro-slice move to `PROVED`.
 
 Do not start mutation RPCs or UI while this foundation is unproved.
