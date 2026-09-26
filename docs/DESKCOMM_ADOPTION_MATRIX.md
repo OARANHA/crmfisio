@@ -2,7 +2,7 @@
 
 > Inventário de reaproveitamento seletivo. Deskcomm é fonte de padrões e evidência de implementação externa, não autoridade do MedicsPro.
 >
-> **Deskcomm main revalidada em 2026-09-26:** `77f0eb7652282acb90a3d1febe83e0c2de645691`.
+> **Deskcomm snapshot da auditoria profunda MED-DOC-001 em 2026-09-26:** `8e26e2fa763dc04a565742d52c36c8172bcab3a3`.
 >
 > O repositório evolui rapidamente. Cada slice deve revalidar a capability relevante contra a main atual antes de reutilizar código, contrato ou conclusão.
 
@@ -20,6 +20,50 @@ exists on current source?
 → can extract pattern without importing unnecessary runtime debt?
 → REUSE / EXTEND / ADAPT / REBUILD / REJECT
 ```
+
+## Níveis de prova
+
+A decisão de adoção é separada do nível de prova da referência.
+
+```text
+DOC_ONLY
+CODE_PRESENT
+UNIT_PROVEN
+DB_INVARIANT_PROVEN
+INTEGRATION_PROVEN
+E2E_LOCAL_PROVEN
+SABOTAGE_PROVEN
+PROVIDER_SANDBOX_PROVEN
+PROVIDER_REAL_PROVEN
+RUNTIME_REHEARSED
+PRODUCTION_OBSERVED
+```
+
+Uma capability pode merecer `ADAPT` mesmo com prova baixa, mas nenhuma slice MedicsPro pode herdar automaticamente o nível de prova externo.
+
+Revisões detalhadas:
+- `docs/slices/MED-DOC-001/NORMATIVE-REVIEW.md`
+- `docs/slices/MED-DOC-001/SPEC-ARCH-PROOF-REVIEW.md`
+- `docs/slices/MED-DOC-001/TESTING-OPERATIONS-REVIEW.md`
+- `docs/slices/MED-DOC-001/CROSS-CUTTING-LESSONS.md`
+- `docs/slices/MED-DOC-001/FINAL-ABSORPTION-SYNTHESIS.md`
+
+## Proof upgrades de alto valor
+
+| Capability | Prova observada no snapshot | Limitação explícita | Target MedicsPro |
+| --- | --- | --- | --- |
+| Event log / workers | CODE + DB_INVARIANT; retry/reaper/dead/visibility | implementação exata não deve ser copiada sem reuse gate | Event Core |
+| Lead stage parity humano/IA | CODE + UNIT; mesmo `lead.stage_changed` | MedicsPro ainda precisa provar sua própria domain boundary | MED-CRM-001 / Event Core |
+| MCP/domain tools | CODE + UNIT; handler↔catalog, auth/scope/audit | Spec 11 antiga não é inventário atual | AI/MCP |
+| Channel seam | CODE + UNIT/DB invariants + lint | providers externos continuam com provas separadas | Channel Platform |
+| Pre-go-live | DB_INVARIANT + E2E_LOCAL | não é prova de conversa real com aparelho/provider | Channel rollout |
+| Social native | CODE + UNIT + DB_INVARIANT + local integration | provider-real delivery separado | Social/Inbox futura |
+| RAG search | CODE + UNIT + telemetry behavior | clínica exige boundary Nexus própria | AI/RAG |
+| Human cases | CODE + DB_INVARIANT parcial | `runAgentTurn` é mockado no case-reply invariant | Inbox/Handoff futura |
+| Follow-up engine | CODE + DB_INVARIANT | delivery externo varia por caminho | Automation |
+| Ads attribution | CODE + UNIT/DB/E2E local | conta de anúncios real é prova separada | Acquisition |
+| Architecture maps | structural UNIT gate | coerência interna != correspondência com código | Engineering discipline |
+| Runbooks | rehearsal + production observations em casos específicos | não generalizar um ensaio para todo ambiente | Ops |
 
 ## Matriz
 

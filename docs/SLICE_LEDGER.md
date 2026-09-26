@@ -13,6 +13,7 @@
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
 | `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | APPROVED | [slice](slices/MED-CRM-001/README.md) | repetir REAL NOW na main atual e produzir design executável antes de qualquer migration |
+| `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
 
