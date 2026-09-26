@@ -7,11 +7,12 @@
 1. `AGENTS.md` — regras operacionais, invariantes e hierarquia de fontes;
 2. resolver a `origin/main` atual — não reutilizar SHA de conversa/snapshot;
 3. `docs/CURRENT_STATE.md` — estado operacional e evidência de rollout;
-4. `docs/SLICE_EXECUTION_METHOD.md` — método obrigatório para slices significativas;
-5. `docs/SLICE_LEDGER.md` + `docs/slices/<SLICE-ID>/` — somente quando a missão já pertence a uma slice registrada;
-6. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
-7. documento(s) canônico(s) do domínio tocado;
-8. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
+4. `docs/doctrine/README.md` — princípios estáveis e roteamento das doutrinas aplicáveis;
+5. `docs/SLICE_EXECUTION_METHOD.md` — método obrigatório para slices significativas;
+6. `docs/SLICE_LEDGER.md` + `docs/slices/<SLICE-ID>/` — somente quando a missão já pertence a uma slice registrada;
+7. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
+8. documento(s) canônico(s) do domínio tocado;
+9. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
 
 Se houver divergência, não force o runtime a obedecer este arquivo. Inspecione a implementação/evidência real e corrija a documentação apropriada.
 
