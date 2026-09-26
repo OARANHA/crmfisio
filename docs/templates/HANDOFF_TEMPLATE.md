@@ -7,11 +7,12 @@
 Leia nesta ordem:
 
 1. `AGENTS.md`
-2. `docs/SLICE_EXECUTION_METHOD.md`
-3. `docs/CURRENT_STATE.md`
-4. `<slice README>`
-5. documentos de domínio apontados pela slice
-6. código/schema/tests reais na main atual
+2. `docs/doctrine/README.md`
+3. `docs/SLICE_EXECUTION_METHOD.md`
+4. `docs/CURRENT_STATE.md`
+5. `<slice README>`
+6. documentos de doutrina/domínio apontados pela slice
+7. código/schema/tests reais na main atual
 
 Depois resolva `origin/main` e repita REAL NOW.
 
@@ -70,7 +71,7 @@ Continue <SLICE-ID> in OARANHA/crmfisio.
 
 Do not rely on prior chat memory.
 
-Read AGENTS.md, docs/SLICE_EXECUTION_METHOD.md, docs/CURRENT_STATE.md, <slice README> and <slice HANDOFF>.
+Read AGENTS.md, docs/doctrine/README.md, docs/SLICE_EXECUTION_METHOD.md, docs/CURRENT_STATE.md, <slice README> and <slice HANDOFF>.
 Resolve current origin/main and repeat REAL NOW before changing anything.
 Preserve all canonical MedicsPro security/clinical boundaries.
 Continue only from the Next exact step recorded in the handoff, unless stronger current evidence invalidates it.
