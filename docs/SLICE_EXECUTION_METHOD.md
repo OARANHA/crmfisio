@@ -36,6 +36,7 @@ Antes de aplicar o método, preservar a hierarquia definida em `AGENTS.md`.
 - `docs/CURRENT_STATE.md` = snapshot operacional global mutável; não copiar esse papel para slices.
 - `TODO.md` = trabalho aberto.
 - `PRODUCT_ROADMAP.md` = direção/prioridade de produto; não prova implementação.
+- `docs/doctrine/` = princípios estáveis de design/aceitação; não carrega estado mutável.
 - documentos de domínio = contratos especializados.
 - código/schema/migrations/RPC/RLS/Edge Functions/tests = prova do comportamento canônico.
 - runtime observado = autoridade para dizer o que está realmente implantado.
@@ -162,6 +163,23 @@ Registrar na slice:
 
 JEV nunca substitui regras determinísticas de `AGENTS.md`, autorização, policy, testes ou aprovação humana exigida.
 
+### MEDICSPRO DOCTRINE GATE
+
+Antes de mover uma decisão significativa para execução:
+
+1. ler `docs/doctrine/README.md`;
+2. aplicar `docs/doctrine/sistema-vivo.md`;
+3. aplicar as doutrinas especializadas relevantes:
+   - autoridade/tenant/dados → `autoridade-e-fronteiras.md`;
+   - IA/tool/handoff → `ia-humano-operacao.md`;
+   - mensageria/provider/webhook → `canais-e-acoes-externas.md`;
+   - delete/anonymize/destructive migration → `mudancas-destrutivas.md`;
+4. registrar respostas concretas na própria slice.
+
+O Doctrine Gate não é um segundo workflow. Ele é uma régua de aceitação dentro de DECISION, SECOND ADVERSARIAL REVIEW e VALIDATION.
+
+Quando uma propriedade é enumerável de forma confiável no repositório, avaliar se ela deve virar gate mecânico/teste em vez de depender para sempre de checklist humano.
+
 ## 7. EXECUTION
 
 Executar em branch dedicada e em mudanças pequenas.
@@ -200,7 +218,9 @@ Adicionar conforme risco:
 - provider real;
 - E2E;
 - mobile/light/dark;
-- production-safe smoke/readback.
+- production-safe smoke/readback;
+- Doctrine Gate respondido com artefatos concretos;
+- gates mecânicos adicionados quando a propriedade for estável, enumerável e valer o custo.
 
 ### MCP_WANDORA_VPS
 
@@ -262,11 +282,12 @@ Cada slice ativa deve possuir um `HANDOFF.md` curto e autocontido.
 Um novo chat deve receber somente a instrução de:
 
 1. ler `AGENTS.md`;
-2. ler `docs/SLICE_EXECUTION_METHOD.md`;
-3. ler `docs/CURRENT_STATE.md`;
-4. ler o `README.md` e `HANDOFF.md` da slice;
-5. resolver a main atual;
-6. repetir REAL NOW antes de executar.
+2. ler `docs/doctrine/README.md`;
+3. ler `docs/SLICE_EXECUTION_METHOD.md`;
+4. ler `docs/CURRENT_STATE.md`;
+5. ler o `README.md` e `HANDOFF.md` da slice;
+6. resolver a main atual;
+7. repetir REAL NOW antes de executar.
 
 O handoff nunca autoriza confiar em fatos mutáveis sem revalidação.
 
