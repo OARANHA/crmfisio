@@ -65,6 +65,29 @@ Classificação: `REUSE | EXTEND | ADAPT | REBUILD | REJECT`.
 - result/confidence:
 - final reconciliation:
 
+### MEDICSPRO DOCTRINE GATE
+
+- [ ] sistema-vivo aplicado
+- [ ] autoridade/fronteiras aplicadas
+- [ ] IA↔humano aplicada quando relevante
+- [ ] canais/ações externas aplicada quando relevante
+- [ ] destrutivo/reversibilidade aplicada quando relevante
+- [ ] artefatos concretos registrados
+- [ ] propriedade enumerável candidata a gate mecânico avaliada
+
+Living System answers:
+
+- input:
+- output:
+- record/audit/activity:
+- visible surface:
+- legitimate entry point:
+- next step / explicit closure:
+- configuration surface:
+- AI↔human continuity:
+- feedback signal:
+- authority reused / authority not granted:
+
 ## 7. EXECUTION
 
 - [ ] branch dedicada
