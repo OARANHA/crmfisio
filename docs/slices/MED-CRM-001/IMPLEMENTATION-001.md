@@ -151,43 +151,45 @@ The dependency-audit job also passed.
 
 The other seven clinical/Nexus regression workflows passed, so no known regression was introduced into the existing clinical boundaries.
 
-### Commercial Core SQL harness — still a hard blocker
+### Commercial Core SQL harness — proven on PostgreSQL 16 and 17
 
-- PostgreSQL 16 harness: **NOT RUN**;
-- PostgreSQL 17 harness: **NOT RUN**.
+Runtime proof executed through the paired `medicspro-agent` on host `28server`, entirely under `/opt/wandora/ops-workspace`.
 
-A dedicated GitHub Actions workflow for this harness was attempted but the repository-file action was blocked by OpenAI platform security controls. The block was not bypassed.
+PostgreSQL was used portably inside the workspace; no PostgreSQL package/service was installed on the host and no production database/service was touched.
 
-A second isolated validation path was attempted through `MCP_WANDORA_VPS`:
+Evidence:
 
-1. PR #522 was cloned successfully under `/opt/wandora/ops-workspace/med-crm-001-pr522`;
-2. the host has no `psql`;
-3. `postgres:16` and `postgres:17` images were not cached;
-4. `docker pull postgres:16` was denied by the governed Docker proxy with `405 Method Not Allowed`;
-5. the alternate `wandora-admin` target exposes no process allowlist;
-6. the temporary clone was removed successfully (`cleanup_ok`);
-7. no PostgreSQL image/container/database was created and no production service/database was touched.
+- PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1): **GREEN**;
+- PostgreSQL 17.11 (Ubuntu 17.11-1.pgdg24.04+2): **GREEN**;
+- fixture created successfully;
+- migration applied twice successfully on both versions;
+- structural verifier passed on both versions;
+- behavior cases passed on both versions;
+- final harness marker:
+  - `MED_CRM_001_POSTGRES16_HARNESS=GREEN`;
+  - `MED_CRM_001_POSTGRES17_HARNESS=GREEN`.
 
-Therefore **PR #522 must not be merged yet**. Existing CI is valid application-regression evidence, but it is not proof of this new SQL contract.
+The first PostgreSQL 16 run exposed one real SQL portability bug in
+`list_current_clinic_crm_stages()`: `position` in the `RETURNS TABLE`
+signature parsed as a keyword. The public result column name was preserved and
+the declaration was changed only to `"position" integer`.
+
+Fix commit:
+
+`9f1bc6629fa7815172d9a81911d1ce4df29e5bda`
+
+No schema semantics, identity rules, tenant rules, Patient boundaries, mutation
+surface or UI scope were expanded by the fix.
 
 ### Remaining required evidence
 
-- PostgreSQL 16: fixture → migration twice → verifier → behavior cases;
-- PostgreSQL 17: same sequence;
-- final diff/readback after any SQL fixes;
-- final PR checks after the last commit.
+- repository-required PR workflows must be green on the final documentation/code head;
+- final diff/readback against current main;
+- merge remains a separate review decision.
 
 ## Next exact step
 
-Run:
+Wait for/reconcile the repository-required workflows on the final PR head, inspect
+the final diff, and only then consider this foundation `PROVED`.
 
-```bash
-PGDATABASE=commercial_crm_core_foundation_test \
-  bash scripts/test-commercial-crm-core-foundation.sh
-```
-
-against isolated PostgreSQL 16 and 17 environments.
-
-If either run fails, fix the migration/verifier/cases and rerun both. Only after both database versions and final PR checks are green may this micro-slice move to `PROVED`.
-
-Do not start mutation RPCs or UI while this foundation is unproved.
+Do not start mutation RPCs or UI until that final reconciliation is green.
