@@ -1,10 +1,11 @@
 # MED-CRM-001 — Commercial Core
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING  
 **Capability:** CRM commercial foundation  
-**Execution:** not started  
+**Execution:** foundation micro-slice in progress  
 **Created:** 2026-09-26  
-**Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`
+**Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`  
+**Implementation readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`
 
 ## Objective
 
@@ -209,30 +210,47 @@ A confiança moderada é registrada deliberadamente. Implementação deve manter
 
 ## Execution
 
-**Não iniciada.**
+A primeira micro-slice está em andamento e é acompanhada em [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md).
 
-A próxima slice de execução deve ser uma micro-slice de schema/boundaries, não a UI completa.
+Escopo atual:
 
-## Validation required before IMPLEMENTING
+- schema Contact/Pipeline/Stage/Lead/Activity;
+- tenant/link constraints;
+- RLS/ACL fail-closed;
+- read projections CRM-safe;
+- default pipeline genérico;
+- production-safe verifier;
+- PostgreSQL fixture/cases/harness.
 
-- fresh replay PostgreSQL;
-- upgrade replay;
-- cross-clinic RLS;
+Fora do escopo atual:
+
+- mutation RPCs;
+- Lead→Patient conversion;
+- board/UI;
+- Inbox;
+- automation/follow-up;
+- attribution.
+
+## Validation required before PROVED
+
+- PostgreSQL 16 harness;
+- PostgreSQL 17 harness;
+- replay/idempotency;
+- cross-clinic tenant boundary;
 - entitlement `crm.access`;
-- role matrix;
+- role/read matrix;
 - authenticated direct-write denial;
-- server-derived clinic_id;
 - Contact patient-link uniqueness;
 - stage_kind/source-of-truth invariant;
 - lost reason enforcement;
 - activity append-only;
-- conversion retry/idempotency/conflict;
-- Patient Registry reuse;
-- LGPD linked-data behavior;
-- final tree tests/typecheck/lint/build as applicable.
+- repository tests/typecheck/lint/build;
+- final-tree readback.
+
+Conversion idempotency, Patient Registry reuse and linked LGPD lifecycle remain gates for the later conversion micro-slice, not for claiming this schema-only foundation as complete.
 
 ## Next exact step
 
-Abrir a primeira micro-slice de implementação para **schema + authorization boundaries only**.
+Executar e corrigir o harness de `IMPLEMENTATION-001.md` em PostgreSQL 16/17, abrir PR e só promover esta micro-slice após os gates verdes.
 
-Não construir board/Inbox/automação na mesma mudança.
+Não iniciar mutation RPCs, board, Inbox ou automação enquanto a fundação estiver sem prova.
