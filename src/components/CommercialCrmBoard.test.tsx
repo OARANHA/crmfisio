@@ -42,6 +42,7 @@ const testState = vi.hoisted(() => ({
   } as CommercialCrmSnapshot,
   load: vi.fn(),
   execute: vi.fn(),
+  executeProspect: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -59,6 +60,7 @@ vi.mock('../lib/commercialCrm', async (importOriginal) => {
     ...original,
     loadCurrentClinicCommercialCrm: testState.load,
     executeCommercialCrmStageTransition: testState.execute,
+    executeCommercialCrmProspectCreation: testState.executeProspect,
   };
 });
 
@@ -115,6 +117,11 @@ describe('CommercialCrmBoard', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     });
+    vi.stubGlobal('crypto', {
+      randomUUID: vi.fn()
+        .mockReturnValueOnce('contact-new')
+        .mockReturnValueOnce('lead-new'),
+    });
     testState.role = 'owner';
     testState.snapshot = baseSnapshot();
     testState.load.mockReset().mockImplementation(async () => testState.snapshot);
@@ -125,6 +132,15 @@ describe('CommercialCrmBoard', () => {
         toStageId: 'stage-lost',
         stageKind: 'lost',
         closedAt: '2026-09-27T12:00:00Z',
+      },
+      snapshot: testState.snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    }));
+    testState.executeProspect.mockReset().mockImplementation(async (input) => ({
+      command: {
+        contactId: input.contactId,
+        leadId: input.leadId,
       },
       snapshot: testState.snapshot,
       projection: 'fresh',
@@ -148,10 +164,72 @@ describe('CommercialCrmBoard', () => {
     const professional = await renderBoard();
     expect(JSON.stringify(professional.toJSON())).toContain('visualização comercial em modo somente leitura');
     expect(JSON.stringify(professional.toJSON())).not.toContain('avançar para Perdido');
+    expect(JSON.stringify(professional.toJSON())).not.toContain('Novo prospect');
 
     testState.role = 'recep';
     const reception = await renderBoard();
     expect(JSON.stringify(reception.toJSON())).toContain('avançar para Perdido');
+    expect(JSON.stringify(reception.toJSON())).toContain('Novo prospect');
+  });
+
+  it('reuses the same Contact and Lead UUIDs when prospect creation is retried', async () => {
+    testState.role = 'recep';
+    testState.executeProspect.mockRejectedValueOnce(new Error('uncertain response'));
+
+    const renderer = await renderBoard();
+    const openButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Novo prospect',
+    );
+    expect(openButton).toBeTruthy();
+
+    act(() => openButton?.props.onClick());
+
+    const nameInput = renderer.root.findByProps({ placeholder: 'Nome do contato' });
+    const phoneInput = renderer.root.findByProps({ placeholder: 'Telefone (opcional)' });
+    const emailInput = renderer.root.findByProps({ placeholder: 'E-mail (opcional)' });
+    const titleInput = renderer.root.findByProps({ placeholder: 'Interesse / assunto comercial' });
+
+    act(() => {
+      nameInput.props.onChange({ target: { value: '  Maria Prospect  ' } });
+      phoneInput.props.onChange({ target: { value: '  51999999999  ' } });
+      emailInput.props.onChange({ target: { value: '  maria@example.com  ' } });
+      titleInput.props.onChange({ target: { value: '  Avaliação comercial  ' } });
+    });
+
+    let createButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Criar prospect',
+    );
+    expect(createButton?.props.disabled).toBe(false);
+
+    await act(async () => {
+      createButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.executeProspect).toHaveBeenCalledTimes(1);
+    expect(testState.executeProspect.mock.calls[0]?.[0]).toMatchObject({
+      contactId: 'contact-new',
+      leadId: 'lead-new',
+      name: 'Maria Prospect',
+      phone: '  51999999999  ',
+      email: '  maria@example.com  ',
+      title: 'Avaliação comercial',
+      pipelineId: 'pipeline-a',
+    });
+    expect(JSON.stringify(renderer.toJSON())).toContain('mesma tentativa será reutilizada');
+
+    createButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Criar prospect',
+    );
+
+    await act(async () => {
+      createButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.executeProspect).toHaveBeenCalledTimes(2);
+    expect(testState.executeProspect.mock.calls[1]?.[0].contactId).toBe('contact-new');
+    expect(testState.executeProspect.mock.calls[1]?.[0].leadId).toBe('lead-new');
   });
 
   it('suppresses Contact PII and free-form Lead title when the Contact is anonymized', async () => {
