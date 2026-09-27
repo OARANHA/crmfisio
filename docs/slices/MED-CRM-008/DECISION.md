@@ -72,15 +72,16 @@ The implementation should prefer one narrow operation equivalent to:
 Exact signature/name must be revalidated during implementation, but the semantic contract is fixed:
 
 1. resolve clinic via `crm_current_mutator_clinic_id()`;
-2. require a non-deleted Lead in that clinic, with linked Contact active/non-anonymized and current pipeline/stage non-archived, then lock the Lead;
+2. require a non-deleted Lead in that clinic and lock it;
 3. normalize title/source; validate title and value;
-4. compare old/new values under the lock;
-5. if the desired details already equal the current persisted details, treat the call as an exact retry/no-op even when the caller carries the pre-COMMIT token;
-6. otherwise require `p_expected_updated_at` to equal the locked row `updated_at`; stale projections fail explicitly and must refetch rather than overwrite a concurrent Lead change;
-7. changed update modifies only title/value/source;
-8. create one `lead_details_updated` operational activity with bounded metadata such as `changed_fields[]`, never raw field values;
-9. create one `CRM_LEAD_DETAILS_UPDATED` audit record containing IDs/change categories only;
-10. never change Contact, Patient, pipeline, stage, owner or terminal fields.
+4. compare old/new values under the Lead lock;
+5. if the desired details already equal the current persisted details, treat the call as an exact retry/no-op even when the caller carries the pre-COMMIT token; this side-effect-free retry remains valid even if the Lead became archived/read-only after the original COMMIT, matching the MED-CRM-004 idempotency-before-archive pattern;
+6. for a real change, require the linked Contact to still be active/non-anonymized and the current pipeline/stage to remain non-archived; these related rows must be checked under a lock strong enough to prevent a concurrent archive/anonymize race during the mutation;
+7. require `p_expected_updated_at` to equal the locked Lead `updated_at`; stale projections fail explicitly and must refetch rather than overwrite a concurrent Lead change;
+8. changed update modifies only title/value/source;
+9. create one `lead_details_updated` operational activity with bounded metadata such as `changed_fields[]`, never raw field values;
+10. create one `CRM_LEAD_DETAILS_UPDATED` audit record containing IDs/change categories only;
+11. never change Contact, Patient, pipeline, stage, owner or terminal fields.
 
 ## Rollback/reversibility
 
@@ -102,15 +103,9 @@ Deterministic findings:
 - Lead→Patient crosses the clinical identity boundary and needs its own explicit design;
 - Lead details can reuse current schema/guard/read/audit/activity without creating a parallel stage or identity writer.
 
-Advisory JEV route:
+Advisory JEV review evolved with the design. The initial reduced scope returned `proceed_fast=0.66`, but after concurrency/privacy/archive guards were made explicit a fresh JEV review routed `deep_review=0.74`, `proceed_fast=0.23`, `block=0.03`, confidence `0.65`. The deterministic deep review then refined lock/idempotency ordering: exact desired-state retry is side-effect free before archive/privacy write guards; real changes must protect related Contact/pipeline/stage state against concurrent read-only transitions.
 
-- `proceed_fast = 0.66`;
-- `deep_review = 0.29`;
-- `split_task = 0.04`;
-- `block = 0.01`;
-- confidence `0.56`.
-
-The JEV result is advisory only. Execution is authorized by the deterministic repository evidence plus the reduced scope.
+The JEV result is advisory only. Execution is authorized only after these deterministic refinements and the repository evidence are reconciled.
 
 ## Reconsideration triggers
 
