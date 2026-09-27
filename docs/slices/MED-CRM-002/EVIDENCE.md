@@ -240,7 +240,94 @@ block = 1.00
 confidence = 1.00
 ```
 
-Missing authority is precise: a controlled production PostgreSQL readback capability, either as a dedicated semantic operation or as Docker/DB execution with the production PostgreSQL target/container and `psql` explicitly allowlisted and credentials injected server-side. If migrations are absent, rollout requires a separate narrowly authorized write path for the pinned migration files plus post-rollout verifier/readback.
+The first missing authority was made concrete in `OARANHA/Remote-Ops-MCP` without broadening generic Docker or process access.
+
+### Remote-Ops-MCP capability proof
+
+The capability implementation passed the required pre-execution gates before code was added:
+
+- GAPS: production installation of #522/#524 is unknown because no authorized DB readback exists;
+- CAPABILITY AUTHORITY / REUSE GATE: reuse Agent Mesh + host-local Docker proxy; do not create a second DB authority;
+- DECISION: add a semantic readback-only capability, not generic `psql`/`docker_exec`;
+- SECOND ADVERSARIAL REVIEW: initial route `deep_review=0.79`; after forcing hash-pinned SQL + PostgreSQL read-only session/transaction + fixed server-side container/DB/user, route became `proceed_fast=0.59`.
+
+Implemented contract:
+
+```text
+Remote-Ops-MCP PR #35 = MERGED
+main = 52dbdf1bc12c44e46f52342dd73fce575b252f7c
+PR head = 03aa8d29f1347a01203676f97208b477317bcd95
+
+semantic capability = postgres.pinned_readback
+MCP tool = postgres_pinned_verifier_readback
+dynamic preset = postgres-readback
+generic docker_exec = not granted
+generic psql/process authority = not granted
+database write/rollout authority = not added
+```
+
+The proxy configuration owns the exact PostgreSQL container, execution user, DB/user names and verifier-id→SHA-256 mapping. The caller supplies only `verifier_id` + SQL. The proxy rejects unknown ids or hash mismatch before Docker API access and executes only fixed `psql` argv with `default_transaction_read_only=on`, `ON_ERROR_STOP=1`, bounded statement/lock timeouts and an explicit `BEGIN TRANSACTION READ ONLY ... ROLLBACK`.
+
+Validation before merge:
+
+```text
+npm ci = PASS (149 packages, 0 vulnerabilities)
+TypeScript build = PASS
+E2E OAuth/revocation = 23/23 PASS
+AGENT_PAIRING_V1 = GREEN
+AGENT_INSTALLER_V1 = GREEN
+TARGET_AGENT_APPROVALS = GREEN
+POSTGRES_PINNED_READBACK_TEST = GREEN
+POSTGRES_PINNED_PROXY_E2E = GREEN
+installer bash -n = PASS
+```
+
+The proxy E2E used a real loopback proxy process plus a fake Docker API over Unix socket. It verified the exact Docker exec request, fixed user/container, no shell, no password env, read-only PostgreSQL flags, and that verifier/hash rejection happens before Docker API access.
+
+GitHub on the merge commit:
+
+```text
+verify = SUCCESS
+publish = SUCCESS
+```
+
+Therefore the **capability implementation is proved and merged/published**, but that still does not prove runtime deployment.
+
+### Control-plane deployment boundary
+
+Live runtime was re-read after Remote-Ops-MCP #35 merged.
+
+`remote-ops-mcp` is healthy, but its inspect label is still:
+
+```text
+org.opencontainers.image.revision =
+985777e0cd38a4c0e3fa96dd5aa139e1b24e8832
+```
+
+The live MCP schema correspondingly still exposes only:
+
+```text
+target_agent_prepare preset =
+operator-workspace | read-only
+
+postgres_pinned_verifier_readback =
+ABSENT
+```
+
+No MCP capability for Portainer/stack deploy/recreate is exposed in this session, and `wandora-admin` has empty operational allowlists. A plain container restart would keep the old image and is not a valid promotion path.
+
+The final adversarial completion review after the new proxy E2E returned:
+
+```text
+incomplete = 0.53
+verify_more = 0.33
+complete = 0.14
+confidence = 0.30
+```
+
+This result is consistent with the deterministic boundary: code/CI/publish are complete, runtime promotion/configuration are not.
+
+The remaining authority is therefore narrower than before: **legitimate deployment of the published Remote-Ops-MCP image plus host-side configuration of the production PostgreSQL readback proxy**. The exact production PostgreSQL container must be discovered through authorized runtime evidence rather than guessed. If migrations are absent after readback, rollout still requires a separate narrowly authorized write capability for pinned migration files plus post-rollout verifier/readback.
 
 ## Explicit non-proof
 
