@@ -38,7 +38,7 @@ Key closures:
 - weak email case-fold is deferred;
 - advisory locks are transaction-scoped and deterministically ordered;
 - direct `create_current_clinic_crm_contact(...)` cannot remain a bypass;
-- Contact/Lead bodies are shared internally rather than duplicated;
+- Contact insert/idempotency/audit is shared internally; the RELEASED public Lead command remains the single Lead writer and is called directly;
 - exact orchestration retry is resolved before self-candidate ambiguity;
 - Patient never enters candidate input/output/join;
 - resolution activity/audit contain no raw phone/email;
@@ -50,7 +50,7 @@ Key closures:
 Only:
 
 - `20260927_commercial_crm_contact_identity_resolution.sql`;
-- internal normalization/candidate/lock/shared-core helpers;
+- internal normalization/candidate/lock helpers plus one shared Contact core;
 - writer-scoped candidate preview RPC;
 - `create_current_clinic_crm_resolved_prospect(...)`;
 - hardening of the existing Contact wrapper;
