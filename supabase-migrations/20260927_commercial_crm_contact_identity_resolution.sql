@@ -831,7 +831,7 @@ BEGIN
   END IF;
 
   IF v_mode = 'explicit_distinct' THEN
-    IF v_reason NOT IN (
+    IF v_reason IS NULL OR v_reason NOT IN (
       'shared_contact_channel',
       'stale_or_reassigned_contact_detail',
       'operator_verified_distinct_identity'
