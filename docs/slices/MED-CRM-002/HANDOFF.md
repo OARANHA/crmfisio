@@ -17,105 +17,139 @@
 13. `docs/slices/MED-CRM-002/DECISION.md`
 14. `docs/slices/MED-CRM-002/EVIDENCE.md`
 
-Then resolve current `origin/main` and runtime evidence again. Do not use the SHA below as a future checkout instruction without revalidation.
+Then resolve current `origin/main` and runtime evidence again. Mutable facts below are a checkpoint, not a future checkout instruction.
 
-## Canonical checkpoint
+## Current proven checkpoint
 
 ```text
-main = 7a8badf5ad81e92746e82bedd142ba75899a4080
-PR #524 = MERGED (squash)
-final PR head = cf94434ca5294e4e9cc4de70661268d9e4765045
+main = bac39b344ec807f5beb843b4ea6c9994e794f531
+
+PR #522 = MERGED
+MED-CRM-001 = PROVED + MERGED
+MED-CRM-001 = NOT RELEASED
+
+PR #524 = MERGED
 MED-CRM-002 = PROVED + MERGED
 MED-CRM-002 = NOT RELEASED
+
+PR #526 = MERGED (squash)
+scope = documentation only
 ```
 
-Final PR validation:
+#526 was revalidated before merge:
 
-- 21/21 repository workflows SUCCESS;
-- Commercial CRM PostgreSQL 16.15 — SUCCESS;
-- Commercial CRM PostgreSQL 17.11 — SUCCESS;
-- `validate` — SUCCESS;
-- `dependency-audit` — SUCCESS;
-- reviews: 0;
-- review threads: 0.
+- head `f6de48332da61007c327c3efd895afee53aff1bb`;
+- 4 ahead / 0 behind;
+- mergeable;
+- six changed files, all under `docs/`;
+- reviews = 0;
+- review threads = 0;
+- 48/48 check-runs SUCCESS;
+- required `validate` = SUCCESS;
+- required `dependency-audit` = SUCCESS;
+- `Protect main` ruleset = squash only.
 
-## Scope integrated
+The merge was executed with the expected head SHA and GitHub returned `merged=true`.
 
-Exactly the canonical Commercial Core mutation boundary:
+## Release gate — current runtime evidence
 
-- current-clinic mutator guard;
-- Contact creation;
-- Lead creation;
-- same-pipeline Lead stage transition;
-- activity + audit parity;
-- anonymized Contact cannot be replayed or receive a new Lead;
-- no new table/column/domain engine;
-- no Patient link/conversion;
-- no Patient/Encounter/Patient Journey mutation;
-- no Board/Inbox/follow-up/attribution/provider/AI/automation engine.
-
-## Release boundary
-
-Repository merge is not rollout proof.
-
-The current `medicspro-agent` target can run controlled workspace processes but does not expose production database/container access, so this session cannot prove that #522/#524 migrations are installed in production. Do not mark RELEASED from GitHub evidence alone.
-
-## Post-merge capability decision
-
-The capability map was reaudited against `main@7a8badf5...`.
-
-The strongest product conflict is still the legacy Patient-backed commercial board in `src/pages/Crm.tsx`, which reads `patients.funilStage` and writes through `setFunilStage`.
-
-A proposed next slice, **CRM Board Cutover V1**, was adversarially reviewed with the current evidence. JEV returned:
+The registered MEDICSPRO runtime target is:
 
 ```text
-block: 0.98
-deep_review: 0.02
-confidence: 0.97
+target = medicspro-agent
+environment = production
+capabilityProfile = operator
+transport = agent
+host = 28server
+allowedPaths = [/opt/wandora/ops-workspace]
 ```
 
-Reason preserved: the canonical Commercial Core/commands are merged but their production installation is not proved. Therefore Board execution is not authorized yet.
+Current registry/runtime boundary:
+
+```text
+allowedDockerContainers = []
+allowedDockerExecContainers = []
+allowedDockerExecPrograms = []
+allowedDockerActions = []
+psql is NOT in allowedProcessPrograms
+docker_list -> REMOTE_COMMAND_FAILED / docker_read_proxy_required
+runtime_summary -> docker unavailable for this user
+```
+
+`target_agent_prepare` currently exposes only these presets:
+
+```text
+operator-workspace
+read-only
+```
+
+Re-preparing the same target therefore does not add production database or Docker authority.
+
+## Exact repository artifacts for runtime proof
+
+Migrations:
+
+- `supabase-migrations/20260926_commercial_crm_core_foundation.sql`;
+- `supabase-migrations/20260926_commercial_crm_command_boundary.sql`.
+
+Readback verifiers:
+
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql`;
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql`.
+
+The two verifier files were inspected mechanically: zero mutation-like statements were found. They are structurally read-only, but this session has no authorized path to execute them against the real production PostgreSQL instance.
+
+`DEPLOY.md` remains authoritative for rollout mechanics: inspect real schema/migration history first; do not reapply blindly; use pinned migration files; stop on error; run the appropriate verifier immediately after mutation.
+
+## Gates in this session
+
+### GAPS
+
+Production installation of #522/#524 is unknown. Repository integration is proved; production schema installation is not.
+
+### CAPABILITY AUTHORITY / REUSE GATE
+
+Reuse the canonical self-hosted Supabase/PostgreSQL runtime and the existing `medicspro-agent`. Do not create a second DB/runtime authority and do not bypass MCP boundaries.
+
+### DECISION
+
+Block production readback/rollout with the current capability set. Do not use `bash`/`sh`, raw secrets or network tricks to escape allowlists.
+
+### SECOND ADVERSARIAL REVIEW
+
+JEV result:
+
+```text
+route = block
+block = 1.00
+deep_review = 0.00
+proceed_fast = 0.00
+split_task = 0.00
+confidence = 1.00
+```
+
+Therefore no production mutation was executed.
+
+## Missing capability / authorization
+
+The next step is not a CRM feature. The missing runtime authority is:
+
+1. **read-only production PostgreSQL readback**, with server-side credential handling and no secret exposure; valid shapes include:
+   - a dedicated semantic DB-readback capability; or
+   - Docker read proxy + the production PostgreSQL container explicitly allowlisted + `psql` explicitly allowlisted;
+2. if readback proves either migration absent, a **separate, narrow rollout authorization** for the pinned migration files plus immediate post-rollout verifier/readback.
+
+A generic `operator-workspace` target is insufficient.
 
 ## Exact next step
 
-1. obtain production database/readback authority;
-2. prove whether #522 and #524 are already installed;
-3. if absent, run the controlled migration rollout + verifiers/readback;
-4. only then mark MED-CRM-001/002 RELEASED when evidence supports it;
-5. reconstruct the capability map once more after runtime proof;
-6. re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW for the next feature.
+1. extend/authorize the MEDICSPRO runtime boundary with controlled production PostgreSQL readback;
+2. inspect real migration/schema state for the two 20260926 migrations before any apply;
+3. if both are installed, run the two read-only verifiers and capture objective evidence;
+4. if either is absent, revalidate blast radius and perform a fresh SECOND ADVERSARIAL REVIEW before the separate controlled rollout;
+5. after rollout, run both verifiers/readback and prove tenant/RBAC/RLS invariants;
+6. only then update MED-CRM-001/002 to RELEASED if evidence supports it;
+7. rebuild `NEXT_CAPABILITY_MAP.md` against current main + runtime;
+8. only then re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW for a possible MED-CRM-003.
 
-Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation or commercial AI before the release gate closes.
-
-
-## Next-chat continuity checkpoint
-
-Revalidated before generating the next-chat prompt:
-
-```text
-origin/main = 7a8badf5ad81e92746e82bedd142ba75899a4080
-PR #526 = OPEN
-branch = docs/med-crm-post-merge-reconcile
-pre-handoff-update head = 038ccd082e33cd1392585873bb2cb0fa7db439f7
-compare to main = 3 ahead / 0 behind
-mergeable = true
-reviews = 0
-review threads = 0
-scope = 6 documentation files only
-workflow runs on 038ccd082... = 20/20 SUCCESS
-required dependency-audit = SUCCESS
-required validate = SUCCESS
-```
-
-PR #526 exists only to reconcile the canonical documentation after #524. It does not change schema, runtime, authorization, Patient/Encounter, provider, automation or UI behavior.
-
-This HANDOFF update itself advances the PR head, so the next chat must revalidate the new #526 head/checks before merging. Do not infer green status for the new head from the pre-update checkpoint above.
-
-After #526 is safely integrated, the next operational gate remains unchanged:
-
-1. reconstruct current main and runtime authority;
-2. obtain production database/readback authority for MEDICSPRO;
-3. prove whether #522/#524 migrations are already installed in production;
-4. if absent, execute only the controlled rollout + verifier/readback path already authorized by repository doctrine;
-5. mark RELEASED only with runtime evidence;
-6. only after release proof, rebuild the capability map and run fresh GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW before MED-CRM-003 or any Board/UI work.
+Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation, Commercial AI or a parallel engine while this release gate is open.

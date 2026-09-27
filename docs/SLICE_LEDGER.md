@@ -12,8 +12,8 @@
 
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
-| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; release/readback de produção ainda não comprovado |
-| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524 (`main@7a8badf5...`); release/readback de produção pendente; não declarar RELEASED |
+| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; RELEASE bloqueado porque `medicspro-agent` não expõe PostgreSQL/containers produtivos para readback |
+| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524; docs #526 integradas em `main@bac39b3...`; falta capability controlada de PostgreSQL produtivo antes de RELEASED |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
