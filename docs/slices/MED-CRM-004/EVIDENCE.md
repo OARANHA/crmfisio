@@ -2,7 +2,7 @@
 
 **Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`  
 **Branch:** `feat/med-crm-004-archived-pipeline-transition-guard`  
-**Status:** IMPLEMENTING — validation pending
+**Status:** PROVED — merge/release pending
 
 ## REAL NOW
 
@@ -63,10 +63,56 @@ The new cases require:
 
 ## VALIDATION
 
-Pending. Do not mark PROVED until the current branch/PR head has mechanical PostgreSQL evidence plus the applicable repository checks.
+Proof head:
 
-A disposable PostgreSQL start attempt through the remote execution broker was blocked by the execution safety layer before any command ran. No lab or production mutation resulted from that attempt. GitHub Actions PostgreSQL 16/17 is the canonical behavioral proof path added by this slice.
+```text
+PR #534 head = 2e783c08363e6922804bf6e96d377125778c0499
+base = main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35
+behind = 0
+```
+
+GitHub Actions on that exact head:
+
+```text
+workflow runs = 21
+completed = 21
+success = 21
+failed = 0
+
+Commercial CRM Archived Pipeline Transition Guard:
+PostgreSQL 16 = SUCCESS
+PostgreSQL 17 = SUCCESS
+```
+
+The dedicated PostgreSQL jobs executed the full harness, including:
+
+- migration replay;
+- Core verifier;
+- MED-CRM-002 Command Boundary verifier;
+- MED-CRM-004 verifier;
+- all existing MED-CRM-002 behavior cases;
+- new archived-target / archived-pipeline behavior cases.
+
+Independent workspace validation on the same head:
+
+```text
+bash -n harness = PASS
+malformed DO blocks = 0
+git diff --check = PASS
+
+Vitest:
+125 files passed
+668 tests passed
+
+typecheck = PASS
+lint = PASS
+build = PASS
+```
+
+The Vite build emitted only the existing non-fatal chunk-size warning. No production mutation occurred during validation.
+
+An earlier attempt to start a disposable PostgreSQL cluster through the execution broker was blocked by the executor safety layer before execution; it produced no lab or production mutation and is not used as proof.
 
 ## RELEASE
 
-Not started. Production must not be changed before PROVED + merge. Because this slice changes the canonical production RPC, RELEASED requires controlled rollout and post-rollout readback.
+Not started. MED-CRM-004 is PROVED, not MERGED and not RELEASED at this checkpoint. Because this slice changes the canonical production RPC, RELEASED requires merge plus controlled production rollout and post-rollout readback.
