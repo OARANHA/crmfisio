@@ -4,147 +4,92 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Audited base before this documentation slice:
+Current integrated base at implementation start:
 
-`main@7c5673d43262ef3a0681d3a916d554bcc9627f71`
+`main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
 
-Branch:
+Design PR:
 
-`docs/med-crm-006-contact-identity-resolution`
+`#541 — MERGED`
+
+Implementation branch:
+
+`feat/med-crm-006-contact-identity-resolution`
 
 Status:
 
-`DESIGNED / EXECUTION NOT STARTED`
+`IMPLEMENTING — BACKEND PHASE ONLY`
 
-Revalidate all mutable values before acting.
+Revalidate all mutable GitHub/runtime facts before acting.
 
-## What is closed
+## Gates closed
 
-The Contact Identity Resolution architecture/design contract is closed enough to formalize MED-CRM-006:
+The following gates were reconstructed against the merged design and current CRM schema/tests:
 
-- Contact identity resolution is distinct from Contact edit and destructive merge/dedupe;
-- phone/email are matching signals, not unique identity keys;
-- canonical normalization lives server-side;
-- storage normalization and match equivalence remain separate;
-- candidate lookup is current-clinic and writer-scoped;
-- Patient identity/data are excluded from candidate input/output/ranking;
-- candidate preview is not final authority;
-- final authority is one narrow transactional orchestration command;
-- orchestration composes existing Contact/Lead authorities rather than replacing them;
-- concurrency uses deterministic transaction-scoped signal locking + server-side recheck;
-- ambiguity is human-explicit;
-- `explicit_reuse` means create a new Lead for an existing Contact;
-- `explicit_distinct` requires an explicit reason;
-- caller-supplied UUID retry semantics from MED-CRM-002/005 must be preserved;
-- resolution side effects reuse `crm_lead_activities` and `audit_log` without raw PII.
+`GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW`
 
-## What is not authorized
+The exact executable contract is in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
 
-Do not start implementation directly from this handoff.
+Key closures:
 
-Still forbidden until the next implementation-plan review closes:
+- legacy Contacts with NULL normalized columns remain matchable without mass backfill;
+- new Contact writes populate canonical normalized storage;
+- candidate matching and locking cover the same BR legacy phone variants;
+- weak email case-fold is deferred;
+- advisory locks are transaction-scoped and deterministically ordered;
+- direct `create_current_clinic_crm_contact(...)` cannot remain a bypass;
+- Contact/Lead bodies are shared internally rather than duplicated;
+- exact orchestration retry is resolved before self-candidate ambiguity;
+- Patient never enters candidate input/output/join;
+- resolution activity/audit contain no raw phone/email;
+- backend proof precedes frontend;
+- production rollout remains a separate release gate.
 
-- writing a follow-up migration;
-- adding RPCs/helpers;
-- changing frontend;
-- changing runtime/production;
-- merge/dedupe;
-- Contact edit/lifecycle commands;
-- Patient matching or Lead→Patient conversion;
-- UNIQUE constraints on phone/email normalized columns;
-- provider/WhatsApp identity as Contact authority;
-- new role, entitlement, tenant source or parallel audit mechanism.
+## Execution authorized now
 
-## Next gate — IMPLEMENTATION PLAN REVIEW
+Only:
 
-Before EXECUTION, revalidate `origin/main`, this branch/PR, checks and all relevant CRM migrations/tests.
+- `20260927_commercial_crm_contact_identity_resolution.sql`;
+- internal normalization/candidate/lock/shared-core helpers;
+- writer-scoped candidate preview RPC;
+- `create_current_clinic_crm_resolved_prospect(...)`;
+- hardening of the existing Contact wrapper;
+- per-Lead retry serialization while preserving the existing Lead public contract;
+- structural verifier;
+- PostgreSQL 16/17 behavioral + concurrency harness;
+- CI workflow;
+- MED-CRM-006 docs.
 
-Then close the exact implementation plan for:
+## Still forbidden
 
-1. follow-up migration filename/order;
-2. canonical normalization helper signatures;
-3. exact BR phone normalization and legacy-match variant semantics;
-4. exact email normalization helper;
-5. candidate projection function signature and returned fields;
-6. orchestration command signature;
-7. explicit resolution-mode input contract;
-8. candidate recheck semantics;
-9. advisory-lock key derivation and deterministic ordering;
-10. same-UUID retry/self-candidate behavior;
-11. `explicit_distinct` reason validation;
-12. resolution activity/audit metadata;
-13. structural verifier additions;
-14. PostgreSQL behavioral cases;
-15. frontend/API adapter changes only after backend authority is PROVED.
+- frontend resolution UI;
+- production/runtime rollout;
+- Contact merge/dedupe/edit/lifecycle;
+- Patient lookup/matching or Lead→Patient;
+- phone/email uniqueness;
+- provider/Evolution identity authority;
+- new role, entitlement, tenant source or audit mechanism;
+- declaring PROVED/RELEASED from implementation intent.
 
-## Required adversarial questions before EXECUTION
+## Validation gate
 
-- Can two different UUIDs for the same normalized signal still create two Contacts?
-- Can phone and email conflict across two Contacts without an explicit error?
-- Can lock ordering deadlock when two requests carry phone + email in inverse input order?
-- Can a no-signal request accidentally acquire a shared/global lock?
-- Can a retry after successful create be mistaken for ambiguity?
-- Can candidate lookup reveal anonymized/deleted history?
-- Can Patient linkage appear in input/output/logs?
-- Can professional/financeiro reach the identity-resolution lookup?
-- Can the browser bypass the final resolution command and recreate the race?
-- Can audit/activity leak raw phone/email?
-- Can the new orchestration become a second generic Contact/Lead authority?
+Before `PROVED`, require:
 
-If any answer is unsafe or unproved, return to the relevant gate.
-
-## Expected implementation validation
-
-At minimum:
-
-- exact phone candidate;
-- exact email candidate;
-- BR 9th-digit variant candidate;
-- zero/one/multiple candidate semantics;
-- phone→A + email→B conflict;
-- explicit reuse;
-- explicit distinct with reason;
-- explicit distinct without reason rejected;
-- same UUID exact retry idempotent;
-- same UUID divergent retry rejected;
-- different UUID same signal concurrent race serialized;
-- deterministic two-signal lock order;
-- different tenant does not interfere;
-- no-signal path has no global lock;
-- anonymized/deleted excluded;
-- Patient absent;
-- existing Contact/Lead command regressions remain green;
-- activity/audit exactly once;
-- PostgreSQL 16/17 proof if still required by current repository policy.
-
-## Documentation state
-
-This slice should contain:
-
-- `README.md` — scope/method/current state;
-- `DECISION.md` — normative design decision;
-- `EVIDENCE.md` — measured proof and limitations;
-- `HANDOFF.md` — continuity and next exact gate.
-
-The ledger must record MED-CRM-006 as `DESIGNED`, not IMPLEMENTING.
+1. migration replay in isolated DB;
+2. new structural verifier PASS;
+3. all MED-CRM-006 behavior cases PASS;
+4. exact-phone and BR-legacy concurrency proof;
+5. deterministic multi-signal behavior / no deadlock;
+6. no-signal path without identity-signal lock;
+7. no Patient input/output/mutation;
+8. no raw PII in resolution evidence;
+9. unchanged MED-CRM-002 behavioral cases PASS;
+10. unchanged MED-CRM-004 guard cases PASS;
+11. PostgreSQL 16 and 17 workflow success;
+12. repository `validate` / `dependency-audit` and other applicable checks green on the actual implementation HEAD.
 
 ## Next exact step
 
-Finish this docs-only PR, validate its current HEAD, and merge only if the documentation remains coherent and checks are green. After integration, reconstruct current state again and perform the implementation-plan review before any product/runtime execution.
+Implement the backend phase on this branch exactly as [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md), open an implementation PR, then use the PR's actual head/checks as validation authority.
 
-## Fresh PR checkpoint before next-chat handoff
-
-Revalidated on 2026-09-27 before generating the next-chat prompt:
-
-- `origin/main = 7c5673d43262ef3a0681d3a916d554bcc9627f71`;
-- PR `#541 — docs: design MED-CRM-006 Contact Identity Resolution V1`;
-- PR state = OPEN;
-- merged = false;
-- mergeable = true;
-- base = `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`;
-- head = `18594cbc45eaae06e3c28ac3ad120f543c77b266`;
-- diff remains documentation-only;
-- current HEAD workflows are **not all complete**: some are success, others remain queued/in_progress;
-- therefore PR #541 is **not GREEN yet** and must not be merged from inherited evidence.
-
-The next chat must first revalidate this PR HEAD and all current checks. If the HEAD moves, discard the checkpoint above and use the new HEAD as authority.
+Do not start frontend or production rollout merely because the backend branch exists.
