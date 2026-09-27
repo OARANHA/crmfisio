@@ -45,6 +45,8 @@ The implementation must:
 - lock the target Lead before update;
 - after locking, accept an exact desired-state retry as a no-op; otherwise require the supplied expected `updated_at` to match the current row and fail stale edits closed;
 - fail if the Lead is missing/deleted/cross-tenant;
+- fail if the linked Contact is deleted or anonymized, so anonymization cannot be bypassed by attaching fresh Lead details;
+- fail if the current pipeline or stage is archived, preserving the RELEASED legacy/archive read-only contract server-side;
 - keep stage/pipeline/contact/owner/terminal fields unchanged;
 - be side-effect idempotent for an exact retry;
 - emit one bounded operational activity only when data actually changes;
