@@ -12,7 +12,7 @@
 
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
-| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | IMPLEMENTING | [slice](slices/MED-CRM-001/README.md) | provar IMPLEMENTATION-001 em PostgreSQL 16/17 + repo gates; sem iniciar board/Inbox/automação |
+| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | revalidar/decidir merge da PR #522; próxima capability só após GAPS + REUSE GATE |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
@@ -22,7 +22,7 @@
 - uma slice não avança de status por intenção;
 - `PROVED` exige evidência registrada;
 - `RELEASED` exige rollout observado quando houver produção;
-- se a main avançar enquanto a slice está aberta, revalidar REAL NOW antes de executar;
+- se a main avançar enquanto a slice está aberta, reconstruir o ESTADO ATUAL COMPROVADO antes de decidir ou executar;
 - todo status deve apontar para evidência no documento da própria slice.
 
 ## Fonte de capacidades externas
