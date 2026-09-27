@@ -7,16 +7,16 @@ Always resolve current `origin/main`, PR #536 HEAD/base/checks and runtime again
 ```text
 canonical repository = OARANHA/crmfisio
 
-main reconstructed for MED-CRM-003 execution =
-01a2b947e13144a885549c248acceb25021c36a2
+main after MED-CRM-003 merge =
+9962a14cb31ff09666234129590b59524a2d85c3
 
 MED-CRM-001 = RELEASED
 MED-CRM-002 = RELEASED
 MED-CRM-004 = RELEASED
 
-MED-CRM-003 = PROVED ON BRANCH
-PR #536 = OPEN
-MERGED = NO
+MED-CRM-003 = PROVED + MERGED
+PR #536 = MERGED
+merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
 RELEASED = NO
 ```
 
@@ -133,60 +133,62 @@ dependency-audit = SUCCESS
 
 The first CI attempt had caught a test-fixture typing issue after tests passed. It was fixed; the proof above belongs to the corrected implementation HEAD.
 
-## IMPORTANT — documentation refresh invalidates inherited checks
+## Merge proof
 
-The updates to `DECISION.md`, `EVIDENCE.md`, this `HANDOFF.md` and `SLICE_LEDGER.md` move PR #536 beyond `50ff38f...`.
-
-Therefore:
-
-> Do not call the final PR HEAD GREEN based on the 9/9 proof above.
-
-Before merge, revalidate the actual latest HEAD and all applicable checks.
-
-## Exact next gate — protected merge
-
-Revalidate:
-
-1. current `origin/main`;
-2. PR #536 state/head/base;
-3. compare/ahead/behind;
-4. mergeability;
-5. complete file diff;
-6. reviews and unresolved review threads;
-7. every workflow/check on the **actual latest HEAD**.
-
-Only if all are simultaneously true:
+The documentation refresh moved PR #536 to final HEAD:
 
 ```text
-PR #536 = OPEN
-base SHA = current origin/main
-behind = 0
-mergeable = true
-scope remains bounded
-all applicable checks = completed + success
-no blocking review/thread
+2f0d8bc3cf9a7b61677abc053a64218d120dacf6
 ```
 
-perform a protected squash merge using `expected_head_sha` or equivalent.
+That exact HEAD was revalidated before merge:
 
-Then:
+```text
+base = current main@01a2b947e13144a885549c248acceb25021c36a2
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+9/9 check-runs = completed + success
+```
 
-1. re-resolve `origin/main`;
-2. prove PR #536 `merged=true`;
-3. read `CURRENT_STATE`, ledger and MED-CRM-003 docs from the resulting main;
-4. reconcile institutional docs to `PROVED + MERGED / NOT RELEASED` unless production rollout has also been proved.
+The PR was then squash-merged with expected-head protection:
 
-## Release gate after merge
+```text
+main = 9962a14cb31ff09666234129590b59524a2d85c3
+```
+
+Do not repeat or re-merge #536.
+
+## Current release gate
 
 MED-CRM-003 has no database rollout.
 
+Immediate post-merge public readback showed the application healthy but still serving the pre-MED-CRM-003 bundle:
+
+```text
+asset = /assets/index-D1eGcOhA.js
+
+list_current_clinic_crm_pipelines        ABSENT
+transition_current_clinic_crm_lead_stage ABSENT
+Leads arquivados / legado                ABSENT
+Contato anonimizado                      ABSENT
+
+/           HTTP 200
+/crm        HTTP 200
+/agenda     HTTP 200
+/pacientes  HTTP 200
+```
+
+So MED-CRM-003 is **PROVED + MERGED / NOT RELEASED** at this checkpoint.
+
 Do not call it RELEASED merely because GitHub merged.
 
-Reconstruct the repository's canonical frontend rollout path from current docs/runtime, then prove the deployed production frontend corresponds to the merged main and that the CRM route is healthy.
+The canonical deploy guide and recent production evidence show the frontend is Docker/Portainer-operated and previous frontend-only merges may auto-deploy. Prefer observing that auto-update first. Prove the deployed production frontend corresponds to the merged main and that the CRM route is healthy.
 
 Production proof should be sufficient to establish that the deployed bundle contains the Commercial CRM cutover and that there is no unexpected runtime failure on the production route. Do not weaken authentication/privacy boundaries just to obtain evidence.
 
-If frontend promotion requires an explicitly approval-gated administrative action, stop at that boundary and request only the exact required approval.
+If the Portainer auto-update does not promote this main and a manual frontend promotion becomes necessary, reconstruct the exact current stack/source path first. Any managed-admin mutation requires its explicit approval; do not guess a compose path or execute a broad Docker action.
 
 After rollout/readback, update:
 
