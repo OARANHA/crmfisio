@@ -1,8 +1,8 @@
 # MED-CRM-004 — Archived Pipeline Transition Guard
 
-**Status:** PROVED  
-**Base audited:** `main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35`  
-**Depends on:** MED-CRM-001 + MED-CRM-002 RELEASED  
+**Status:** PROVED
+**Base audited:** `main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35`
+**Depends on:** MED-CRM-001 + MED-CRM-002 RELEASED
 **Unblocks:** re-analysis of MED-CRM-003 only after this slice is RELEASED
 
 ## Purpose
