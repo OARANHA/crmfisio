@@ -1,6 +1,6 @@
 # MED-CRM-002 — Evidence
 
-**Slice status:** PROVED
+**Slice status:** RELEASED
 **Implementation-proven head:** `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`
 **Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **PR:** #524
@@ -434,3 +434,69 @@ all observed PR #529 checks = SUCCESS
 ```
 
 This proves the repository repair and its test composition. It does **not** prove production application of the 20260927 reconciliation migration or release of MED-CRM-001/002.
+
+## Final production release proof — 2026-09-27
+
+MED-CRM-002 is now **RELEASED** for its bounded backend command scope.
+
+After MED-CRM-001 passed its production verifier, the pre-rollout Command Boundary verifier returned:
+
+```text
+commercial_crm_command_function_missing
+```
+
+That proved the command boundary was still absent before mutation.
+
+The exact canonical migration was staged from current main and proved on the host and inside `supabase-db` with SHA-256:
+
+```text
+f8f38a0db0fd020713a89eeecb6abd6df4e414b89ffb2ae6457ee8c777ac9a13
+```
+
+The approval-gated production apply completed with:
+
+```text
+BEGIN
+...
+COMMIT
+exit_code = 0
+```
+
+Immediately afterward, both canonical verifiers were executed through the separate pinned readback target in PostgreSQL read-only transactions.
+
+Core verifier:
+
+```text
+sha256 = da5f4bcfbd25c15fc2c654a59761e1fb9863e88608a65d57e6d44d8253913c8c
+COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED
+```
+
+Command Boundary verifier:
+
+```text
+sha256 = 7d4a4ff23f9d70c3e808e0a8fcb696c2b8565ef0a64955532566de0a69753b34
+COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
+```
+
+The production command verifier proved:
+
+1. all MED-CRM-002 functions exist;
+2. helper is internal and browser commands are authenticated-only;
+3. SECURITY DEFINER + pinned search path remain correct;
+4. mutator authority composes tenant/role/entitlement boundaries;
+5. Contact command cannot choose clinic or link Patient;
+6. Lead create remains open-stage only and emits activity/audit;
+7. stage transition locks the Lead, remains in the same pipeline and emits activity/audit;
+8. raw Commercial Core browser DML remains closed;
+9. no parallel commercial tables were introduced.
+
+Production write actions used exact one-time managed-admin approvals. Verification used `medicspro-db-readback`, which has only `postgres.pinned_readback` and no generic Docker/process/write authority.
+
+Therefore the bounded release statement is now:
+
+```text
+MED-CRM-001 = PROVED + MERGED + RELEASED
+MED-CRM-002 = PROVED + MERGED + RELEASED
+```
+
+This does not release Board/UI, pre-clinical intake, Contact edit/merge/dedupe, Lead→Patient conversion, Inbox, follow-up, attribution, provider changes, automation or Commercial AI.
