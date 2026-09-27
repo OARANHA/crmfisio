@@ -4,9 +4,9 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Frontend handoff baseline after #546:
+Final release checkpoint:
 
-`main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2`
+`main@910dff50cf113a350e21192bcf5cd2209db1ab71`
 
 Backend release documentation:
 
@@ -36,11 +36,11 @@ Reason: #542 is all-green against a pre-#543 contract but materially diverges fr
 
 Status:
 
-`BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / FRONTEND NOT YET PROVED / SLICE NOT FINAL`
+`RELEASED`
 
-Live frontend execution base was revalidated as:
+Frontend merge authority:
 
-`main@e2902917f247ab92683988e3beed8b5e4badd225`
+`main@910dff50cf113a350e21192bcf5cd2209db1ab71`
 
 Frontend implementation PR:
 
@@ -50,9 +50,9 @@ Branch:
 
 `feat/med-crm-006-contact-identity-resolution-frontend`
 
-Immediately before this HANDOFF refresh, the branch HEAD was `1c10c4de73cbe0e6f534043b17f2c91b5109cc23`, 0 behind its original base. This HANDOFF update itself moves the PR HEAD again, so **re-resolve the current #548 HEAD and its checks before making any GREEN/PROVED/merge statement**.
+PR #548 final validated HEAD was `d2c6356883a767f302ac98af834a9319f678529e`; 20/20 workflow runs completed successfully before protected squash merge as `main@910dff50cf113a350e21192bcf5cd2209db1ab71`.
 
-The backend authority remains RELEASED and must not be reopened without new contradictory evidence. The live work is now strictly the frontend adapter/UX phase.
+Backend and frontend authorities for MED-CRM-006 are RELEASED. Do not reopen the slice without new contradictory evidence; any successor capability requires a new slice and fresh four-gate review.
 
 Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f7978a9cdd10b`:
 
@@ -67,9 +67,23 @@ Repository proof is complete for PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8
 
 Production backend proof is complete on the real runtime `28server` / `supabase-db`. The canonical migration SHA-256 `f36f036f172b997292654f251b8a9d386839bc9ef41204636aa11de95605d31b` was proved in the workspace and again inside the PostgreSQL container as user `postgres`, then applied with `ON_ERROR_STOP=1` and completed through `COMMIT`. The pinned verifier SHA-256 `4da932b767d18decbd8c0d881b679dc29735364abcbf3b5b0c73c2d75d88f785` passed all 12 checks and returned `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED`. Core, Command Boundary and Archived Pipeline Guard pinned regressions also passed afterward.
 
-The backend authority is therefore RELEASED. Frontend resolution UX is now authorized as the next phase, but MED-CRM-006 as a whole is not final until the frontend is implemented, merged and observed in production.
+The backend authority is RELEASED. Frontend resolution UX is also PROVED, merged and observed in production; MED-CRM-006 as a whole is RELEASED.
 
 Revalidate all mutable values before acting.
+
+## Final frontend release checkpoint — 2026-09-27
+
+- frontend implementation PR #548 final validated HEAD: `d2c6356883a767f302ac98af834a9319f678529e`;
+- all 20 workflow runs associated with that exact PR HEAD completed successfully, including `Clinical workflow CI`;
+- protected squash merge produced `main@910dff50cf113a350e21192bcf5cd2209db1ab71`;
+- after the Portainer redeploy, production began serving entry bundle `/assets/index-BYMym6it.js` with `Last-Modified: Sun, 27 Sep 2026 16:40:32 GMT`;
+- that entry references live CRM chunk `/assets/CrmOperational-6R-i_o-S.js`;
+- the live CRM chunk contains `list_current_clinic_crm_contact_identity_candidates`, `resolve_current_clinic_crm_prospect_identity`, `create_if_clear`, `explicit_reuse`, `explicit_distinct` and the exact-retry copy `Repetir mesma tentativa`;
+- the live CRM chunk does not contain the old direct Prospect Intake writers `create_current_clinic_crm_contact` or `create_current_clinic_crm_lead`;
+- public route smoke after redeploy returned HTTP 200 for `/`, `/crm`, `/agenda` and `/pacientes`;
+- no authenticated human Contact/Lead mutation was performed as part of this final readback; release status is based on exact-head repository proof, released backend verifier evidence, live production bundle readback and public route health.
+
+Deterministic conclusion: **MED-CRM-006 is RELEASED**. The canonical boundary remains `Contact != Lead != Patient`; phone/email remain candidate signals rather than unique identity; the server resolver remains final authority; no Patient matching/creation authority was introduced by this slice.
 
 ## What the implementation-plan review closed
 
@@ -299,7 +313,7 @@ A fresh deterministic review after the first UI implementation found a transport
 
 ### Validation status
 
-Frontend/unit/boundary tests have been added but **the exact current PR HEAD is not yet declared GREEN or PROVED**. Repository CI, typecheck, lint, build, validate and dependency-audit must all be revalidated on the post-HANDOFF HEAD.
+Frontend/unit/boundary proof is complete on final PR #548 HEAD `d2c6356883a767f302ac98af834a9319f678529e`: 20/20 GitHub workflow runs completed successfully. Protected squash merge produced `main@910dff50cf113a350e21192bcf5cd2209db1ab71`, which is observed in the production frontend.
 
 ## Rollout order
 
@@ -307,8 +321,8 @@ Frontend/unit/boundary tests have been added but **the exact current PR HEAD is 
 2. [x] merge only after PostgreSQL 16/17 + repo checks are green;
 3. [x] controlled DB rollout + production-safe verifier/readback;
 4. [x] implement frontend candidate/resolution UX in PR #548;
-5. [ ] validate exact #548 HEAD and merge only if GREEN;
-6. [ ] observe frontend production and reconcile MED-CRM-006 final release state.
+5. [x] validate exact #548 HEAD and merge only if GREEN;
+6. [x] observe frontend production and reconcile MED-CRM-006 final release state.
 
 Between backend DB rollout and frontend UX rollout, stale frontend behavior is intentionally fail-closed:
 
@@ -317,13 +331,4 @@ Between backend DB rollout and frontend UX rollout, stale frontend behavior is i
 
 ## Next exact step
 
-1. re-resolve live `origin/main` and PR #548 current HEAD after this HANDOFF refresh;
-2. prove #548 remains 0 behind, mergeable and scoped to frontend/tests/docs only;
-3. inspect every applicable workflow/check on that exact HEAD;
-4. if any test/typecheck/lint/build/validate/dependency-audit check fails, fix only the bounded frontend implementation and rerun;
-5. only after the exact #548 HEAD is fully GREEN, record frontend PROVED evidence and merge through the protected path;
-6. re-resolve the resulting `main`;
-7. observe the actual frontend deployment, verify the live CRM chunk exposes the candidate/resolver UX without Patient creation or old Prospect writer fallback, and smoke the relevant routes;
-8. only after production observation, reconcile whether MED-CRM-006 as a whole can be marked RELEASED.
-
-Do not mark the whole slice RELEASED until the frontend phase is observed in production.
+MED-CRM-006 is closed as RELEASED. Do not extend it in place. Reconstruct current `origin/main`, active PRs, docs, code/schema/tests and runtime before selecting any successor Commercial CRM capability, then open a new slice and repeat GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW before execution.
