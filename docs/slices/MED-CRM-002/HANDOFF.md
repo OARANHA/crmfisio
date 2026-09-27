@@ -86,3 +86,36 @@ Reason preserved: the canonical Commercial Core/commands are merged but their pr
 6. re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW for the next feature.
 
 Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation or commercial AI before the release gate closes.
+
+
+## Next-chat continuity checkpoint
+
+Revalidated before generating the next-chat prompt:
+
+```text
+origin/main = 7a8badf5ad81e92746e82bedd142ba75899a4080
+PR #526 = OPEN
+branch = docs/med-crm-post-merge-reconcile
+pre-handoff-update head = 038ccd082e33cd1392585873bb2cb0fa7db439f7
+compare to main = 3 ahead / 0 behind
+mergeable = true
+reviews = 0
+review threads = 0
+scope = 6 documentation files only
+workflow runs on 038ccd082... = 20/20 SUCCESS
+required dependency-audit = SUCCESS
+required validate = SUCCESS
+```
+
+PR #526 exists only to reconcile the canonical documentation after #524. It does not change schema, runtime, authorization, Patient/Encounter, provider, automation or UI behavior.
+
+This HANDOFF update itself advances the PR head, so the next chat must revalidate the new #526 head/checks before merging. Do not infer green status for the new head from the pre-update checkpoint above.
+
+After #526 is safely integrated, the next operational gate remains unchanged:
+
+1. reconstruct current main and runtime authority;
+2. obtain production database/readback authority for MEDICSPRO;
+3. prove whether #522/#524 migrations are already installed in production;
+4. if absent, execute only the controlled rollout + verifier/readback path already authorized by repository doctrine;
+5. mark RELEASED only with runtime evidence;
+6. only after release proof, rebuild the capability map and run fresh GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW before MED-CRM-003 or any Board/UI work.
