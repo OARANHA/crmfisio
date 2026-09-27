@@ -2,17 +2,34 @@
 
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
-**Audited main:** `7c5673d43262ef3a0681d3a916d554bcc9627f71`
+**Audited main:** `837935ef82a18849dcd05986a27f7978a9cdd10b`
 
 ## Canonical implementation checkpoint — 2026-09-27
 
-- plan-review PR #543 merged; current canonical base is `main@1a0e96392570d69090e87895d4072f0eea640d7a`;
-- branch `feat/med-crm-006-contact-identity-resolution-canonical` was created directly from that base;
-- canonical backend migration, verifier, behavior suite, concurrency harness and PostgreSQL 16/17 workflow have been added;
-- canonical implementation PR #544 is open from `feat/med-crm-006-contact-identity-resolution-canonical`;
-- PR #542 is not merge authority: its all-green implementation predates #543 and diverges from the merged contract on the final RPC, lock-key/order and phone normalization;
-- no claim of PROVED is valid until the canonical branch exact HEAD completes its PostgreSQL 16/17 workflow and all applicable repository checks;
-- production rollout and frontend work remain out of scope at this checkpoint.
+- plan-review PR #543 merged at `main@1a0e96392570d69090e87895d4072f0eea640d7a`;
+- canonical implementation PR #544 final HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
+- immediately before merge, PR #544 was mergeable, 0 behind, had the expected 11 changed files, no reviews and no review threads;
+- all 21 workflow runs on that exact HEAD completed successfully;
+- dedicated `Commercial CRM Contact Identity Resolution`: PostgreSQL 16 = success; PostgreSQL 17 = success;
+- `Clinical workflow CI`: `validate` = success; `dependency-audit` = success;
+- protected squash merge with `expected_head_sha=aed1b2752ca86c43ea37a47abf8e5684434e2811` produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`;
+- post-merge comparison proved `main` identical to that merge SHA;
+- PR #542 remains non-authoritative prototype/reuse evidence only;
+- backend implementation is therefore PROVED in repository evidence and MERGED, but production rollout/readback has not occurred and frontend work remains unauthorized.
+
+
+## Backend implementation proof — PR #544
+
+Canonical artifacts integrated by PR #544:
+
+- `supabase-migrations/20260927_commercial_crm_contact_identity_resolution.sql`;
+- `supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_CONTACT_IDENTITY_RESOLUTION.sql`;
+- `tests/sql/commercial_crm_contact_identity_resolution_cases.sql`;
+- `scripts/test-commercial-crm-contact-identity-resolution.sh`;
+- `scripts/test-commercial-crm-contact-identity-resolution-concurrency.sh`;
+- `.github/workflows/commercial-crm-contact-identity-resolution.yml`.
+
+The dedicated workflow proves both PostgreSQL 16 and PostgreSQL 17 behavior. The harness includes the effective CRM migration stack, structural verifier, identity-resolution behavior cases, MED-CRM-002 and MED-CRM-004 regressions, and the real two-session concurrency harness. The repository proof is tied to final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` and merge `837935ef82a18849dcd05986a27f7978a9cdd10b`.
 
 
 ## Repository state
@@ -176,16 +193,16 @@ Deskcomm is used only for patterns/invariants, never as authority for MedicsPro 
 
 ## Evidence limitations
 
-This documentation checkpoint did not:
+This checkpoint proves repository implementation and merge only. It does **not** prove:
 
-- mutate production;
-- inspect runtime data distribution of `phone_normalized/email_normalized`;
-- prove a concrete advisory-lock key implementation;
-- create candidate or orchestration RPCs;
-- run PostgreSQL behavior cases for Contact Identity Resolution;
-- run provider or frontend E2E.
+- that `20260927_commercial_crm_contact_identity_resolution.sql` has been applied to the real production PostgreSQL runtime;
+- production dependency/preflight state at rollout time;
+- production-safe verifier/readback success;
+- production distribution of historical normalized Contact values;
+- frontend candidate/resolution UX;
+- observed frontend production behavior after a later UI rollout.
 
-Those belong to the implementation-plan / execution / validation gates.
+No production mutation is claimed by this checkpoint. MED-CRM-006 must not be called RELEASED until the controlled database rollout and production verifier/readback are completed.
 
 
 ## Implementation-plan review evidence — 2026-09-27

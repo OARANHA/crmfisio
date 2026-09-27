@@ -1,18 +1,28 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** IMPLEMENTING  
+**Status:** BACKEND PROVED / MERGED / PRODUCTION ROLLOUT PENDING  
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
 **Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
-**Implementation branch:** `feat/med-crm-006-contact-identity-resolution-canonical`  
+**Implementation PR:** #544 — MERGED as `main@837935ef82a18849dcd05986a27f7978a9cdd10b` from final validated HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@1a0e96392570d69090e87895d4072f0eea640d7a`
+**Last reconciled:** 2026-09-27 against `main@837935ef82a18849dcd05986a27f7978a9cdd10b`
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-Backend implementation has started on the canonical branch from the post-#543 `main`. Validation is pending; no production rollout or frontend integration has started.
+Backend implementation is PROVED in repository CI and merged to canonical `main`. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including the dedicated PostgreSQL 16/17 Contact Identity Resolution jobs and Clinical workflow `validate` / `dependency-audit`. No production rollout or runtime readback has occurred yet, so MED-CRM-006 is not RELEASED and frontend integration remains unauthorized.
+
+## Repository proof checkpoint — 2026-09-27
+
+- PR #544 was revalidated immediately before merge: open, mergeable, 0 behind, no reviews/threads, expected 11 changed files.
+- Final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` had 21/21 workflow runs `completed/success`.
+- Dedicated `Commercial CRM Contact Identity Resolution`: PostgreSQL 16 = success; PostgreSQL 17 = success.
+- `Clinical workflow CI`: `validate` = success; `dependency-audit` = success.
+- Protected squash merge with exact expected HEAD produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`.
+- Post-merge comparison `main` ↔ merge SHA was identical.
+- This is repository proof only. Production database rollout/readback remains pending.
 
 ## Non-goals
 
@@ -29,13 +39,14 @@ Backend implementation has started on the canonical branch from the post-#543 `m
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- `origin/main`: `1a0e96392570d69090e87895d4072f0eea640d7a` after plan-review PR #543 merged;
-- canonical implementation branch: `feat/med-crm-006-contact-identity-resolution-canonical`, created directly from that `main`;
+- `origin/main`: `837935ef82a18849dcd05986a27f7978a9cdd10b` after implementation PR #544 protected-squash merge;
+- canonical implementation PR #544 is merged; its final validated HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
 - PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
-- runtime/VPS is not part of the current implementation-validation checkpoint.
+- repository validation is complete: 21/21 workflows success; PostgreSQL 16 and 17 dedicated jobs success; Clinical workflow `validate` and `dependency-audit` success;
+- runtime/VPS production rollout and verifier/readback are the next gate and have not yet been executed.
 
 ### Evidência comprovada
 
@@ -209,42 +220,45 @@ Living System answers:
 
 ## 5. EXECUTION
 
-**NOT STARTED.**
+**BACKEND IMPLEMENTATION COMPLETE IN REPOSITORY.**
 
-No migration, RPC, frontend, runtime or production mutation belongs to this documentation PR.
+PR #544 implemented the canonical migration, verifier, behavioral cases, concurrency harness and PostgreSQL 16/17 workflow, then merged through the protected branch path.
+
+Repository execution does **not** include production deployment. No MED-CRM-006 production database mutation or frontend mutation is claimed here.
 
 ## 6. VALIDATION
 
-For the later implementation plan, require at minimum:
+Repository validation is complete for final implementation HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`:
 
-- same UUID exact retry;
-- same UUID divergent replay conflict;
-- different UUID same exact phone race;
-- different UUID same exact email race;
-- phone/email split-conflict;
-- BR legacy phone variant candidate;
-- explicit reuse;
-- explicit distinct + reason;
-- deterministic multi-signal lock order;
-- no-signal no-global-lock;
-- different tenant isolation;
-- deleted/anonymized exclusion;
-- no Patient input/output/join;
-- no PII in audit;
-- existing Lead activity/audit remains correct;
-- PostgreSQL 16/17 behavioral proof if repository policy remains current;
-- current verifiers plus new structural/behavior verifier;
-- frontend tests only after backend authority is proved.
+- same UUID exact retry and divergent replay behavior are covered;
+- different UUID same-signal races and BR legacy-phone concurrency are covered;
+- exact phone/email, split conflict, explicit reuse/distinct and fail-closed ambiguity behavior are covered;
+- deterministic multi-signal lock ordering and no-signal behavior are covered;
+- tenant/role/entitlement denial and deleted/anonymized exclusion are covered;
+- Patient authority remains excluded;
+- audit PII constraints and MED-CRM-002 / MED-CRM-004 regressions are covered;
+- dedicated PostgreSQL 16 job = success;
+- dedicated PostgreSQL 17 job = success;
+- all 21 applicable workflows = success;
+- Clinical workflow `validate` = success;
+- Clinical workflow `dependency-audit` = success.
+
+Production validation remains pending and is a separate gate.
 
 ## 7. DOCUMENTATION
 
-- [x] create slice README
-- [x] create DECISION
-- [x] create EVIDENCE
-- [x] create HANDOFF
-- [x] update ledger in this branch
-- [x] open docs-only PR
-- [ ] merge only after current HEAD checks are green
+- [x] slice README
+- [x] DECISION
+- [x] EVIDENCE
+- [x] HANDOFF
+- [x] ledger
+- [x] canonical backend implementation PR #544
+- [x] exact-head repository validation
+- [x] protected squash merge
+- [ ] controlled production DB rollout
+- [ ] production-safe verifier/readback
+- [ ] mark backend RELEASED only after runtime proof
+- [ ] authorize frontend resolution UX only after backend RELEASED
 
 ## Implementation-plan review — CLOSED
 

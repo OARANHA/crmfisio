@@ -4,9 +4,9 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Integrated base:
+Current integrated main:
 
-`main@1a0e96392570d69090e87895d4072f0eea640d7a`
+`main@837935ef82a18849dcd05986a27f7978a9cdd10b`
 
 Design PR:
 
@@ -16,9 +16,13 @@ Implementation-plan review:
 
 `#543 — MERGED`
 
-Canonical backend implementation branch / PR:
+Canonical backend implementation:
 
-`feat/med-crm-006-contact-identity-resolution-canonical` / `#544 — feat: implement canonical MED-CRM-006 Contact Identity Resolution V1`
+`#544 — MERGED` via protected squash as `main@837935ef82a18849dcd05986a27f7978a9cdd10b`
+
+Final validated PR HEAD:
+
+`aed1b2752ca86c43ea37a47abf8e5684434e2811`
 
 Prototype implementation PR:
 
@@ -28,9 +32,9 @@ Reason: #542 is all-green against a pre-#543 contract but materially diverges fr
 
 Status:
 
-`IMPLEMENTING / VALIDATION PENDING / FRONTEND NOT AUTHORIZED`
+`BACKEND PROVED / MERGED / PRODUCTION ROLLOUT PENDING / FRONTEND NOT AUTHORIZED`
 
-Current canonical backend artifacts exist on the implementation branch:
+Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f7978a9cdd10b`:
 
 - `supabase-migrations/20260927_commercial_crm_contact_identity_resolution.sql`;
 - `supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_CONTACT_IDENTITY_RESOLUTION.sql`;
@@ -39,7 +43,9 @@ Current canonical backend artifacts exist on the implementation branch:
 - `scripts/test-commercial-crm-contact-identity-resolution-concurrency.sh`;
 - `.github/workflows/commercial-crm-contact-identity-resolution.yml`.
 
-They have not yet earned PROVED. PR #544 is the canonical implementation PR; require PostgreSQL 16/17 plus all applicable repository checks on its exact HEAD before any merge.
+Repository proof is complete for PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`: 21/21 workflows completed successfully, including `Commercial CRM Contact Identity Resolution` with PostgreSQL 16 and PostgreSQL 17 both successful, plus `Clinical workflow CI` with `validate` and `dependency-audit` successful. The protected squash merge produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`.
+
+This proves the backend implementation in the repository. It does **not** prove production rollout. No MED-CRM-006 production database mutation or runtime readback is claimed yet, so the slice is not RELEASED and frontend execution remains unauthorized.
 
 Revalidate all mutable values before acting.
 
@@ -101,7 +107,7 @@ The harness must apply the effective CRM stack in order, including:
 5. Contact Identity Resolution V1;
 6. applicable verifiers and regressions.
 
-PostgreSQL 16 and 17 are required before PROVED.
+PostgreSQL 16 and 17 proof is complete on PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`.
 
 ## Locking contract
 
@@ -133,7 +139,7 @@ This avoids rewriting `contacts.updated_at` merely to fill derived fields.
 
 ## Candidate RPC
 
-Planned public RPC:
+Implemented public RPC:
 
 `list_current_clinic_crm_contact_identity_candidates(text,text)`
 
@@ -149,7 +155,7 @@ It must exclude deleted/anonymized Contacts and must not join or expose Patient 
 
 ## Final orchestration
 
-Planned public command:
+Implemented public command:
 
 `resolve_current_clinic_crm_prospect_identity(uuid,uuid,text,text,text,text,text,uuid,uuid,text)`
 
@@ -241,14 +247,12 @@ Between backend DB rollout and frontend UX rollout, stale frontend behavior is i
 
 ## Next exact step
 
-1. finish and merge this plan-review docs PR only if its current HEAD is docs-only, 0 behind, mergeable and GREEN;
-2. re-resolve `origin/main`;
-3. create a fresh implementation branch from that main;
-4. change MED-CRM-006 to `IMPLEMENTING` on the implementation branch;
-5. implement **backend authority only**;
-6. do not add frontend UX in the same backend movement;
-7. validate structural + behavioral + concurrency cases on PostgreSQL 16/17;
-8. run repository checks;
-9. run a fresh adversarial review before merge.
+1. re-resolve current `origin/main` and confirm `main@837935ef82a18849dcd05986a27f7978a9cdd10b` remains the integrated MED-CRM-006 backend checkpoint before rollout work;
+2. perform a production-safe read-only preflight against the real PostgreSQL runtime and prove the dependencies expected by the migration/verifier;
+3. stage and hash-pin the exact canonical migration and verifier from current `main`;
+4. apply the migration only through the governed production DB mutation path, transactionally and with explicit approval if the runtime capability requires it;
+5. run the separate production-safe/pinned readback verifier and preserve exact evidence;
+6. only after successful production proof update the slice to `BACKEND RELEASED`;
+7. only then authorize the frontend candidate/resolution UX phase.
 
-Never call backend implementation PROVED by static SQL inspection alone. Behavioral concurrency and retry evidence are required.
+Do not call MED-CRM-006 RELEASED from repository CI alone. Production runtime proof is mandatory.
