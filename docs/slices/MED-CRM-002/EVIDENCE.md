@@ -362,3 +362,75 @@ scripts/test-commercial-crm-command-boundary.sh
 ```
 
 The harness refuses any other database name.
+
+## Production release evidence — 2026-09-27
+
+### Production attempt and rollback proof
+
+On 2026-09-27 the governed production path was executed against `28server` using `medicspro-managed-admin` plus the separate read-only target `medicspro-db-readback`.
+
+Pre-rollout pinned verifier result:
+
+```text
+commercial_core_table_missing:contacts
+```
+
+The Core migration artifact was staged from canonical `crmfisio/main` and its SHA-256 was verified both on the host and inside `supabase-db`:
+
+```text
+23c433e36e0513aeddc9eae8ba6c1c34ba7c17854d07c4f3a796c66e2f8c0331
+```
+
+The exact production apply command was approval-gated and used:
+
+```text
+docker exec --user postgres supabase-db
+psql -w -X -v ON_ERROR_STOP=1 -U postgres -d postgres
+-f /tmp/medicspro-commercial-crm-core-23c433e3.sql
+```
+
+Observed failure:
+
+```text
+NOTICE: trigger "update_updated_at" for relation "public.contacts" does not exist, skipping
+ERROR: function public.update_updated_at_column() does not exist
+```
+
+No Command Boundary migration was attempted.
+
+The Core file has explicit `BEGIN;` / `COMMIT;`. Immediate pinned readback after failure again returned:
+
+```text
+commercial_core_table_missing:contacts
+```
+
+Therefore the failed apply did not leave `public.contacts` installed and the CRM remained NOT RELEASED.
+
+### Baseline drift repair proof
+
+Canonical repository inspection found the helper definition in `supabase-schema.sql` and the CRM fixture, but not in a versioned production migration. This was treated as baseline drift rather than as authority to patch production ad hoc.
+
+PR #529 implemented the repair:
+
+```text
+PR #529 = MERGED
+merge commit = bb9482c47bc67867ac9f527f68c0ffc76074e594
+artifact = supabase-migrations/20260927_updated_at_helper_reconciliation.sql
+verifier = supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql
+```
+
+The migration creates `public.update_updated_at_column()` only when absent and does not touch CRM tables, Patient, Lead, Contact, RLS/RBAC or application data. The verifier is catalog-read-only and checks function presence, PL/pgSQL language, trigger return type, non-SECURITY-DEFINER posture and expected body shape.
+
+Validation before merge:
+
+```text
+Updated At Helper Reconciliation / PostgreSQL 16 = SUCCESS
+Updated At Helper Reconciliation / PostgreSQL 17 = SUCCESS
+Commercial CRM Command Boundary / PostgreSQL 16 = SUCCESS
+Commercial CRM Command Boundary / PostgreSQL 17 = SUCCESS
+validate = SUCCESS
+dependency-audit = SUCCESS
+all observed PR #529 checks = SUCCESS
+```
+
+This proves the repository repair and its test composition. It does **not** prove production application of the 20260927 reconciliation migration or release of MED-CRM-001/002.
