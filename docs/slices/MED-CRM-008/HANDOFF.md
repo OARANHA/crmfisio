@@ -69,9 +69,10 @@ A narrow authenticated-only SECURITY DEFINER command should:
 
 - derive tenant with `crm_current_mutator_clinic_id()`;
 - receive the current projection's `lead_updated_at` as `expected_updated_at`;
-- lock current-clinic non-deleted Lead only when its Contact is active/non-anonymized and its current pipeline/stage are non-archived;
-- treat desired-state equality as exact retry/no-op before stale-token rejection;
-- otherwise reject when the locked row `updated_at` differs from `expected_updated_at`, forcing a canonical refetch;
+- lock the current-clinic non-deleted Lead first;
+- treat desired-state equality as exact retry/no-op before any real-change archive/privacy/stale guard;
+- for a real change, lock/revalidate linked Contact as active/non-anonymized and current pipeline/stage as non-archived so a concurrent anonymize/archive cannot race the update;
+- reject when the locked Lead `updated_at` differs from `expected_updated_at`, forcing a canonical refetch;
 - validate/normalize title, value cents and source;
 - update only those three fields;
 - return cleanly on exact no-change retry without duplicate evidence;
@@ -88,8 +89,9 @@ Before PROVED, require:
 - professional/financeiro deny;
 - `crm.access` deny;
 - cross-tenant/missing/deleted Lead deny;
-- anonymized/deleted Contact deny;
-- archived pipeline or archived stage deny;
+- anonymized/deleted Contact denies a real change;
+- archived pipeline or archived stage denies a real change;
+- exact desired-state retry remains no-op and emits no new evidence even if the related state became read-only after the original COMMIT;
 - non-empty title;
 - nullable/non-negative integer cents;
 - source trim/null behavior;
