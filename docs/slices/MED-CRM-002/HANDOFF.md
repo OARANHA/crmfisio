@@ -33,6 +33,7 @@ MED-CRM-002 = PROVED + MERGED
 MED-CRM-002 = NOT RELEASED
 
 PR #526 = MERGED (squash)
+PR #527 = MERGED (squash)
 scope = documentation only
 ```
 
@@ -53,7 +54,7 @@ The merge was executed with the expected head SHA and GitHub returned `merged=tr
 
 ## Release gate — current runtime evidence
 
-The registered MEDICSPRO runtime target is:
+The registered MEDICSPRO runtime target remains:
 
 ```text
 target = medicspro-agent
@@ -64,7 +65,7 @@ host = 28server
 allowedPaths = [/opt/wandora/ops-workspace]
 ```
 
-Current registry/runtime boundary:
+Its **live schema** still has the older boundary:
 
 ```text
 allowedDockerContainers = []
@@ -72,18 +73,39 @@ allowedDockerExecContainers = []
 allowedDockerExecPrograms = []
 allowedDockerActions = []
 psql is NOT in allowedProcessPrograms
-docker_list -> REMOTE_COMMAND_FAILED / docker_read_proxy_required
-runtime_summary -> docker unavailable for this user
+target_agent_prepare presets = operator-workspace | read-only
+postgres_pinned_verifier_readback = ABSENT
 ```
 
-`target_agent_prepare` currently exposes only these presets:
+However, the missing semantic capability has now been implemented upstream in the operational MCP:
 
 ```text
-operator-workspace
-read-only
+repository = OARANHA/Remote-Ops-MCP
+PR #35 = MERGED
+main = 52dbdf1bc12c44e46f52342dd73fce575b252f7c
+verify = SUCCESS
+publish = SUCCESS
+new preset = postgres-readback
+new semantic capability = postgres.pinned_readback
+new tool = postgres_pinned_verifier_readback
 ```
 
-Re-preparing the same target therefore does not add production database or Docker authority.
+The implementation is intentionally readback-only: exact verifier SQL must match a host-approved SHA-256; the proxy fixes PostgreSQL container/DB/user server-side and forces PostgreSQL read-only session/transaction semantics. It grants no generic `psql`, `docker_exec`, secret read or DB write authority.
+
+Validation before merge included full Remote-Ops-MCP `npm run check` plus `POSTGRES_PINNED_PROXY_E2E=GREEN`, exercising Agent → proxy → fake Docker Unix socket end to end.
+
+The control plane itself is **not yet promoted**. Runtime inspect of `remote-ops-mcp` reports:
+
+```text
+image = ghcr.io/oaranha/remote-ops-mcp:main
+state = running / healthy
+org.opencontainers.image.revision =
+985777e0cd38a4c0e3fa96dd5aa139e1b24e8832
+```
+
+Therefore tag name `:main` must not be mistaken for current code. The live container still runs the pre-#35 revision.
+
+No stack/Portainer/deploy/recreate MCP capability is exposed in this session, and `wandora-admin` has empty allowlists. Restarting the current container would not pull/recreate the new image, so it is not an acceptable substitute for the canonical promotion path.
 
 ## Exact repository artifacts for runtime proof
 
@@ -132,24 +154,27 @@ Therefore no production mutation was executed.
 
 ## Missing capability / authorization
 
-The next step is not a CRM feature. The missing runtime authority is:
+The semantic DB-readback capability is no longer missing **in source**; it is missing **in deployed runtime**.
 
-1. **read-only production PostgreSQL readback**, with server-side credential handling and no secret exposure; valid shapes include:
-   - a dedicated semantic DB-readback capability; or
-   - Docker read proxy + the production PostgreSQL container explicitly allowlisted + `psql` explicitly allowlisted;
-2. if readback proves either migration absent, a **separate, narrow rollout authorization** for the pinned migration files plus immediate post-rollout verifier/readback.
+Current precise blockers:
 
-A generic `operator-workspace` target is insufficient.
+1. promote the published Remote-Ops-MCP image for `52dbdf1b...` through a legitimate stack/Portainer deployment path;
+2. confirm the live schema exposes `postgres-readback` + `postgres_pinned_verifier_readback`;
+3. configure the host-local readback proxy with the **real** production PostgreSQL container and approved hashes for the two canonical verifiers, without exposing credentials;
+4. only then execute production readback;
+5. if readback proves either migration absent, create/use a **separate, narrow rollout authorization** for the pinned migration files plus immediate post-rollout verifier/readback.
+
+The current session does not expose a stack deploy capability, and a restart of the old image is not sufficient.
 
 ## Exact next step
 
-1. extend/authorize the MEDICSPRO runtime boundary with controlled production PostgreSQL readback;
-2. inspect real migration/schema state for the two 20260926 migrations before any apply;
-3. if both are installed, run the two read-only verifiers and capture objective evidence;
-4. if either is absent, revalidate blast radius and perform a fresh SECOND ADVERSARIAL REVIEW before the separate controlled rollout;
-5. after rollout, run both verifiers/readback and prove tenant/RBAC/RLS invariants;
-6. only then update MED-CRM-001/002 to RELEASED if evidence supports it;
-7. rebuild `NEXT_CAPABILITY_MAP.md` against current main + runtime;
-8. only then re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW for a possible MED-CRM-003.
+1. deploy/recreate Remote-Ops-MCP from the already published `52dbdf1b...` image using the canonical Portainer/stack authority;
+2. re-open/reload the MCP connector if necessary and prove the new live schema;
+3. discover the exact production PostgreSQL container through authorized runtime evidence and configure the pinned readback proxy;
+4. inspect real migration/schema state for the two 20260926 migrations before any apply;
+5. if both are installed, run the two read-only verifiers and capture objective evidence;
+6. if either is absent, revalidate blast radius and perform a fresh SECOND ADVERSARIAL REVIEW before a separate controlled rollout;
+7. after rollout, run both verifiers/readback and prove tenant/RBAC/RLS invariants;
+8. only then update MED-CRM-001/002 to RELEASED, rebuild `NEXT_CAPABILITY_MAP.md`, and re-run the four pre-execution gates for any possible MED-CRM-003.
 
 Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation, Commercial AI or a parallel engine while this release gate is open.
