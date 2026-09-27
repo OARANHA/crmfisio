@@ -1,16 +1,17 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING — BACKEND PHASE ONLY  
 **Owner domain:** Commercial CRM  
-**Branch/PR:** `docs/med-crm-006-contact-identity-resolution` / PR #541  
+**Implementation branch:** `feat/med-crm-006-contact-identity-resolution`  
+**Design PR:** #541 — MERGED  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`
+**Last reconciled:** 2026-09-27 against `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-This slice is design-only at this checkpoint. Product/runtime execution has not started.
+The design PR is integrated. The implementation-plan review and fresh adversarial review are now closed for the **backend authority phase only**. Backend execution may proceed on the implementation branch; frontend integration and production rollout remain separate later gates.
 
 ## Non-goals
 
@@ -207,9 +208,26 @@ Living System answers:
 
 ## 5. EXECUTION
 
-**NOT STARTED.**
+**BACKEND PHASE AUTHORIZED / IMPLEMENTING.**
 
-No migration, RPC, frontend, runtime or production mutation belongs to this documentation PR.
+Execution authority is bounded by [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
+Allowed now:
+- additive follow-up migration;
+- internal normalization/candidate/locking/shared-core helpers;
+- writer-scoped candidate RPC;
+- narrow resolved-prospect orchestration command;
+- structural verifier;
+- PostgreSQL 16/17 behavior + concurrency harness;
+- CI workflow and slice documentation.
+
+Still forbidden in this phase:
+- frontend changes;
+- production/runtime mutation;
+- Contact merge/edit/lifecycle;
+- Patient matching or Lead→Patient;
+- provider changes;
+- new tenant/role/entitlement/audit authority.
 
 ## 6. VALIDATION
 
@@ -246,4 +264,4 @@ For the later implementation plan, require at minimum:
 
 ## Residual / next exact step
 
-Perform an **implementation-plan review before EXECUTION**. That review must name the exact follow-up migration, helper/function signatures, candidate projection shape, orchestration command contract, lock-key strategy, audit metadata and PostgreSQL behavioral/verifier cases. Do not write product code in the same movement merely because the design is now closed.
+Implement the backend phase exactly as defined in `IMPLEMENTATION-PLAN.md`, then require PostgreSQL 16/17 behavioral proof plus current CRM regression verifiers before calling the backend `PROVED`. Do not start frontend integration or production rollout from branch intent alone.
