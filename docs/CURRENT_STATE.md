@@ -39,35 +39,48 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — canonical continuity checkpoint #522 / #524
+## Commercial CRM — RELEASED checkpoint #522 / #524
 
-**Integrated state:** MED-CRM-001 Commercial Core foi squash-mergeada pela PR #522 em `main@652ea7b3aea4cd03a09944b780ef697168016bc3`; MED-CRM-002 Commercial Command Boundary foi squash-mergeada pela PR #524 em `main@7a8badf5ad81e92746e82bedd142ba75899a4080`. A disciplina de continuidade/índice canônico da PR #523 foi integrada antes, em `main@542fd289bb8060c7c0c69b20359f0b758092d946`.
+**Canonical repository checkpoint:** `main@9ed72fa51b536a9efa8b35b910fbb49547daf7fa` before this documentation-only release reconciliation.
 
-A foundation integrada separa `Contact != Lead != Patient` e adiciona `contacts`, `crm_pipelines`, `crm_stages`, `crm_leads` e `crm_lead_activities`, tenant-scoped e com raw browser DML fechado. O outcome comercial é derivado de `crm_stages.stage_kind`; não existe `crm_leads.status` concorrente. O `/crm` legado continua Patient-backed em `patients.funil_stage` e deve ser tratado como conflito de cutover, não como autoridade comercial.
+**MED-CRM-001 Commercial Core:** **RELEASED**. PR #522 remains the implementation merge authority. The exact canonical migration `supabase-migrations/20260926_commercial_crm_core_foundation.sql` was applied to the real production PostgreSQL on `28server` / `supabase-db` after the versioned baseline reconciliation from PR #529. Its SHA-256 was proved both on the host and inside the PostgreSQL container as:
 
-**MED-CRM-001:** PROVED + MERGED. O harness foi provado em PostgreSQL 16.15 e 17.11 antes do merge. **Não há evidência de rollout produtivo da migration #522 neste checkpoint, portanto não declarar RELEASED.**
+```text
+23c433e36e0513aeddc9eae8ba6c1c34ba7c17854d07c4f3a796c66e2f8c0331
+```
 
-**Commercial CRM live state:** MED-CRM-001 e MED-CRM-002 estão **PROVED + MERGED**. Nenhuma nova feature CRM está autorizada para execução neste checkpoint; o gate imediato é provar rollout/runtime das migrations #522/#524 antes de introduzir um consumidor UI.
+The first Core attempt failed closed because the older production baseline lacked `public.update_updated_at_column()`. The migration's explicit transaction rolled back; immediate pinned readback proved `public.contacts` still absent. PR #529 then added and merged the additive canonical reconciliation `20260927_updated_at_helper_reconciliation.sql`. That migration was applied in production and its pinned read-only verifier returned:
 
-A #524 passou GAPS → REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW antes de EXECUTION e adiciona somente três operações autenticadas sobre a foundation existente: criar Contact, criar Lead e transicionar Lead entre stages do mesmo pipeline. `clinic_id` é derivado server-side; writers continuam limitados a active `owner/admin/recep` + `crm.access`; professional/financeiro permanecem read-only; não existe parâmetro/vínculo Patient, conversion, UI, Inbox, follow-up, attribution, provider, automation engine ou AI nesta slice.
+```text
+VERIFY UPDATED_AT HELPER RECONCILIATION OK
+```
 
-**Proof state da #524:** o executable head `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5` passou migration replay, MED-CRM-001 verifier, MED-CRM-002 verifier e 13 blocos comportamentais em PostgreSQL 16.15 e 17.11 no workflow dedicado `Commercial CRM Command Boundary` run `36286051483`. O caso adicional prova que Contact anonimizado não pode ser replayado como ativo nem receber novo Lead. No mesmo head, os checks obrigatórios `validate` e `dependency-audit` ficaram SUCCESS; compare estava 36 ahead / 0 behind, mergeable=true, com zero reviews/threads. A falha CI anterior era um defeito sintático apenas no teste (`DO $` / `END $;`), corrigido em duas linhas sem alterar migration, verifier ou autoridade de domínio. Completion review advisory: `complete=0.89`, confidence `0.84`. MED-CRM-002 está **PROVED + MERGED** em `main@7a8badf5ad81e92746e82bedd142ba75899a4080`, mas continua **NOT RELEASED** até existir prova de rollout/runtime.
+A read-only preflight then proved the remaining external dependencies required by the CRM migrations were present: `public.clinics`, `public.patients`, `public.profiles`, `public.audit_log`, `public.current_active_profile()`, `public.current_clinic_entitlement_allowed(text)`, `auth.uid()` and their required columns.
 
-**Documentation integration:** a reconciliação pós-#524 da PR #526 foi squash-mergeada em `main@bac39b344ec807f5beb843b4ea6c9994e794f531`. A reconciliação do primeiro boundary de runtime foi integrada depois pela PR #527, levando a main canônica a `d6c60a790322379d4a2deda211b9f852469bd4ed`. Ambas eram documentação apenas e não alteraram schema, runtime, autorização, Patient/Encounter, provider, automação ou UI.
+The unchanged Core migration was then applied successfully through `BEGIN → ... → COMMIT`. The canonical pinned verifier SHA-256 `da5f4bcfbd25c15fc2c654a59761e1fb9863e88608a65d57e6d44d8253913c8c` passed all 11 production checks and returned:
 
-**Runtime release-gate evidence:** o target `medicspro-agent` continua `production/operator/agent` no host `28server` e, no schema live atual, ainda termina no workspace `/opt/wandora/ops-workspace`: `allowedDockerContainers=[]`, `allowedDockerExecContainers=[]`, `allowedDockerExecPrograms=[]`, `allowedDockerActions=[]`; `psql` não está em `allowedProcessPrograms`; e `target_agent_prepare` ainda expõe apenas `operator-workspace | read-only`.
+```text
+COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED
+```
 
-O gap de capability foi implementado no repositório `OARANHA/Remote-Ops-MCP` como uma authority semântica estreita de readback. A PR #35 foi squash-mergeada em `Remote-Ops-MCP/main@52dbdf1bc12c44e46f52342dd73fce575b252f7c`; os checks do merge `verify` e `publish` ficaram SUCCESS. O contrato novo usa o preset `postgres-readback`, `allowedSemanticCapabilities=[postgres.pinned_readback]` e a tool `postgres_pinned_verifier_readback`. O proxy local fixa container/DB/user server-side, aceita somente verifier id + SQL cujo SHA-256 corresponda à allowlist aprovada, força `default_transaction_read_only=on` + `BEGIN TRANSACTION READ ONLY`, e não concede `docker_exec`, `psql` genérico, secrets ou write path ao caller.
+**MED-CRM-002 Commercial Command Boundary:** **RELEASED**. PR #524 remains the implementation merge authority. Before rollout, its production verifier returned `commercial_crm_command_function_missing`, proving the command boundary was still absent. The exact canonical migration `supabase-migrations/20260926_commercial_crm_command_boundary.sql` was staged and proved on host + inside `supabase-db` with SHA-256:
 
-A validação isolada do Remote-Ops-MCP passou: TypeScript build; E2E OAuth/revogação 23/23; Agent Pairing GREEN; Agent Installer GREEN; `TARGET_AGENT_APPROVALS=GREEN`; `POSTGRES_PINNED_READBACK_TEST=GREEN`; e `POSTGRES_PINNED_PROXY_E2E=GREEN`, este último exercitando Agent → proxy HTTP real → Docker API falsa por Unix socket e provando que hash divergente/verifier desconhecido falham antes do acesso Docker.
+```text
+f8f38a0db0fd020713a89eeecb6abd6df4e414b89ffb2ae6457ee8c777ac9a13
+```
 
-**Runtime deployment boundary atual:** o control plane live ainda executa `remote-ops-mcp` com label `org.opencontainers.image.revision=985777e0cd38a4c0e3fa96dd5aa139e1b24e8832`, embora a imagem da nova main tenha sido publicada. O schema desta sessão ainda não expõe `postgres_pinned_verifier_readback` nem o preset `postgres-readback`. Não existe capability live de stack/Portainer/deploy/recreate; o target `wandora-admin` tem allowlists vazias. Reiniciar o container antigo não equivale a pull/redeploy da imagem nova. Portanto a capability está **MERGED + PUBLISHED**, mas ainda **NOT RELEASED no control plane**.
+It then applied successfully through `BEGIN → ... → COMMIT`. Afterward the Core verifier was rerun and remained green, and the canonical Command Boundary verifier SHA-256 `7d4a4ff23f9d70c3e808e0a8fcb696c2b8565ef0a64955532566de0a69753b34` passed all 9 production checks and returned:
 
-Os artefatos canônicos a provar no PostgreSQL real permanecem `supabase-migrations/20260926_commercial_crm_core_foundation.sql` e `supabase-migrations/20260926_commercial_crm_command_boundary.sql`, com os verifiers `VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql` e `VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql`. Ambos os verifiers continuam sem statements mutantes.
+```text
+COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
+```
 
-**Decision / second adversarial review:** não usar `bash`/`sh`, Docker bruto, segredo, rede direta ou restart da imagem velha como atalho. A revisão de conclusão após o proxy E2E classificou o passo como `incomplete=0.53` porque ainda falta promoção legítima do control plane + configuração host-side do proxy PostgreSQL real. MED-CRM-001/002 permanecem **PROVED + MERGED, NOT RELEASED**.
+**Runtime authority used:** production host `28server`; fixed PostgreSQL container `supabase-db` (`supabase/postgres:17.6.1.136`); write actions were exact, one-time, approval-gated managed-admin commands. Verification used the separate `medicspro-db-readback` target with only `postgres.pinned_readback`, exact verifier hash pinning, fixed container/DB/user server-side and PostgreSQL read-only transaction/session enforcement.
 
-**Próximo passo seguro:** promover legitimamente o Remote-Ops-MCP para a imagem correspondente a `52dbdf1b...`, confirmar no schema live a nova tool/preset, configurar o proxy host-side com o container PostgreSQL produtivo real e hashes dos dois verifiers, e só então fazer readback. Se as migrations estiverem ausentes, a mutação de rollout continua exigindo autorização separada e estreita. Até isso, não iniciar CRM Board Cutover nem outra feature comercial.
+**Boundaries preserved:** `Contact != Lead != Patient`; raw browser DML remains closed; tenant/RLS/RBAC checks passed; professional/financeiro remain read-only; owner/admin/recep are the CRM writer roles behind `crm.access`; Patient Journey remains separate; no Lead→Patient conversion, Inbox, follow-up engine, provider authority, automation engine or Commercial AI was introduced by MED-CRM-001/002.
+
+The legacy `/crm` frontend is still Patient-backed via `patients.funil_stage`. That is now the leading **product authority conflict** to re-audit, not a reason to reinterpret Patient Journey. MED-CRM-003 is **not automatically authorized** by this release. Before any new slice executes, re-run **GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW** against current `origin/main`, active PRs and runtime.
+
 
 ---
 

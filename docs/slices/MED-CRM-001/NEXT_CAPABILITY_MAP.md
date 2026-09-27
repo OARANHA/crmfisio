@@ -1,25 +1,26 @@
 # MED-CRM-001 — Post-Foundation Capability Map
 
-**Audited against:** `main@7a8badf5ad81e92746e82bedd142ba75899a4080`
-**Date:** 2026-09-26
+**Audited against:** repository `main@9ed72fa51b536a9efa8b35b910fbb49547daf7fa` plus production runtime evidence from `28server/supabase-db` on 2026-09-27
+**Date:** 2026-09-27
 **Purpose:** classify the real commercial/relationship capability surface after MED-CRM-001 + MED-CRM-002 repository integration, before any next feature executes.
 
 > This is an evidence-backed snapshot, not a permanent state claim. Re-measure against current `origin/main`, active PRs and runtime when the question depends on deployment.
 
 ## Proof boundary
 
-The Commercial Core foundation and command boundary are **PROVED + MERGED**, not RELEASED.
+The Commercial Core foundation and Command Boundary are now **PROVED + MERGED + RELEASED** for their bounded backend scopes.
 
-- PR #522 merged as `652ea7b3aea4cd03a09944b780ef697168016bc3`.
-- PR #523 merged as `542fd289bb8060c7c0c69b20359f0b758092d946`.
-- PR #524 merged as `7a8badf5ad81e92746e82bedd142ba75899a4080`.
-- #524 final PR head `cf94434...` completed 21/21 repository workflows SUCCESS.
-- Dedicated Commercial CRM harness passed PostgreSQL 16.15 and 17.11, migration replay, MED-CRM-001 verifier, MED-CRM-002 verifier and 13 behavior cases.
-- `validate` and `dependency-audit` were SUCCESS.
-- No production rollout/schema installation of #522/#524 was proved in this reconciliation.
-- Delta proof: `main@652ea7... → main@7a8badf5...` is exactly the #524 integration diff, so capability rows outside that delta retain the evidence from the previous audit; rows affected by #524 were reclassified below.
+- PR #522 merged MED-CRM-001 as `652ea7b3aea4cd03a09944b780ef697168016bc3`.
+- PR #524 merged MED-CRM-002 as `7a8badf5ad81e92746e82bedd142ba75899a4080`.
+- PR #529 merged the additive baseline reconciliation required by the real production runtime.
+- Production host `28server`, PostgreSQL container `supabase-db` (`supabase/postgres:17.6.1.136`).
+- Core migration SHA-256 `23c433e36e0513aeddc9eae8ba6c1c34ba7c17854d07c4f3a796c66e2f8c0331` applied and committed.
+- Command migration SHA-256 `f8f38a0db0fd020713a89eeecb6abd6df4e414b89ffb2ae6457ee8c777ac9a13` applied and committed.
+- Core verifier SHA-256 `da5f4bcfbd25c15fc2c654a59761e1fb9863e88608a65d57e6d44d8253913c8c` returned `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`.
+- Command verifier SHA-256 `7d4a4ff23f9d70c3e808e0a8fcb696c2b8565ef0a64955532566de0a69753b34` returned `COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED`.
+- The Core verifier was rerun after Command Boundary rollout and remained green.
 
-Runtime was not used to infer deployment because the available `medicspro-agent` target does not expose production DB/container readback.
+Release proof covers the backend foundation and command boundary only. It does not imply CRM Board/UI cutover or any later commercial capability.
 
 ## Classification vocabulary
 
@@ -154,7 +155,7 @@ COMMERCIAL CORE #522         │
 Contact/Lead/Pipeline/Stage  │
              │               │
              ▼               │
-COMMERCIAL COMMAND BOUNDARY  │  ← MERGED / PROVED, NOT RELEASED
+COMMERCIAL COMMAND BOUNDARY  │  ← PROVED / MERGED / RELEASED
 (create Contact/Lead +        │
  stage transition + audit)   │
       │          │           │
@@ -193,9 +194,9 @@ EXISTING AGENDA / FINANCE ──────────────────
 
 ## Selection rule for the next micro-slice
 
-The former highest-unlock primitive — Commercial Command Boundary — is now closed in the repository.
+The release blocker that previously prevented any next Commercial CRM slice is now closed.
 
-The strongest remaining product conflict is:
+The strongest known product authority conflict remains:
 
 ```text
 current /crm
@@ -203,7 +204,7 @@ current /crm
 → setFunilStage
 ```
 
-while the canonical commercial authority is now:
+while the released commercial authority is:
 
 ```text
 Contact
@@ -212,18 +213,18 @@ Contact
 → current-clinic CRM projections/commands
 ```
 
-A narrow **CRM Board Cutover V1** is therefore the leading next-product candidate because it can retire a competing commercial authority without adding schema, provider, AI or Patient conversion.
+A narrow **CRM Board Cutover V1** remains a plausible next candidate because it could retire a competing commercial authority without introducing a new domain engine. That observation is **not an execution authorization**.
 
-However, it is **not authorized for EXECUTION yet**.
+Before creating or executing MED-CRM-003, reconstruct current `origin/main`, open PRs and relevant runtime, then run the full pre-execution discipline again:
 
-Immediate blocker:
+```text
+GAPS
+→ CAPABILITY AUTHORITY / REUSE GATE
+→ DECISION
+→ SECOND ADVERSARIAL REVIEW
+```
 
-- MED-CRM-001/002 are merged but not RELEASED;
-- production installation of #522/#524 has not been proved;
-- the current session target cannot read the production database/containers;
-- adversarial review of starting the Board before this proof returned `block=0.98`, confidence `0.97`.
-
-Therefore the immediate next gate is **production rollout/readback of #522/#524**, not a new feature branch. After release proof, re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW before creating MED-CRM-003.
+The new review must prove that the Board cutover still outranks other candidates and can consume the released Contact/Lead authority without mutating Patient Journey semantics. Until those gates close, MED-CRM-003 remains only a candidate.
 
 ## Re-measure
 
