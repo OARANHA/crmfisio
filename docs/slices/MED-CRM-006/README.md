@@ -1,18 +1,18 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** BACKEND PROVED / MERGED / PRODUCTION ROLLOUT PENDING  
+**Status:** BACKEND RELEASED / FRONTEND PHASE AUTHORIZED / SLICE NOT FINAL  
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
 **Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
 **Implementation PR:** #544 — MERGED as `main@837935ef82a18849dcd05986a27f7978a9cdd10b` from final validated HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@837935ef82a18849dcd05986a27f7978a9cdd10b`
+**Last reconciled:** 2026-09-27 against `main@7e1ab2fba50d6188e718411c6b51b201ae417954` plus production runtime proof on `28server` / `supabase-db`
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-Backend implementation is PROVED in repository CI and merged to canonical `main`. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including the dedicated PostgreSQL 16/17 Contact Identity Resolution jobs and Clinical workflow `validate` / `dependency-audit`. No production rollout or runtime readback has occurred yet, so MED-CRM-006 is not RELEASED and frontend integration remains unauthorized.
+Backend implementation is PROVED in repository CI, merged and RELEASED in production. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including PostgreSQL 16/17 and Clinical workflow `validate` / `dependency-audit`. The exact canonical migration was then hash-proved and applied to production `28server` / `supabase-db`; the pinned production verifier and CRM regressions passed. Frontend candidate/resolution UX is now authorized as the next phase, but MED-CRM-006 as a whole remains open until that UI phase is merged and observed in production.
 
 ## Repository proof checkpoint — 2026-09-27
 
@@ -22,7 +22,22 @@ Backend implementation is PROVED in repository CI and merged to canonical `main`
 - `Clinical workflow CI`: `validate` = success; `dependency-audit` = success.
 - Protected squash merge with exact expected HEAD produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`.
 - Post-merge comparison `main` ↔ merge SHA was identical.
-- This is repository proof only. Production database rollout/readback remains pending.
+- Repository proof was followed by successful production rollout/readback; see the production checkpoint below.
+
+## Production backend release checkpoint — 2026-09-27
+
+- production host: `28server`; PostgreSQL container: `supabase-db`;
+- governed readback target: `medicspro-db-readback` with only `postgres.pinned_readback`;
+- governed mutation path: approval-gated `medicspro-managed-admin`;
+- verifier pin was added without widening container/DB/user authority;
+- before migration, the newly pinned verifier reached PostgreSQL and failed closed with `crm_identity_function_missing`, proving the capability was absent;
+- canonical migration SHA-256: `f36f036f172b997292654f251b8a9d386839bc9ef41204636aa11de95605d31b`;
+- the same migration hash was proved in the operator workspace and inside `supabase-db` as user `postgres`;
+- migration execution used `psql -w -X -v ON_ERROR_STOP=1 -U postgres -d postgres -f ...` and completed through `COMMIT`;
+- pinned verifier SHA-256: `4da932b767d18decbd8c0d881b679dc29735364abcbf3b5b0c73c2d75d88f785`;
+- production verifier returned `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED` after 12 checks;
+- pinned regressions also passed for Commercial CRM Core, Command Boundary and Archived Pipeline Transition Guard;
+- backend authority is therefore RELEASED; this does not yet prove the frontend UX.
 
 ## Non-goals
 
@@ -39,14 +54,14 @@ Backend implementation is PROVED in repository CI and merged to canonical `main`
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- `origin/main`: `837935ef82a18849dcd05986a27f7978a9cdd10b` after implementation PR #544 protected-squash merge;
+- `origin/main`: `7e1ab2fba50d6188e718411c6b51b201ae417954` after post-merge documentation PR #545; re-resolve before frontend execution;
 - canonical implementation PR #544 is merged; its final validated HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
 - PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
 - repository validation is complete: 21/21 workflows success; PostgreSQL 16 and 17 dedicated jobs success; Clinical workflow `validate` and `dependency-audit` success;
-- runtime/VPS production rollout and verifier/readback are the next gate and have not yet been executed.
+- production backend rollout/readback is complete and the next gate is frontend candidate/resolution UX.
 
 ### Evidência comprovada
 
@@ -220,30 +235,28 @@ Living System answers:
 
 ## 5. EXECUTION
 
-**BACKEND IMPLEMENTATION COMPLETE IN REPOSITORY.**
+**BACKEND IMPLEMENTATION + PRODUCTION ROLLOUT COMPLETE.**
 
-PR #544 implemented the canonical migration, verifier, behavioral cases, concurrency harness and PostgreSQL 16/17 workflow, then merged through the protected branch path.
+PR #544 implemented the canonical migration, verifier, behavioral cases, concurrency harness and PostgreSQL 16/17 workflow, then merged through the protected branch path. Production rollout used the exact hash-proved migration through the approval-gated managed-admin path and completed through `COMMIT`.
 
-Repository execution does **not** include production deployment. No MED-CRM-006 production database mutation or frontend mutation is claimed here.
+No frontend mutation is claimed by the backend rollout.
 
 ## 6. VALIDATION
 
-Repository validation is complete for final implementation HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`:
+Repository validation is complete for final implementation HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`, including PostgreSQL 16/17, behavioral/concurrency cases, Clinical workflow `validate` and `dependency-audit`, and all 21 applicable workflows.
 
-- same UUID exact retry and divergent replay behavior are covered;
-- different UUID same-signal races and BR legacy-phone concurrency are covered;
-- exact phone/email, split conflict, explicit reuse/distinct and fail-closed ambiguity behavior are covered;
-- deterministic multi-signal lock ordering and no-signal behavior are covered;
-- tenant/role/entitlement denial and deleted/anonymized exclusion are covered;
-- Patient authority remains excluded;
-- audit PII constraints and MED-CRM-002 / MED-CRM-004 regressions are covered;
-- dedicated PostgreSQL 16 job = success;
-- dedicated PostgreSQL 17 job = success;
-- all 21 applicable workflows = success;
-- Clinical workflow `validate` = success;
-- Clinical workflow `dependency-audit` = success.
+Production validation is also complete:
 
-Production validation remains pending and is a separate gate.
+- pre-rollout verifier failed closed with `crm_identity_function_missing`;
+- migration SHA-256 matched canonical source before execution;
+- production migration completed through `COMMIT`;
+- MED-CRM-006 pinned verifier passed all 12 checks;
+- Core pinned verifier passed;
+- Command Boundary pinned verifier passed;
+- Archived Pipeline Transition Guard pinned verifier passed;
+- verification ran through the separate read-only semantic target.
+
+This proves the backend authority RELEASED in production. It does not prove frontend UX.
 
 ## 7. DOCUMENTATION
 
@@ -255,10 +268,13 @@ Production validation remains pending and is a separate gate.
 - [x] canonical backend implementation PR #544
 - [x] exact-head repository validation
 - [x] protected squash merge
-- [ ] controlled production DB rollout
-- [ ] production-safe verifier/readback
-- [ ] mark backend RELEASED only after runtime proof
-- [ ] authorize frontend resolution UX only after backend RELEASED
+- [x] controlled production DB rollout
+- [x] production-safe verifier/readback
+- [x] backend RELEASED after runtime proof
+- [x] frontend resolution UX authorized
+- [ ] frontend implementation / validation / merge
+- [ ] frontend production observation
+- [ ] final MED-CRM-006 release reconciliation
 
 ## Implementation-plan review — CLOSED
 
