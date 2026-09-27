@@ -209,3 +209,163 @@ Reconsider this decision if:
 - identity resolution must span trusted external identifiers with a stronger authority than phone/email signals.
 
 Do not reconsider merely because a simpler client-side dedupe appears easier to implement.
+
+
+## Implementation-plan refinement — 2026-09-27
+
+**Reconciled against:** `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
+
+This section is normative and refines the earlier design where the implementation review found ambiguity.
+
+### Resolution modes
+
+The final V1 command has three semantic modes:
+
+- `create_if_clear` — normal create intent. After deterministic signal locks and server-side recheck, there must be no active candidate other than a proven exact retry of this same committed orchestration.
+- `explicit_reuse` — a selected active current-clinic candidate receives a new Lead. The selected Contact must still belong to the locked candidate set at commit time.
+- `explicit_distinct` — ambiguity currently exists, but the operator deliberately creates a distinct Contact and supplies a non-empty reason. If no ambiguity remains at commit time, the override is stale/unnecessary and must fail closed rather than fabricate an override event.
+
+`phone -> A + email -> B` remains an explicit conflict. The server never picks a winner; an authorized human may choose a candidate or deliberately choose distinct.
+
+### Existing Contact writer must not bypass the resolver
+
+`create_current_clinic_crm_contact(uuid,text,text,text)` remains a RELEASED public command and keeps its signature, but V1 must harden it as a **clear-only create boundary**:
+
+1. preserve exact same-ID retry/idempotency;
+2. normalize signals server-side;
+3. acquire the same transaction-scoped identity locks used by the resolver;
+4. recompute active candidates;
+5. if another candidate exists, reject with an explicit identity-resolution-required error;
+6. otherwise create the Contact and populate normalized columns.
+
+This is required so stale clients or alternate browser callers cannot recreate the different-UUID/same-signal race by skipping the new orchestration.
+
+The implementation may extract a revoked internal canonical Contact insert/retry helper shared by the clear-only command and the orchestration. That helper is not a tenant selector or browser mutation surface.
+
+### Canonical helper plan
+
+Planned internal helpers:
+
+- `crm_normalize_contact_phone(text) -> text`;
+- `crm_contact_phone_legacy_match_key(text) -> text`;
+- `crm_normalize_contact_email(text) -> text`;
+- internal deterministic signal-lock helper;
+- internal current-clinic candidate helper;
+- internal canonical Contact insert/retry helper.
+
+All internal helpers that accept `clinic_id` are revoked from browser roles. Public wrappers obtain clinic authority only through `crm_current_mutator_clinic_id()`.
+
+### Phone V1
+
+Canonical exact storage:
+
+- trim/remove non-digits;
+- explicit `+55` 12/13-digit input -> keep the resulting digits;
+- BR national 10/11-digit input -> prefix `55`;
+- other explicit `+country-code` input -> keep resulting digits;
+- otherwise retain the digit-only representation rather than invent a foreign country context.
+
+Historical BR 9th-digit equivalence is a separate weak candidate key. It never changes `phone_normalized` and never proves identity.
+
+### Email V1
+
+- trim;
+- preserve local-part;
+- lowercase domain only;
+- no plus-tag stripping;
+- no provider alias rewriting;
+- no Gmail dot rewriting;
+- no local-part case-fold matching in V1.
+
+### Lock-key contract
+
+For every request, derive distinct lock materials from the current clinic and every active match key:
+
+- `phone_exact`;
+- `phone_br_legacy` when applicable;
+- `email_exact`.
+
+Material shape is namespaced and tenant-bound, equivalent to:
+
+`medicspro|crm-contact-identity-v1|<clinic_uuid>|<signal_type>|<normalized_value>`
+
+Acquire locks in lexical material order.
+
+V1 uses `pg_advisory_xact_lock(bigint)` with a deterministic 64-bit key derived from the first 64 bits of `md5(material)`. PostgreSQL 16/17 document transaction advisory locks as automatically released at transaction end.
+
+Hash collision is not identity authority: because candidates are rechecked after locks, a collision can only over-serialize unrelated requests. The PostgreSQL 16/17 harness must prove the exact SQL conversion and deterministic ordering before PROVED.
+
+No signal means no identity lock.
+
+### Legacy normalized columns
+
+Do not mass-backfill existing Contacts in V1.
+
+Reason: the current Contact `updated_at` trigger would turn derived-field normalization into fabricated Contact update timestamps.
+
+Candidate matching must therefore use the canonical normalizers against raw stored phone/email for legacy rows and may use stored normalized columns as an optimization. All new Contact writes populate normalized columns.
+
+### Candidate projection
+
+Public RPC:
+
+`list_current_clinic_crm_contact_identity_candidates(text,text)`
+
+Writer-scoped via `crm_current_mutator_clinic_id()`.
+
+Return only:
+
+- `contact_id`;
+- minimal display name;
+- phone/email needed for the human decision;
+- structured `match_reasons[]`;
+- `open_lead_count`.
+
+No `patient_id`, Patient join, clinical field or Patient ranking is allowed.
+
+### Final orchestration
+
+Planned public command:
+
+`resolve_current_clinic_crm_prospect_identity(uuid,uuid,text,text,text,text,text,uuid,uuid,text)`
+
+Semantic arguments, in order:
+
+1. caller-supplied Contact UUID;
+2. caller-supplied Lead UUID;
+3. Contact name;
+4. Lead title;
+5. resolution mode;
+6. phone;
+7. email;
+8. pipeline UUID;
+9. selected Contact UUID;
+10. distinct reason.
+
+Optional values may be NULL where the selected mode permits.
+
+The command remains narrow to Prospect Intake and does not add owner/value/source/stage administration.
+
+### Retry and audit atomicity
+
+A committed resolution adds exactly one `crm_lead_activities.activity_type='contact_identity_resolved'` entry.
+
+After Contact/Lead outcome is established, the orchestration locks the Lead row before checking/inserting that activity so concurrent same-Lead retries cannot duplicate resolution activity/audit.
+
+Stable retry intent compares the committed mode, requested/resolved Contact IDs and distinct reason. Candidate IDs/match reasons are evidence observed at commit time, not mutable retry authority.
+
+The existing `audit_log` is text-only. A `CRM_CONTACT_IDENTITY_RESOLVED` audit entry may contain IDs, mode and candidate count, but never raw phone/email or the free-text reason.
+
+### Rollout order
+
+MED-CRM-006 remains one slice with two release phases:
+
+1. backend authority migration + verifier + PostgreSQL 16/17 behavioral proof;
+2. controlled production DB rollout/readback;
+3. only then frontend/API adapter + human resolution UX;
+4. production frontend observation/smoke;
+5. final MED-CRM-006 release reconciliation.
+
+The temporary post-DB/pre-UI behavior is deliberately fail-closed: zero-candidate stale-client creation continues; ambiguous creation is rejected instead of silently duplicating Contact.
+
+No frontend is allowed to depend on the new RPC before backend production proof.
