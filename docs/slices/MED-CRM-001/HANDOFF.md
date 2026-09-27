@@ -25,9 +25,9 @@ A PR documental #523 foi integrada em `main` como `542fd289bb8060c7c0c69b20359f0
 ## Slice
 
 - ID: `MED-CRM-001`
-- status: `PROVED`
+- status: `RELEASED`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **foundation micro-slice PROVED + MERGED em #522; ainda não RELEASED sem rollout produtivo observado**;
+- execution: **foundation micro-slice PROVED + MERGED em #522; production rollout observado e verifier canônico aprovado em 2026-09-27**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
 - design branch: `docs/med-crm-001-design`;
 - implementation branch: `feat/med-crm-001-commercial-core-foundation`;
@@ -168,3 +168,60 @@ Merge concluído em #522; revalidar runtime apenas quando a pergunta depender de
 O prompt histórico desta slice foi removido porque ficou stale após o merge da #522.
 
 Para um novo chat, use a frase estável de `docs/CANONICAL_INDEX.md`, reconstrua o estado atual e leia o HANDOFF da slice realmente ativa. Neste checkpoint, a continuidade comercial está em `docs/slices/MED-CRM-002/HANDOFF.md`.
+
+## Production release proof — 2026-09-27
+
+MED-CRM-001 is now **RELEASED** for its bounded backend scope.
+
+Production target and database:
+
+```text
+host = 28server
+container = supabase-db
+image = supabase/postgres:17.6.1.136
+```
+
+Before rollout, the pinned production verifier failed with:
+
+```text
+commercial_core_table_missing:contacts
+```
+
+The first migration attempt failed closed on a pre-existing baseline gap:
+
+```text
+function public.update_updated_at_column() does not exist
+```
+
+Because the Core migration is explicitly transactional and was executed with `ON_ERROR_STOP=1`, immediate pinned readback proved rollback: `public.contacts` remained absent.
+
+PR #529 then added the canonical additive reconciliation migration `20260927_updated_at_helper_reconciliation.sql`. In production:
+
+```text
+reconciliation migration = COMMIT
+VERIFY UPDATED_AT HELPER RECONCILIATION OK
+```
+
+A read-only preflight proved the other external prerequisites present: `clinics`, `patients`, `profiles`, `audit_log`, `current_active_profile()`, `current_clinic_entitlement_allowed(text)`, `auth.uid()` and required columns.
+
+The unchanged MED-CRM-001 migration was then staged from current canonical main and its SHA-256 was proved on the host and inside `supabase-db`:
+
+```text
+23c433e36e0513aeddc9eae8ba6c1c34ba7c17854d07c4f3a796c66e2f8c0331
+```
+
+The production apply completed through `COMMIT`. The pinned verifier SHA-256:
+
+```text
+da5f4bcfbd25c15fc2c654a59761e1fb9863e88608a65d57e6d44d8253913c8c
+```
+
+passed all 11 checks and returned:
+
+```text
+COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED
+```
+
+The verifier was run again after MED-CRM-002 rollout and remained green.
+
+Release does not change the slice boundaries: Contact, Lead and Patient remain distinct; Patient Journey remains separate; no Board cutover, Lead→Patient conversion, Inbox, follow-up engine, provider authority, automation engine or Commercial AI is implied.
