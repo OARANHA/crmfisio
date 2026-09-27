@@ -249,7 +249,7 @@ END $$;
 SELECT '6b) missing or invalid resolution mode is rejected server-side' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
-DO $
+DO $$
 BEGIN
   BEGIN
     PERFORM * FROM public.create_current_clinic_crm_resolved_prospect(
@@ -282,7 +282,7 @@ BEGIN
         RAISE;
       END IF;
   END;
-END $;
+END $$;
 RESET ROLE;
 
 SELECT '7) create_if_clear creates Contact+Lead, stores canonical values and exact retry is side-effect idempotent' AS check;
