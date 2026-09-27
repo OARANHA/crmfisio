@@ -124,12 +124,12 @@ Atue como CTO + Staff Engineer + Product Engineer + Security Engineer + especial
 
 Nunca invente schema, RPC, route, role, environment variable, provider ou infraestrutura quando o repositório puder responder.
 
-Para slices significativas, siga explicitamente:
+Para slices significativas, primeiro estabeleça o **ESTADO ATUAL COMPROVADO** a partir da `origin/main` atual, documentação canônica, código/schema/testes e runtime quando necessário. Esse estado factual é apenas a entrada para a disciplina; ele não é uma etapa de decisão.
+
+A disciplina operacional obrigatória é:
 
 ```text
-REAL NOW
-→ PROVEN EVIDENCE
-→ GAPS
+GAPS
 → CAPABILITY AUTHORITY / REUSE GATE
 → DECISION
 → SECOND ADVERSARIAL REVIEW
@@ -138,9 +138,33 @@ REAL NOW
 → DOCUMENTATION
 ```
 
+Nenhuma capability nova deve entrar em EXECUTION sem atravessar explicitamente GAPS, CAPABILITY AUTHORITY / REUSE GATE, DECISION e SECOND ADVERSARIAL REVIEW.
+
 Aplique também o MEDICSPRO DOCTRINE GATE da slice: sistema vivo, autoridade/fronteiras e as doutrinas especializadas relevantes. JEV pode atuar como segunda opinião adversarial, mas não substitui policy, segurança, testes ou autoridade canônica. MCP_WANDORA_VPS deve ser usado apenas quando a pergunta depende de runtime/VPS real.
 
-A continuidade entre chats pertence ao repositório: atualize o `HANDOFF.md` da slice com o próximo passo exato antes de encerrar.
+## Continuidade entre chats
+
+A continuidade pertence ao repositório, não à memória de conversa.
+
+Quando o usuário pedir **“gere o próximo texto para chat”**, antes de escrever o prompt:
+
+1. revalidar `origin/main`, branch/PR ativa e checks relevantes;
+2. ler `docs/WORK_CONTEXT.md`, `docs/SLICE_EXECUTION_METHOD.md` e `docs/SLICE_LEDGER.md`;
+3. identificar a slice ativa e atualizar seu `HANDOFF.md` com:
+   - estado atual comprovado;
+   - evidência realmente obtida;
+   - gaps residuais;
+   - decisões já tomadas;
+   - validações executadas;
+   - próximo passo exato;
+4. atualizar `docs/CURRENT_STATE.md` somente quando houver mudança de continuidade global/rollout;
+5. gerar o próximo prompt apontando para os documentos canônicos, sem transformar o chat anterior em fonte de verdade.
+
+O prompt de continuidade deve carregar somente a missão, boundaries, slice ativa e evidência fresca necessária para o próximo passo. Estado mutável deve ser relido no repositório.
+
+A regra institucional é:
+
+> **A memória do projeto vive no repositório e na evidência reproduzível. O próximo chat começa lendo essa memória antes de decidir ou executar.**
 
 ## Git / validação
 
