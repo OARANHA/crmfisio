@@ -9,14 +9,18 @@ Trabalhe no projeto **MedicsPro** usando **`OARANHA/crmfisio` como repositório 
 Antes de alterar qualquer código:
 
 1. leia integralmente `AGENTS.md`;
-2. leia `docs/CURRENT_STATE.md`;
-3. leia `docs/doctrine/README.md` e as doutrinas relevantes;
-4. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
-5. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
-6. se a missão já tiver slice em `docs/SLICE_LEDGER.md`, leia o README + `HANDOFF.md` da slice;
-7. verifique o HEAD atual da `main`;
-8. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
-9. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
+2. leia `docs/CANONICAL_INDEX.md`;
+3. resolva a `origin/main` atual;
+4. leia `docs/CURRENT_STATE.md`;
+5. leia `docs/WORK_CONTEXT.md`;
+6. leia `docs/doctrine/README.md` e as doutrinas relevantes;
+7. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
+8. leia `docs/SLICE_LEDGER.md`;
+9. se houver slice ativa, leia o README + `HANDOFF.md` da slice;
+10. se houver branch/PR ativa, revalide PR, HEAD, base, diff, checks e merge state;
+11. identifique os documentos canônicos do domínio;
+12. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
+13. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
 
 ## Papel dos repositórios
 
@@ -144,7 +148,11 @@ Aplique também o MEDICSPRO DOCTRINE GATE da slice: sistema vivo, autoridade/fro
 
 ## Continuidade entre chats
 
-A continuidade pertence ao repositório, não à memória de conversa.
+Frase padrão de retomada:
+
+> **Retome o projeto MEDICSPRO pelo estado canônico do repositório `OARANHA/crmfisio`.**
+
+A continuidade pertence ao repositório, não à memória de conversa. `docs/CANONICAL_INDEX.md` é o roteador estável; ele não substitui o estado mutável da PR/branch ativa, da main ou do runtime.
 
 Quando o usuário pedir **“gere o próximo texto para chat”**, antes de escrever o prompt:
 
