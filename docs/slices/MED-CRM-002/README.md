@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** IMPLEMENTING  
+**Status:** PROVED  
 **Capability:** canonical authenticated Commercial Core mutations  
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`  
 **Branch:** `feat/med-crm-002-commercial-command-boundary`
@@ -137,9 +137,9 @@ Refined action guard:
 
 Low confidence is preserved as a reason for stronger mechanical validation, not hidden.
 
-## Planned validation
+## Validation completed
 
-Repository SQL harness must prove:
+The repository SQL harness proved:
 
 - migration replay/idempotency;
 - helper/function ACL and SECURITY DEFINER contract;
@@ -158,13 +158,25 @@ Repository SQL harness must prove:
 - audit details exclude supplied name/phone/email;
 - existing Commercial Core structural verifier still passes.
 
-Target proof before `PROVED`:
+Proof completed:
 
-- PostgreSQL 16;
-- PostgreSQL 17;
-- repository CI/checks;
-- diff/review reconciliation.
+- PostgreSQL 16.15 — GREEN;
+- PostgreSQL 17.11 — GREEN;
+- MED-CRM-001 foundation verifier still GREEN after MED-CRM-002 replay;
+- MED-CRM-002 verifier — GREEN;
+- 12 behavior blocks — GREEN;
+- implementation head `18ba481866a3af8412cfc200621290d3358a2b5e`: 8/8 repository workflows SUCCESS, 0 behind, mergeable, no reviews/threads;
+- final adversarial completion review: complete probability 0.92, confidence 0.87.
+
+Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
+
+`PROVED` does not mean `MERGED` or `RELEASED`.
 
 ## Next exact step
 
-Implement only the designed SQL boundary + verifier/cases/harness. Do not start UI/Inbox/follow-up/AI in this slice.
+1. revalidate the latest documentation head of PR #524: base, diff, checks, reviews and mergeability;
+2. make the merge decision separately from the proof decision;
+3. if merged, reconcile current `main` and keep status below RELEASED until production rollout is actually observed;
+4. only after that, return to the post-foundation capability map for the next slice.
+
+Do not append board/UI, Inbox, follow-up, attribution, conversion or AI to PR #524.
