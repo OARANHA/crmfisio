@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
   listCurrentClinicCrmContactIdentityCandidates,
+  listCurrentClinicCrmLeadActivities,
   loadCurrentClinicCommercialCrm,
   type CommercialCrmIdentityCandidate,
+  type CommercialCrmLeadActivity,
   type CommercialCrmIdentityResolutionMode,
   type CommercialCrmLead,
   type CommercialCrmPipeline,
@@ -84,6 +86,47 @@ function crmErrorContains(error: unknown, marker: string): boolean {
     .some((value) => typeof value === 'string' && value.includes(marker));
 }
 
+function activityDescription(
+  activity: CommercialCrmLeadActivity,
+  stageById: Map<string, CommercialCrmStage>,
+): string {
+  if (activity.activityType === 'lead_created') {
+    return 'Lead criado no CRM comercial.';
+  }
+
+  if (activity.activityType === 'stage_changed') {
+    const fromStage = activity.fromStageId ? stageById.get(activity.fromStageId)?.name : null;
+    const toStage = activity.toStageId ? stageById.get(activity.toStageId)?.name : null;
+    if (fromStage && toStage) return 'Etapa alterada de "' + fromStage + '" para "' + toStage + '".';
+    if (toStage) return 'Etapa alterada para "' + toStage + '".';
+    return 'Etapa comercial alterada.';
+  }
+
+  if (activity.activityType === 'contact_identity_resolved') {
+    if (activity.resolutionMode === 'create_if_clear') {
+      return 'Identidade comercial verificada sem correspondência prévia; novo Contact usado no Lead.';
+    }
+    if (activity.resolutionMode === 'explicit_reuse') {
+      return 'Contact existente reutilizado por decisão explícita.';
+    }
+    if (activity.resolutionMode === 'explicit_distinct') {
+      return 'Contact distinto criado por decisão explícita.';
+    }
+    return 'Identidade comercial resolvida no servidor.';
+  }
+
+  return 'Atividade comercial registrada.';
+}
+
+function activityTimestamp(createdAt: string): string {
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) return 'Data indisponível';
+  return parsed.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
 function CommercialLeadCard({
   lead,
   stages,
@@ -91,6 +134,7 @@ function CommercialLeadCard({
   busy,
   onDragStart,
   onMove,
+  onOpenTimeline,
 }: {
   lead: CommercialCrmLead;
   stages: CommercialCrmStage[];
@@ -98,6 +142,7 @@ function CommercialLeadCard({
   busy: boolean;
   onDragStart: () => void;
   onMove: (stage: CommercialCrmStage) => void;
+  onOpenTimeline: () => void;
 }) {
   const stageIndex = stages.findIndex((stage) => stage.id === lead.stageId);
   const nextStage = stageIndex >= 0 ? stages[stageIndex + 1] : undefined;
@@ -121,6 +166,13 @@ function CommercialLeadCard({
           Dados comerciais identificáveis ocultados.
         </p>
       )}
+      <button
+        type="button"
+        onClick={onOpenTimeline}
+        className="mt-2 w-full border border-line px-2 py-1 font-mono text-[10px] text-fog hover:text-aqua hover:border-aqua/40 transition-colors"
+      >
+        Ver histórico
+      </button>
       {canMutate && nextStage && (
         <button
           type="button"
@@ -135,7 +187,13 @@ function CommercialLeadCard({
   );
 }
 
-function LegacyLeadCard({ lead }: { lead: CommercialCrmLead }) {
+function LegacyLeadCard({
+  lead,
+  onOpenTimeline,
+}: {
+  lead: CommercialCrmLead;
+  onOpenTimeline: () => void;
+}) {
   const anonymized = Boolean(lead.contactAnonymizedAt);
   return (
     <div className="border border-line bg-deep/45 px-3 py-3">
@@ -152,6 +210,13 @@ function LegacyLeadCard({ lead }: { lead: CommercialCrmLead }) {
           Dados comerciais identificáveis ocultados.
         </p>
       )}
+      <button
+        type="button"
+        onClick={onOpenTimeline}
+        className="mt-2 border border-line px-2 py-1 font-mono text-[10px] text-fog hover:text-aqua hover:border-aqua/40 transition-colors"
+      >
+        Ver histórico
+      </button>
     </div>
   );
 }
@@ -163,6 +228,11 @@ export function CommercialCrmBoard() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const timelineRequestId = useRef(0);
+  const [timelineLead, setTimelineLead] = useState<CommercialCrmLead | null>(null);
+  const [timelineActivities, setTimelineActivities] = useState<CommercialCrmLeadActivity[] | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [movingLeadId, setMovingLeadId] = useState<string | null>(null);
   const [lossTarget, setLossTarget] = useState<{ lead: CommercialCrmLead; stage: CommercialCrmStage } | null>(null);
@@ -239,6 +309,35 @@ export function CommercialCrmBoard() {
     () => activeLeads.filter((lead) => lead.pipelineId === selectedPipelineId),
     [activeLeads, selectedPipelineId],
   );
+
+  const closeTimeline = () => {
+    timelineRequestId.current += 1;
+    setTimelineLead(null);
+    setTimelineActivities(null);
+    setTimelineLoading(false);
+    setTimelineError(null);
+  };
+
+  const openTimeline = async (lead: CommercialCrmLead) => {
+    const requestId = timelineRequestId.current + 1;
+    timelineRequestId.current = requestId;
+    setTimelineLead(lead);
+    setTimelineActivities(null);
+    setTimelineError(null);
+    setTimelineLoading(true);
+
+    try {
+      const activities = await listCurrentClinicCrmLeadActivities(lead.id);
+      if (timelineRequestId.current !== requestId) return;
+      setTimelineActivities(activities);
+    } catch {
+      if (timelineRequestId.current !== requestId) return;
+      console.error('[MedicsPro] Falha ao carregar histórico comercial do Lead.');
+      setTimelineError('Não foi possível carregar o histórico comercial deste Lead.');
+    } finally {
+      if (timelineRequestId.current === requestId) setTimelineLoading(false);
+    }
+  };
 
   const resetProspectForm = () => {
     setProspectIds(null);
@@ -634,6 +733,7 @@ export function CommercialCrmBoard() {
                           busy={movingLeadId === lead.id}
                           onDragStart={() => setDragLeadId(lead.id)}
                           onMove={(target) => requestTransition(lead, target)}
+                          onOpenTimeline={() => void openTimeline(lead)}
                         />
                       ))}
                     </div>
@@ -664,9 +764,75 @@ export function CommercialCrmBoard() {
             sub="contexto preservado para leitura; pipeline ou etapa arquivada nunca vira alvo de mutação"
           />
           <div className="grid gap-2 p-5 md:grid-cols-2 xl:grid-cols-3">
-            {legacyLeads.map((lead) => <LegacyLeadCard key={lead.id} lead={lead} />)}
+            {legacyLeads.map((lead) => (
+              <LegacyLeadCard
+                key={lead.id}
+                lead={lead}
+                onOpenTimeline={() => void openTimeline(lead)}
+              />
+            ))}
           </div>
         </Card>
+      )}
+
+      {timelineLead && (
+        <Modal
+          open
+          title="Histórico comercial do Lead"
+          onClose={closeTimeline}
+        >
+          <div className="space-y-4">
+            <div className="border border-aqua/25 bg-aqua/5 px-3 py-2.5">
+              <p className="font-display text-[13px] font-semibold">{contactLabel(timelineLead)}</p>
+              {!timelineLead.contactAnonymizedAt && (
+                <p className="mt-1 text-[11.5px] text-fog">{timelineLead.title}</p>
+              )}
+              <p className="mt-2 font-mono text-[10px] text-fog/80">
+                Timeline operacional do CRM comercial. Não é histórico clínico.
+              </p>
+            </div>
+
+            {timelineLoading && (
+              <p className="py-4 text-center font-mono text-[11px] text-fog">
+                Carregando histórico comercial…
+              </p>
+            )}
+
+            {!timelineLoading && timelineError && (
+              <div className="border border-pulse/35 bg-pulse/[0.05] px-3 py-3">
+                <p className="text-[11.5px] text-pulse">{timelineError}</p>
+                <Btn
+                  className="mt-3"
+                  variant="subtle"
+                  onClick={() => void openTimeline(timelineLead)}
+                >
+                  Tentar novamente
+                </Btn>
+              </div>
+            )}
+
+            {!timelineLoading && !timelineError && timelineActivities?.length === 0 && (
+              <p className="py-4 text-center font-mono text-[11px] text-fog">
+                Nenhuma atividade comercial registrada.
+              </p>
+            )}
+
+            {!timelineLoading && !timelineError && timelineActivities && timelineActivities.length > 0 && (
+              <div className="space-y-2">
+                {timelineActivities.map((activity) => (
+                  <div key={activity.id} className="border border-line bg-deep/55 px-3 py-3">
+                    <p className="text-[12px] text-ink">
+                      {activityDescription(activity, stageById)}
+                    </p>
+                    <p className="mt-1 font-mono text-[10px] text-fog/75">
+                      {activityTimestamp(activity.createdAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
       )}
 
       {prospectOpen && prospectIds && (
