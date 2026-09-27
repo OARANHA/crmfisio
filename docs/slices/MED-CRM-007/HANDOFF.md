@@ -26,7 +26,7 @@ Slice:
 
 Status:
 
-`IMPLEMENTING`
+`PROVED + MERGED / NOT RELEASED`
 
 MED-CRM-006 remains RELEASED and closed. Do not extend it.
 
@@ -109,9 +109,21 @@ Implemented in the current branch:
 - anonymized Contact remains anonymized;
 - focused adapter, UI and frontend-boundary tests.
 
+## Repository proof
+
+PR #551 exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` completed 20/20 workflows successfully and was squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`.
+
+The implementation remains frontend-only and did not add schema/backend/RLS/RBAC/role/entitlement/tenant/audit/Patient authority.
+
+## Runtime checkpoint
+
+The first production readback after the merge still served the prior entry `/assets/index-BYMym6it.js`. The MED-CRM-007 bundle has therefore not yet been observed live. Do not call the slice RELEASED from repository proof alone.
+
 ## Next exact step
 
-Open/revalidate the implementation PR, run applicable workflows on its exact HEAD and fix any failure without widening scope. Only after repository proof may MED-CRM-007 advance to PROVED. Runtime rollout/readback is a separate later gate before RELEASED.
+Re-resolve current `origin/main`, then read `https://app.medicspro.com.br/` and its referenced CRM chunk. When the entry/chunk changes, prove that the live CRM chunk contains `list_current_clinic_crm_lead_activities`, does not reintroduce forbidden direct Prospect writers/raw CRM DML/Patient crossover, and smoke `/`, `/crm`, `/agenda`, `/pacientes`. Claim an authenticated timeline smoke only if it is actually performed.
+
+If the production entry remains the old build, keep the slice at PROVED + MERGED / NOT RELEASED and investigate the canonical Portainer deployment path rather than creating another code authority.
 
 ## Proof required later
 
@@ -131,4 +143,4 @@ Runtime proof after merge/deploy:
 - public route health;
 - authenticated timeline smoke only if actually executed.
 
-Do not declare PROVED or RELEASED before the corresponding evidence exists.
+Repository PROVED evidence now exists. Do not declare RELEASED until the frontend rollout/readback evidence exists.
