@@ -230,3 +230,20 @@ First:
 Do not hide the gap with a frontend-only guard.
 
 Do not add Contact/Lead creation UI, intake rewrite, Contact edit/merge/dedupe, Lead→Patient conversion, Inbox, follow-up, attribution, provider changes, automation or Commercial AI to MED-CRM-003.
+
+## Handoff refresh — 2026-09-27
+
+Immediately before this handoff refresh was committed, the repository was revalidated again:
+
+```text
+origin/main = 72a60262d09a14ce8382f3da9db12afcd15a8464
+PR #533 = OPEN + mergeable
+PR #533 base = main @ 72a60262d09a14ce8382f3da9db12afcd15a8464
+PR #533 head before this refresh = dbf0003533263bb28644eea45c178a40ab38f6ca
+PR #533 workflows on that head = 20 completed / 20 success
+PR #525 = OPEN historical input only
+```
+
+This refresh commit itself advances the #533 head, so the successful workflow set above is evidence for `dbf0003533263bb28644eea45c178a40ab38f6ca`, not automatic certification of the new head. The next chat must re-read the actual #533 head and its checks before merging it.
+
+No product code, migration, RPC, schema, role, entitlement or runtime was changed by this refresh. No slice status is promoted. MED-CRM-003 remains `ANALYZED`, its second adversarial review remains `BLOCK`, and feature execution remains forbidden until the archived-pipeline server-contract prerequisite is separately gated, proved and released as applicable.
