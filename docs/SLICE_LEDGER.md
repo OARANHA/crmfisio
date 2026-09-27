@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- |
 | `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | RELEASED | [slice](slices/MED-CRM-001/README.md) | produção `28server/supabase-db` verificada: Core aplicado e `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`; próxima feature exige novos gates |
 | `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | RELEASED | [slice](slices/MED-CRM-002/README.md) | produção `28server/supabase-db` verificada: Command Boundary aplicada e ambos verifiers Core + Command passaram; reavaliar próximo conflito sem autoautorizar MED-CRM-003 |
-| `MED-CRM-003` | Commercial Board Cutover V1 — retirar Patient.funil_stage da autoridade comercial visível em /crm | ANALYZED | [handoff](slices/MED-CRM-003/HANDOFF.md) | deep review aberto: fechar multi-pipeline, archived state, lost reason, anonimização/PII e testes; EXECUTION proibida até novo second adversarial review |
+| `MED-CRM-003` | Commercial Board Cutover V1 — retirar Patient.funil_stage da autoridade comercial visível em /crm | ANALYZED | [evidence](slices/MED-CRM-003/EVIDENCE.md) | BLOCKED antes de EXECUTION: canonical stage-transition RPC não rejeita pipeline arquivado; criar/provar prerequisite server contract e depois reabrir os quatro gates do Board |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
