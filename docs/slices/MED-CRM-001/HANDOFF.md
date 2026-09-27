@@ -18,7 +18,7 @@ Leia:
 12. `docs/slices/MED-CRM-001/DECISION.md`
 13. `docs/slices/MED-CRM-001/IMPLEMENTATION-001.md`
 
-Depois resolva a `origin/main` atual, revalide a PR #522 (HEAD, base, diff, checks e merge state) e reconstrua o **ESTADO ATUAL COMPROVADO** antes de decidir ou executar.
+Depois resolva a `origin/main` atual e reconstrua o **ESTADO ATUAL COMPROVADO**. A PR #522 já foi integrada; use GitHub/main para confirmar o estado atual, sem tratá-la novamente como trabalho aberto.
 
 A PR documental #523 foi integrada em `main` como `542fd289bb8060c7c0c69b20359f0b758092d946`; `docs/CANONICAL_INDEX.md` agora é o roteador estável. Ainda assim, sempre resolva a `main` atual antes de executar.
 
@@ -27,12 +27,13 @@ A PR documental #523 foi integrada em `main` como `542fd289bb8060c7c0c69b20359f0
 - ID: `MED-CRM-001`
 - status: `PROVED`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **foundation micro-slice PROVED; merge decision APPROVED subject to latest-head checks/mergeability; merge state é fato mutável e deve ser relido**;
+- execution: **foundation micro-slice PROVED + MERGED em #522; ainda não RELEASED sem rollout produtivo observado**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
 - design branch: `docs/med-crm-001-design`;
 - implementation branch: `feat/med-crm-001-commercial-core-foundation`;
 - implementation readback: `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`;
-- merge-decision readback: `main@542fd289bb8060c7c0c69b20359f0b758092d946` após #523; mudança documental disjunta dos 9 arquivos da foundation.
+- merge-decision readback: `main@542fd289bb8060c7c0c69b20359f0b758092d946` após #523; mudança documental disjunta dos 9 arquivos da foundation;
+- merge final #522: `main@652ea7b3aea4cd03a09944b780ef697168016bc3`.
 
 ## Proven
 
@@ -121,20 +122,19 @@ Além do runtime proof PostgreSQL 16/17:
 - compare revalidado: 17 ahead / 1 behind exclusivamente por essa mudança documental disjunta; mergeability voltou a `true` após recálculo do GitHub;
 - migration/verifier/fixture/cases/harness continuam inalterados desde o proof PostgreSQL 16/17;
 - não entrou board/UI, Inbox, automação, attribution, provider ou Lead→Patient conversion;
-- decisão de merge: APPROVED, condicionada apenas aos checks/mergeability do HEAD mais recente;
-- `PROVED` não significa `MERGED` nem `RELEASED`.
-
-Este update de HANDOFF/status é documental; revalide checks do HEAD atual antes de concluir o merge.
+- decisão de merge foi concluída e #522 está integrada em `main@652ea7b3aea4cd03a09944b780ef697168016bc3`;
+- estado da foundation: `PROVED + MERGED`, ainda **não RELEASED** sem rollout observado;
+- capability map pós-foundation: [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
+- continuidade comercial ativa: MED-CRM-002 / PR #524.
 
 ## Next exact step
 
-1. resolver `origin/main` e o estado atual da PR #522;
-2. se ainda aberta, confirmar checks/mergeability do HEAD documental mais recente e concluir o merge já aprovado;
-3. se já mergeada, confirmar a integração em `main` sem inferir deploy/release;
-4. então produzir o capability map + dependency graph antes de escolher qualquer nova feature;
-5. antes de qualquer nova capability, seguir `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+MED-CRM-001 não é mais a slice de execução ativa.
 
-A próxima slice ainda **não está escolhida**. Candidatos como mutation boundary, Contact operations, Lead operations, stage transition/activity, tasks/next action, board e conversion devem passar primeiro por GAPS + REUSE GATE e dependency graph.
+1. confirmar a `main` atual e não inferir rollout da #522;
+2. ler [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
+3. para continuidade atual, seguir `docs/slices/MED-CRM-002/HANDOFF.md`;
+4. toda capability posterior continua sujeita a `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
 ## Implementation validation
 
@@ -157,38 +157,14 @@ Concluído:
 - final diff/readback;
 - 8/8 repository-required workflows no head reconciliado.
 
-Antes do merge, revalidar apenas o estado GitHub mutável do HEAD mais recente.
+Merge concluído em #522; revalidar runtime apenas quando a pergunta depender de rollout/deploy.
 ## VPS/runtime
 
 - required now: **no**;
 - usar MCP_WANDORA_VPS só quando a implementação precisar provar schema/deploy/runtime real.
 
-## Copy-paste prompt for a new chat
+## Continuity
 
-```text
-Retome o projeto MEDICSPRO pelo estado canônico do repositório OARANHA/crmfisio.
+O prompt histórico desta slice foi removido porque ficou stale após o merge da #522.
 
-Não dependa da memória deste chat.
-
-Revalide origin/main, a slice MED-CRM-001, PR #522 e PR #523.
-Leia AGENTS.md, docs/CURRENT_STATE.md, docs/WORK_CONTEXT.md,
-docs/doctrine/, docs/SLICE_EXECUTION_METHOD.md, docs/SLICE_LEDGER.md
-e todos os arquivos de docs/slices/MED-CRM-001/.
-
-Se docs/CANONICAL_INDEX.md já estiver em main, use-o como roteador estável.
-
-Reconstrua o ESTADO ATUAL COMPROVADO antes de decidir ou executar.
-
-A foundation MED-CRM-001 foi provada em PostgreSQL 16/17 e teve 8/8 workflows verdes
-no último head reconciliado, mas PR/merge/checks são fatos mutáveis: revalide-os.
-
-Primeiro feche a reconciliação/decisão de merge da foundation.
-Depois produza o capability map e dependency graph para a evolução máxima do CRM.
-
-Nenhuma nova capability passa para EXECUTION sem:
-GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION
-→ SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION.
-
-Preserve Contact != Lead != Patient, clinic_id, RLS/RBAC, crm.access,
-auditabilidade e boundaries clínicas. Não crie autoridade paralela.
-```
+Para um novo chat, use a frase estável de `docs/CANONICAL_INDEX.md`, reconstrua o estado atual e leia o HANDOFF da slice realmente ativa. Neste checkpoint, a continuidade comercial está em `docs/slices/MED-CRM-002/HANDOFF.md`.
