@@ -163,7 +163,7 @@ WHERE id='71000000-0000-0000-0000-000000000016';
 
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
-DO $
+DO $$
 BEGIN
   BEGIN
     PERFORM public.create_current_clinic_crm_contact(
@@ -185,7 +185,7 @@ BEGIN
   EXCEPTION
     WHEN no_data_found THEN NULL;
   END;
-END $;
+END $$;
 RESET ROLE;
 
 SELECT '6) owner creates Lead in default open stage; retry does not duplicate side effects' AS check;
