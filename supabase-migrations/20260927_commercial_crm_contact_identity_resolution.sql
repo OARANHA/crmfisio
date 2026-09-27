@@ -506,199 +506,6 @@ FROM PUBLIC, anon, authenticated;
 COMMENT ON FUNCTION public.crm_create_contact_internal(uuid,uuid,text,text,text,text,text) IS
   'Internal shared Contact insert/idempotency/audit core. Clinic must come from a canonical server-side wrapper.';
 
-CREATE OR REPLACE FUNCTION public.crm_create_lead_internal(
-  p_clinic_id uuid,
-  p_lead_id uuid,
-  p_contact_id uuid,
-  p_title text,
-  p_pipeline_id uuid DEFAULT NULL,
-  p_stage_id uuid DEFAULT NULL,
-  p_owner_id uuid DEFAULT NULL,
-  p_value_cents bigint DEFAULT NULL,
-  p_source text DEFAULT NULL
-)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_title text := btrim(coalesce(p_title, ''));
-  v_source text := nullif(btrim(coalesce(p_source, '')), '');
-  v_pipeline_id uuid;
-  v_stage_id uuid;
-  v_stage_kind text;
-  v_existing public.crm_leads%ROWTYPE;
-  v_inserted integer := 0;
-BEGIN
-  IF p_clinic_id IS NULL OR p_lead_id IS NULL OR p_contact_id IS NULL THEN
-    RAISE EXCEPTION 'crm_lead_and_contact_id_required' USING ERRCODE = '22023';
-  END IF;
-
-  IF v_title = '' THEN
-    RAISE EXCEPTION 'crm_lead_title_required' USING ERRCODE = '22023';
-  END IF;
-
-  IF p_value_cents IS NOT NULL AND p_value_cents < 0 THEN
-    RAISE EXCEPTION 'crm_lead_value_negative' USING ERRCODE = '22023';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.contacts c
-    WHERE c.id = p_contact_id
-      AND c.clinic_id = p_clinic_id
-      AND c.deleted_at IS NULL
-      AND c.anonymized_at IS NULL
-  ) THEN
-    RAISE EXCEPTION 'crm_contact_not_found' USING ERRCODE = 'P0002';
-  END IF;
-
-  IF p_pipeline_id IS NULL THEN
-    SELECT p.id
-      INTO v_pipeline_id
-    FROM public.crm_pipelines p
-    WHERE p.clinic_id = p_clinic_id
-      AND p.is_default IS TRUE
-      AND p.archived_at IS NULL
-    ORDER BY p.created_at, p.id
-    LIMIT 1;
-  ELSE
-    SELECT p.id
-      INTO v_pipeline_id
-    FROM public.crm_pipelines p
-    WHERE p.id = p_pipeline_id
-      AND p.clinic_id = p_clinic_id
-      AND p.archived_at IS NULL;
-  END IF;
-
-  IF v_pipeline_id IS NULL THEN
-    RAISE EXCEPTION 'crm_pipeline_not_found' USING ERRCODE = 'P0002';
-  END IF;
-
-  IF p_stage_id IS NULL THEN
-    SELECT s.id, s.stage_kind
-      INTO v_stage_id, v_stage_kind
-    FROM public.crm_stages s
-    WHERE s.clinic_id = p_clinic_id
-      AND s.pipeline_id = v_pipeline_id
-      AND s.archived_at IS NULL
-      AND s.stage_kind = 'open'
-    ORDER BY s.position, s.created_at, s.id
-    LIMIT 1;
-  ELSE
-    SELECT s.id, s.stage_kind
-      INTO v_stage_id, v_stage_kind
-    FROM public.crm_stages s
-    WHERE s.id = p_stage_id
-      AND s.clinic_id = p_clinic_id
-      AND s.pipeline_id = v_pipeline_id
-      AND s.archived_at IS NULL;
-  END IF;
-
-  IF v_stage_id IS NULL THEN
-    RAISE EXCEPTION 'crm_stage_not_found' USING ERRCODE = 'P0002';
-  END IF;
-
-  IF v_stage_kind <> 'open' THEN
-    RAISE EXCEPTION 'crm_lead_initial_stage_must_be_open' USING ERRCODE = '23514';
-  END IF;
-
-  INSERT INTO public.crm_leads (
-    id,
-    clinic_id,
-    contact_id,
-    pipeline_id,
-    stage_id,
-    owner_id,
-    title,
-    value_cents,
-    source
-  ) VALUES (
-    p_lead_id,
-    p_clinic_id,
-    p_contact_id,
-    v_pipeline_id,
-    v_stage_id,
-    p_owner_id,
-    v_title,
-    p_value_cents,
-    v_source
-  )
-  ON CONFLICT (id) DO NOTHING;
-
-  GET DIAGNOSTICS v_inserted = ROW_COUNT;
-
-  IF v_inserted = 0 THEN
-    SELECT *
-      INTO v_existing
-    FROM public.crm_leads l
-    WHERE l.id = p_lead_id;
-
-    IF NOT FOUND
-       OR v_existing.clinic_id IS DISTINCT FROM p_clinic_id
-       OR v_existing.deleted_at IS NOT NULL
-       OR v_existing.contact_id IS DISTINCT FROM p_contact_id
-       OR v_existing.pipeline_id IS DISTINCT FROM v_pipeline_id
-       OR v_existing.stage_id IS DISTINCT FROM v_stage_id
-       OR v_existing.owner_id IS DISTINCT FROM p_owner_id
-       OR v_existing.title IS DISTINCT FROM v_title
-       OR v_existing.value_cents IS DISTINCT FROM p_value_cents
-       OR v_existing.source IS DISTINCT FROM v_source THEN
-      RAISE EXCEPTION 'crm_lead_idempotency_conflict' USING ERRCODE = '23505';
-    END IF;
-
-    RETURN p_lead_id;
-  END IF;
-
-  INSERT INTO public.crm_lead_activities (
-    clinic_id,
-    lead_id,
-    activity_type,
-    actor_id,
-    actor_kind,
-    metadata
-  ) VALUES (
-    p_clinic_id,
-    p_lead_id,
-    'lead_created',
-    auth.uid(),
-    'human',
-    jsonb_build_object(
-      'contact_id', p_contact_id,
-      'pipeline_id', v_pipeline_id,
-      'stage_id', v_stage_id
-    )
-  );
-
-  INSERT INTO public.audit_log (
-    clinic_id,
-    usuario_id,
-    acao,
-    detalhe
-  ) VALUES (
-    p_clinic_id,
-    auth.uid(),
-    'CRM_LEAD_CREATED',
-    format(
-      'lead_id=%s; contact_id=%s; pipeline_id=%s; stage_id=%s',
-      p_lead_id,
-      p_contact_id,
-      v_pipeline_id,
-      v_stage_id
-    )
-  );
-
-  RETURN p_lead_id;
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.crm_create_lead_internal(uuid,uuid,uuid,text,uuid,uuid,uuid,bigint,text)
-FROM PUBLIC, anon, authenticated;
-
-COMMENT ON FUNCTION public.crm_create_lead_internal(uuid,uuid,uuid,text,uuid,uuid,uuid,bigint,text) IS
-  'Internal shared Lead insert/idempotency/activity/audit core. Clinic must come from a canonical server-side wrapper.';
-
 CREATE OR REPLACE FUNCTION public.create_current_clinic_crm_contact(
   p_contact_id uuid,
   p_name text,
@@ -717,6 +524,18 @@ DECLARE
 BEGIN
   IF p_contact_id IS NULL THEN
     RAISE EXCEPTION 'crm_contact_id_required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Keep the released fail-closed lifecycle guard visible at the public
+  -- command boundary while the shared internal core remains the single
+  -- insert/idempotency/audit implementation.
+  IF EXISTS (
+    SELECT 1
+    FROM public.contacts c
+    WHERE c.id = p_contact_id
+      AND c.anonymized_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'crm_contact_idempotency_conflict' USING ERRCODE = '23505';
   END IF;
 
   -- Preserve exact same-ID retry before candidate resolution. The shared core
@@ -783,8 +602,15 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_clinic uuid := public.crm_current_mutator_clinic_id();
+  v_title text := btrim(coalesce(p_title, ''));
+  v_source text := nullif(btrim(coalesce(p_source, '')), '');
+  v_pipeline_id uuid;
+  v_stage_id uuid;
+  v_stage_kind text;
+  v_existing public.crm_leads%ROWTYPE;
+  v_inserted integer := 0;
 BEGIN
-  IF p_lead_id IS NULL THEN
+  IF p_lead_id IS NULL OR p_contact_id IS NULL THEN
     RAISE EXCEPTION 'crm_lead_and_contact_id_required' USING ERRCODE = '22023';
   END IF;
 
@@ -796,19 +622,164 @@ BEGIN
     )
   );
 
-  RETURN public.crm_create_lead_internal(
+  IF v_title = '' THEN
+    RAISE EXCEPTION 'crm_lead_title_required' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_value_cents IS NOT NULL AND p_value_cents < 0 THEN
+    RAISE EXCEPTION 'crm_lead_value_negative' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.contacts c
+    WHERE c.id = p_contact_id
+      AND c.clinic_id = v_clinic
+      AND c.deleted_at IS NULL
+      AND c.anonymized_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'crm_contact_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_pipeline_id IS NULL THEN
+    SELECT p.id
+      INTO v_pipeline_id
+    FROM public.crm_pipelines p
+    WHERE p.clinic_id = v_clinic
+      AND p.is_default IS TRUE
+      AND p.archived_at IS NULL
+    ORDER BY p.created_at, p.id
+    LIMIT 1;
+  ELSE
+    SELECT p.id
+      INTO v_pipeline_id
+    FROM public.crm_pipelines p
+    WHERE p.id = p_pipeline_id
+      AND p.clinic_id = v_clinic
+      AND p.archived_at IS NULL;
+  END IF;
+
+  IF v_pipeline_id IS NULL THEN
+    RAISE EXCEPTION 'crm_pipeline_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_stage_id IS NULL THEN
+    SELECT s.id, s.stage_kind
+      INTO v_stage_id, v_stage_kind
+    FROM public.crm_stages s
+    WHERE s.clinic_id = v_clinic
+      AND s.pipeline_id = v_pipeline_id
+      AND s.archived_at IS NULL
+      AND s.stage_kind = 'open'
+    ORDER BY s.position, s.created_at, s.id
+    LIMIT 1;
+  ELSE
+    SELECT s.id, s.stage_kind
+      INTO v_stage_id, v_stage_kind
+    FROM public.crm_stages s
+    WHERE s.id = p_stage_id
+      AND s.clinic_id = v_clinic
+      AND s.pipeline_id = v_pipeline_id
+      AND s.archived_at IS NULL;
+  END IF;
+
+  IF v_stage_id IS NULL THEN
+    RAISE EXCEPTION 'crm_stage_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_stage_kind <> 'open' THEN
+    RAISE EXCEPTION 'crm_lead_initial_stage_must_be_open' USING ERRCODE = '23514';
+  END IF;
+
+  INSERT INTO public.crm_leads (
+    id,
+    clinic_id,
+    contact_id,
+    pipeline_id,
+    stage_id,
+    owner_id,
+    title,
+    value_cents,
+    source
+  ) VALUES (
+    p_lead_id,
+    v_clinic,
+    p_contact_id,
+    v_pipeline_id,
+    v_stage_id,
+    p_owner_id,
+    v_title,
+    p_value_cents,
+    v_source
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+  IF v_inserted = 0 THEN
+    SELECT *
+      INTO v_existing
+    FROM public.crm_leads l
+    WHERE l.id = p_lead_id;
+
+    IF NOT FOUND
+       OR v_existing.clinic_id IS DISTINCT FROM v_clinic
+       OR v_existing.deleted_at IS NOT NULL
+       OR v_existing.contact_id IS DISTINCT FROM p_contact_id
+       OR v_existing.pipeline_id IS DISTINCT FROM v_pipeline_id
+       OR v_existing.stage_id IS DISTINCT FROM v_stage_id
+       OR v_existing.owner_id IS DISTINCT FROM p_owner_id
+       OR v_existing.title IS DISTINCT FROM v_title
+       OR v_existing.value_cents IS DISTINCT FROM p_value_cents
+       OR v_existing.source IS DISTINCT FROM v_source THEN
+      RAISE EXCEPTION 'crm_lead_idempotency_conflict' USING ERRCODE = '23505';
+    END IF;
+
+    RETURN p_lead_id;
+  END IF;
+
+  INSERT INTO public.crm_lead_activities (
+    clinic_id,
+    lead_id,
+    activity_type,
+    actor_id,
+    actor_kind,
+    metadata
+  ) VALUES (
     v_clinic,
     p_lead_id,
-    p_contact_id,
-    p_title,
-    p_pipeline_id,
-    p_stage_id,
-    p_owner_id,
-    p_value_cents,
-    p_source
+    'lead_created',
+    auth.uid(),
+    'human',
+    jsonb_build_object(
+      'contact_id', p_contact_id,
+      'pipeline_id', v_pipeline_id,
+      'stage_id', v_stage_id
+    )
   );
+
+  INSERT INTO public.audit_log (
+    clinic_id,
+    usuario_id,
+    acao,
+    detalhe
+  ) VALUES (
+    v_clinic,
+    auth.uid(),
+    'CRM_LEAD_CREATED',
+    format(
+      'lead_id=%s; contact_id=%s; pipeline_id=%s; stage_id=%s',
+      p_lead_id,
+      p_contact_id,
+      v_pipeline_id,
+      v_stage_id
+    )
+  );
+
+  RETURN p_lead_id;
 END;
 $$;
+
 
 REVOKE ALL ON FUNCTION public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text)
 FROM PUBLIC, anon;
@@ -816,7 +787,7 @@ GRANT EXECUTE ON FUNCTION public.create_current_clinic_crm_lead(uuid,uuid,text,u
 TO authenticated;
 
 COMMENT ON FUNCTION public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text) IS
-  'Canonical authenticated Lead creation for the current clinic. Initial stage must be active/open; same Lead UUID is transaction-serialized.';
+  'Canonical authenticated Lead creation for the current clinic. Existing MED-CRM-002 authority is preserved and same Lead UUID is transaction-serialized.';
 
 CREATE UNIQUE INDEX IF NOT EXISTS crm_lead_contact_identity_resolution_once
   ON public.crm_lead_activities (lead_id)
@@ -1053,8 +1024,7 @@ BEGIN
     );
   END IF;
 
-  PERFORM public.crm_create_lead_internal(
-    v_clinic,
+  PERFORM public.create_current_clinic_crm_lead(
     p_lead_id,
     p_contact_id,
     v_title,
