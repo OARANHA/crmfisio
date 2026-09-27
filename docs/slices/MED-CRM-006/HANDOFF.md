@@ -293,6 +293,10 @@ Deterministic review covered auto-reuse, Patient leak, browser authority, TOCTOU
 
 Fresh JEV advisory returned `deep_review=0.58`, `proceed_fast=0.35`, `block=0.00`, confidence `0.44`. The deterministic deep review was therefore completed before execution; JEV did not authorize the change.
 
+### Post-execution adversarial correction
+
+A fresh deterministic review after the first UI implementation found a transport-uncertainty edge case: a second preview before exact retry could surface the newly committed self Contact and derail the canonical resolver retry contract. #548 now records the exact pending resolution intent after an uncertain response, freezes the draft and offers `Repetir mesma tentativa`; that retry calls the resolver directly with the same IDs/decision and does not query candidates again. A focused test proves a hypothetical self-candidate remains unread because the second preview is intentionally skipped.
+
 ### Validation status
 
 Frontend/unit/boundary tests have been added but **the exact current PR HEAD is not yet declared GREEN or PROVED**. Repository CI, typecheck, lint, build, validate and dependency-audit must all be revalidated on the post-HANDOFF HEAD.
