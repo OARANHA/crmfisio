@@ -1,5 +1,32 @@
 # MED-CRM-008 — Handoff
 
+## Handoff refresh — 2026-09-27 20:40 BRT
+
+Fresh GitHub revalidation before opening the next chat:
+
+- `origin/main` remains `7b75b77c667b1c17b6eb408ee7047ad866e78a73` (`docs: close MED-CRM-007 after production readback (#552)`);
+- design PR #553 remains OPEN, non-draft and mergeable;
+- exact validated PR head before this HANDOFF refresh: `72d0c511c0e4c821259f4856850d406c0cadfbf3`;
+- that exact head completed **20/20 workflows with success and 0 failures**;
+- PR #553 has no reviews and no review threads;
+- PR #525 remains historical/open and must not be treated as current authority;
+- no implementation code, migration or runtime mutation has started for MED-CRM-008.
+
+This HANDOFF refresh itself creates a newer docs-only PR head. Therefore **do not merge from the 20/20 result above without first revalidating the new exact HEAD and its checks**.
+
+Next safe sequence:
+
+1. resolve current `origin/main` and PR #553 exact HEAD;
+2. require the current exact HEAD to be mergeable with all applicable workflows `completed + success` and no blocking review/thread;
+3. only then merge the docs-only design PR;
+4. resolve the resulting new `main` SHA;
+5. reconstruct active CRM PR/branch state again;
+6. create a fresh implementation branch for MED-CRM-008;
+7. implement only the designed Lead details authority (`title + value_cents + source`) with optimistic concurrency, exact-retry idempotency and server-side privacy/archive guards;
+8. validate PostgreSQL 16/17 behavior + existing Commercial CRM regressions before frontend execution;
+9. never expand into owner assignment, stage/pipeline admin, Contact/Patient mutation, follow-up, Inbox, attribution or Lead→Patient without new gates.
+
+
 ## Current checkpoint
 
 Canonical repository: `OARANHA/crmfisio`
