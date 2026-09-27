@@ -12,8 +12,8 @@
 
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
-| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; readback capability já foi MERGED/PUBLISHED no Remote-Ops-MCP #35, mas o control plane live ainda está na revisão `985777e0...`; falta deploy/configuração antes do RELEASE |
-| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524; docs #526/#527 integradas; `postgres_pinned_verifier_readback` existe em Remote-Ops-MCP `52dbdf1b...`, porém ainda não está no schema live; RELEASE continua bloqueado |
+| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | RELEASED | [slice](slices/MED-CRM-001/README.md) | produção `28server/supabase-db` verificada: Core aplicado e `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`; próxima feature exige novos gates |
+| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | RELEASED | [slice](slices/MED-CRM-002/README.md) | produção `28server/supabase-db` verificada: Command Boundary aplicada e ambos verifiers Core + Command passaram; reavaliar próximo conflito sem autoautorizar MED-CRM-003 |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
