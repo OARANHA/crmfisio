@@ -1,7 +1,7 @@
 # MED-CRM-004 — Decision
 
-**Decision date:** 2026-09-27  
-**Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`  
+**Decision date:** 2026-09-27
+**Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`
 **Decision state:** APPROVED → execution started
 
 ## GAPS
