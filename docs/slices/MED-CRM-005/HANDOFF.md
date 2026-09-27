@@ -4,6 +4,8 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
+**Institutional main after release reconciliation:** `42c8f181c0605a2a966a4bb19603527e05fc8a77` (`docs: reconcile MED-CRM-005 production release (#539)`).
+
 Revalidate these values before acting; they are a checkpoint, not inherited authority.
 
 ```text
@@ -13,6 +15,9 @@ final PR head = 6df9f1ba39b474454fe33ee93d0143677cd12f6d
 merge/main = 004fcb2c6c60ff7611bf6c1156e90edaac27ae9a
 production entry = /assets/index-B0iT1ZY2.js
 production CRM chunk = /assets/CrmOperational-D1hSbB77.js
+institutional reconciliation PR = #539
+institutional main after #539 = 42c8f181c0605a2a966a4bb19603527e05fc8a77
+active next CRM slice = NONE (must be selected through fresh gates)
 
 MED-CRM-001 = RELEASED
 MED-CRM-002 = RELEASED
@@ -108,7 +113,11 @@ No database rollout or manual production mutation exists for this slice.
 
 ## Next product gate
 
-MED-CRM-005 is closed. Do not reopen it merely because a new chat starts.
+MED-CRM-005 is closed and its post-release reconciliation is integrated in `main@42c8f181c0605a2a966a4bb19603527e05fc8a77`. Do not reopen it merely because a new chat starts.
+
+There is **no active successor CRM slice yet**. The next chat must begin by reconstructing current gaps and selecting the next capability through the four mandatory gates; it must not infer MED-CRM-006 or any other scope from this handoff.
+
+Fresh PR revalidation before this handoff refresh also confirmed PR #525 remains historical/open, unmerged and non-mergeable. It is not an implementation base or authority.
 
 Before selecting the next Commercial CRM capability:
 
