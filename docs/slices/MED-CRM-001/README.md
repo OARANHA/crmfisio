@@ -2,10 +2,11 @@
 
 **Status:** PROVED  
 **Capability:** CRM commercial foundation  
-**Execution:** foundation micro-slice proved; PR #522 remains open/unmerged  
+**Execution:** foundation micro-slice PROVED; merge decision APPROVED subject to latest-head checks/mergeability; read GitHub/main for mutable merge state  
 **Created:** 2026-09-26  
 **Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`  
-**Implementation readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`
+**Implementation readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`  
+**Merge-decision readback:** `main@542fd289bb8060c7c0c69b20359f0b758092d946` after #523 merged; #523 is documentation-only and file-disjoint from this foundation
 
 ## Objective
 
@@ -210,7 +211,7 @@ A confiança moderada é registrada deliberadamente. Implementação deve manter
 
 ## Execution
 
-A primeira micro-slice está **PROVED** e é acompanhada em [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md). A PR #522 permanece aberta; `PROVED` não significa `MERGED` nem `RELEASED`.
+A primeira micro-slice está **PROVED** e é acompanhada em [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md). O merge foi revisado separadamente após a integração da #523 e está **APPROVED subject to latest-head checks/mergeability**. O estado mutável da PR deve ser relido no GitHub/current `main`; `PROVED` não significa `MERGED` nem `RELEASED`.
 
 Escopo atual:
 
@@ -247,15 +248,17 @@ A foundation foi provada com evidência reproduzível:
 - `stage_kind` como fonte única open/won/lost GREEN;
 - activity tenant integrity GREEN;
 - ausência de conteúdo clínico na projeção CRM GREEN;
-- repository-required workflows: 8/8 SUCCESS no head reconciliado `472891f2ebd61902e5b323a0f821766822650c30`;
-- diff final contra `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`: 13 commits à frente, 0 atrás, 9 arquivos esperados, sem board/Inbox/automação/conversão.
+- último head com os artefatos de implementação inalterados antes desta reconciliação documental: `ec48f9561c99d818af90001dbed133cf079822eb`, com 8/8 repository-required workflows SUCCESS;
+- após o merge documental da #523, `main@542fd289bb8060c7c0c69b20359f0b758092d946` avançou um commit sem tocar qualquer um dos 9 arquivos da foundation;
+- a #522 passou a ficar 17 commits à frente / 1 atrás por essa mudança documental disjunta, mantendo mergeability após recálculo do GitHub;
+- migration, verifier, fixture, behavior cases e harness permanecem byte-identical ao proof PostgreSQL 16/17.
 
-O update de handoff/status é documental. Antes de merge, revalidar os checks do HEAD mais recente da PR.
+Qualquer head posterior que altere apenas documentação ainda precisa de revalidação dos checks GitHub antes do merge, mas não invalida o harness SQL enquanto os cinco artefatos executáveis acima permanecerem inalterados.
 ## Next exact step
 
-1. revalidar PR #522 no HEAD mais recente: base, diff, checks e mergeability;
-2. tratar o merge da #522 como decisão separada — `PROVED != MERGED != RELEASED`;
-3. após merge/reconciliação em `main`, iniciar o capability map do próximo CRM slice;
+1. reler o estado GitHub/main da PR #522; se ainda aberta, confirmar latest-head checks + mergeability e concluir o merge já aprovado;
+2. se #522 já estiver integrada, não repetir a foundation: iniciar o capability map + dependency graph do estado real;
+3. escolher a próxima micro-slice somente depois do mapa e do reuse gate;
 4. aplicar obrigatoriamente `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
 Não começar board, Inbox, automação ou Lead→Patient conversion diretamente. Primeiro mapear capabilities/dependências e escolher a menor próxima slice estrutural.
