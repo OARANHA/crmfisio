@@ -9,6 +9,7 @@ BEGIN
     to_regprocedure('public.crm_normalize_contact_phone(text)'),
     to_regprocedure('public.crm_contact_phone_candidate_variants(text)'),
     to_regprocedure('public.crm_normalize_contact_email(text)'),
+    to_regprocedure('public.crm_contact_identity_signal_fingerprint(text,text)'),
     to_regprocedure('public.crm_contact_identity_lock_key(uuid,text,text)'),
     to_regprocedure('public.crm_lock_contact_identity_signals(uuid,text,text)'),
     to_regprocedure('public.crm_contact_identity_candidates_for_clinic(uuid,text,text)'),
@@ -33,6 +34,7 @@ BEGIN
     'public.crm_normalize_contact_phone(text)'::regprocedure,
     'public.crm_contact_phone_candidate_variants(text)'::regprocedure,
     'public.crm_normalize_contact_email(text)'::regprocedure,
+    'public.crm_contact_identity_signal_fingerprint(text,text)'::regprocedure,
     'public.crm_contact_identity_lock_key(uuid,text,text)'::regprocedure,
     'public.crm_lock_contact_identity_signals(uuid,text,text)'::regprocedure,
     'public.crm_contact_identity_candidates_for_clinic(uuid,text,text)'::regprocedure,
@@ -204,6 +206,7 @@ BEGIN
      OR v_def NOT LIKE '%crm_create_contact_internal%'
      OR v_def NOT LIKE '%crm_create_lead_internal%'
      OR v_def NOT LIKE '%contact_identity_resolved%'
+     OR v_def NOT LIKE '%signal_fingerprint%'
      OR v_def NOT LIKE '%crm_contact_identity_resolved%' THEN
     RAISE EXCEPTION 'crm_identity_orchestration_contract_missing';
   END IF;
