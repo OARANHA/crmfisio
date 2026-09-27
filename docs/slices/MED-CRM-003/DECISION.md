@@ -3,7 +3,7 @@
 **Decision date:** 2026-09-27  
 **Audited main:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat/med-crm-003-commercial-board-cutover-v1`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED / NOT RELEASED
 
 ## Context
 
@@ -132,7 +132,7 @@ JEV remained advisory. Execution was authorized by the deterministic repository 
 
 ## Execution result
 
-PR #536 implements the approved frontend-only slice. Before this documentation refresh, implementation HEAD:
+PR #536 implemented the approved frontend-only slice and was squash-merged after the final documentation HEAD passed all applicable checks. Pre-merge implementation HEAD:
 
 ```text
 50ff38ff1427f71b30c62120b26259838a6b94b0
@@ -169,4 +169,6 @@ It does **not** mean:
 - the production frontend has been promoted;
 - MED-CRM-003 is RELEASED.
 
-Those claims require their own evidence.
+Merge is now separately proved: PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after the final PR HEAD `2f0d8bc3cf9a7b61677abc053a64218d120dacf6` was `0 behind`, mergeable, with 9/9 check-runs `completed + success` and no blocking review/thread.
+
+`RELEASED` still requires observed production frontend rollout/readback. Immediate post-merge public readback served the previous bundle and did not contain the MED-CRM-003 markers, so release is not inferred from merge.
