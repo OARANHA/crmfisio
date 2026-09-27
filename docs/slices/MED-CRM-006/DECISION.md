@@ -1,9 +1,10 @@
 # MED-CRM-006 — Decision
 
 **Capability:** Contact Identity Resolution V1  
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING — BACKEND PHASE ONLY  
 **Decision date:** 2026-09-27  
-**Reconciled against:** `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`
+**Implementation-plan closure:** 2026-09-27  
+**Reconciled against:** `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
 
 ## Context
 
@@ -209,3 +210,33 @@ Reconsider this decision if:
 - identity resolution must span trusted external identifiers with a stronger authority than phone/email signals.
 
 Do not reconsider merely because a simpler client-side dedupe appears easier to implement.
+
+
+## Implementation-plan closure
+
+The exact executable contract is now recorded in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
+Additional decisions closed before execution:
+
+- V1 does **not** mass-backfill legacy normalized columns; candidate matching falls back to server-normalizing raw Contact values while all new Contact writes populate normalized columns;
+- weak email case-fold is deferred so the matching set and lock set remain identical;
+- all BR with/without-9 phone candidate variants participate in advisory locking;
+- advisory lock keys use namespaced PostgreSQL 16/17 built-in SHA-256 and a deterministic positive 63-bit bigint;
+- the existing Contact create command is hardened as create-if-clear so direct callers cannot bypass resolution;
+- existing Contact/Lead bodies are shared through revoked internal helpers instead of duplicated by orchestration;
+- `p_contact_id` in the final orchestration is always the effective Contact UUID, including the selected existing Contact for `explicit_reuse`;
+- exact orchestration retry is recognized from persisted resolution evidence before candidate ambiguity is evaluated;
+- `explicit_distinct` uses bounded reason codes so resolution evidence cannot become a raw PII note field;
+- backend is implemented/proved before frontend integration; production rollout is a later separate gate.
+
+### Fresh second adversarial review
+
+The initial advisory JEV pass routed the plan to `deep_review`. After resolving legacy-null normalization, old-RPC bypass, BR-variant race, lock ordering, self-candidate retry, audit PII and deployment-order concerns, a second JEV pass routed to `proceed_fast` with moderate confidence.
+
+JEV did not authorize execution. Deterministic repository/schema/PostgreSQL review did.
+
+### Execution decision
+
+`YES — backend phase only`.
+
+Frontend and production remain unauthorized until their own validation/release gates.
