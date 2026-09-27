@@ -145,12 +145,13 @@ A per-clinic/per-lead idempotency advisory lock is acquired before signal locks 
 
 Hash collision can only cause unnecessary serialization because every authorization decision comes from the post-lock database recheck.
 
-## 6. Shared Contact/Lead cores
+## 6. Contact core + direct Lead authority reuse
 
-Extract the existing insert/idempotency/audit bodies into revoked internal helpers so wrappers and orchestration share one implementation instead of duplicating it:
+Extract only the Contact insert/idempotency/audit body into a revoked internal helper:
 
-- `crm_create_contact_internal(...)`;
-- `crm_create_lead_internal(...)`.
+- `crm_create_contact_internal(...)`.
+
+The Lead command remains the RELEASED authority in its public function body; it is **not** reimplemented in a second helper.
 
 The public signatures remain compatible:
 
@@ -172,7 +173,7 @@ This prevents direct callers from bypassing Contact Identity Resolution.
 
 ### Preserve Lead authority
 
-The existing Lead command keeps its public contract and uses the shared internal Lead core. It acquires the per-lead idempotency lock before the core so the orchestration and direct Lead command serialize the same Lead UUID.
+The existing Lead command keeps its RELEASED validation, insert, idempotency, activity and audit body in place. MED-CRM-006 adds only the per-lead idempotency advisory lock before that existing body. The orchestration calls `create_current_clinic_crm_lead(...)` directly, so there is no parallel Lead writer and direct/orchestrated use of the same Lead UUID serializes on the same lock.
 
 ## 7. Final orchestration command
 
@@ -284,7 +285,7 @@ Text detail contains only:
 
 No raw phone/email/name.
 
-Existing `CRM_CONTACT_CREATED`, `CRM_LEAD_CREATED` and `lead_created` evidence remains owned by the shared Contact/Lead cores.
+Existing `CRM_CONTACT_CREATED` remains owned by the shared internal Contact core. Existing `CRM_LEAD_CREATED` and `lead_created` remain owned directly by the RELEASED public Lead command.
 
 ## 10. PostgreSQL proof
 
@@ -351,6 +352,7 @@ The deep review specifically closed:
 - audit PII;
 - Patient boundary;
 - orchestration becoming a generic CRM writer;
+- accidental duplication of the RELEASED Lead writer;
 - frontend-before-backend deployment dependency.
 
 JEV was advisory only. An initial review routed to `deep_review`; after these refinements the follow-up routed to `proceed_fast` with moderate confidence. Deterministic repository/PostgreSQL evidence remains the execution authority.
