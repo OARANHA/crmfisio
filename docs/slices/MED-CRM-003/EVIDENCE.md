@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Canonical main reconstructed before execution:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat: cut over commercial CRM board`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED / NOT RELEASED
 
 ## REAL NOW before execution
 
@@ -285,10 +285,75 @@ This evidence update occurs after the implementation HEAD above. Therefore it wi
 ## Status
 
 ```text
-MED-CRM-003 = PROVED ON BRANCH
-PR #536 = OPEN
-MERGED = NO
+MED-CRM-003 = PROVED + MERGED
+PR #536 = MERGED
+merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
 RELEASED = NO
 ```
 
 RELEASED requires production frontend rollout/readback after merge. There is no database rollout in this slice.
+
+
+## Merge proof
+
+After the documentation refresh on PR #536, the actual final HEAD was revalidated independently:
+
+```text
+final PR head =
+2f0d8bc3cf9a7b61677abc053a64218d120dacf6
+
+base/current main before merge =
+01a2b947e13144a885549c248acceb25021c36a2
+
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+
+final-head GitHub check-runs =
+9 completed
+9 success
+0 failed
+```
+
+The final `validate` job included successful `npm test`, typecheck, lint and production build; dependency audit also succeeded.
+
+PR #536 was then squash-merged with an expected-head guard. Result:
+
+```text
+merged = true
+main =
+9962a14cb31ff09666234129590b59524a2d85c3
+```
+
+## Production pre-readback after merge
+
+A read-only public frontend observation was executed from the production host after the merge.
+
+The application remained healthy:
+
+```text
+/           HTTP 200
+/crm        HTTP 200
+/agenda     HTTP 200
+/pacientes  HTTP 200
+```
+
+At that observation point, production still served:
+
+```text
+/assets/index-D1eGcOhA.js
+```
+
+and the active bundle did **not** contain these MED-CRM-003 markers:
+
+```text
+list_current_clinic_crm_pipelines        ABSENT
+transition_current_clinic_crm_lead_stage ABSENT
+Leads arquivados / legado                ABSENT
+Contato anonimizado                      ABSENT
+```
+
+Therefore the production readback proves that merge had occurred **before** the auto-deploy completed. It is positive evidence for `NOT RELEASED`, not a release failure.
+
+No database or backend rollout is required by MED-CRM-003. Release remains gated only on observing the updated production frontend and a bounded health/readback check.
