@@ -202,10 +202,14 @@ Merge proves repository integration only. It does not prove production schema in
 
 ## Next exact step
 
-1. prove whether the #522/#524 migrations are installed in the real production database;
-2. if absent, execute the normal controlled rollout with verifier/readback rather than inferring deploy from GitHub;
-3. only after runtime proof may MED-CRM-001/002 move to RELEASED;
-4. re-run the capability selection gate after release before starting CRM Board Cutover or another feature.
+The readback capability now exists in `OARANHA/Remote-Ops-MCP` PR #35 / `main@52dbdf1bc12c44e46f52342dd73fce575b252f7c`, with `verify` and container `publish` GREEN plus end-to-end proxy contract proof. It is not yet deployed in the control plane: the live `remote-ops-mcp` still reports revision `985777e0...`, so the live connector does not expose `postgres_pinned_verifier_readback`.
+
+1. promote the already published Remote-Ops-MCP image through the canonical stack/Portainer path;
+2. prove the new schema live and configure the pinned readback proxy against the real production PostgreSQL container;
+3. prove whether the #522/#524 migrations are installed in the real production database;
+4. if absent, execute only a separately authorized controlled rollout with verifier/readback rather than inferring deploy from GitHub;
+5. only after runtime proof may MED-CRM-001/002 move to RELEASED;
+6. re-run the capability selection gate after release before starting CRM Board Cutover or another feature.
 
 The current next-product candidate is CRM Board Cutover V1 because `src/pages/Crm.tsx` still treats `Patient.funil_stage` as the commercial board authority. Its EXECUTION is deliberately blocked until #522/#524 runtime installation is proved.
 
