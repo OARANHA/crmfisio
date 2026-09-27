@@ -2,7 +2,7 @@
 
 **Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`
 **Branch:** `feat/med-crm-004-archived-pipeline-transition-guard`
-**Status:** PROVED — merge/release pending
+**Status:** RELEASED
 
 ## REAL NOW
 
@@ -115,4 +115,53 @@ An earlier attempt to start a disposable PostgreSQL cluster through the executio
 
 ## RELEASE
 
-Not started. MED-CRM-004 is PROVED, not MERGED and not RELEASED at this checkpoint. Because this slice changes the canonical production RPC, RELEASED requires merge plus controlled production rollout and post-rollout readback.
+PR #534 was revalidated on final head `8b0c4c331c78f09e472f83567c59bde2a258790e` with all 21 workflow runs completed successfully and was squash-merged as:
+
+```text
+main@bc667edced77e6f96f3ba1584c48c83dbfcb05e2
+```
+
+Before production mutation, the new canonical verifier was registered in the existing hash-pinned readback channel without granting generic database or Docker authority. Its pre-rollout execution failed specifically on the missing archived-pipeline transition guard, proving the production contract was still old.
+
+The exact canonical additive migration was staged and its SHA-256 matched both before and inside the production PostgreSQL container. The approval-gated apply completed transactionally:
+
+```text
+BEGIN
+CREATE FUNCTION
+REVOKE
+GRANT
+COMMENT
+COMMIT
+```
+
+Immediate post-rollout verification used the separate `medicspro-db-readback` target in PostgreSQL read-only mode. The pinned verifier SHA-256 was:
+
+```text
+c95af04939093c551d47378f89caa4777728bf86ba4268d8b3a7892b416ca732
+```
+
+and returned:
+
+```text
+COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED
+```
+
+That verifier proved the canonical transition function remains present, state-changing transitions require an active current pipeline under the row-lock guard before mutation, same-stage idempotency remains ordered before that guard, tenant/stage/audit/Patient boundaries remain present, and browser ACL remains authenticated-RPC-only.
+
+Final advisory completion review after rollout/readback:
+
+```text
+complete = 0.96
+verify_more = 0.02
+incomplete = 0.02
+confidence = 0.95
+```
+
+Deterministic evidence remains authoritative.
+
+Bounded release state:
+
+```text
+MED-CRM-004 = PROVED + MERGED + RELEASED
+MED-CRM-003 = not auto-authorized; fresh four-gate reconstruction required
+```
