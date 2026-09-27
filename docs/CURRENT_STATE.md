@@ -39,17 +39,19 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548
+## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548 / #551
 
 ### MED-CRM-007 — Commercial Lead Activity Timeline V1
 
-**Status:** **IMPLEMENTING / NOT PROVED.** Design PR #550 was exact-head verified with 20/20 successful workflows and squash-merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`. A fresh post-merge reconstruction found no product/schema/backend change beyond that docs-only design merge and no competing current CRM authority, so execution started on `feat/med-crm-007-lead-activity-timeline`.
+**Status:** **RELEASED.** Design PR #550 passed 20/20 workflows and merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`. Implementation PR #551 remained frontend-only; exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` passed 20/20 workflows with zero failures and was squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`.
 
-The implementation remains frontend-only and reuses the RELEASED `list_current_clinic_crm_lead_activities(uuid)`. The adapter projects activity rows into a bounded shape and deliberately drops raw metadata, actor IDs, candidate IDs, Contact signals and Patient data. The Board loads history only on demand for a selected Lead, resolves stage UUIDs only against the already-loaded Commercial CRM stage projection, renders known events with bounded copy and renders unknown events as a neutral commercial activity.
+The implementation consumes only the RELEASED `list_current_clinic_crm_lead_activities(uuid)` authority. The adapter drops raw metadata, actor IDs, candidate IDs, Contact signals and Patient data before Board rendering. Timeline loading is on-demand per Lead; known `lead_created`, `stage_changed` and `contact_identity_resolved` events use bounded presenters; unknown activity types use a neutral fallback; stage UUIDs are resolved only against the already-loaded Commercial CRM stage projection.
 
-No SQL/schema/migration/RPC/RLS/RBAC/role/entitlement/tenant/audit authority has been added. `Contact != Lead != Patient`, owner/admin/recep writers and professional/financeiro read-only boundaries remain unchanged.
+Production rollout was observed after an initial readback still showed the previous build. The live app now serves `/assets/index-DLkUkW9i.js` referencing `/assets/CrmOperational-foLfVbZu.js`. The live CRM chunk contains `list_current_clinic_crm_lead_activities`, `Atividade comercial registrada` and `Ver histórico`; the old direct Prospect writers remain absent; direct `crm_lead_activities` table access and `candidate_ids`/`actor_id`/`p_patient_id`/`create_patient` markers are absent. Public smoke returned HTTP 200 for `/`, `/crm`, `/agenda` and `/pacientes`.
 
-**Next exact gate:** exact-head repository validation and GitHub Actions for the implementation branch. Do not declare PROVED before those checks pass; do not declare RELEASED before frontend rollout/readback.
+No SQL/schema/migration/backend RPC/RLS/RBAC/role/entitlement/tenant/audit authority changed. `Contact != Lead != Patient`, owner/admin/recep writer authority and professional/financeiro read-only behavior remain preserved. No authenticated human timeline smoke and no production data mutation are claimed.
+
+**MED-CRM-007 is closed.** Any successor Commercial CRM capability requires a fresh slice and the full gates before execution.
 
 ### MED-CRM-006 — Contact Identity Resolution V1
 

@@ -147,6 +147,63 @@ Current implementation scope:
 
 No migration, backend RPC, table, RLS/RBAC, role, entitlement, tenant source, audit path or runtime mutation is part of this checkpoint.
 
-### Validation status
+### Repository validation
 
-Not yet PROVED. Exact-head CI and build/test evidence must still pass before this section can advance beyond implementation evidence.
+PR #551 exact HEAD:
+
+`6714ed5672fa2b08934ce7538fbab016d3d2f8f7`
+
+GitHub Actions readback on that exact HEAD returned:
+
+```text
+20 success
+0 failure
+0 queued
+0 in_progress
+```
+
+The PR was then squash-merged as:
+
+`main@7f1eda9631407ac8ddaa6fae4c87c293db024945`
+
+The merged diff contains only the bounded frontend adapter/UI, focused tests and slice documentation. It adds no SQL, migration, backend RPC, RLS/RBAC, role, entitlement, tenant source, audit writer or Patient/clinical authority.
+
+This is sufficient repository evidence for `PROVED + MERGED`.
+
+### Post-merge runtime readback
+
+The first governed production readback immediately after #551 merged still returned the prior entry:
+
+`/assets/index-BYMym6it.js`
+
+That correctly prevented an early RELEASED claim.
+
+A later governed readback then observed the frontend rollout:
+
+- entry: `/assets/index-DLkUkW9i.js`;
+- CRM chunk: `/assets/CrmOperational-foLfVbZu.js`;
+- `list_current_clinic_crm_lead_activities`: PRESENT;
+- `list_current_clinic_crm_contact_identity_candidates`: PRESENT;
+- `resolve_current_clinic_crm_prospect_identity`: PRESENT;
+- `Atividade comercial registrada`: PRESENT;
+- `Ver histórico`: PRESENT;
+- old direct Prospect writers `create_current_clinic_crm_contact` and `create_current_clinic_crm_lead`: ABSENT;
+- direct `.from("crm_lead_activities")` / `.from('crm_lead_activities')`: ABSENT;
+- `candidate_ids`, `actor_id`, `p_patient_id`, `create_patient`: ABSENT;
+- `/`, `/crm`, `/agenda`, `/pacientes`: HTTP 200.
+
+The broader CRM lazy chunk still contains a `/pacientes/` string because `Crm.tsx` already composes separate Patient-domain NPS/churn content. Repository boundary tests prove `CommercialCrmBoard` itself does not introduce Patient navigation, while the timeline adapter drops Patient data from the activity projection.
+
+No backend/database rollout was required for MED-CRM-007 because the activity RPC was already RELEASED before this slice.
+
+### Release conclusion
+
+MED-CRM-007 is **RELEASED** based on:
+
+- exact-head repository proof: 20/20 successful workflows on `6714ed5672fa2b08934ce7538fbab016d3d2f8f7`;
+- squash merge: `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`;
+- live production frontend rollout observation;
+- live CRM marker/boundary readback;
+- baseline public route health.
+
+No authenticated human timeline interaction was executed in this release readback, and none is claimed. No production data mutation was needed.
