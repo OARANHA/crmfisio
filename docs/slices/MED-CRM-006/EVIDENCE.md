@@ -2,7 +2,21 @@
 
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
-**Audited main:** live frontend execution base `e2902917f247ab92683988e3beed8b5e4badd225`
+**Audited main:** `910dff50cf113a350e21192bcf5cd2209db1ab71`
+
+## Final frontend release checkpoint — 2026-09-27
+
+- frontend implementation PR #548 final validated HEAD: `d2c6356883a767f302ac98af834a9319f678529e`;
+- all 20 workflow runs associated with that exact PR HEAD completed successfully, including `Clinical workflow CI`;
+- protected squash merge produced `main@910dff50cf113a350e21192bcf5cd2209db1ab71`;
+- after the Portainer redeploy, production began serving entry bundle `/assets/index-BYMym6it.js` with `Last-Modified: Sun, 27 Sep 2026 16:40:32 GMT`;
+- that entry references live CRM chunk `/assets/CrmOperational-6R-i_o-S.js`;
+- the live CRM chunk contains `list_current_clinic_crm_contact_identity_candidates`, `resolve_current_clinic_crm_prospect_identity`, `create_if_clear`, `explicit_reuse`, `explicit_distinct` and the exact-retry copy `Repetir mesma tentativa`;
+- the live CRM chunk does not contain the old direct Prospect Intake writers `create_current_clinic_crm_contact` or `create_current_clinic_crm_lead`;
+- public route smoke after redeploy returned HTTP 200 for `/`, `/crm`, `/agenda` and `/pacientes`;
+- no authenticated human Contact/Lead mutation was performed as part of this final readback; release status is based on exact-head repository proof, released backend verifier evidence, live production bundle readback and public route health.
+
+Deterministic conclusion: **MED-CRM-006 is RELEASED**. The canonical boundary remains `Contact != Lead != Patient`; phone/email remain candidate signals rather than unique identity; the server resolver remains final authority; no Patient matching/creation authority was introduced by this slice.
 
 ## Canonical implementation checkpoint — 2026-09-27
 
@@ -15,7 +29,7 @@
 - protected squash merge with `expected_head_sha=aed1b2752ca86c43ea37a47abf8e5684434e2811` produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`;
 - post-merge comparison proved `main` identical to that merge SHA;
 - PR #542 remains non-authoritative prototype/reuse evidence only;
-- backend implementation is PROVED and MERGED; production rollout/readback is now also complete, so backend authority is RELEASED and frontend work is authorized as the next phase.
+- backend implementation is PROVED, MERGED and RELEASED; frontend PR #548 is also PROVED, MERGED and observed in production, so the whole MED-CRM-006 slice is RELEASED.
 
 
 ## Backend implementation proof — PR #544
@@ -54,7 +68,7 @@ Runtime authority and rollout evidence:
   - `COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED`;
   - `COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED`.
 
-Deterministic conclusion: MED-CRM-006 **backend authority is RELEASED** in production. Frontend identity-resolution UX is now authorized, but the overall slice is not yet final.
+Deterministic conclusion: MED-CRM-006 backend authority is RELEASED in production. Frontend identity-resolution UX is also PROVED, merged and observed in production; the whole slice is RELEASED.
 
 
 ## Repository state
@@ -216,7 +230,7 @@ From `docs/DESKCOMM_ADOPTION_MATRIX.md` and `docs/slices/MED-DOC-001/FINAL-ABSOR
 
 Deskcomm is used only for patterns/invariants, never as authority for MedicsPro identity semantics.
 
-## Frontend execution evidence — PR #548 (NOT YET PROVED)
+## Frontend execution evidence — PR #548 (PROVED + MERGED + RELEASED)
 
 Fresh reconstruction before execution proved:
 
@@ -230,7 +244,7 @@ Fresh reconstruction before execution proved:
 
 The frontend reuse gate selected only RELEASED capabilities: candidate lookup, final resolver, existing writer/tenant authority, resolver-owned Contact/Lead/activity/audit behavior, stable draft IDs and canonical CRM projections.
 
-PR #548 currently changes only frontend adapter/UI/tests/docs. Product code adds no SQL/schema/RPC/table/role/entitlement/tenant/audit authority. Prospect Intake now uses the dedicated candidate projection for preview and the final resolver for commit; it has no fallback to the old separate Contact/Lead browser writers.
+PR #548 changed only frontend adapter/UI/tests/docs. Product code adds no SQL/schema/RPC/table/role/entitlement/tenant/audit authority. Prospect Intake now uses the dedicated candidate projection for preview and the final resolver for commit; it has no fallback to the old separate Contact/Lead browser writers.
 
 New tests cover:
 
@@ -245,7 +259,7 @@ New tests cover:
 - adapter shape for candidate/resolver RPCs and no Patient fields;
 - static frontend boundary: no Prospect Intake fallback to old Contact/Lead writers and no Lead projection used as identity matching authority.
 
-This is implementation evidence only. The exact current PR HEAD still requires all applicable GitHub workflows, unit/frontend tests, typecheck, lint, build, validate and dependency-audit before frontend can be called PROVED.
+Final PR #548 HEAD `d2c6356883a767f302ac98af834a9319f678529e` completed all 20 applicable GitHub workflows successfully before protected squash merge as `main@910dff50cf113a350e21192bcf5cd2209db1ab71`.
 
 ## Frontend adversarial retry correction — 2026-09-27
 
@@ -257,14 +271,9 @@ The regression test deliberately prepares a self-candidate for a hypothetical se
 
 ## Evidence limitations
 
-This checkpoint proves backend repository implementation, production migration and production-safe readback. It does **not** prove:
+This checkpoint proves backend repository implementation, production migration and production-safe readback; exact-head frontend repository proof; protected merge; live Portainer bundle observation; and public route health. It does **not** claim a human-authenticated production Contact/Lead mutation session or a role-by-role manual UX walkthrough.
 
-- frontend candidate/resolution UX;
-- browser behavior for explicit reuse/distinct decisions;
-- observed frontend production deployment;
-- full MED-CRM-006 end-to-end release reconciliation.
-
-Historical normalized Contact distribution was not mass-backfilled or used as release authority; legacy correctness remains server-side normalization of stored raw values. MED-CRM-006 as a whole remains open until the frontend phase is proved and observed in production.
+Historical normalized Contact distribution was not mass-backfilled or used as release authority; legacy correctness remains server-side normalization of stored raw values. MED-CRM-006 is RELEASED on the evidence recorded above.
 
 
 ## Implementation-plan review evidence — 2026-09-27
