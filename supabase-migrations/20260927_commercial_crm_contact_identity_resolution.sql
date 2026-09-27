@@ -19,7 +19,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  v_digits := regexp_replace(v_trim, '\\D', '', 'g');
+  v_digits := regexp_replace(v_trim, '[^0-9]', '', 'g');
 
   IF v_digits = '' THEN
     RETURN NULL;
