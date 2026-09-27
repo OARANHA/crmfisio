@@ -4,9 +4,13 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Current integrated main before this release-documentation branch:
+Current integrated main:
 
-`main@7e1ab2fba50d6188e718411c6b51b201ae417954`
+`main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2`
+
+Backend release documentation:
+
+`#546 — MERGED` via protected squash as `main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2`
 
 Design PR:
 
@@ -33,6 +37,8 @@ Reason: #542 is all-green against a pre-#543 contract but materially diverges fr
 Status:
 
 `BACKEND RELEASED / FRONTEND EXECUTION AUTHORIZED / SLICE NOT FINAL`
+
+This HANDOFF is the canonical transition point from the completed backend phase into the frontend phase. Revalidate mutable GitHub/runtime state before acting; do not re-open backend authority unless new evidence invalidates the released contract.
 
 Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f7978a9cdd10b`:
 
@@ -247,7 +253,7 @@ Between backend DB rollout and frontend UX rollout, stale frontend behavior is i
 
 ## Next exact step
 
-1. re-resolve current `origin/main` before frontend work;
+1. re-resolve current `origin/main` and require it to include `main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2` or a later descendant before frontend work;
 2. audit the released Prospect Intake UI/client path again against the now-RELEASED backend RPCs;
 3. preserve `Contact != Lead != Patient` and keep identity decision authority server-side;
 4. implement candidate preview + explicit `reuse` / `distinct` UX as a frontend adapter over the released RPCs, without new browser-side identity authority;
