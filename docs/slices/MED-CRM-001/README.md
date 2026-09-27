@@ -1,8 +1,8 @@
 # MED-CRM-001 — Commercial Core
 
-**Status:** IMPLEMENTING  
+**Status:** PROVED  
 **Capability:** CRM commercial foundation  
-**Execution:** foundation micro-slice in progress  
+**Execution:** foundation micro-slice proved; PR #522 remains open/unmerged  
 **Created:** 2026-09-26  
 **Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`  
 **Implementation readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`
@@ -34,7 +34,7 @@ A slice cria a fundação para identidade pré-clínica/comunicacional, oportuni
 - não fabricar histórico comercial para Patients existentes;
 - não portar tenancy/auth/runtime Deskcomm.
 
-## REAL NOW
+## Estado atual comprovado
 
 O readback detalhado está em [`EVIDENCE.md`](EVIDENCE.md).
 
@@ -210,7 +210,7 @@ A confiança moderada é registrada deliberadamente. Implementação deve manter
 
 ## Execution
 
-A primeira micro-slice está em andamento e é acompanhada em [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md).
+A primeira micro-slice está **PROVED** e é acompanhada em [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md). A PR #522 permanece aberta; `PROVED` não significa `MERGED` nem `RELEASED`.
 
 Escopo atual:
 
@@ -231,26 +231,31 @@ Fora do escopo atual:
 - automation/follow-up;
 - attribution.
 
-## Validation required before PROVED
+## Validation evidence — PROVED
 
-- PostgreSQL 16 harness;
-- PostgreSQL 17 harness;
-- replay/idempotency;
-- cross-clinic tenant boundary;
-- entitlement `crm.access`;
-- role/read matrix;
-- authenticated direct-write denial;
-- Contact patient-link uniqueness;
-- stage_kind/source-of-truth invariant;
-- lost reason enforcement;
-- activity append-only;
-- repository tests/typecheck/lint/build;
-- final-tree readback.
+A foundation foi provada com evidência reproduzível:
 
-Conversion idempotency, Patient Registry reuse and linked LGPD lifecycle remain gates for the later conversion micro-slice, not for claiming this schema-only foundation as complete.
+- PostgreSQL 16.15: harness GREEN;
+- PostgreSQL 17.11: harness GREEN;
+- migration aplicada duas vezes em ambos os ambientes;
+- verifier estrutural GREEN;
+- behavior cases GREEN;
+- cross-clinic tenant boundary GREEN;
+- `crm.access`/role read matrix GREEN;
+- authenticated direct-write denial GREEN;
+- Contact↔Patient tenant/link invariants GREEN;
+- `stage_kind` como fonte única open/won/lost GREEN;
+- activity tenant integrity GREEN;
+- ausência de conteúdo clínico na projeção CRM GREEN;
+- repository-required workflows: 8/8 SUCCESS no head reconciliado `472891f2ebd61902e5b323a0f821766822650c30`;
+- diff final contra `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`: 13 commits à frente, 0 atrás, 9 arquivos esperados, sem board/Inbox/automação/conversão.
 
+O update de handoff/status é documental. Antes de merge, revalidar os checks do HEAD mais recente da PR.
 ## Next exact step
 
-Executar e corrigir o harness de `IMPLEMENTATION-001.md` em PostgreSQL 16/17, abrir PR e só promover esta micro-slice após os gates verdes.
+1. revalidar PR #522 no HEAD mais recente: base, diff, checks e mergeability;
+2. tratar o merge da #522 como decisão separada — `PROVED != MERGED != RELEASED`;
+3. após merge/reconciliação em `main`, iniciar o capability map do próximo CRM slice;
+4. aplicar obrigatoriamente `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
-Não iniciar mutation RPCs, board, Inbox ou automação enquanto a fundação estiver sem prova.
+Não começar board, Inbox, automação ou Lead→Patient conversion diretamente. Primeiro mapear capabilities/dependências e escolher a menor próxima slice estrutural.
