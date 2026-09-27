@@ -39,6 +39,16 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
+## Commercial CRM — next designed slice (not implemented)
+
+### MED-CRM-008 — Lead Commercial Details V1
+
+**Status:** **DESIGNED / EXECUTION NOT STARTED** on branch `docs/med-crm-008-lead-commercial-details`, audited from `main@7b75b77c667b1c17b6eb408ee7047ad866e78a73`.
+
+Fresh post-MED-CRM-007 audit selected a deliberately narrow gap: the canonical Lead already stores/projects `title`, `value_cents` and `source`, but the current Board has no canonical update command or edit UX for these fields. Raw browser `UPDATE crm_leads` remains closed. The design therefore reuses `crm_current_mutator_clinic_id()`, `crm.access`, current-clinic tenant authority, existing Lead constraints, `crm_lead_activities` and `audit_log`.
+
+The adversarial review **removed `owner_id` from V1** because current server semantics only prove same-tenant/active-profile ownership, not which operational roles are legitimate Lead owners. MED-CRM-008 also excludes stage/pipeline mutation, Contact edit, loss-reason taxonomy, follow-up, Inbox, attribution engine and Lead→Patient. No product code, migration, runtime rollout or production mutation is claimed by this design checkpoint.
+
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548 / #551
 
 ### MED-CRM-007 — Commercial Lead Activity Timeline V1
