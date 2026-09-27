@@ -93,14 +93,17 @@ SET archived_at = NULL
 WHERE id = current_setting('medicspro.guard_target_stage')::uuid;
 
 SELECT '3) archived current pipeline blocks state-changing transition server-side' AS check;
-DO $$
+DO $
 DECLARE
   v_pipeline uuid;
+  v_original_stage uuid;
 BEGIN
-  SELECT pipeline_id
-    INTO v_pipeline
+  SELECT pipeline_id, stage_id
+    INTO v_pipeline, v_original_stage
   FROM public.crm_leads
   WHERE id = '81000000-0000-0000-0000-000000000020';
+
+  PERFORM set_config('medicspro.guard_original_stage', v_original_stage::text, false);
 
   UPDATE public.crm_pipelines
   SET archived_at = now()
@@ -123,7 +126,6 @@ DECLARE
   v_pipeline uuid;
   v_current uuid;
   v_target uuid;
-  v_result public.crm_leads%ROWTYPE;
 BEGIN
   SELECT pipeline_id, stage_id
     INTO v_pipeline, v_current
@@ -161,19 +163,15 @@ END $$;
 RESET ROLE;
 
 SELECT '4) rejected transition leaves Lead, activity, audit and Patient domain untouched' AS check;
-DO $$
+DO $
 DECLARE
   v_pipeline uuid;
-  v_expected_stage uuid;
+  v_expected_stage uuid := current_setting('medicspro.guard_original_stage')::uuid;
 BEGIN
-  SELECT l.pipeline_id, s.id
-    INTO v_pipeline, v_expected_stage
-  FROM public.crm_leads l
-  JOIN public.crm_stages s
-    ON s.id = l.stage_id
-   AND s.pipeline_id = l.pipeline_id
-   AND s.clinic_id = l.clinic_id
-  WHERE l.id = '81000000-0000-0000-0000-000000000020';
+  SELECT pipeline_id
+    INTO v_pipeline
+  FROM public.crm_leads
+  WHERE id = '81000000-0000-0000-0000-000000000020';
 
   IF (SELECT stage_id FROM public.crm_leads WHERE id = '81000000-0000-0000-0000-000000000020')
      IS DISTINCT FROM v_expected_stage THEN
