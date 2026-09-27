@@ -241,17 +241,29 @@ Do not add Contact/Lead creation UI, intake rewrite, Contact edit/merge/dedupe, 
 
 ## Handoff refresh — 2026-09-27
 
-Immediately before this handoff refresh was committed, the repository was revalidated again:
+Immediately before generating the next-chat handoff, the repository was revalidated again:
 
 ```text
-origin/main = 72a60262d09a14ce8382f3da9db12afcd15a8464
-PR #533 = OPEN + mergeable
-PR #533 base = main @ 72a60262d09a14ce8382f3da9db12afcd15a8464
-PR #533 head before this refresh = dbf0003533263bb28644eea45c178a40ab38f6ca
-PR #533 workflows on that head = 20 completed / 20 success
-PR #525 = OPEN historical input only
+origin/main = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
+PR #535 = OPEN + mergeable
+PR #535 base = main @ bc667edced77e6f96f3ba1584c48c83dbfcb05e2
+PR #535 head before this refresh = dabcc972c98778dc9216605f26718c89a107e76b
+PR #535 workflows on that head = 20 completed / 20 success / 0 failed
+PR #525 = OPEN historical input only / mergeable=false
+MED-CRM-004 runtime = RELEASED with pinned read-only production verifier PASS
 ```
 
-This refresh commit itself advances the #533 head, so the successful workflow set above is evidence for `dbf0003533263bb28644eea45c178a40ab38f6ca`, not automatic certification of the new head. The next chat must re-read the actual #533 head and its checks before merging it.
+This handoff refresh itself advances the #535 head, so the 20/20 green workflow set above certifies `dabcc972c98778dc9216605f26718c89a107e76b`, not this new documentation commit automatically. The next chat must re-read the actual #535 head and its checks before merge.
 
-No product code, migration, RPC, schema, role, entitlement or runtime was changed by this refresh. No slice status is promoted. MED-CRM-003 remains `ANALYZED`, its second adversarial review remains `BLOCK`, and feature execution remains forbidden until the archived-pipeline server-contract prerequisite is separately gated, proved and released as applicable.
+No product code, migration, RPC, schema, role, entitlement or runtime is changed by this refresh.
+
+Exact continuation order:
+
+1. revalidate current `origin/main`, PR #535 current HEAD/mergeability/checks and PR #525 status;
+2. merge #535 only if its current HEAD is still based on current main, mergeable and every applicable check is completed + success;
+3. re-resolve `origin/main` after merge and read the canonical MED-CRM-003 + MED-CRM-004 docs from main;
+4. reconstruct MED-CRM-003 from current code/schema/tests;
+5. execute GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW;
+6. do not start Board implementation unless all four gates close on current evidence.
+
+MED-CRM-004 release removes the specific archived-pipeline prerequisite. It does not itself authorize MED-CRM-003 execution.
