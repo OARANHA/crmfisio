@@ -123,18 +123,18 @@ Além do runtime proof PostgreSQL 16/17:
 - migration/verifier/fixture/cases/harness continuam inalterados desde o proof PostgreSQL 16/17;
 - não entrou board/UI, Inbox, automação, attribution, provider ou Lead→Patient conversion;
 - decisão de merge foi concluída e #522 está integrada em `main@652ea7b3aea4cd03a09944b780ef697168016bc3`;
-- estado da foundation: `PROVED + MERGED`, ainda **não RELEASED** sem rollout observado;
+- estado da foundation: `PROVED + MERGED + RELEASED`; rollout produtivo e verifier canônico observados em 2026-09-27;
 - capability map pós-foundation: [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
 - continuidade comercial ativa: MED-CRM-002 / PR #524.
 
 ## Next exact step
 
-MED-CRM-001 não é mais a slice de execução ativa.
+MED-CRM-001 está fechada como slice RELEASED e não é mais slice de execução.
 
-1. confirmar a `main` atual e não inferir rollout da #522;
-2. ler [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
-3. para continuidade atual, seguir `docs/slices/MED-CRM-002/HANDOFF.md`;
-4. toda capability posterior continua sujeita a `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+1. resolver a `origin/main` atual;
+2. ler [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md), já reconstruído após o release;
+3. seguir `docs/slices/MED-CRM-002/HANDOFF.md` para o fechamento conjunto 001/002;
+4. qualquer nova capability comercial deve reiniciar `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW` antes de EXECUTION.
 
 ## Implementation validation
 
@@ -157,7 +157,7 @@ Concluído:
 - final diff/readback;
 - 8/8 repository-required workflows no head reconciliado.
 
-Merge concluído em #522; revalidar runtime apenas quando a pergunta depender de rollout/deploy.
+Merge concluído em #522; release produtivo observado em 2026-09-27. Revalidar runtime novamente sempre que uma decisão futura depender do estado implantado.
 ## VPS/runtime
 
 - required now: **no**;
