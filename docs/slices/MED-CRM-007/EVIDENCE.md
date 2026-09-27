@@ -132,6 +132,8 @@ After design PR #550 merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`, 
 
 `feat/med-crm-007-lead-activity-timeline`
 
+Implementation PR: `#551 — feat: add MED-CRM-007 lead activity timeline`
+
 Current implementation scope:
 
 - `src/lib/commercialCrm.ts`: adds `listCurrentClinicCrmLeadActivities(leadId)` using only the RELEASED `list_current_clinic_crm_lead_activities(uuid)` RPC;
