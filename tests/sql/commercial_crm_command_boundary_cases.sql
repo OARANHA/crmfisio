@@ -235,15 +235,13 @@ DECLARE
   v_lost uuid;
 BEGIN
   SELECT id INTO v_pipeline
-  FROM public.crm_pipelines
-  WHERE clinic_id='20000000-0000-0000-0000-000000000001'
-    AND is_default IS TRUE
+  FROM public.list_current_clinic_crm_pipelines()
+  WHERE is_default IS TRUE
     AND archived_at IS NULL;
 
   SELECT id INTO v_lost
-  FROM public.crm_stages
-  WHERE pipeline_id=v_pipeline
-    AND stage_kind='lost'
+  FROM public.list_current_clinic_crm_stages(v_pipeline)
+  WHERE stage_kind='lost'
     AND archived_at IS NULL;
 
   BEGIN
@@ -271,13 +269,12 @@ DECLARE
   v_lost uuid;
 BEGIN
   SELECT pipeline_id INTO v_pipeline
-  FROM public.crm_leads
-  WHERE id='81000000-0000-0000-0000-000000000001';
+  FROM public.list_current_clinic_crm_leads()
+  WHERE lead_id='81000000-0000-0000-0000-000000000001';
 
   SELECT id INTO v_lost
-  FROM public.crm_stages
-  WHERE pipeline_id=v_pipeline
-    AND stage_kind='lost'
+  FROM public.list_current_clinic_crm_stages(v_pipeline)
+  WHERE stage_kind='lost'
     AND archived_at IS NULL;
 
   PERFORM * FROM public.transition_current_clinic_crm_lead_stage(
@@ -325,8 +322,8 @@ DECLARE
   v_lost uuid;
 BEGIN
   SELECT stage_id INTO v_lost
-  FROM public.crm_leads
-  WHERE id='81000000-0000-0000-0000-000000000001';
+  FROM public.list_current_clinic_crm_leads()
+  WHERE lead_id='81000000-0000-0000-0000-000000000001';
 
   BEGIN
     PERFORM * FROM public.transition_current_clinic_crm_lead_stage(
@@ -352,14 +349,14 @@ DECLARE
   v_open uuid;
 BEGIN
   SELECT pipeline_id INTO v_pipeline
-  FROM public.crm_leads
-  WHERE id='81000000-0000-0000-0000-000000000001';
+  FROM public.list_current_clinic_crm_leads()
+  WHERE lead_id='81000000-0000-0000-0000-000000000001';
 
-  SELECT id INTO v_won FROM public.crm_stages
-  WHERE pipeline_id=v_pipeline AND stage_kind='won' AND archived_at IS NULL;
+  SELECT id INTO v_won FROM public.list_current_clinic_crm_stages(v_pipeline)
+  WHERE stage_kind='won' AND archived_at IS NULL;
 
-  SELECT id INTO v_open FROM public.crm_stages
-  WHERE pipeline_id=v_pipeline AND stage_kind='open' AND archived_at IS NULL
+  SELECT id INTO v_open FROM public.list_current_clinic_crm_stages(v_pipeline)
+  WHERE stage_kind='open' AND archived_at IS NULL
   ORDER BY position LIMIT 1;
 
   PERFORM * FROM public.transition_current_clinic_crm_lead_stage(
@@ -367,8 +364,8 @@ BEGIN
   );
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.crm_leads
-    WHERE id='81000000-0000-0000-0000-000000000001'
+    SELECT 1 FROM public.list_current_clinic_crm_leads()
+    WHERE lead_id='81000000-0000-0000-0000-000000000001'
       AND stage_id=v_won
       AND closed_at IS NOT NULL
       AND lost_reason_code IS NULL
@@ -382,8 +379,8 @@ BEGIN
   );
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.crm_leads
-    WHERE id='81000000-0000-0000-0000-000000000001'
+    SELECT 1 FROM public.list_current_clinic_crm_leads()
+    WHERE lead_id='81000000-0000-0000-0000-000000000001'
       AND stage_id=v_open
       AND closed_at IS NULL
       AND lost_reason_code IS NULL
