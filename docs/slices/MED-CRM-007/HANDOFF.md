@@ -16,6 +16,10 @@ Execution branch:
 
 `feat/med-crm-007-lead-activity-timeline`
 
+Implementation PR:
+
+`#551 — feat: add MED-CRM-007 lead activity timeline`
+
 Slice:
 
 `MED-CRM-007 — Commercial Lead Activity Timeline V1`
