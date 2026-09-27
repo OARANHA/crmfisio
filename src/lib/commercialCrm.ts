@@ -62,6 +62,15 @@ export type CommercialCrmIdentityResolutionMode =
   | 'explicit_reuse'
   | 'explicit_distinct';
 
+export interface CommercialCrmLeadActivity {
+  id: string;
+  activityType: string;
+  createdAt: string;
+  fromStageId: string | null;
+  toStageId: string | null;
+  resolutionMode: CommercialCrmIdentityResolutionMode | null;
+}
+
 export interface CommercialCrmIdentityCandidate {
   contactId: string;
   displayName: string;
@@ -160,6 +169,15 @@ type LeadRow = {
   stage_position: number;
 };
 
+type ActivityRow = {
+  id: string;
+  activity_type: string;
+  actor_id: string | null;
+  actor_kind: string;
+  metadata: unknown;
+  created_at: string;
+};
+
 type IdentityCandidateRow = {
   contact_id: string;
   display_name: string;
@@ -185,6 +203,26 @@ type TransitionRow = {
 
 function rows<T>(data: unknown): T[] {
   return Array.isArray(data) ? data as T[] : [];
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string): string | null {
+  const value = metadata[key];
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function metadataResolutionMode(
+  metadata: Record<string, unknown>,
+): CommercialCrmIdentityResolutionMode | null {
+  const value = metadata.resolution_mode;
+  return value === 'create_if_clear' || value === 'explicit_reuse' || value === 'explicit_distinct'
+    ? value
+    : null;
 }
 
 export async function listCurrentClinicCrmPipelines(): Promise<CommercialCrmPipeline[]> {
@@ -241,6 +279,30 @@ export async function listCurrentClinicCrmLeads(): Promise<CommercialCrmLead[]> 
     stageKind: row.stage_kind,
     stagePosition: row.stage_position,
   }));
+}
+
+export async function listCurrentClinicCrmLeadActivities(
+  leadId: string,
+): Promise<CommercialCrmLeadActivity[]> {
+  const { data, error } = await supabase.rpc('list_current_clinic_crm_lead_activities', {
+    p_lead_id: leadId,
+  });
+  if (error) throw error;
+
+  return rows<ActivityRow>(data).map((row) => {
+    const metadata = metadataRecord(row.metadata);
+    const stageChanged = row.activity_type === 'stage_changed';
+    const identityResolved = row.activity_type === 'contact_identity_resolved';
+
+    return {
+      id: row.id,
+      activityType: row.activity_type,
+      createdAt: row.created_at,
+      fromStageId: stageChanged ? metadataString(metadata, 'from_stage_id') : null,
+      toStageId: stageChanged ? metadataString(metadata, 'to_stage_id') : null,
+      resolutionMode: identityResolved ? metadataResolutionMode(metadata) : null,
+    };
+  });
 }
 
 export async function loadCurrentClinicCommercialCrm(): Promise<CommercialCrmSnapshot> {

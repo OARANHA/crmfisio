@@ -8,13 +8,25 @@ Design baseline:
 
 `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120`
 
+Execution baseline:
+
+`main@b8f7943960254ba33ec036a4462c6b2683367289`
+
+Execution branch:
+
+`feat/med-crm-007-lead-activity-timeline`
+
+Implementation PR:
+
+`#551 — feat: add MED-CRM-007 lead activity timeline`
+
 Slice:
 
 `MED-CRM-007 — Commercial Lead Activity Timeline V1`
 
 Status:
 
-`DESIGNED`
+`IMPLEMENTING`
 
 MED-CRM-006 remains RELEASED and closed. Do not extend it.
 
@@ -83,17 +95,23 @@ If fresh revalidation still confirms the contract:
 7. add focused adapter/UI/boundary tests;
 8. do not modify SQL/schema/backend unless a newly proved blocker sends the slice back through fresh gates.
 
+## Implementation checkpoint
+
+Design PR #550 passed 20/20 workflows on exact HEAD and merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`. Post-merge revalidation found no material authority change. Execution therefore started frontend-only.
+
+Implemented in the current branch:
+
+- bounded activity adapter over `list_current_clinic_crm_lead_activities(uuid)`;
+- no raw metadata/actor/candidate/Patient envelope reaches the Board;
+- on-demand per-Lead history UI;
+- bounded presenters for known events and neutral unknown-event fallback;
+- explicit loading/empty/error/retry states;
+- anonymized Contact remains anonymized;
+- focused adapter, UI and frontend-boundary tests.
+
 ## Next exact step
 
-Before any code:
-
-- re-resolve current `origin/main`;
-- inspect all open CRM PRs/branches;
-- verify MED-CRM-007 design PR is integrated or use its exact current authority;
-- compare current `src/lib/commercialCrm.ts`, `CommercialCrmBoard`, Core migration/verifier/tests;
-- rerun GAPS -> CAPABILITY AUTHORITY / REUSE GATE -> DECISION -> SECOND ADVERSARIAL REVIEW if the state materially changed.
-
-Only after those checks may MED-CRM-007 move from DESIGNED to IMPLEMENTING.
+Open/revalidate the implementation PR, run applicable workflows on its exact HEAD and fix any failure without widening scope. Only after repository proof may MED-CRM-007 advance to PROVED. Runtime rollout/readback is a separate later gate before RELEASED.
 
 ## Proof required later
 

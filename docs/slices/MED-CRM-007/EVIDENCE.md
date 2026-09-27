@@ -124,3 +124,29 @@ This design checkpoint does **not** claim:
 - production database was modified.
 
 Status remains `DESIGNED`.
+
+
+## Implementation checkpoint
+
+After design PR #550 merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`, the repository and active CRM PR state were reconstructed again. No material product authority changed, so the previously closed four gates remained valid and execution started on:
+
+`feat/med-crm-007-lead-activity-timeline`
+
+Implementation PR: `#551 — feat: add MED-CRM-007 lead activity timeline`
+
+Current implementation scope:
+
+- `src/lib/commercialCrm.ts`: adds `listCurrentClinicCrmLeadActivities(leadId)` using only the RELEASED `list_current_clinic_crm_lead_activities(uuid)` RPC;
+- the adapter drops raw `metadata`, `actor_id`/actor identity, Contact candidate identifiers/signals and Patient data instead of forwarding the generic server envelope to UI;
+- only stage transition IDs needed for local stage-name resolution and the bounded identity `resolution_mode` survive the adapter projection;
+- `CommercialCrmBoard` loads timeline rows on demand for the selected Lead rather than preloading every Lead history;
+- known `lead_created`, `stage_changed` and `contact_identity_resolved` events render bounded copy;
+- unknown activity types render only `Atividade comercial registrada.`;
+- loading, empty, error/retry and anonymized-Contact behavior are covered by focused tests;
+- the frontend boundary test now pins the activity RPC and rejects raw-table/Patient/metadata authority drift.
+
+No migration, backend RPC, table, RLS/RBAC, role, entitlement, tenant source, audit path or runtime mutation is part of this checkpoint.
+
+### Validation status
+
+Not yet PROVED. Exact-head CI and build/test evidence must still pass before this section can advance beyond implementation evidence.

@@ -13,6 +13,7 @@ import {
   executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
   listCurrentClinicCrmContactIdentityCandidates,
+  listCurrentClinicCrmLeadActivities,
   listCurrentClinicCrmLeads,
   listCurrentClinicCrmPipelines,
   listCurrentClinicCrmStages,
@@ -102,6 +103,77 @@ describe('commercial CRM canonical frontend adapter', () => {
     await listCurrentClinicCrmLeads();
 
     expect(rpc).toHaveBeenCalledTimes(3);
+  });
+
+  it('maps the released Lead activity projection into a bounded frontend shape', async () => {
+    rpc.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'activity-stage',
+          activity_type: 'stage_changed',
+          actor_id: 'actor-secret',
+          actor_kind: 'human',
+          metadata: {
+            from_stage_id: 'stage-open',
+            to_stage_id: 'stage-lost',
+            lost_reason_detail: 'SEGREDO LIVRE',
+            candidate_ids: ['contact-secret'],
+            patient_id: 'patient-secret',
+          },
+          created_at: '2026-09-27T12:00:00Z',
+        },
+        {
+          id: 'activity-identity',
+          activity_type: 'contact_identity_resolved',
+          actor_id: 'actor-secret',
+          actor_kind: 'human',
+          metadata: {
+            resolution_mode: 'explicit_reuse',
+            requested_contact_id: 'contact-requested',
+            resolved_contact_id: 'contact-resolved',
+            candidate_ids: ['contact-resolved'],
+            match_reasons: ['phone_exact'],
+            distinct_reason: 'SEGREDO DISTINTO',
+          },
+          created_at: '2026-09-27T11:00:00Z',
+        },
+      ],
+      error: null,
+    });
+
+    const activities = await listCurrentClinicCrmLeadActivities('lead-a');
+
+    expect(rpc).toHaveBeenCalledWith('list_current_clinic_crm_lead_activities', {
+      p_lead_id: 'lead-a',
+    });
+    expect(activities).toEqual([
+      {
+        id: 'activity-stage',
+        activityType: 'stage_changed',
+        createdAt: '2026-09-27T12:00:00Z',
+        fromStageId: 'stage-open',
+        toStageId: 'stage-lost',
+        resolutionMode: null,
+      },
+      {
+        id: 'activity-identity',
+        activityType: 'contact_identity_resolved',
+        createdAt: '2026-09-27T11:00:00Z',
+        fromStageId: null,
+        toStageId: null,
+        resolutionMode: 'explicit_reuse',
+      },
+    ]);
+
+    const serialized = JSON.stringify(activities);
+    expect(serialized).not.toContain('actor-secret');
+    expect(serialized).not.toContain('SEGREDO LIVRE');
+    expect(serialized).not.toContain('SEGREDO DISTINTO');
+    expect(serialized).not.toContain('contact-secret');
+    expect(serialized).not.toContain('contact-requested');
+    expect(serialized).not.toContain('contact-resolved');
+    expect(serialized).not.toContain('patient-secret');
+    expect(serialized).not.toContain('phone_exact');
   });
 
   it('maps the released Contact identity candidate projection without Patient fields', async () => {
