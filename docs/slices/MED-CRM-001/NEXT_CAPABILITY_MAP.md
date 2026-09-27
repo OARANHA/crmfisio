@@ -1,7 +1,7 @@
 # MED-CRM-001 — Post-Foundation Capability Map
 
-**Audited against:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`  
-**Date:** 2026-09-26  
+**Audited against:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
+**Date:** 2026-09-26
 **Purpose:** classify the real commercial/relationship capability surface after the MED-CRM-001 foundation merge, before selecting the next implementation slice.
 
 > This is an evidence-backed snapshot, not a permanent state claim. Re-measure against current `origin/main`, active PRs and runtime when the question depends on deployment.
