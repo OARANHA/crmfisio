@@ -1,5 +1,6 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CommercialCrmSnapshot } from '../lib/commercialCrm';
 import { CommercialCrmBoard } from './CommercialCrmBoard';
 
 const testState = vi.hoisted(() => ({
@@ -38,7 +39,7 @@ const testState = vi.hoisted(() => ({
         stagePosition: 0,
       },
     ],
-  },
+  } as CommercialCrmSnapshot,
   load: vi.fn(),
   execute: vi.fn(),
   toast: vi.fn(),
@@ -70,7 +71,7 @@ async function renderBoard(): Promise<ReactTestRenderer> {
   return renderer;
 }
 
-function baseSnapshot() {
+function baseSnapshot(): CommercialCrmSnapshot {
   return {
     pipelines: [
       { id: 'pipeline-a', name: 'Comercial', isDefault: true, archivedAt: null },
