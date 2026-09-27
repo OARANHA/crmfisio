@@ -223,7 +223,7 @@ Additional decisions closed before execution:
 - all BR with/without-9 phone candidate variants participate in advisory locking;
 - advisory lock keys use namespaced PostgreSQL 16/17 built-in SHA-256 and a deterministic positive 63-bit bigint;
 - the existing Contact create command is hardened as create-if-clear so direct callers cannot bypass resolution;
-- existing Contact/Lead bodies are shared through revoked internal helpers instead of duplicated by orchestration;
+- Contact insert/idempotency/audit is shared through one revoked internal helper; the RELEASED public Lead command keeps its own canonical body and is called directly by orchestration, with only a per-Lead retry lock added;
 - `p_contact_id` in the final orchestration is always the effective Contact UUID, including the selected existing Contact for `explicit_reuse`;
 - exact orchestration retry is recognized from persisted resolution evidence before candidate ambiguity is evaluated;
 - `explicit_distinct` uses bounded reason codes so resolution evidence cannot become a raw PII note field;
