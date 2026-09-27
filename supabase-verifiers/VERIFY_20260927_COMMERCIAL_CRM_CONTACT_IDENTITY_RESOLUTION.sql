@@ -172,7 +172,7 @@ BEGIN
 END $$;
 
 SELECT '8) released Lead authority remains in the public command and serializes same Lead UUID' AS check;
-DO $
+DO $$
 DECLARE
   v_def text := lower(pg_get_functiondef(
     'public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure
@@ -189,7 +189,7 @@ BEGIN
      OR v_def NOT LIKE '%crm_lead_created%' THEN
     RAISE EXCEPTION 'crm_lead_released_authority_or_retry_lock_missing';
   END IF;
-END $;
+END $$;
 
 SELECT '9) final orchestration is narrow, explicit and Patient-free' AS check;
 DO $$
