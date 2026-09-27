@@ -16,6 +16,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PSQL=(psql -v ON_ERROR_STOP=1 -X)
 
 "${PSQL[@]}" -f "$ROOT/tests/sql/commercial_crm_core_foundation_fixture.sql"
+"${PSQL[@]}" -f "$ROOT/supabase-migrations/20260927_updated_at_helper_reconciliation.sql"
+"${PSQL[@]}" -f "$ROOT/supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-migrations/20260926_commercial_crm_core_foundation.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-migrations/20260926_commercial_crm_command_boundary.sql"
 "${PSQL[@]}" -f "$ROOT/supabase-migrations/20260926_commercial_crm_command_boundary.sql"
