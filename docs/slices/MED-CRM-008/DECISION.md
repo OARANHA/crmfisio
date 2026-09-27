@@ -67,7 +67,7 @@ This does not create campaign identity, click attribution, Meta/Google identifie
 
 The implementation should prefer one narrow operation equivalent to:
 
-`update_current_clinic_crm_lead_details(p_lead_id, p_title, p_value_cents, p_source)`
+`update_current_clinic_crm_lead_details(p_lead_id, p_expected_updated_at, p_title, p_value_cents, p_source)`
 
 Exact signature/name must be revalidated during implementation, but the semantic contract is fixed:
 
@@ -75,11 +75,12 @@ Exact signature/name must be revalidated during implementation, but the semantic
 2. require a non-deleted Lead in that clinic and lock it;
 3. normalize title/source; validate title and value;
 4. compare old/new values under the lock;
-5. exact no-change retry returns the canonical row/outcome with no extra activity/audit;
-6. changed update modifies only title/value/source;
-7. create one `lead_details_updated` operational activity with bounded metadata such as `changed_fields[]`, never raw field values;
-8. create one `CRM_LEAD_DETAILS_UPDATED` audit record containing IDs/change categories only;
-9. never change Contact, Patient, pipeline, stage, owner or terminal fields.
+5. if the desired details already equal the current persisted details, treat the call as an exact retry/no-op even when the caller carries the pre-COMMIT token;
+6. otherwise require `p_expected_updated_at` to equal the locked row `updated_at`; stale projections fail explicitly and must refetch rather than overwrite a concurrent Lead change;
+7. changed update modifies only title/value/source;
+8. create one `lead_details_updated` operational activity with bounded metadata such as `changed_fields[]`, never raw field values;
+9. create one `CRM_LEAD_DETAILS_UPDATED` audit record containing IDs/change categories only;
+10. never change Contact, Patient, pipeline, stage, owner or terminal fields.
 
 ## Rollback/reversibility
 
@@ -90,6 +91,8 @@ A user edit itself is a business mutation; the activity/audit trail must make th
 ## Second adversarial review
 
 Deterministic findings:
+
+- implementation-plan review found that a row lock alone would still allow a stale full-form edit to overwrite a concurrent change; V1 therefore reuses the already-projected `lead_updated_at` as a conservative optimistic-concurrency token, with desired-state equality checked first to preserve exact retry idempotency;
 
 - including `owner_id` would force an unresolved ownership-role policy, so it was removed;
 - Pipeline/Stage admin is materially larger and touches live-lead semantics;
