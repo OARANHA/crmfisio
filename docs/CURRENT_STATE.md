@@ -39,9 +39,9 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — RELEASED #522 / #524 / #534 / #536
+## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538
 
-**Canonical repository checkpoint:** `main@9962a14cb31ff09666234129590b59524a2d85c3` before this documentation-only release reconciliation.
+**Canonical repository checkpoint:** `main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a` before this documentation-only MED-CRM-005 release reconciliation.
 
 **MED-CRM-001 Commercial Core:** **RELEASED**. PR #522 remains the implementation merge authority. The exact canonical migration `supabase-migrations/20260926_commercial_crm_core_foundation.sql` was applied to the real production PostgreSQL on `28server` / `supabase-db` after the versioned baseline reconciliation from PR #529. Its SHA-256 was proved both on the host and inside the PostgreSQL container as:
 
@@ -82,6 +82,8 @@ COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
 **MED-CRM-003 Commercial Board Cutover V1:** **PROVED + MERGED + RELEASED.** PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after its final HEAD passed 9/9 check-runs. Canonical source and the observed production frontend now use the RELEASED Commercial CRM projections and `transition_current_clinic_crm_lead_stage(...)` for the visible Board instead of `Patient.funil_stage` / `setFunilStage()`. Patient NPS, churn and Treatment Continuity remain separate Patient-domain content.
 
 **MED-CRM-004 Archived Pipeline Transition Guard:** **RELEASED**. PR #534 was revalidated on its final head with 21/21 workflow runs successful, including the dedicated PostgreSQL 16/17 proof, and squash-merged as `main@bc667edced77e6f96f3ba1584c48c83dbfcb05e2`. The additive migration hardens the existing canonical `transition_current_clinic_crm_lead_stage(...)`: state-changing transitions require the current pipeline to remain active under a row lock, while exact same-stage side-effect-free retries preserve idempotency.
+
+**MED-CRM-005 Prospect Intake V1:** **PROVED + MERGED + RELEASED.** PR #538 reused only the RELEASED `create_current_clinic_crm_contact(...)` and `create_current_clinic_crm_lead(...)` browser commands to add `Novo prospect` to the canonical `/crm` Board. It was squash-merged as `main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a` after final HEAD `6df9f1ba39b474454fe33ee93d0143677cd12f6d` passed 8/8 applicable workflows, including `validate` and `dependency-audit`. Production readback then proved entry `/assets/index-B0iT1ZY2.js` and CRM chunk `/assets/CrmOperational-D1hSbB77.js`, with the released Contact/Lead RPCs and `Novo prospect` present, no composite Prospect RPC, no Patient creation markers, and `/`, `/crm`, `/agenda`, `/pacientes` all HTTP 200. No database rollout or manual production mutation exists for this frontend-only slice.
 
 Production pre-readback proved the new guard was absent before rollout. The exact canonical migration was then hash-verified, applied transactionally through the governed managed-admin path, and the separate pinned read-only verifier returned:
 
