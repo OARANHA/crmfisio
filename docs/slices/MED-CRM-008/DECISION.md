@@ -72,7 +72,7 @@ The implementation should prefer one narrow operation equivalent to:
 Exact signature/name must be revalidated during implementation, but the semantic contract is fixed:
 
 1. resolve clinic via `crm_current_mutator_clinic_id()`;
-2. require a non-deleted Lead in that clinic and lock it;
+2. require a non-deleted Lead in that clinic, with linked Contact active/non-anonymized and current pipeline/stage non-archived, then lock the Lead;
 3. normalize title/source; validate title and value;
 4. compare old/new values under the lock;
 5. if the desired details already equal the current persisted details, treat the call as an exact retry/no-op even when the caller carries the pre-COMMIT token;
@@ -92,6 +92,7 @@ A user edit itself is a business mutation; the activity/audit trail must make th
 
 Deterministic findings:
 
+- implementation-plan review also found that Contact anonymization and archived pipeline/stage visibility would become UI-only guards if the new RPC ignored them; V1 therefore rejects edits for deleted/anonymized Contacts and archived pipeline/stage Leads server-side;
 - implementation-plan review found that a row lock alone would still allow a stale full-form edit to overwrite a concurrent change; V1 therefore reuses the already-projected `lead_updated_at` as a conservative optimistic-concurrency token, with desired-state equality checked first to preserve exact retry idempotency;
 
 - including `owner_id` would force an unresolved ownership-role policy, so it was removed;
