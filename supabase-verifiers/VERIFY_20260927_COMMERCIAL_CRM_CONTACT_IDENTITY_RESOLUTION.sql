@@ -123,7 +123,7 @@ BEGIN
 END $$;
 
 SELECT '6) lock primitive is transaction scoped and deterministically ordered' AS check;
-DO $
+DO $$
 DECLARE
   v_key text := lower(pg_get_functiondef(
     'public.crm_contact_identity_lock_key(uuid,text,text)'::regprocedure
@@ -148,7 +148,7 @@ BEGIN
      OR v_lock NOT LIKE '%crm_contact_phone_legacy_match_key%' THEN
     RAISE EXCEPTION 'crm_identity_signal_lock_contract_invalid';
   END IF;
-END $;
+END $$;
 
 SELECT '7) existing Contact writer is hardened and stores canonical normalized values' AS check;
 DO $$
