@@ -209,7 +209,7 @@ export function CommercialCrmBoard() {
       return true;
     } catch (error) {
       console.error('[MedicsPro] Falha ao mover Lead comercial:', error);
-      toast('Não foi possível mover o Lead. O estado persistido não foi alterado.', 'warn');
+      toast('Não foi possível confirmar a mudança do Lead. Atualize o quadro antes de tentar novamente.', 'warn');
       return false;
     } finally {
       setMovingLeadId(null);
