@@ -41,7 +41,7 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536
 
-**Canonical repository checkpoint:** `main@9ed72fa51b536a9efa8b35b910fbb49547daf7fa` before this documentation-only release reconciliation.
+**Canonical repository checkpoint:** `main@9962a14cb31ff09666234129590b59524a2d85c3` before this documentation-only release reconciliation.
 
 **MED-CRM-001 Commercial Core:** **RELEASED**. PR #522 remains the implementation merge authority. The exact canonical migration `supabase-migrations/20260926_commercial_crm_core_foundation.sql` was applied to the real production PostgreSQL on `28server` / `supabase-db` after the versioned baseline reconciliation from PR #529. Its SHA-256 was proved both on the host and inside the PostgreSQL container as:
 
