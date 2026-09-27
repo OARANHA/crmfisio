@@ -147,6 +147,44 @@ Current implementation scope:
 
 No migration, backend RPC, table, RLS/RBAC, role, entitlement, tenant source, audit path or runtime mutation is part of this checkpoint.
 
-### Validation status
+### Repository validation
 
-Not yet PROVED. Exact-head CI and build/test evidence must still pass before this section can advance beyond implementation evidence.
+PR #551 exact HEAD:
+
+`6714ed5672fa2b08934ce7538fbab016d3d2f8f7`
+
+GitHub Actions readback on that exact HEAD returned:
+
+```text
+20 success
+0 failure
+0 queued
+0 in_progress
+```
+
+The PR was then squash-merged as:
+
+`main@7f1eda9631407ac8ddaa6fae4c87c293db024945`
+
+The merged diff contains only the bounded frontend adapter/UI, focused tests and slice documentation. It adds no SQL, migration, backend RPC, RLS/RBAC, role, entitlement, tenant source, audit writer or Patient/clinical authority.
+
+This is sufficient repository evidence for `PROVED + MERGED`.
+
+### Post-merge runtime readback
+
+A governed HTTP readback against `https://app.medicspro.com.br/` after #551 merged still returned:
+
+`/assets/index-BYMym6it.js`
+
+That is the same entry previously observed for the MED-CRM-006 production frontend. Therefore the new MED-CRM-007 frontend bundle was **not yet observed in production** at this checkpoint.
+
+The `medicspro-agent` Docker surface exposed only `supabase-db`; it did not expose a governed frontend container action. No deploy was forced or bypassed.
+
+Consequences:
+
+- repository status: **PROVED + MERGED**;
+- production status: **NOT RELEASED**;
+- no authenticated human timeline smoke is claimed;
+- no production database change is required or claimed.
+
+RELEASED requires a later frontend rollout observation proving the live CRM chunk contains `list_current_clinic_crm_lead_activities`, preserves the forbidden-writer/Patient boundaries and keeps baseline routes healthy.
