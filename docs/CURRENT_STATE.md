@@ -4,7 +4,7 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-18
+**Data do snapshot:** 2026-09-26
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
 **Último SHA funcional com rollout registrado nesta sequência:** `47f9b1e1f6f509fe8f72641e2aad91f7350e23ae` (#516 Message Template Admin Boundary V1), após #515 e sobre a configuração de Comunicação #512/#513.ning #513), sobre a foundation de Clinic Configuration #406/#407/#408 e Plan Catalog #508/#509.
 
@@ -38,6 +38,26 @@ Plan Catalog + Clinic Plan Assignment V1 #508/#509                   PROD / VERI
 Clinic Communication Configuration V1 #512/#513                        PROD / VERIFIED
 ```
 
+
+## Commercial CRM — canonical continuity checkpoint #522 / #524
+
+**Integrated state:** MED-CRM-001 Commercial Core foi squash-mergeada pela PR #522 em `main@652ea7b3aea4cd03a09944b780ef697168016bc3`. A disciplina de continuidade/índice canônico da PR #523 foi integrada antes, em `main@542fd289bb8060c7c0c69b20359f0b758092d946`.
+
+A foundation integrada separa `Contact != Lead != Patient` e adiciona `contacts`, `crm_pipelines`, `crm_stages`, `crm_leads` e `crm_lead_activities`, tenant-scoped e com raw browser DML fechado. O outcome comercial é derivado de `crm_stages.stage_kind`; não existe `crm_leads.status` concorrente. O `/crm` legado continua Patient-backed em `patients.funil_stage` e deve ser tratado como conflito de cutover, não como autoridade comercial.
+
+**MED-CRM-001:** PROVED + MERGED. O harness foi provado em PostgreSQL 16.15 e 17.11 antes do merge. **Não há evidência de rollout produtivo da migration #522 neste checkpoint, portanto não declarar RELEASED.**
+
+**Active live work:** MED-CRM-002 — Commercial Command Boundary, PR #524, branch `feat/med-crm-002-commercial-command-boundary`.
+
+A #524 passou GAPS → REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW antes de EXECUTION e adiciona somente três operações autenticadas sobre a foundation existente: criar Contact, criar Lead e transicionar Lead entre stages do mesmo pipeline. `clinic_id` é derivado server-side; writers continuam limitados a active `owner/admin/recep` + `crm.access`; professional/financeiro permanecem read-only; não existe parâmetro/vínculo Patient, conversion, UI, Inbox, follow-up, attribution, provider, automation engine ou AI nesta slice.
+
+**Proof state da #524:** implementation head `18ba481866a3af8412cfc200621290d3358a2b5e` passou migration replay, verifier anterior da foundation, verifier novo e 12 blocos comportamentais em PostgreSQL 16.15 e 17.11. Nesse head: 8/8 repository workflows SUCCESS, 0 commits atrás de main, mergeable, zero reviews/threads. A revisão adversarial final classificou completion como `complete` 0.92, confidence 0.87. Commits documentais posteriores ainda precisam de checks próprios antes do merge.
+
+**Runtime boundary:** `medicspro-agent` foi usado apenas como host de PostgreSQL descartável em `/opt/wandora/ops-workspace`. Nenhum banco/aplicação de produção foi alterado por MED-CRM-001/002 nesta reconciliação.
+
+**Próximo passo seguro:** revalidar o head documental atual da PR #524 e decidir merge separadamente. Após merge, retornar ao capability map em `docs/slices/MED-CRM-001/NEXT_CAPABILITY_MAP.md`; não começar UI/Inbox/follow-up/AI copiando autoridade paralela.
+
+---
 
 ## Produção — Message Template Admin Boundary V1 #516 + worker browser boundary #515
 
