@@ -178,3 +178,76 @@ The current session does not expose a stack deploy capability, and a restart of 
 8. only then update MED-CRM-001/002 to RELEASED, rebuild `NEXT_CAPABILITY_MAP.md`, and re-run the four pre-execution gates for any possible MED-CRM-003.
 
 Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation, Commercial AI or a parallel engine while this release gate is open.
+
+## Latest production reconciliation — 2026-09-27
+
+This checkpoint supersedes the older runtime-release notes above/below when they conflict. Mutable runtime facts must still be re-read before the next action.
+
+```text
+canonical main = bb9482c47bc67867ac9f527f68c0ffc76074e594
+PR #529 = MERGED (squash)
+MED-CRM-001 = PROVED + MERGED + NOT RELEASED
+MED-CRM-002 = PROVED + MERGED + NOT RELEASED
+```
+
+Runtime authority now proved on the MedicsPro production host:
+
+```text
+host = 28server
+managed target = medicspro-managed-admin
+readback target = medicspro-db-readback
+readback semantic capability = postgres.pinned_readback
+generic Docker/process/write authority on readback target = none
+PostgreSQL container = supabase-db
+image = supabase/postgres:17.6.1.136
+```
+
+The pinned readback path is operational. The canonical Commercial Core verifier, executed against production before rollout, failed with:
+
+```text
+commercial_core_table_missing:contacts
+```
+
+That proved the Commercial Core migration was absent.
+
+The first controlled Core rollout then used the exact canonical file whose host/container SHA-256 was proved as:
+
+```text
+23c433e36e0513aeddc9eae8ba6c1c34ba7c17854d07c4f3a796c66e2f8c0331
+```
+
+Execution used `psql -X -v ON_ERROR_STOP=1 -f ...` inside `supabase-db` and failed at the first updated-at trigger with:
+
+```text
+function public.update_updated_at_column() does not exist
+```
+
+The migration itself begins with `BEGIN;`. Immediate pinned readback after the failure again returned `commercial_core_table_missing:contacts`, proving rollback of the failed attempt.
+
+Repository reconstruction showed:
+
+- `public.update_updated_at_column()` exists in `supabase-schema.sql`;
+- the CRM synthetic fixture also defines it;
+- no prior versioned migration guaranteed the helper in older production environments;
+- `DEPLOY.md` forbids using `supabase-schema.sql` as the continuous production migration mechanism.
+
+PR #529 therefore added a canonical additive repair instead of a production-only patch:
+
+- `supabase-migrations/20260927_updated_at_helper_reconciliation.sql`;
+- `supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql`;
+- dedicated PostgreSQL 16/17 reconciliation harness;
+- Commercial CRM PostgreSQL 16/17 harness now includes this prerequisite before the unchanged 20260926 CRM migrations.
+
+All PR #529 checks completed successfully before squash merge, including `validate`, `dependency-audit`, both reconciliation PostgreSQL jobs and both Commercial CRM PostgreSQL jobs.
+
+### Exact next release sequence
+
+1. re-read current `origin/main`, active PRs and runtime before mutation;
+2. pin/stage `20260927_updated_at_helper_reconciliation.sql`, prove its exact hash on host/container and apply it with stop-on-error;
+3. run `VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql`;
+4. perform read-only preflight of the remaining external CRM prerequisites (`clinics`, `patients`, `profiles`, `audit_log`, `current_active_profile()`, `current_clinic_entitlement_allowed(text)`, `auth.uid()`);
+5. only if preflight is clean, retry the unchanged pinned Commercial Core migration and immediately run its pinned verifier;
+6. only if Core passes, apply the unchanged pinned Command Boundary migration and immediately run its pinned verifier;
+7. only after both production verifiers pass, update MED-CRM-001/002 to RELEASED and reconsider MED-CRM-003.
+
+Do not start MED-CRM-003, Board/UI, Inbox, follow-up, attribution, Lead→Patient conversion, automation or Commercial AI while this release gate is open.
