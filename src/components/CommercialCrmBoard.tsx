@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  executeCommercialCrmProspectCreation,
   executeCommercialCrmStageTransition,
   loadCurrentClinicCommercialCrm,
   type CommercialCrmLead,
@@ -130,6 +131,15 @@ export function CommercialCrmBoard() {
   const [lossTarget, setLossTarget] = useState<{ lead: CommercialCrmLead; stage: CommercialCrmStage } | null>(null);
   const [lossReason, setLossReason] = useState('');
   const [lossError, setLossError] = useState<string | null>(null);
+  const [prospectOpen, setProspectOpen] = useState(false);
+  const [prospectIds, setProspectIds] = useState<{ contactId: string; leadId: string } | null>(null);
+  const [prospectName, setProspectName] = useState('');
+  const [prospectPhone, setProspectPhone] = useState('');
+  const [prospectEmail, setProspectEmail] = useState('');
+  const [prospectTitle, setProspectTitle] = useState('');
+  const [prospectPipelineId, setProspectPipelineId] = useState('');
+  const [prospectError, setProspectError] = useState<string | null>(null);
+  const [creatingProspect, setCreatingProspect] = useState(false);
   const canMutate = isOperationalRole(user?.role);
 
   const applySnapshot = useCallback((next: CommercialCrmSnapshot) => {
@@ -185,6 +195,78 @@ export function CommercialCrmBoard() {
     () => activeLeads.filter((lead) => lead.pipelineId === selectedPipelineId),
     [activeLeads, selectedPipelineId],
   );
+
+  const closeProspect = () => {
+    if (creatingProspect) return;
+    setProspectOpen(false);
+    setProspectIds(null);
+    setProspectName('');
+    setProspectPhone('');
+    setProspectEmail('');
+    setProspectTitle('');
+    setProspectPipelineId('');
+    setProspectError(null);
+  };
+
+  const openProspect = () => {
+    if (!canMutate || activePipelines.length === 0) return;
+    setProspectIds({
+      contactId: crypto.randomUUID(),
+      leadId: crypto.randomUUID(),
+    });
+    setProspectName('');
+    setProspectPhone('');
+    setProspectEmail('');
+    setProspectTitle('');
+    setProspectPipelineId(choosePipeline(activePipelines, selectedPipelineId) ?? '');
+    setProspectError(null);
+    setProspectOpen(true);
+  };
+
+  const saveProspect = async () => {
+    if (!canMutate || !prospectIds || creatingProspect) return;
+
+    const name = prospectName.trim();
+    const title = prospectTitle.trim();
+    const pipelineId = prospectPipelineId || null;
+    if (!name || !title || !pipelineId) {
+      setProspectError('Informe nome, interesse comercial e pipeline.');
+      return;
+    }
+
+    setCreatingProspect(true);
+    setProspectError(null);
+    try {
+      const outcome = await executeCommercialCrmProspectCreation({
+        ...prospectIds,
+        name,
+        phone: prospectPhone,
+        email: prospectEmail,
+        title,
+        pipelineId,
+      });
+      if (outcome.snapshot) applySnapshot(outcome.snapshot);
+      if (outcome.projectionWarning) {
+        toast(outcome.projectionWarning, 'warn');
+      } else {
+        toast('Prospect criado no CRM comercial.');
+      }
+      setProspectOpen(false);
+      setProspectIds(null);
+      setProspectName('');
+      setProspectPhone('');
+      setProspectEmail('');
+      setProspectTitle('');
+      setProspectPipelineId('');
+      setProspectError(null);
+    } catch (error) {
+      console.error('[MedicsPro] Falha ao criar prospect comercial:', error);
+      setProspectError('Não foi possível confirmar a criação. Tente novamente sem alterar os dados; a mesma tentativa será reutilizada.');
+      toast('Não foi possível confirmar a criação do prospect. Tente novamente com os mesmos dados.', 'warn');
+    } finally {
+      setCreatingProspect(false);
+    }
+  };
 
   const persistTransition = async (
     lead: CommercialCrmLead,
@@ -272,13 +354,23 @@ export function CommercialCrmBoard() {
           title={'Pipeline comercial · ' + activeLeads.length + ' Lead(s)'}
           sub="Contact → Lead → Pipeline → Stage · autoridade server-side"
           right={(
-            <Btn
-              variant="ghost"
-              className="!px-3 !py-1.5 !text-[11px]"
-              onClick={() => void refresh(false).catch(() => undefined)}
-            >
-              Atualizar
-            </Btn>
+            <div className="flex items-center gap-2">
+              {canMutate && activePipelines.length > 0 && (
+                <Btn
+                  className="!px-3 !py-1.5 !text-[11px]"
+                  onClick={openProspect}
+                >
+                  Novo prospect
+                </Btn>
+              )}
+              <Btn
+                variant="ghost"
+                className="!px-3 !py-1.5 !text-[11px]"
+                onClick={() => void refresh(false).catch(() => undefined)}
+              >
+                Atualizar
+              </Btn>
+            </div>
           )}
         />
 
@@ -379,6 +471,94 @@ export function CommercialCrmBoard() {
             {legacyLeads.map((lead) => <LegacyLeadCard key={lead.id} lead={lead} />)}
           </div>
         </Card>
+      )}
+
+      {prospectOpen && prospectIds && (
+        <Modal
+          open
+          title="Novo prospect comercial"
+          onClose={closeProspect}
+        >
+          <div className="space-y-4">
+            <div className="border border-aqua/25 bg-aqua/5 px-3 py-2.5 text-[11.5px] text-fog">
+              Cria Contact + Lead usando os comandos canônicos já liberados. Não cria Patient e não altera a jornada clínica.
+            </div>
+            <Field label="Nome do contato · obrigatório">
+              <Input
+                value={prospectName}
+                onChange={(event) => {
+                  setProspectName(event.target.value);
+                  if (prospectError) setProspectError(null);
+                }}
+                placeholder="Nome do contato"
+                disabled={creatingProspect}
+              />
+            </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Telefone">
+                <Input
+                  value={prospectPhone}
+                  onChange={(event) => {
+                    setProspectPhone(event.target.value);
+                    if (prospectError) setProspectError(null);
+                  }}
+                  placeholder="Telefone (opcional)"
+                  disabled={creatingProspect}
+                />
+              </Field>
+              <Field label="E-mail">
+                <Input
+                  value={prospectEmail}
+                  onChange={(event) => {
+                    setProspectEmail(event.target.value);
+                    if (prospectError) setProspectError(null);
+                  }}
+                  placeholder="E-mail (opcional)"
+                  disabled={creatingProspect}
+                />
+              </Field>
+            </div>
+            <Field label="Interesse / assunto comercial · obrigatório">
+              <Input
+                value={prospectTitle}
+                onChange={(event) => {
+                  setProspectTitle(event.target.value);
+                  if (prospectError) setProspectError(null);
+                }}
+                placeholder="Interesse / assunto comercial"
+                disabled={creatingProspect}
+              />
+            </Field>
+            <Field label="Pipeline · obrigatório">
+              <Select
+                value={prospectPipelineId}
+                onChange={(event) => {
+                  setProspectPipelineId(event.target.value);
+                  if (prospectError) setProspectError(null);
+                }}
+                disabled={creatingProspect}
+              >
+                {activePipelines.map((pipeline) => (
+                  <option key={pipeline.id} value={pipeline.id}>
+                    {pipeline.name + (pipeline.isDefault ? ' · padrão' : '')}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {prospectError && <p className="text-[11.5px] text-pulse">{prospectError}</p>}
+            <div className="flex justify-end gap-2">
+              <Btn variant="ghost" onClick={closeProspect} disabled={creatingProspect}>
+                Cancelar
+              </Btn>
+              <Btn
+                onClick={() => void saveProspect()}
+                disabled={!prospectName.trim() || !prospectTitle.trim() || !prospectPipelineId || creatingProspect}
+              >
+                {creatingProspect ? 'Criando…' : 'Criar prospect'}
+              </Btn>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {lossTarget && (

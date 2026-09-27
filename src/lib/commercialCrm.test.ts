@@ -7,6 +7,9 @@ vi.mock('./supabaseClient', () => ({
 }));
 
 import {
+  createCurrentClinicCrmContact,
+  createCurrentClinicCrmLead,
+  executeCommercialCrmProspectCreation,
   executeCommercialCrmStageTransition,
   listCurrentClinicCrmLeads,
   listCurrentClinicCrmPipelines,
@@ -96,6 +99,92 @@ describe('commercial CRM canonical frontend adapter', () => {
     await listCurrentClinicCrmLeads();
 
     expect(rpc).toHaveBeenCalledTimes(3);
+  });
+
+  it('creates Contact and Lead only through the released current-clinic commands', async () => {
+    rpc.mockResolvedValueOnce({ data: 'contact-new', error: null });
+    rpc.mockResolvedValueOnce({ data: 'lead-new', error: null });
+
+    await createCurrentClinicCrmContact({
+      contactId: 'contact-new',
+      name: '  Maria Prospect  ',
+      phone: '  51999999999  ',
+      email: '  maria@example.com  ',
+    });
+    await createCurrentClinicCrmLead({
+      leadId: 'lead-new',
+      contactId: 'contact-new',
+      title: '  Avaliação comercial  ',
+      pipelineId: 'pipeline-a',
+    });
+
+    expect(rpc.mock.calls).toEqual([
+      ['create_current_clinic_crm_contact', {
+        p_contact_id: 'contact-new',
+        p_name: 'Maria Prospect',
+        p_phone: '51999999999',
+        p_email: 'maria@example.com',
+      }],
+      ['create_current_clinic_crm_lead', {
+        p_lead_id: 'lead-new',
+        p_contact_id: 'contact-new',
+        p_title: 'Avaliação comercial',
+        p_pipeline_id: 'pipeline-a',
+        p_stage_id: null,
+        p_owner_id: null,
+        p_value_cents: null,
+        p_source: null,
+      }],
+    ]);
+  });
+
+  it('composes the released commands in order and never refreshes after Lead rejection', async () => {
+    const createContact = vi.fn().mockResolvedValue('contact-new');
+    const leadError = new Error('lead rejected');
+    const createLead = vi.fn().mockRejectedValue(leadError);
+    const refresh = vi.fn();
+
+    await expect(executeCommercialCrmProspectCreation(
+      {
+        contactId: 'contact-new',
+        leadId: 'lead-new',
+        name: 'Maria Prospect',
+        phone: null,
+        email: null,
+        title: 'Avaliação comercial',
+        pipelineId: 'pipeline-a',
+      },
+      { createContact, createLead, refresh },
+    )).rejects.toBe(leadError);
+
+    expect(createContact).toHaveBeenCalledTimes(1);
+    expect(createLead).toHaveBeenCalledTimes(1);
+    expect(createContact.mock.invocationCallOrder[0]).toBeLessThan(createLead.mock.invocationCallOrder[0]);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('keeps a created prospect successful when only the projection refetch fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await executeCommercialCrmProspectCreation(
+      {
+        contactId: 'contact-new',
+        leadId: 'lead-new',
+        name: 'Maria Prospect',
+        title: 'Avaliação comercial',
+        pipelineId: 'pipeline-a',
+      },
+      {
+        createContact: vi.fn().mockResolvedValue('contact-new'),
+        createLead: vi.fn().mockResolvedValue('lead-new'),
+        refresh: vi.fn().mockRejectedValue(new Error('projection unavailable')),
+      },
+    );
+
+    expect(result.command).toEqual({ contactId: 'contact-new', leadId: 'lead-new' });
+    expect(result.snapshot).toBeNull();
+    expect(result.projection).toBe('stale');
+    expect(result.projectionWarning).toContain('Prospect criado');
   });
 
   it('sends a trimmed free-form lost reason through the canonical transition RPC', async () => {
