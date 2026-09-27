@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Canonical main reconstructed before execution:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat: cut over commercial CRM board`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## REAL NOW before execution
 
@@ -278,17 +278,110 @@ No new deterministic implementation blocker was identified.
 
 ## DOCUMENTATION boundary
 
-This evidence update occurs after the implementation HEAD above. Therefore it will create a newer PR HEAD and **must cause a fresh final-head GitHub validation before merge**. The 9/9 success set above must not be inherited by the documentation commit automatically.
+At the implementation-branch checkpoint, the MED-CRM-003 documentation refresh deliberately moved PR #536 beyond the earlier green code HEAD, so the final PR HEAD had to be revalidated before merge. That revalidation was performed on `2f0d8bc3cf9a7b61677abc053a64218d120dacf6` and all 9 applicable check-runs passed.
 
-`docs/CURRENT_STATE.md` is intentionally not rewritten to claim integrated Board state before PR #536 merges. Main still owns current integrated state.
+`docs/CURRENT_STATE.md` was intentionally not changed to integrated Board state until #536 had actually merged. This post-merge reconciliation now updates the institutional state only after both merge and runtime rollout were separately observed.
 
 ## Status
 
 ```text
-MED-CRM-003 = PROVED ON BRANCH
-PR #536 = OPEN
-MERGED = NO
-RELEASED = NO
+MED-CRM-003 = PROVED + MERGED + RELEASED
+PR #536 = MERGED
+merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
+production frontend = UPDATED + READBACK PROVED
 ```
 
-RELEASED requires production frontend rollout/readback after merge. There is no database rollout in this slice.
+Production frontend rollout/readback was required for RELEASED and is now proved below. There is no database rollout in this slice.
+
+
+## Merge proof
+
+After the documentation refresh on PR #536, the actual final HEAD was revalidated independently:
+
+```text
+final PR head =
+2f0d8bc3cf9a7b61677abc053a64218d120dacf6
+
+base/current main before merge =
+01a2b947e13144a885549c248acceb25021c36a2
+
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+
+final-head GitHub check-runs =
+9 completed
+9 success
+0 failed
+```
+
+The final `validate` job included successful `npm test`, typecheck, lint and production build; dependency audit also succeeded.
+
+PR #536 was then squash-merged with an expected-head guard. Result:
+
+```text
+merged = true
+main =
+9962a14cb31ff09666234129590b59524a2d85c3
+```
+
+## Production rollout / readback
+
+The first post-merge check only inspected the Vite entry chunk and therefore was **not sufficient by itself** to decide whether the CRM lazy chunk was deployed. It was retained as a transient observation, not used as final release evidence.
+
+A later readback proved that the production entry asset had changed to:
+
+```text
+/assets/index-HtujlU6h.js
+```
+
+The active entry build referenced 43 lazy chunks. The live CRM chunk was identified as:
+
+```text
+/assets/CrmOperational-C3MqVds_.js
+```
+
+Both entry and CRM chunks returned HTTP 200.
+
+The live CRM chunk contained all expected MED-CRM-003 markers:
+
+```text
+list_current_clinic_crm_pipelines                 PRESENT
+list_current_clinic_crm_stages                    PRESENT
+list_current_clinic_crm_leads                     PRESENT
+transition_current_clinic_crm_lead_stage          PRESENT
+Leads arquivados / legado                         PRESENT
+Contato anonimizado                               PRESENT
+Etapa atualizada, mas o quadro não pôde ser recarregado  PRESENT
+```
+
+Explicit text from the old Patient-backed Board was absent:
+
+```text
+CRM · Jornada do Paciente             ABSENT
+mudanças refletem no prontuário       ABSENT
+leads no funil                        ABSENT
+Paciente movido para                  ABSENT
+```
+
+Public route health at the same readback:
+
+```text
+/           HTTP 200
+/crm        HTTP 200
+/agenda     HTTP 200
+/pacientes  HTTP 200
+```
+
+This proves the frontend auto-update reached production with the MED-CRM-003 cutover. No database migration, RPC deployment or manual managed-admin action was required for this slice.
+
+## Release conclusion
+
+```text
+MED-CRM-003 = PROVED + MERGED + RELEASED
+runtime proof = active production frontend bundle + route health
+database rollout = none
+manual production mutation = none
+```
+

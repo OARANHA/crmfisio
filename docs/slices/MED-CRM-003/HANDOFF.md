@@ -2,22 +2,22 @@
 
 ## Current checkpoint
 
-Always resolve current `origin/main`, PR #536 HEAD/base/checks and runtime again before acting. This document is institutional memory, not permission to inherit stale checks.
+Always resolve current `origin/main`, active PRs/branches and runtime again before acting. PR #536 is already merged and must not be treated as active work. This document is institutional memory, not permission to inherit stale checks.
 
 ```text
 canonical repository = OARANHA/crmfisio
 
-main reconstructed for MED-CRM-003 execution =
-01a2b947e13144a885549c248acceb25021c36a2
+main after MED-CRM-003 merge =
+9962a14cb31ff09666234129590b59524a2d85c3
 
 MED-CRM-001 = RELEASED
 MED-CRM-002 = RELEASED
 MED-CRM-004 = RELEASED
 
-MED-CRM-003 = PROVED ON BRANCH
-PR #536 = OPEN
-MERGED = NO
-RELEASED = NO
+MED-CRM-003 = PROVED + MERGED + RELEASED
+PR #536 = MERGED
+merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
+production frontend = READBACK PROVED
 ```
 
 PR #525 remains stale historical material. Do not merge it, rebase it blindly or use it as implementation authority.
@@ -133,69 +133,95 @@ dependency-audit = SUCCESS
 
 The first CI attempt had caught a test-fixture typing issue after tests passed. It was fixed; the proof above belongs to the corrected implementation HEAD.
 
-## IMPORTANT — documentation refresh invalidates inherited checks
+## Merge proof
 
-The updates to `DECISION.md`, `EVIDENCE.md`, this `HANDOFF.md` and `SLICE_LEDGER.md` move PR #536 beyond `50ff38f...`.
-
-Therefore:
-
-> Do not call the final PR HEAD GREEN based on the 9/9 proof above.
-
-Before merge, revalidate the actual latest HEAD and all applicable checks.
-
-## Exact next gate — protected merge
-
-Revalidate:
-
-1. current `origin/main`;
-2. PR #536 state/head/base;
-3. compare/ahead/behind;
-4. mergeability;
-5. complete file diff;
-6. reviews and unresolved review threads;
-7. every workflow/check on the **actual latest HEAD**.
-
-Only if all are simultaneously true:
+The documentation refresh moved PR #536 to final HEAD:
 
 ```text
-PR #536 = OPEN
-base SHA = current origin/main
-behind = 0
-mergeable = true
-scope remains bounded
-all applicable checks = completed + success
-no blocking review/thread
+2f0d8bc3cf9a7b61677abc053a64218d120dacf6
 ```
 
-perform a protected squash merge using `expected_head_sha` or equivalent.
+That exact HEAD was revalidated before merge:
 
-Then:
+```text
+base = current main@01a2b947e13144a885549c248acceb25021c36a2
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+9/9 check-runs = completed + success
+```
 
-1. re-resolve `origin/main`;
-2. prove PR #536 `merged=true`;
-3. read `CURRENT_STATE`, ledger and MED-CRM-003 docs from the resulting main;
-4. reconcile institutional docs to `PROVED + MERGED / NOT RELEASED` unless production rollout has also been proved.
+The PR was then squash-merged with expected-head protection:
 
-## Release gate after merge
+```text
+main = 9962a14cb31ff09666234129590b59524a2d85c3
+```
 
-MED-CRM-003 has no database rollout.
+Do not repeat or re-merge #536.
 
-Do not call it RELEASED merely because GitHub merged.
+## Release proof
 
-Reconstruct the repository's canonical frontend rollout path from current docs/runtime, then prove the deployed production frontend corresponds to the merged main and that the CRM route is healthy.
+No database rollout exists for MED-CRM-003.
 
-Production proof should be sufficient to establish that the deployed bundle contains the Commercial CRM cutover and that there is no unexpected runtime failure on the production route. Do not weaken authentication/privacy boundaries just to obtain evidence.
+The frontend auto-update was observed directly in production; no managed-admin mutation was required.
 
-If frontend promotion requires an explicitly approval-gated administrative action, stop at that boundary and request only the exact required approval.
+Active production assets:
 
-After rollout/readback, update:
+```text
+entry = /assets/index-HtujlU6h.js
+CRM lazy chunk = /assets/CrmOperational-C3MqVds_.js
+```
 
-- `docs/CURRENT_STATE.md`;
-- `docs/SLICE_LEDGER.md`;
-- MED-CRM-003 `EVIDENCE.md`;
-- MED-CRM-003 `HANDOFF.md`;
+The CRM chunk returned HTTP 200 and contained:
 
-and only then consider `RELEASED`.
+```text
+list_current_clinic_crm_pipelines
+list_current_clinic_crm_stages
+list_current_clinic_crm_leads
+transition_current_clinic_crm_lead_stage
+Leads arquivados / legado
+Contato anonimizado
+Etapa atualizada, mas o quadro não pôde ser recarregado
+```
+
+Old Patient-backed Board copy checked during the same readback was absent:
+
+```text
+CRM · Jornada do Paciente
+mudanças refletem no prontuário
+leads no funil
+Paciente movido para
+```
+
+Public health:
+
+```text
+/           200
+/crm        200
+/agenda     200
+/pacientes  200
+```
+
+The earlier entry-chunk-only check is not used as final release evidence because Vite lazy chunks can hold route code separately. The comprehensive lazy-chunk scan above is the release proof.
+
+MED-CRM-003 is therefore:
+
+```text
+PROVED + MERGED + RELEASED
+```
+
+## Next product gate
+
+Do not reopen this slice merely because a new chat starts.
+
+Before selecting the next CRM capability:
+
+1. resolve current `origin/main` again;
+2. read `CURRENT_STATE.md`, `SLICE_LEDGER.md` and the released MED-CRM-003/004 evidence;
+3. reconstruct current gaps from code/schema/tests/runtime as applicable;
+4. run GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW for the next slice;
+5. preserve Contact != Lead != Patient and all released CRM authority.
 
 ## Non-goals remain
 

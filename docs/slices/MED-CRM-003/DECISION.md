@@ -3,7 +3,7 @@
 **Decision date:** 2026-09-27  
 **Audited main:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat/med-crm-003-commercial-board-cutover-v1`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## Context
 
@@ -132,7 +132,7 @@ JEV remained advisory. Execution was authorized by the deterministic repository 
 
 ## Execution result
 
-PR #536 implements the approved frontend-only slice. Before this documentation refresh, implementation HEAD:
+PR #536 implemented the approved frontend-only slice and was squash-merged after the final documentation HEAD passed all applicable checks. Pre-merge implementation HEAD:
 
 ```text
 50ff38ff1427f71b30c62120b26259838a6b94b0
@@ -160,13 +160,10 @@ Those are real continuation gates, not a discovered server-authority blocker.
 
 ## Status boundary
 
-`PROVED` here means the branch implementation and its behavioral/boundary tests are mechanically green.
+At the branch-proof checkpoint, `PROVED` meant only that the implementation and its behavioral/boundary tests were mechanically green; it did not yet imply merge or rollout.
 
-It does **not** mean:
+Those later gates are now separately proved.
 
-- PR #536 is merged;
-- the feature is on canonical main;
-- the production frontend has been promoted;
-- MED-CRM-003 is RELEASED.
+Merge is proved: PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after the final PR HEAD `2f0d8bc3cf9a7b61677abc053a64218d120dacf6` was `0 behind`, mergeable, with 9/9 check-runs `completed + success` and no blocking review/thread.
 
-Those claims require their own evidence.
+`RELEASED` is now separately proved by production frontend readback. The active entry build changed to `/assets/index-HtujlU6h.js`, which references the live CRM lazy chunk `/assets/CrmOperational-C3MqVds_.js`. That chunk returned HTTP 200 and contained the released CRM RPC names plus the new archived/anonymized/stale-projection Board markers. Explicit copy from the old Patient-backed Board was absent, and `/`, `/crm`, `/agenda` and `/pacientes` all returned HTTP 200. No manual production mutation was required because the Portainer frontend auto-update completed.
