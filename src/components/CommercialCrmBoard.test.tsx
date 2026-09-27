@@ -43,6 +43,7 @@ const testState = vi.hoisted(() => ({
   load: vi.fn(),
   execute: vi.fn(),
   listCandidates: vi.fn(),
+  listActivities: vi.fn(),
   executeResolution: vi.fn(),
   toast: vi.fn(),
 }));
@@ -62,6 +63,7 @@ vi.mock('../lib/commercialCrm', async (importOriginal) => {
     loadCurrentClinicCommercialCrm: testState.load,
     executeCommercialCrmStageTransition: testState.execute,
     listCurrentClinicCrmContactIdentityCandidates: testState.listCandidates,
+    listCurrentClinicCrmLeadActivities: testState.listActivities,
     executeCommercialCrmProspectResolution: testState.executeResolution,
   };
 });
@@ -186,6 +188,7 @@ describe('CommercialCrmBoard', () => {
       projectionWarning: null,
     }));
     testState.listCandidates.mockReset().mockResolvedValue([]);
+    testState.listActivities.mockReset().mockResolvedValue([]);
     testState.executeResolution.mockReset().mockImplementation(async (input) => ({
       command: {
         contactId: input.selectedContactId ?? input.contactId,
@@ -215,6 +218,7 @@ describe('CommercialCrmBoard', () => {
     expect(JSON.stringify(professional.toJSON())).toContain('visualização comercial em modo somente leitura');
     expect(JSON.stringify(professional.toJSON())).not.toContain('avançar para Perdido');
     expect(JSON.stringify(professional.toJSON())).not.toContain('Novo prospect');
+    expect(JSON.stringify(professional.toJSON())).toContain('Ver histórico');
 
     testState.role = 'recep';
     const reception = await renderBoard();
@@ -442,6 +446,131 @@ describe('CommercialCrmBoard', () => {
     });
   });
 
+  it('loads the selected Lead timeline on demand and renders only bounded event copy', async () => {
+    testState.listActivities.mockResolvedValueOnce([
+      {
+        id: 'activity-created',
+        activityType: 'lead_created',
+        createdAt: '2026-09-27T09:00:00Z',
+        fromStageId: null,
+        toStageId: null,
+        resolutionMode: null,
+      },
+      {
+        id: 'activity-stage',
+        activityType: 'stage_changed',
+        createdAt: '2026-09-27T10:00:00Z',
+        fromStageId: 'stage-open',
+        toStageId: 'stage-lost',
+        resolutionMode: null,
+      },
+      {
+        id: 'activity-identity',
+        activityType: 'contact_identity_resolved',
+        createdAt: '2026-09-27T11:00:00Z',
+        fromStageId: null,
+        toStageId: null,
+        resolutionMode: 'explicit_reuse',
+      },
+      {
+        id: 'activity-future',
+        activityType: 'future_sensitive_event',
+        createdAt: '2026-09-27T12:00:00Z',
+        fromStageId: null,
+        toStageId: null,
+        resolutionMode: null,
+        metadata: {
+          candidate_ids: ['contact-secret'],
+          phone: '51999990000',
+          patient_id: 'patient-secret',
+        },
+        actorId: 'actor-secret',
+      },
+    ]);
+
+    const renderer = await renderBoard();
+    const historyButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Ver histórico',
+    );
+    expect(historyButton).toBeTruthy();
+
+    await act(async () => {
+      historyButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.listActivities).toHaveBeenCalledWith('lead-a');
+    const rendered = JSON.stringify(renderer.toJSON());
+    expect(rendered).toContain('Histórico comercial do Lead');
+    expect(rendered).toContain('Timeline operacional do CRM comercial. Não é histórico clínico.');
+    expect(rendered).toContain('Lead criado no CRM comercial.');
+    expect(rendered).toContain('Etapa alterada de \\"Novo\\" para \\"Perdido\\".');
+    expect(rendered).toContain('Contact existente reutilizado por decisão explícita.');
+    expect(rendered).toContain('Atividade comercial registrada.');
+    expect(rendered).not.toContain('future_sensitive_event');
+    expect(rendered).not.toContain('contact-secret');
+    expect(rendered).not.toContain('51999990000');
+    expect(rendered).not.toContain('patient-secret');
+    expect(rendered).not.toContain('actor-secret');
+  });
+
+  it('shows timeline loading and empty states without preloading every Lead history', async () => {
+    let resolveActivities!: (activities: unknown[]) => void;
+    testState.listActivities.mockReturnValueOnce(new Promise((resolve) => {
+      resolveActivities = resolve;
+    }));
+
+    const renderer = await renderBoard();
+    expect(testState.listActivities).not.toHaveBeenCalled();
+
+    const historyButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Ver histórico',
+    );
+    act(() => historyButton?.props.onClick());
+
+    expect(JSON.stringify(renderer.toJSON())).toContain('Carregando histórico comercial…');
+
+    await act(async () => {
+      resolveActivities([]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(JSON.stringify(renderer.toJSON())).toContain('Nenhuma atividade comercial registrada.');
+  });
+
+  it('shows a bounded timeline error and allows retry', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    testState.listActivities
+      .mockRejectedValueOnce(new Error('backend detail that must not be rendered'))
+      .mockResolvedValueOnce([]);
+
+    const renderer = await renderBoard();
+    const historyButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Ver histórico',
+    );
+
+    await act(async () => {
+      historyButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    let rendered = JSON.stringify(renderer.toJSON());
+    expect(rendered).toContain('Não foi possível carregar o histórico comercial deste Lead.');
+    expect(rendered).not.toContain('backend detail that must not be rendered');
+
+    const retryButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Tentar novamente',
+    );
+    await act(async () => {
+      retryButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    rendered = JSON.stringify(renderer.toJSON());
+    expect(testState.listActivities).toHaveBeenCalledTimes(2);
+    expect(rendered).toContain('Nenhuma atividade comercial registrada.');
+  });
+
   it('suppresses Contact PII and free-form Lead title when the Contact is anonymized', async () => {
     testState.snapshot = {
       ...baseSnapshot(),
@@ -465,6 +594,23 @@ describe('CommercialCrmBoard', () => {
     expect(rendered).not.toContain('51911112222');
     expect(rendered).not.toContain('segredo@example.com');
     expect(rendered).not.toContain('patient-secret');
+
+    const historyButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Ver histórico',
+    );
+    await act(async () => {
+      historyButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const timelineRendered = JSON.stringify(renderer.toJSON());
+    expect(timelineRendered).toContain('Histórico comercial do Lead');
+    expect(timelineRendered).toContain('Contato anonimizado');
+    expect(timelineRendered).not.toContain('SEGREDO NO TITULO');
+    expect(timelineRendered).not.toContain('NOME SEGREDO');
+    expect(timelineRendered).not.toContain('51911112222');
+    expect(timelineRendered).not.toContain('segredo@example.com');
+    expect(timelineRendered).not.toContain('patient-secret');
   });
 
   it('keeps Leads in archived pipeline or stage visible in an explicit read-only legacy section', async () => {
