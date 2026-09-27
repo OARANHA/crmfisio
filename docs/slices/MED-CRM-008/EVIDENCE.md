@@ -23,6 +23,7 @@ Runtime was not re-read for this design decision because the question is which c
 - `title`;
 - `valueCents`;
 - `source`;
+- server projection field `lead_updated_at` (currently not mapped by the typed adapter);
 - `ownerId`;
 - lost/closed fields;
 - Contact/pipeline/stage context.
@@ -73,7 +74,7 @@ Raw browser INSERT/UPDATE/DELETE on Commercial CRM tables remain revoked. Behavi
 
 ### Lead commercial details
 
-Strong evidence now: state already exists, read projection exists, no edit command/UI exists, and all relevant authorization/audit foundations are reusable.
+Strong evidence now: state already exists, read projection exists, no edit command/UI exists, and all relevant authorization/audit foundations are reusable. The existing Lead projection already returns `lead_updated_at`, so stale-edit protection can reuse the canonical row timestamp without adding a second version authority.
 
 ### Pipeline/Stage admin
 
@@ -102,5 +103,7 @@ Doctrine requires explicit, auditable, idempotent conversion. It crosses from co
 ## Security/boundary conclusion
 
 The selected slice can remain entirely inside Commercial CRM if it updates only `title/value_cents/source` through the existing mutator guard and keeps all other entity/lifecycle fields immutable.
+
+Implementation-plan review additionally proved that `FOR UPDATE` alone is insufficient against stale full-form overwrites. The final design requires `lead_updated_at` as an optimistic-concurrency token after row lock, while exact desired-state retries remain side-effect-free no-ops.
 
 No production mutation, schema rollout or human smoke is claimed by this design checkpoint.
