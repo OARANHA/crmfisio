@@ -41,7 +41,9 @@ The implementation must:
 - preserve `crm.access`;
 - keep owner/admin/recep as writers;
 - keep professional/financeiro read-only;
+- expose the already-projected `lead_updated_at` in the typed frontend Lead shape and send it as the optimistic-concurrency token;
 - lock the target Lead before update;
+- after locking, accept an exact desired-state retry as a no-op; otherwise require the supplied expected `updated_at` to match the current row and fail stale edits closed;
 - fail if the Lead is missing/deleted/cross-tenant;
 - keep stage/pipeline/contact/owner/terminal fields unchanged;
 - be side-effect idempotent for an exact retry;
@@ -99,6 +101,7 @@ Expected additive migration:
 - no direct table grants;
 - add verifier + PostgreSQL behavior cases;
 - add typed frontend adapter and Board edit/details UI only after server contract is proved in the branch;
+- use existing `lead_updated_at` rather than adding a parallel version column;
 - refresh canonical projection after COMMIT; refetch failure is stale projection, not command failure.
 
 If implementation reveals that title/value/source cannot be changed safely without touching owner, stage, pipeline, Contact or Patient authority, return to the reuse/decision gates rather than expanding this slice.
