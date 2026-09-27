@@ -188,7 +188,7 @@ BEGIN
 END $;
 RESET ROLE;
 
-SELECT '7) owner creates Lead in default open stage; retry does not duplicate side effects' AS check;
+SELECT '6) owner creates Lead in default open stage; retry does not duplicate side effects' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 
