@@ -93,7 +93,7 @@ SET archived_at = NULL
 WHERE id = current_setting('medicspro.guard_target_stage')::uuid;
 
 SELECT '3) archived current pipeline blocks state-changing transition server-side' AS check;
-DO $
+DO $$
 DECLARE
   v_pipeline uuid;
   v_original_stage uuid;
@@ -163,7 +163,7 @@ END $$;
 RESET ROLE;
 
 SELECT '4) rejected transition leaves Lead, activity, audit and Patient domain untouched' AS check;
-DO $
+DO $$
 DECLARE
   v_pipeline uuid;
   v_expected_stage uuid := current_setting('medicspro.guard_original_stage')::uuid;
