@@ -20,7 +20,7 @@ Then resolve current `origin/main`, active PR/head/checks/diff and reconstruct E
 ## Current slice
 
 - ID: MED-CRM-002
-- status: DESIGNED
+- status: IMPLEMENTING
 - base at design: `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 - branch: `feat/med-crm-002-commercial-command-boundary`
 - objective: canonical Contact/Lead/stage mutation boundary
