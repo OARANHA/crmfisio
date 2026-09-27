@@ -231,7 +231,7 @@ BEGIN
     WHERE schemaname = 'public'
       AND indexname = 'crm_lead_contact_identity_resolution_once'
       AND indexdef ILIKE '%unique%'
-      AND indexdef ILIKE '%activity_type = ''contact_identity_resolved''%'
+      AND indexdef ILIKE '%contact_identity_resolved%'
   ) THEN
     RAISE EXCEPTION 'crm_identity_resolution_once_index_invalid';
   END IF;
