@@ -2,7 +2,7 @@
 
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
-**Audited main:** `7c5673d43262ef3a0681d3a916d554bcc9627f71`
+**Audited main:** `2140c3351843e5398a08d2a4bc40ba3972ac6329`
 
 ## Repository state
 
@@ -175,3 +175,98 @@ This documentation checkpoint did not:
 - run provider or frontend E2E.
 
 Those belong to the implementation-plan / execution / validation gates.
+
+
+## Implementation-plan review evidence — 2026-09-27
+
+### Design integration
+
+PR #541 was revalidated on its actual head `3f6240c3dd48622e59e34ae4f44c4b6a16a37be7`:
+
+- base = `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`;
+- 8 ahead / 0 behind;
+- mergeable;
+- six changed files, all under `docs/`;
+- no reviews or review threads;
+- 20/20 workflow runs completed with success;
+- `validate` and `dependency-audit` jobs completed with success.
+
+The protected squash merge used the expected head SHA and produced:
+
+`main@2140c3351843e5398a08d2a4bc40ba3972ac6329`.
+
+No newer competing CRM PR was found; #525 remains historical/open/non-mergeable.
+
+### Legacy normalized-column gap
+
+The current Contact writer still inserts raw `phone/email` only. Therefore existing Contacts created after MED-CRM-005 can legitimately have NULL `phone_normalized/email_normalized`.
+
+A mass backfill was rejected for this phase because `contacts` has the canonical `update_updated_at` trigger. Correctness is instead preserved by candidate fallback normalization of raw Contact fields while new writes populate the normalized columns.
+
+### Existing trigger / authority evidence
+
+`contacts` has:
+
+- the canonical `update_updated_at` trigger;
+- Contact→Patient tenant guard only for patient linkage;
+- no generic browser write authority.
+
+The identity slice therefore must not mutate all legacy Contacts merely to obtain a candidate index hit.
+
+### Existing command regression surface
+
+The current PostgreSQL Command Boundary cases already prove:
+
+- owner/admin/recep writer authority;
+- professional/financeiro denial;
+- disabled `crm.access` fail-closed;
+- Contact exact retry / divergent retry;
+- anonymized Contact rejection;
+- Lead exact retry / divergent retry;
+- tenant isolation;
+- exactly-once Contact/Lead activity/audit;
+- raw Commercial Core browser DML closed;
+- no Patient / Patient Journey mutation.
+
+The identity harness must rerun these cases unchanged.
+
+The current MED-CRM-004 migration additionally proves the repository's preferred retry pattern: exact side-effect-free retry is recognized before a newer state-changing guard. MED-CRM-006 applies the same principle to self-candidate retry.
+
+### PostgreSQL primitive proof
+
+Official PostgreSQL 16 and 17 documentation confirms:
+
+- `pg_advisory_xact_lock(bigint)` is an exclusive transaction-level advisory lock;
+- transaction-level advisory locks are released automatically at transaction end;
+- advisory keys are application-defined;
+- `sha256(bytea)`, `convert_to(text,...)`, `encode(bytea,'hex')` and `get_byte(bytea,...)` are built-in in both target PostgreSQL versions.
+
+The implementation uses the hash only for serialization. Candidate rows are always recomputed after lock acquisition, so a hash collision cannot select or authorize a Contact; it can only add contention.
+
+### Historical BR phone evidence reconciled
+
+The WhatsApp inbound migration removes formatting, handles leading BR country code in expected lengths, and treats the historical 9th digit as an equivalence for matching.
+
+MED-CRM-006 adapts only that equivalence concept. It does not reuse Patient/outbound routing authority, and the historical variant remains candidate evidence rather than identity truth.
+
+### Adversarial review
+
+Advisory JEV results:
+
+- first plan: `deep_review = 0.84`, `block = 0.01`;
+- refined plan: `proceed_fast = 0.57`, `deep_review = 0.39`, `block = 0.03`.
+
+These probabilities are recorded as review input only. The execution decision is based on deterministic closure in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
+## Evidence limitations after plan closure
+
+Still not proved at this checkpoint:
+
+- the new SQL compiles on PostgreSQL 16/17;
+- concurrency cases pass;
+- current CRM regression cases remain green after the function replacements;
+- GitHub workflows for the implementation head are green;
+- production contains the new migration;
+- frontend uses the new preview/orchestration capability.
+
+Therefore MED-CRM-006 is `IMPLEMENTING`, not `PROVED` or `RELEASED`.
