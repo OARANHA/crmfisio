@@ -16,17 +16,23 @@ Leia:
 10. `docs/slices/MED-CRM-001/README.md`
 11. `docs/slices/MED-CRM-001/EVIDENCE.md`
 12. `docs/slices/MED-CRM-001/DECISION.md`
+13. `docs/slices/MED-CRM-001/IMPLEMENTATION-001.md`
 
-Depois resolva a `origin/main` atual e repita REAL NOW antes de implementar.
+Depois resolva a `origin/main` atual, revalide a PR #522 (HEAD, base, diff, checks e merge state) e reconstrua o **ESTADO ATUAL COMPROVADO** antes de decidir ou executar.
+
+A PR documental #523 foi integrada em `main` como `542fd289bb8060c7c0c69b20359f0b758092d946`; `docs/CANONICAL_INDEX.md` agora é o roteador estável. Ainda assim, sempre resolva a `main` atual antes de executar.
 
 ## Slice
 
 - ID: `MED-CRM-001`
-- status: `DESIGNED`
+- status: `PROVED`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **não iniciada**;
+- execution: **foundation micro-slice PROVED; merge decision APPROVED subject to latest-head checks/mergeability; merge state é fato mutável e deve ser relido**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
-- design branch: `docs/med-crm-001-design`.
+- design branch: `docs/med-crm-001-design`;
+- implementation branch: `feat/med-crm-001-commercial-core-foundation`;
+- implementation readback: `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`;
+- merge-decision readback: `main@542fd289bb8060c7c0c69b20359f0b758092d946` após #523; mudança documental disjunta dos 9 arquivos da foundation.
 
 ## Proven
 
@@ -75,37 +81,83 @@ Design review em 2026-09-26:
 
 A confiança moderada significa: manter os gates explícitos; não ampliar o design sem nova evidência.
 
+## Current implementation
+
+See [`IMPLEMENTATION-001.md`](IMPLEMENTATION-001.md).
+
+Created on the implementation branch:
+
+- `supabase-migrations/20260926_commercial_crm_core_foundation.sql`;
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql`;
+- `tests/sql/commercial_crm_core_foundation_fixture.sql`;
+- `tests/sql/commercial_crm_core_foundation_cases.sql`;
+- `scripts/test-commercial-crm-core-foundation.sh`.
+
+No UI, mutation RPC, conversion, Inbox, automation or provider code is part of this micro-slice.
+
+## Runtime proof completed
+
+The isolated Commercial Core harness is now proven on:
+
+- PostgreSQL 16.15 — GREEN;
+- PostgreSQL 17.11 — GREEN.
+
+Both runs applied the migration twice, then passed the structural verifier and
+behavior cases. The first PostgreSQL 16 run exposed a `RETURNS TABLE(position
+integer)` parse failure. The public column name was preserved and quoted as
+`"position" integer`; the fix is commit
+`9f1bc6629fa7815172d9a81911d1ce4df29e5bda`.
+
+The proof ran through `medicspro-agent` on `28server` in an isolated
+`/opt/wandora/ops-workspace` runtime. No production PostgreSQL service/database
+was touched.
+
+## Final reconciliation proved
+
+Além do runtime proof PostgreSQL 16/17:
+
+- o último head com implementação inalterada antes desta reconciliação documental, `ec48f9561c99d818af90001dbed133cf079822eb`, teve 8/8 repository-required workflows `completed/success`;
+- #523 foi mergeada depois e moveu `main` para `542fd289bb8060c7c0c69b20359f0b758092d946`, sem sobrepor nenhum arquivo da #522;
+- compare revalidado: 17 ahead / 1 behind exclusivamente por essa mudança documental disjunta; mergeability voltou a `true` após recálculo do GitHub;
+- migration/verifier/fixture/cases/harness continuam inalterados desde o proof PostgreSQL 16/17;
+- não entrou board/UI, Inbox, automação, attribution, provider ou Lead→Patient conversion;
+- decisão de merge: APPROVED, condicionada apenas aos checks/mergeability do HEAD mais recente;
+- `PROVED` não significa `MERGED` nem `RELEASED`.
+
+Este update de HANDOFF/status é documental; revalide checks do HEAD atual antes de concluir o merge.
+
 ## Next exact step
 
-Abrir a primeira micro-slice de implementação **schema + authorization boundaries only**.
+1. resolver `origin/main` e o estado atual da PR #522;
+2. se ainda aberta, confirmar checks/mergeability do HEAD documental mais recente e concluir o merge já aprovado;
+3. se já mergeada, confirmar a integração em `main` sem inferir deploy/release;
+4. então produzir o capability map + dependency graph antes de escolher qualquer nova feature;
+5. antes de qualquer nova capability, seguir `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
-Antes de escrever migration:
+A próxima slice ainda **não está escolhida**. Candidatos como mutation boundary, Contact operations, Lead operations, stage transition/activity, tasks/next action, board e conversion devem passar primeiro por GAPS + REUSE GATE e dependency graph.
 
-1. resolver main atual;
-2. re-read da função final Patient Registry em replay;
-3. confirmar audit helpers atuais;
-4. definir migration + production-safe verifier;
-5. criar apenas Contact/Pipeline/Stage/Lead/Activity foundation + RLS/ACL/projections;
-6. provar tenant isolation, direct-write denial e stage_kind source-of-truth;
-7. não construir board, Inbox, automação ou attribution no mesmo PR.
+## Implementation validation
 
-## Implementation validation required
+Concluído:
 
-- fresh install/replay;
-- update replay;
-- PostgreSQL version(s) usadas pelo projeto;
-- cross-clinic RLS;
-- `crm.access`;
-- role matrix;
-- direct-write deny;
-- server-derived clinic;
-- contact↔patient link uniqueness;
-- activity append-only;
-- lost reason invariant;
-- conversion idempotency in later conversion micro-slice;
-- LGPD linked-data behavior before release;
-- final repo gates.
+- PostgreSQL 16.15 harness GREEN;
+- PostgreSQL 17.11 harness GREEN;
+- migration replay/idempotency;
+- structural verifier;
+- behavior cases;
+- cross-clinic relationship guards;
+- `crm.access` read gate;
+- role/read matrix;
+- raw authenticated DML denial;
+- Contact↔Patient link uniqueness;
+- ausência de `crm_leads.status`;
+- open/won/lost semantics;
+- activity actor/lead tenant integrity;
+- ausência de clinical joins/columns na projeção CRM;
+- final diff/readback;
+- 8/8 repository-required workflows no head reconciliado.
 
+Antes do merge, revalidar apenas o estado GitHub mutável do HEAD mais recente.
 ## VPS/runtime
 
 - required now: **no**;
@@ -114,28 +166,29 @@ Antes de escrever migration:
 ## Copy-paste prompt for a new chat
 
 ```text
-Continue MED-CRM-001 in OARANHA/crmfisio.
+Retome o projeto MEDICSPRO pelo estado canônico do repositório OARANHA/crmfisio.
 
-Do not rely on prior chat memory.
+Não dependa da memória deste chat.
 
-Read AGENTS.md, docs/doctrine/README.md, docs/doctrine/sistema-vivo.md,
-docs/doctrine/autoridade-e-fronteiras.md, docs/SLICE_EXECUTION_METHOD.md,
-docs/CURRENT_STATE.md, docs/SLICE_LEDGER.md, docs/DESKCOMM_ADOPTION_MATRIX.md,
-docs/slices/MED-DOC-001/FINAL-ABSORPTION-SYNTHESIS.md and all files under
-docs/slices/MED-CRM-001/.
+Revalide origin/main, a slice MED-CRM-001, PR #522 e PR #523.
+Leia AGENTS.md, docs/CURRENT_STATE.md, docs/WORK_CONTEXT.md,
+docs/doctrine/, docs/SLICE_EXECUTION_METHOD.md, docs/SLICE_LEDGER.md
+e todos os arquivos de docs/slices/MED-CRM-001/.
 
-MED-CRM-001 is DESIGNED but not implemented.
-Resolve current origin/main and repeat REAL NOW.
+Se docs/CANONICAL_INDEX.md já estiver em main, use-o como roteador estável.
 
-Implement only the first micro-slice: schema + authorization boundaries for
-contacts, crm_pipelines, crm_stages, crm_leads and crm_lead_activities.
-Do not build the CRM board, Inbox, automation, attribution or Lead→Patient conversion
-in the same change.
+Reconstrua o ESTADO ATUAL COMPROVADO antes de decidir ou executar.
 
-Preserve clinic_id, crm.access, RBAC/RLS, Patient/Patient Journey, Agenda and
-clinical boundaries. No Patient→Lead backfill. No direct authenticated writer that
-can skip commercial activity/audit.
+A foundation MED-CRM-001 foi provada em PostgreSQL 16/17 e teve 8/8 workflows verdes
+no último head reconciliado, mas PR/merge/checks são fatos mutáveis: revalide-os.
 
-Before migration, re-read the final Patient Registry and audit helpers.
-Use JEV only as second adversarial review and MCP_WANDORA_VPS only for runtime proof.
+Primeiro feche a reconciliação/decisão de merge da foundation.
+Depois produza o capability map e dependency graph para a evolução máxima do CRM.
+
+Nenhuma nova capability passa para EXECUTION sem:
+GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION
+→ SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION.
+
+Preserve Contact != Lead != Patient, clinic_id, RLS/RBAC, crm.access,
+auditabilidade e boundaries clínicas. Não crie autoridade paralela.
 ```
