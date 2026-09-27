@@ -14,10 +14,10 @@ MED-CRM-001 = RELEASED
 MED-CRM-002 = RELEASED
 MED-CRM-004 = RELEASED
 
-MED-CRM-003 = PROVED + MERGED
+MED-CRM-003 = PROVED + MERGED + RELEASED
 PR #536 = MERGED
 merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
-RELEASED = NO
+production frontend = READBACK PROVED
 ```
 
 PR #525 remains stale historical material. Do not merge it, rebase it blindly or use it as implementation authority.
@@ -160,44 +160,68 @@ main = 9962a14cb31ff09666234129590b59524a2d85c3
 
 Do not repeat or re-merge #536.
 
-## Current release gate
+## Release proof
 
-MED-CRM-003 has no database rollout.
+No database rollout exists for MED-CRM-003.
 
-Immediate post-merge public readback showed the application healthy but still serving the pre-MED-CRM-003 bundle:
+The frontend auto-update was observed directly in production; no managed-admin mutation was required.
+
+Active production assets:
 
 ```text
-asset = /assets/index-D1eGcOhA.js
-
-list_current_clinic_crm_pipelines        ABSENT
-transition_current_clinic_crm_lead_stage ABSENT
-Leads arquivados / legado                ABSENT
-Contato anonimizado                      ABSENT
-
-/           HTTP 200
-/crm        HTTP 200
-/agenda     HTTP 200
-/pacientes  HTTP 200
+entry = /assets/index-HtujlU6h.js
+CRM lazy chunk = /assets/CrmOperational-C3MqVds_.js
 ```
 
-So MED-CRM-003 is **PROVED + MERGED / NOT RELEASED** at this checkpoint.
+The CRM chunk returned HTTP 200 and contained:
 
-Do not call it RELEASED merely because GitHub merged.
+```text
+list_current_clinic_crm_pipelines
+list_current_clinic_crm_stages
+list_current_clinic_crm_leads
+transition_current_clinic_crm_lead_stage
+Leads arquivados / legado
+Contato anonimizado
+Etapa atualizada, mas o quadro não pôde ser recarregado
+```
 
-The canonical deploy guide and recent production evidence show the frontend is Docker/Portainer-operated and previous frontend-only merges may auto-deploy. Prefer observing that auto-update first. Prove the deployed production frontend corresponds to the merged main and that the CRM route is healthy.
+Old Patient-backed Board copy checked during the same readback was absent:
 
-Production proof should be sufficient to establish that the deployed bundle contains the Commercial CRM cutover and that there is no unexpected runtime failure on the production route. Do not weaken authentication/privacy boundaries just to obtain evidence.
+```text
+CRM · Jornada do Paciente
+mudanças refletem no prontuário
+leads no funil
+Paciente movido para
+```
 
-If the Portainer auto-update does not promote this main and a manual frontend promotion becomes necessary, reconstruct the exact current stack/source path first. Any managed-admin mutation requires its explicit approval; do not guess a compose path or execute a broad Docker action.
+Public health:
 
-After rollout/readback, update:
+```text
+/           200
+/crm        200
+/agenda     200
+/pacientes  200
+```
 
-- `docs/CURRENT_STATE.md`;
-- `docs/SLICE_LEDGER.md`;
-- MED-CRM-003 `EVIDENCE.md`;
-- MED-CRM-003 `HANDOFF.md`;
+The earlier entry-chunk-only check is not used as final release evidence because Vite lazy chunks can hold route code separately. The comprehensive lazy-chunk scan above is the release proof.
 
-and only then consider `RELEASED`.
+MED-CRM-003 is therefore:
+
+```text
+PROVED + MERGED + RELEASED
+```
+
+## Next product gate
+
+Do not reopen this slice merely because a new chat starts.
+
+Before selecting the next CRM capability:
+
+1. resolve current `origin/main` again;
+2. read `CURRENT_STATE.md`, `SLICE_LEDGER.md` and the released MED-CRM-003/004 evidence;
+3. reconstruct current gaps from code/schema/tests/runtime as applicable;
+4. run GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW for the next slice;
+5. preserve Contact != Lead != Patient and all released CRM authority.
 
 ## Non-goals remain
 
