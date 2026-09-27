@@ -18,14 +18,16 @@ Leia:
 12. `docs/slices/MED-CRM-001/DECISION.md`
 13. `docs/slices/MED-CRM-001/IMPLEMENTATION-001.md`
 
-Depois resolva a `origin/main` atual e repita REAL NOW antes de implementar.
+Depois resolva a `origin/main` atual, revalide a PR #522 (HEAD, base, diff, checks e merge state) e reconstrua o **ESTADO ATUAL COMPROVADO** antes de decidir ou executar.
+
+A PR documental #523 propõe a nova disciplina de continuidade e o `docs/CANONICAL_INDEX.md`; revalide o estado dela. Não assuma que já está em `main`.
 
 ## Slice
 
 - ID: `MED-CRM-001`
-- status: `IMPLEMENTING`
+- status: `PROVED`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **foundation micro-slice em andamento**;
+- execution: **foundation micro-slice PROVED; PR #522 ainda aberta/unmerged**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
 - design branch: `docs/med-crm-001-design`;
 - implementation branch: `feat/med-crm-001-commercial-core-foundation`;
@@ -109,36 +111,52 @@ The proof ran through `medicspro-agent` on `28server` in an isolated
 `/opt/wandora/ops-workspace` runtime. No production PostgreSQL service/database
 was touched.
 
+## Final reconciliation proved
+
+Além do runtime proof PostgreSQL 16/17:
+
+- os 8 repository-required workflows ficaram `completed/success` no head reconciliado `472891f2ebd61902e5b323a0f821766822650c30`;
+- compare contra `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`: 13 commits à frente, 0 atrás;
+- diff limitado a 9 arquivos esperados da foundation + documentação;
+- não entrou board/UI, Inbox, automação, attribution, provider ou Lead→Patient conversion;
+- PR #522 segue aberta e mergeable;
+- `PROVED` não significa `MERGED` nem `RELEASED`.
+
+Este update de HANDOFF/status é documental; revalide checks do HEAD atual antes do merge.
+
 ## Next exact step
 
-1. reconcile repository-required workflows on the final PR head;
-2. inspect final diff against current main;
-3. update PR evidence/readback;
-4. only then consider the foundation `PROVED`.
+1. revalidar `origin/main` e a PR #522 no HEAD atual;
+2. confirmar checks/mergeability/diff após este handoff;
+3. fazer revisão/decisão de merge separada para #522;
+4. se mergeada, reconciliar `main` e documentação global aplicável;
+5. só então iniciar o mapa de capacidades do próximo CRM slice;
+6. antes de qualquer nova capability, seguir `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
-Do not start the next mutation/board micro-slice until final repository
-reconciliation is green.
+A próxima slice ainda **não está escolhida**. Candidatos como mutation boundary, Contact operations, Lead operations, stage transition/activity, tasks/next action, board e conversion devem passar primeiro por GAPS + REUSE GATE e dependency graph.
 
-## Implementation validation required
+## Implementation validation
 
-Completed in isolated PostgreSQL 16 and 17 proof:
+Concluído:
 
+- PostgreSQL 16.15 harness GREEN;
+- PostgreSQL 17.11 harness GREEN;
 - migration replay/idempotency;
+- structural verifier;
+- behavior cases;
 - cross-clinic relationship guards;
 - `crm.access` read gate;
 - role/read matrix;
 - raw authenticated DML denial;
 - Contact↔Patient link uniqueness;
-- no competing `crm_leads.status`;
+- ausência de `crm_leads.status`;
 - open/won/lost semantics;
 - activity actor/lead tenant integrity;
-- no clinical columns/joins in CRM projection.
+- ausência de clinical joins/columns na projeção CRM;
+- final diff/readback;
+- 8/8 repository-required workflows no head reconciliado.
 
-Still required:
-
-- final repo gates on the final PR head;
-- final diff/readback against current main.
-
+Antes do merge, revalidar apenas o estado GitHub mutável do HEAD mais recente.
 ## VPS/runtime
 
 - required now: **no**;
@@ -147,28 +165,29 @@ Still required:
 ## Copy-paste prompt for a new chat
 
 ```text
-Continue MED-CRM-001 in OARANHA/crmfisio.
+Retome o projeto MEDICSPRO pelo estado canônico do repositório OARANHA/crmfisio.
 
-Do not rely on prior chat memory.
+Não dependa da memória deste chat.
 
-Read AGENTS.md, docs/doctrine/README.md, docs/doctrine/sistema-vivo.md,
-docs/doctrine/autoridade-e-fronteiras.md, docs/SLICE_EXECUTION_METHOD.md,
-docs/CURRENT_STATE.md, docs/SLICE_LEDGER.md, docs/DESKCOMM_ADOPTION_MATRIX.md,
-docs/slices/MED-DOC-001/FINAL-ABSORPTION-SYNTHESIS.md and all files under
-docs/slices/MED-CRM-001/.
+Revalide origin/main, a slice MED-CRM-001, PR #522 e PR #523.
+Leia AGENTS.md, docs/CURRENT_STATE.md, docs/WORK_CONTEXT.md,
+docs/doctrine/, docs/SLICE_EXECUTION_METHOD.md, docs/SLICE_LEDGER.md
+e todos os arquivos de docs/slices/MED-CRM-001/.
 
-MED-CRM-001 is IMPLEMENTING.
-Resolve current origin/main and repeat REAL NOW.
+Se docs/CANONICAL_INDEX.md já estiver em main, use-o como roteador estável.
 
-The current micro-slice is feat/med-crm-001-commercial-core-foundation.
-Read IMPLEMENTATION-001.md and validate/fix that foundation before starting anything else.
-Do not build the CRM board, Inbox, automation, attribution or Lead→Patient conversion
-in the same change.
+Reconstrua o ESTADO ATUAL COMPROVADO antes de decidir ou executar.
 
-Preserve clinic_id, crm.access, RBAC/RLS, Patient/Patient Journey, Agenda and
-clinical boundaries. No Patient→Lead backfill. No direct authenticated writer that
-can skip commercial activity/audit.
+A foundation MED-CRM-001 foi provada em PostgreSQL 16/17 e teve 8/8 workflows verdes
+no último head reconciliado, mas PR/merge/checks são fatos mutáveis: revalide-os.
 
-Before migration, re-read the final Patient Registry and audit helpers.
-Use JEV only as second adversarial review and MCP_WANDORA_VPS only for runtime proof.
+Primeiro feche a reconciliação/decisão de merge da foundation.
+Depois produza o capability map e dependency graph para a evolução máxima do CRM.
+
+Nenhuma nova capability passa para EXECUTION sem:
+GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION
+→ SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION.
+
+Preserve Contact != Lead != Patient, clinic_id, RLS/RBAC, crm.access,
+auditabilidade e boundaries clínicas. Não crie autoridade paralela.
 ```
