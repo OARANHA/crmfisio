@@ -172,19 +172,38 @@ This is sufficient repository evidence for `PROVED + MERGED`.
 
 ### Post-merge runtime readback
 
-A governed HTTP readback against `https://app.medicspro.com.br/` after #551 merged still returned:
+The first governed production readback immediately after #551 merged still returned the prior entry:
 
 `/assets/index-BYMym6it.js`
 
-That is the same entry previously observed for the MED-CRM-006 production frontend. Therefore the new MED-CRM-007 frontend bundle was **not yet observed in production** at this checkpoint.
+That correctly prevented an early RELEASED claim.
 
-The `medicspro-agent` Docker surface exposed only `supabase-db`; it did not expose a governed frontend container action. No deploy was forced or bypassed.
+A later governed readback then observed the frontend rollout:
 
-Consequences:
+- entry: `/assets/index-DLkUkW9i.js`;
+- CRM chunk: `/assets/CrmOperational-foLfVbZu.js`;
+- `list_current_clinic_crm_lead_activities`: PRESENT;
+- `list_current_clinic_crm_contact_identity_candidates`: PRESENT;
+- `resolve_current_clinic_crm_prospect_identity`: PRESENT;
+- `Atividade comercial registrada`: PRESENT;
+- `Ver histórico`: PRESENT;
+- old direct Prospect writers `create_current_clinic_crm_contact` and `create_current_clinic_crm_lead`: ABSENT;
+- direct `.from("crm_lead_activities")` / `.from('crm_lead_activities')`: ABSENT;
+- `candidate_ids`, `actor_id`, `p_patient_id`, `create_patient`: ABSENT;
+- `/`, `/crm`, `/agenda`, `/pacientes`: HTTP 200.
 
-- repository status: **PROVED + MERGED**;
-- production status: **NOT RELEASED**;
-- no authenticated human timeline smoke is claimed;
-- no production database change is required or claimed.
+The broader CRM lazy chunk still contains a `/pacientes/` string because `Crm.tsx` already composes separate Patient-domain NPS/churn content. Repository boundary tests prove `CommercialCrmBoard` itself does not introduce Patient navigation, while the timeline adapter drops Patient data from the activity projection.
 
-RELEASED requires a later frontend rollout observation proving the live CRM chunk contains `list_current_clinic_crm_lead_activities`, preserves the forbidden-writer/Patient boundaries and keeps baseline routes healthy.
+No backend/database rollout was required for MED-CRM-007 because the activity RPC was already RELEASED before this slice.
+
+### Release conclusion
+
+MED-CRM-007 is **RELEASED** based on:
+
+- exact-head repository proof: 20/20 successful workflows on `6714ed5672fa2b08934ce7538fbab016d3d2f8f7`;
+- squash merge: `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`;
+- live production frontend rollout observation;
+- live CRM marker/boundary readback;
+- baseline public route health.
+
+No authenticated human timeline interaction was executed in this release readback, and none is claimed. No production data mutation was needed.
