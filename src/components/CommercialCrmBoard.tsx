@@ -218,7 +218,7 @@ export function CommercialCrmBoard() {
     setProspectPhone('');
     setProspectEmail('');
     setProspectTitle('');
-    setProspectPipelineId(selectedPipelineId ?? choosePipeline(snapshot.pipelines, null) ?? '');
+    setProspectPipelineId(choosePipeline(activePipelines, selectedPipelineId) ?? '');
     setProspectError(null);
     setProspectOpen(true);
   };
