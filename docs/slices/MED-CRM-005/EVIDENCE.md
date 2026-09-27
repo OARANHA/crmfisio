@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Canonical base:** `cae02c03345302737e8738a77da6841224659518`  
 **Branch:** `feat/med-crm-005-prospect-intake-v1`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## REAL NOW reconstructed before execution
 
@@ -116,20 +116,95 @@ Tests prove at minimum:
 - active pipeline projection remains the source for selection;
 - post-persist projection refresh failure remains stale UI state.
 
-## Remaining gates
+## Final PR proof
 
-Before merge:
+PR #538 final HEAD:
 
-- open PR from the current branch;
-- revalidate exact final HEAD against current main;
-- require all applicable current-head GitHub checks to complete successfully;
-- verify reviews/threads and mergeability;
-- merge only with expected-head protection.
+```text
+6df9f1ba39b474454fe33ee93d0143677cd12f6d
+```
 
-Before RELEASED:
+was revalidated immediately before merge:
 
-- observe production frontend auto-deploy;
-- verify live CRM lazy chunk includes the new prospect-intake markers and released creation RPC names;
-- verify public route health.
+```text
+base/current main = cae02c03345302737e8738a77da6841224659518
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+applicable workflows = 8
+completed + success = 8
+failed = 0
+validate = success
+dependency-audit = success
+```
 
-There is no DB rollout in this slice.
+The `validate` job independently completed `npm ci`, full `npm test`, typecheck, lint and production build successfully.
+
+Protected squash merge with expected-head guard produced:
+
+```text
+PR #538 = MERGED
+main = 004fcb2c6c60ff7611bf6c1156e90edaac27ae9a
+```
+
+## Production rollout / readback
+
+The first post-merge readback correctly showed the previous frontend bundle:
+
+```text
+entry = /assets/index-HtujlU6h.js
+CRM chunk = /assets/CrmOperational-C3MqVds_.js
+new Prospect Intake markers = ABSENT
+```
+
+That observation was not treated as RELEASED.
+
+During auto-deploy, one cache-busted request transiently returned HTTP 502. Subsequent no-cache origin readback stabilized at:
+
+```text
+entry = /assets/index-B0iT1ZY2.js
+Last-Modified = Sun, 27 Sep 2026 10:15:28 GMT
+CRM chunk = /assets/CrmOperational-D1hSbB77.js
+```
+
+The live CRM chunk contained:
+
+```text
+create_current_clinic_crm_contact                         PRESENT
+create_current_clinic_crm_lead                            PRESENT
+transition_current_clinic_crm_lead_stage                  PRESENT
+Novo prospect                                             PRESENT
+Cria Contact + Lead                                       PRESENT
+Não foi possível confirmar a criação                      PRESENT
+Prospect criado, mas o quadro não pôde ser recarregado    PRESENT
+```
+
+and did not contain:
+
+```text
+create_current_clinic_crm_prospect    ABSENT
+addPatient                             ABSENT
+create_patient                         ABSENT
+```
+
+Public health at the same readback:
+
+```text
+/           200
+/crm        200
+/agenda     200
+/pacientes  200
+```
+
+There is no DB rollout in MED-CRM-005.
+
+## Release conclusion
+
+```text
+MED-CRM-005 = PROVED + MERGED + RELEASED
+implementation PR = #538
+merge/main = 004fcb2c6c60ff7611bf6c1156e90edaac27ae9a
+database rollout = none
+manual production mutation = none
+```

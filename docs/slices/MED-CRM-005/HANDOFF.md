@@ -8,14 +8,17 @@ Revalidate these values before acting; they are a checkpoint, not inherited auth
 
 ```text
 base audited = main@cae02c03345302737e8738a77da6841224659518
-branch = feat/med-crm-005-prospect-intake-v1
-implementation proof head before docs = c2650234615cd4fd77dfcebd4a8e830a37b3415b
+implementation PR = #538
+final PR head = 6df9f1ba39b474454fe33ee93d0143677cd12f6d
+merge/main = 004fcb2c6c60ff7611bf6c1156e90edaac27ae9a
+production entry = /assets/index-B0iT1ZY2.js
+production CRM chunk = /assets/CrmOperational-D1hSbB77.js
 
 MED-CRM-001 = RELEASED
 MED-CRM-002 = RELEASED
 MED-CRM-003 = RELEASED
 MED-CRM-004 = RELEASED
-MED-CRM-005 = PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+MED-CRM-005 = PROVED + MERGED + RELEASED
 ```
 
 ## Four gates
@@ -70,17 +73,49 @@ npm audit --audit-level=high = PASS
 
 Two moderate pre-existing Vitest/@vitest-mocker advisories remain; their available fix is a breaking major upgrade.
 
-## Next gate
+## Merge and release proof
 
-Do not call this slice MERGED or RELEASED yet.
+PR #538 was revalidated on exact final HEAD `6df9f1ba39b474454fe33ee93d0143677cd12f6d`:
 
-1. resolve current `main` and current branch HEAD;
-2. open/revalidate the PR;
-3. wait for all applicable final-HEAD checks;
-4. verify 0 behind / mergeability / reviews / threads;
-5. protected squash merge with expected HEAD only when all gates are green;
-6. re-resolve `main`;
-7. prove frontend production rollout/readback;
-8. only then reconcile institutional docs to RELEASED.
+```text
+base = current main@cae02c03345302737e8738a77da6841224659518
+behind = 0
+mergeable = true
+reviews = 0
+review threads = 0
+8/8 workflows = completed + success
+validate = success
+dependency-audit = success
+```
 
-If a new chat is needed, revalidate these facts and update this HANDOFF before generating the next-chat prompt.
+Protected squash merge produced `main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a`.
+
+Production readback then proved:
+
+```text
+entry = /assets/index-B0iT1ZY2.js
+CRM chunk = /assets/CrmOperational-D1hSbB77.js
+create_current_clinic_crm_contact = PRESENT
+create_current_clinic_crm_lead = PRESENT
+Novo prospect = PRESENT
+create_current_clinic_crm_prospect = ABSENT
+addPatient = ABSENT
+create_patient = ABSENT
+/ /crm /agenda /pacientes = HTTP 200
+```
+
+No database rollout or manual production mutation exists for this slice.
+
+## Next product gate
+
+MED-CRM-005 is closed. Do not reopen it merely because a new chat starts.
+
+Before selecting the next Commercial CRM capability:
+
+1. resolve current `origin/main` and active PRs again;
+2. read `CURRENT_STATE.md`, `SLICE_LEDGER.md` and MED-CRM-005 evidence;
+3. reconstruct current code/schema/test/runtime gaps;
+4. run GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW;
+5. preserve Contact != Lead != Patient and the released CRM writers.
+
+If a new chat is needed, revalidate main/PR/checks and update this HANDOFF before generating the prompt.

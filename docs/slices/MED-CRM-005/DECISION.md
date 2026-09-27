@@ -3,7 +3,7 @@
 **Decision date:** 2026-09-27  
 **Audited main:** `cae02c03345302737e8738a77da6841224659518`  
 **Branch:** `feat/med-crm-005-prospect-intake-v1`  
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## GAPS
 
@@ -61,4 +61,4 @@ JEV is advisory only. Execution authority came from released command contracts p
 
 ## Status boundary
 
-`PROVED ON BRANCH` means the bounded implementation has mechanical proof in the controlled workspace. It does not imply PR merge or production rollout.
+`PROVED ON BRANCH` was the pre-merge boundary only. The later gates are now separately proved: PR #538 final HEAD `6df9f1ba39b474454fe33ee93d0143677cd12f6d` passed 8/8 applicable workflows and was protected-squash-merged as `main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a`. Production readback proved the new frontend entry/chunk and Prospect Intake markers while the rejected composite RPC and Patient-creation markers remained absent. MED-CRM-005 is therefore PROVED + MERGED + RELEASED.

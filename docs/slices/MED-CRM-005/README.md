@@ -1,6 +1,6 @@
 # MED-CRM-005 — Prospect Intake V1
 
-**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED  
+**Status:** PROVED + MERGED + RELEASED  
 **Base audited:** `main@cae02c03345302737e8738a77da6841224659518`  
 **Depends on:** MED-CRM-001 / 002 / 003 / 004 RELEASED
 
@@ -40,4 +40,25 @@ Controlled workspace validation:
 - `npm run build`: PASS;
 - `npm audit --audit-level=high`: exit 0; two pre-existing moderate Vitest/@vitest-mocker advisories remain and require a breaking major upgrade.
 
-Merge, final-HEAD GitHub checks and production readback remain separate gates.
+## Merge and release proof
+
+PR #538 final HEAD:
+
+`6df9f1ba39b474454fe33ee93d0143677cd12f6d`
+
+was revalidated against `main@cae02c03345302737e8738a77da6841224659518` as 0 behind, mergeable, with no blocking reviews/threads and 8/8 applicable workflows `completed + success`, including `validate` and `dependency-audit`.
+
+Protected squash merge produced:
+
+`main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a`
+
+Production frontend readback proved:
+
+- entry `/assets/index-B0iT1ZY2.js`;
+- CRM chunk `/assets/CrmOperational-D1hSbB77.js`;
+- released Contact + Lead creation RPC markers present;
+- `Novo prospect`, retry warning and stale-projection warning present;
+- `create_current_clinic_crm_prospect`, `addPatient` and `create_patient` absent;
+- `/`, `/crm`, `/agenda`, `/pacientes` HTTP 200.
+
+No database rollout or manual production mutation was required.
