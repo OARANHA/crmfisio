@@ -12,8 +12,8 @@
 
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
-| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; RELEASE bloqueado porque `medicspro-agent` não expõe PostgreSQL/containers produtivos para readback |
-| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524; docs #526 integradas em `main@bac39b3...`; falta capability controlada de PostgreSQL produtivo antes de RELEASED |
+| `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; readback capability já foi MERGED/PUBLISHED no Remote-Ops-MCP #35, mas o control plane live ainda está na revisão `985777e0...`; falta deploy/configuração antes do RELEASE |
+| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524; docs #526/#527 integradas; `postgres_pinned_verifier_readback` existe em Remote-Ops-MCP `52dbdf1b...`, porém ainda não está no schema live; RELEASE continua bloqueado |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
