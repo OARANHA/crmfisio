@@ -110,6 +110,10 @@ function baseSnapshot() {
 
 describe('CommercialCrmBoard', () => {
   beforeEach(() => {
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
     testState.role = 'owner';
     testState.snapshot = baseSnapshot();
     testState.load.mockReset().mockImplementation(async () => testState.snapshot);
@@ -206,7 +210,10 @@ describe('CommercialCrmBoard', () => {
 
     expect(rendered).toContain('Leads arquivados / legado · 1');
     expect(rendered).toContain('Lead Legado');
-    expect(rendered).toContain('Comercial antigo · Legado');
+    const legacyContext = renderer.root.findAllByType('p').find((paragraph) =>
+      paragraph.children.join('') === 'Comercial antigo · Legado',
+    );
+    expect(legacyContext).toBeTruthy();
     expect(rendered).toContain('somente leitura');
   });
 
