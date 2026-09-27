@@ -1,18 +1,33 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / SLICE NOT FINAL
+**Status:** RELEASED
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
 **Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
 **Implementation PR:** #544 — MERGED as `main@837935ef82a18849dcd05986a27f7978a9cdd10b` from final validated HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`  
+**Frontend PR:** #548 — MERGED as `main@910dff50cf113a350e21192bcf5cd2209db1ab71` from final validated HEAD `d2c6356883a767f302ac98af834a9319f678529e`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against live `main@e2902917f247ab92683988e3beed8b5e4badd225`, backend production proof, and frontend implementation PR #548 (OPEN; not yet PROVED)
+**Last reconciled:** 2026-09-27 against `main@910dff50cf113a350e21192bcf5cd2209db1ab71`, exact-head PR #548 CI, released backend production proof, Portainer runtime readback and route smoke
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-Backend implementation is PROVED in repository CI, merged and RELEASED in production. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including PostgreSQL 16/17 and Clinical workflow `validate` / `dependency-audit`. The exact canonical migration was then hash-proved and applied to production `28server` / `supabase-db`; the pinned production verifier and CRM regressions passed. Frontend candidate/resolution UX is now under implementation in PR #548, but it is not yet PROVED. MED-CRM-006 as a whole remains open until that exact frontend HEAD is validated, merged and observed in production.
+Backend implementation is PROVED in repository CI, merged and RELEASED in production. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including PostgreSQL 16/17 and Clinical workflow `validate` / `dependency-audit`. The exact canonical migration was then hash-proved and applied to production `28server` / `supabase-db`; the pinned production verifier and CRM regressions passed. Frontend candidate/resolution UX was completed in PR #548, PROVED on exact HEAD, protected-squash-merged and observed in production after Portainer redeploy. MED-CRM-006 is RELEASED.
+
+## Final frontend release checkpoint — 2026-09-27
+
+- frontend implementation PR #548 final validated HEAD: `d2c6356883a767f302ac98af834a9319f678529e`;
+- all 20 workflow runs associated with that exact PR HEAD completed successfully, including `Clinical workflow CI`;
+- protected squash merge produced `main@910dff50cf113a350e21192bcf5cd2209db1ab71`;
+- after the Portainer redeploy, production began serving entry bundle `/assets/index-BYMym6it.js` with `Last-Modified: Sun, 27 Sep 2026 16:40:32 GMT`;
+- that entry references live CRM chunk `/assets/CrmOperational-6R-i_o-S.js`;
+- the live CRM chunk contains `list_current_clinic_crm_contact_identity_candidates`, `resolve_current_clinic_crm_prospect_identity`, `create_if_clear`, `explicit_reuse`, `explicit_distinct` and the exact-retry copy `Repetir mesma tentativa`;
+- the live CRM chunk does not contain the old direct Prospect Intake writers `create_current_clinic_crm_contact` or `create_current_clinic_crm_lead`;
+- public route smoke after redeploy returned HTTP 200 for `/`, `/crm`, `/agenda` and `/pacientes`;
+- no authenticated human Contact/Lead mutation was performed as part of this final readback; release status is based on exact-head repository proof, released backend verifier evidence, live production bundle readback and public route health.
+
+Deterministic conclusion: **MED-CRM-006 is RELEASED**. The canonical boundary remains `Contact != Lead != Patient`; phone/email remain candidate signals rather than unique identity; the server resolver remains final authority; no Patient matching/creation authority was introduced by this slice.
 
 ## Repository proof checkpoint — 2026-09-27
 
@@ -37,7 +52,7 @@ Backend implementation is PROVED in repository CI, merged and RELEASED in produc
 - pinned verifier SHA-256: `4da932b767d18decbd8c0d881b679dc29735364abcbf3b5b0c73c2d75d88f785`;
 - production verifier returned `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED` after 12 checks;
 - pinned regressions also passed for Commercial CRM Core, Command Boundary and Archived Pipeline Transition Guard;
-- backend authority is therefore RELEASED; this does not yet prove the frontend UX.
+- backend authority is RELEASED; the frontend proof and production observation are recorded in the final release checkpoint below.
 
 ## Non-goals
 
@@ -54,14 +69,14 @@ Backend implementation is PROVED in repository CI, merged and RELEASED in produc
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- live frontend execution base was revalidated as `origin/main@e2902917f247ab92683988e3beed8b5e4badd225`; PR #548 was created from that exact base; re-resolve both main and PR HEAD before any validation/merge claim;
+- frontend execution was completed in PR #548 from the revalidated base; final validated HEAD was `d2c6356883a767f302ac98af834a9319f678529e` and protected squash merge produced `main@910dff50cf113a350e21192bcf5cd2209db1ab71`;
 - canonical implementation PR #544 is merged; its final validated HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
 - PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
 - repository validation is complete: 21/21 workflows success; PostgreSQL 16 and 17 dedicated jobs success; Clinical workflow `validate` and `dependency-audit` success;
-- production backend rollout/readback is complete; frontend candidate/resolution UX is implemented in open PR #548 and its next gate is exact-HEAD repository validation.
+- production backend rollout/readback is complete; frontend candidate/resolution UX is PROVED, merged and observed in production; MED-CRM-006 is RELEASED.
 
 ### Evidência comprovada
 
@@ -259,7 +274,7 @@ Implemented scope in PR #548:
 - canonical CRM refetch remains the post-command projection authority;
 - no Patient input/output/matching, no backend SQL change, and no fallback from Prospect Intake to the old Contact + Lead browser sequencing.
 
-Frontend tests were extended for zero/one/multiple candidates, split conflict, reuse, distinct reason, stale server rejection, stable retry IDs, Patient boundary and no-writer-fallback boundary. These tests are **implemented but not yet accepted as proof** until the exact current PR HEAD completes repository CI successfully.
+Frontend tests cover zero/one/multiple candidates, split conflict, reuse, distinct reason, stale server rejection, exact retry intent, Patient boundary and no-writer-fallback boundary. Final PR #548 HEAD `d2c6356883a767f302ac98af834a9319f678529e` completed all 20 applicable GitHub workflows successfully before merge.
 
 ## 6. VALIDATION
 
@@ -276,7 +291,7 @@ Production validation is also complete:
 - Archived Pipeline Transition Guard pinned verifier passed;
 - verification ran through the separate read-only semantic target.
 
-This proves the backend authority RELEASED in production. It does not prove frontend UX.
+This proves the backend authority RELEASED in production. Frontend repository proof, protected merge, live bundle readback and route smoke are also complete, so the whole MED-CRM-006 slice is RELEASED.
 
 ## 7. DOCUMENTATION
 
@@ -292,9 +307,9 @@ This proves the backend authority RELEASED in production. It does not prove fron
 - [x] production-safe verifier/readback
 - [x] backend RELEASED after runtime proof
 - [x] frontend resolution UX authorized
-- [ ] frontend implementation / validation / merge
-- [ ] frontend production observation
-- [ ] final MED-CRM-006 release reconciliation
+- [x] frontend implementation / exact-head validation / protected merge
+- [x] frontend production observation after Portainer redeploy
+- [x] final MED-CRM-006 release reconciliation
 
 ## Implementation-plan review — CLOSED
 
