@@ -278,9 +278,9 @@ No new deterministic implementation blocker was identified.
 
 ## DOCUMENTATION boundary
 
-This evidence update occurs after the implementation HEAD above. Therefore it will create a newer PR HEAD and **must cause a fresh final-head GitHub validation before merge**. The 9/9 success set above must not be inherited by the documentation commit automatically.
+At the implementation-branch checkpoint, the MED-CRM-003 documentation refresh deliberately moved PR #536 beyond the earlier green code HEAD, so the final PR HEAD had to be revalidated before merge. That revalidation was performed on `2f0d8bc3cf9a7b61677abc053a64218d120dacf6` and all 9 applicable check-runs passed.
 
-`docs/CURRENT_STATE.md` is intentionally not rewritten to claim integrated Board state before PR #536 merges. Main still owns current integrated state.
+`docs/CURRENT_STATE.md` was intentionally not changed to integrated Board state until #536 had actually merged. This post-merge reconciliation now updates the institutional state only after both merge and runtime rollout were separately observed.
 
 ## Status
 
@@ -291,7 +291,7 @@ merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
 production frontend = UPDATED + READBACK PROVED
 ```
 
-RELEASED requires production frontend rollout/readback after merge. There is no database rollout in this slice.
+Production frontend rollout/readback was required for RELEASED and is now proved below. There is no database rollout in this slice.
 
 
 ## Merge proof
