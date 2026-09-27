@@ -73,14 +73,29 @@ Depois reconstrua o ESTADO ATUAL COMPROVADO.
 ## Copy-paste prompt for a new chat
 
 ```text
-Continue <SLICE-ID> in OARANHA/crmfisio.
+Retome o projeto MEDICSPRO pelo estado canônico do repositório OARANHA/crmfisio.
 
 Do not rely on prior chat memory.
 
-Read AGENTS.md, docs/doctrine/README.md, docs/SLICE_EXECUTION_METHOD.md, docs/CURRENT_STATE.md, <slice README> and <slice HANDOFF>.
-Read docs/CANONICAL_INDEX.md, resolve current origin/main, revalidate the active PR/branch/checks, and reconstruct ESTADO ATUAL COMPROVADO before changing anything.
-Preserve all canonical MedicsPro security/clinical boundaries.
-Continue only from the Next exact step recorded in the handoff, unless stronger current evidence invalidates it.
-Use JEV for the SECOND ADVERSARIAL REVIEW when the next decision is consequential.
+Read AGENTS.md, docs/CANONICAL_INDEX.md, docs/CURRENT_STATE.md, docs/WORK_CONTEXT.md,
+docs/doctrine/README.md, docs/SLICE_EXECUTION_METHOD.md, docs/SLICE_LEDGER.md,
+<slice README> and <slice HANDOFF>.
+
+Resolve current origin/main and revalidate the active PR/branch: HEAD, base, diff, checks and merge state.
+Reconstruct ESTADO ATUAL COMPROVADO before deciding or executing.
+
+Follow exactly:
+GAPS
+→ CAPABILITY AUTHORITY / REUSE GATE
+→ DECISION
+→ SECOND ADVERSARIAL REVIEW
+→ EXECUTION
+→ VALIDATION
+→ DOCUMENTATION
+
+No new capability enters EXECUTION before passing the first four gates.
+Preserve all canonical MedicsPro security, tenant and clinical boundaries.
+Continue from the Next exact step unless stronger current evidence invalidates it.
+Use JEV only as advisory second adversarial review when consequential.
 Use MCP_WANDORA_VPS only if runtime/VPS evidence is actually required.
 ```
