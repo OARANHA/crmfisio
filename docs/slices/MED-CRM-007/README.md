@@ -1,9 +1,11 @@
 # MED-CRM-007 — Commercial Lead Activity Timeline V1
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Design baseline:** `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120`  
+**Execution baseline:** `main@b8f7943960254ba33ec036a4462c6b2683367289` (design PR #550 merged)  
+**Execution branch:** `feat/med-crm-007-lead-activity-timeline`  
 **Created:** 2026-09-27
 
 ## Objective
@@ -156,9 +158,9 @@ GAPS                              CLOSED
 CAPABILITY AUTHORITY / REUSE      CLOSED
 DECISION                          CLOSED
 SECOND ADVERSARIAL REVIEW         CLOSED
-EXECUTION                         NOT STARTED
+EXECUTION                         IN PROGRESS
 VALIDATION                        NOT STARTED
-DOCUMENTATION                     IN PROGRESS (design artifacts only)
+DOCUMENTATION                     IN PROGRESS
 ```
 
-No implementation is authorized by status alone. Before execution, revalidate current `origin/main`, open PRs, this slice contract and any newer CRM authority.
+Execution started only after revalidating `main@b8f7943960254ba33ec036a4462c6b2683367289`, confirming #550 was the only material CRM change and repeating the adversarial route. The current implementation remains frontend-only; PROVED/RELEASED are not claimed until exact-head CI and runtime evidence exist.
