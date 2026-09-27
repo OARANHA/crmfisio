@@ -1,6 +1,6 @@
 # MED-CRM-004 — Archived Pipeline Transition Guard
 
-**Status:** IMPLEMENTING  
+**Status:** PROVED  
 **Base audited:** `main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35`  
 **Depends on:** MED-CRM-001 + MED-CRM-002 RELEASED  
 **Unblocks:** re-analysis of MED-CRM-003 only after this slice is RELEASED
@@ -45,5 +45,17 @@ The slice cannot become PROVED until mechanical validation shows:
 9. Patient / Patient Journey remain untouched;
 10. migration replay and dedicated verifier pass;
 11. PostgreSQL 16 and 17 harnesses pass.
+
+### Validation checkpoint
+
+On PR #534 head `2e783c08363e6922804bf6e96d377125778c0499`:
+
+- dedicated PostgreSQL guard workflow: PostgreSQL 16 SUCCESS + PostgreSQL 17 SUCCESS;
+- all 21 GitHub workflow runs for that exact head: SUCCESS;
+- local workspace: 125 test files / 668 tests PASS;
+- `npm run typecheck`: PASS;
+- `npm run lint`: PASS;
+- `npm run build`: PASS;
+- `bash -n` and `git diff --check`: PASS.
 
 Because this changes a production command contract, RELEASED additionally requires controlled production rollout and readback. Merge alone is not release proof.
