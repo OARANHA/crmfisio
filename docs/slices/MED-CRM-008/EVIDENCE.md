@@ -102,7 +102,9 @@ Doctrine requires explicit, auditable, idempotent conversion. It crosses from co
 
 ## Security/boundary conclusion
 
-The selected slice can remain entirely inside Commercial CRM if it updates only `title/value_cents/source` through the existing mutator guard and keeps all other entity/lifecycle fields immutable.
+The selected slice can remain entirely inside Commercial CRM if it updates only `title/value_cents/source` through the existing mutator guard and keeps all other entity/lifecycle fields immutable. The current Board already treats archived pipeline/stage Leads as legacy read-only and suppresses identifiable Lead title/Contact PII after Contact anonymization; the server mutation must preserve those semantics rather than relying on UI affordances.
+
+Implementation-plan review also identified two direct-RPC bypass risks: editing a Lead whose Contact is anonymized/deleted, and editing a Lead currently in archived pipeline/stage despite the released Board presenting that state as read-only. The command contract therefore rejects both server-side.
 
 Implementation-plan review additionally proved that `FOR UPDATE` alone is insufficient against stale full-form overwrites. The final design requires `lead_updated_at` as an optimistic-concurrency token after row lock, while exact desired-state retries remain side-effect-free no-ops.
 
