@@ -17,6 +17,7 @@ The Commercial Core foundation and command boundary are **PROVED + MERGED**, not
 - Dedicated Commercial CRM harness passed PostgreSQL 16.15 and 17.11, migration replay, MED-CRM-001 verifier, MED-CRM-002 verifier and 13 behavior cases.
 - `validate` and `dependency-audit` were SUCCESS.
 - No production rollout/schema installation of #522/#524 was proved in this reconciliation.
+- Delta proof: `main@652ea7... → main@7a8badf5...` is exactly the #524 integration diff, so capability rows outside that delta retain the evidence from the previous audit; rows affected by #524 were reclassified below.
 
 Runtime was not used to infer deployment because the available `medicspro-agent` target does not expose production DB/container readback.
 
