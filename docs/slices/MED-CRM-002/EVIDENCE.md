@@ -178,6 +178,70 @@ final PR workflows: 21/21 SUCCESS
 
 Therefore repository integration is proved.
 
+## Release-gate runtime evidence
+
+Post-merge documentation reconciliation was integrated by PR #526 as:
+
+```text
+PR #526 = MERGED (squash)
+main = bac39b344ec807f5beb843b4ea6c9994e794f531
+scope = documentation only
+```
+
+Production readback was then re-attempted through the registered MEDICSPRO runtime authority.
+
+Observed target:
+
+```text
+target = medicspro-agent
+environment = production
+profile = operator
+transport = agent
+host = 28server
+allowed path = /opt/wandora/ops-workspace
+```
+
+Observed capability boundary:
+
+```text
+allowedDockerContainers = []
+allowedDockerExecContainers = []
+allowedDockerExecPrograms = []
+allowedDockerActions = []
+psql in allowedProcessPrograms = false
+docker_list = REMOTE_COMMAND_FAILED / docker_read_proxy_required
+runtime_summary = docker unavailable for this user
+target_agent_prepare presets = operator-workspace | read-only
+```
+
+The exact production artifacts that require readback are:
+
+- `supabase-migrations/20260926_commercial_crm_core_foundation.sql`;
+- `supabase-migrations/20260926_commercial_crm_command_boundary.sql`;
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql`;
+- `supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql`.
+
+Both verifier files were mechanically inspected and contain zero mutation-like statements. The blocker is not verifier safety; it is absence of authorized connectivity/execution against the real production PostgreSQL instance.
+
+The canonical deploy contract in `DEPLOY.md` requires schema/migration-history inspection before apply, pinned migration execution, stop-on-error and immediate verifier. Therefore GitHub integration cannot substitute this runtime proof.
+
+Decision:
+
+- do not use `bash`/`sh` as a program-allowlist escape;
+- do not expose/read production DB credentials in chat;
+- do not infer migration installation from merge/deploy intent;
+- do not start MED-CRM-003.
+
+Second adversarial review (JEV):
+
+```text
+route = block
+block = 1.00
+confidence = 1.00
+```
+
+Missing authority is precise: a controlled production PostgreSQL readback capability, either as a dedicated semantic operation or as Docker/DB execution with the production PostgreSQL target/container and `psql` explicitly allowlisted and credentials injected server-side. If migrations are absent, rollout requires a separate narrowly authorized write path for the pinned migration files plus post-rollout verifier/readback.
+
 ## Explicit non-proof
 
 This evidence still does **not** prove:
