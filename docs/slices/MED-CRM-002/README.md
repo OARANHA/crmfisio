@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** PROVED + MERGED — PR #524 squash-integrated; not RELEASED
+**Status:** RELEASED — PR #524 squash-integrated; production rollout verified 2026-09-27
 **Capability:** canonical authenticated Commercial Core mutations
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **PR / merge:** #524 → `main@7a8badf5ad81e92746e82bedd142ba75899a4080`
