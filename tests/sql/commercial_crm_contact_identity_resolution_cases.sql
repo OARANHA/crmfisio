@@ -246,6 +246,45 @@ BEGIN
   END IF;
 END $$;
 
+SELECT '6b) missing or invalid resolution mode is rejected server-side' AS check;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
+DO $
+BEGIN
+  BEGIN
+    PERFORM * FROM public.create_current_clinic_crm_resolved_prospect(
+      '72000000-0000-0000-0000-000000000009',
+      '82000000-0000-0000-0000-000000000009',
+      'Missing Mode',
+      'Missing Mode Lead',
+      NULL
+    );
+    RAISE EXCEPTION 'crm_missing_resolution_mode_unexpectedly_allowed';
+  EXCEPTION
+    WHEN invalid_parameter_value THEN
+      IF SQLERRM <> 'crm_identity_resolution_mode_invalid' THEN
+        RAISE;
+      END IF;
+  END;
+
+  BEGIN
+    PERFORM * FROM public.create_current_clinic_crm_resolved_prospect(
+      '72000000-0000-0000-0000-000000000009',
+      '82000000-0000-0000-0000-000000000009',
+      'Invalid Mode',
+      'Invalid Mode Lead',
+      'automatic_best_match'
+    );
+    RAISE EXCEPTION 'crm_invalid_resolution_mode_unexpectedly_allowed';
+  EXCEPTION
+    WHEN invalid_parameter_value THEN
+      IF SQLERRM <> 'crm_identity_resolution_mode_invalid' THEN
+        RAISE;
+      END IF;
+  END;
+END $;
+RESET ROLE;
+
 SELECT '7) create_if_clear creates Contact+Lead, stores canonical values and exact retry is side-effect idempotent' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
