@@ -2,9 +2,10 @@
 
 **Status:** DESIGNED  
 **Owner domain:** Commercial CRM  
-**Branch/PR:** `docs/med-crm-006-contact-identity-resolution` / PR #541  
+**Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
+**Plan-review branch:** `docs/med-crm-006-implementation-plan-review`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`
+**Last reconciled:** 2026-09-27 against `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
 
 ## Objective
 
@@ -244,6 +245,42 @@ For the later implementation plan, require at minimum:
 - [x] open docs-only PR
 - [ ] merge only after current HEAD checks are green
 
-## Residual / next exact step
+## Implementation-plan review — CLOSED
 
-Perform an **implementation-plan review before EXECUTION**. That review must name the exact follow-up migration, helper/function signatures, candidate projection shape, orchestration command contract, lock-key strategy, audit metadata and PostgreSQL behavioral/verifier cases. Do not write product code in the same movement merely because the design is now closed.
+The implementation-plan review on `main@2140c3351843e5398a08d2a4bc40ba3972ac6329` found and closed two design gaps before execution:
+
+1. **normal zero-candidate intent:** V1 needs `create_if_clear` in addition to `explicit_reuse` and `explicit_distinct`; using `explicit_distinct` when there is no ambiguity would fabricate an override;
+2. **legacy writer bypass:** leaving `create_current_clinic_crm_contact(...)` able to create a new UUID for an already-matching signal would bypass the new authority.
+
+Normative refinement:
+
+- `create_if_clear` = create only if the locked server-side recheck still finds no other active candidate;
+- `explicit_reuse` = selected current candidate receives a new Lead;
+- `explicit_distinct` = create a distinct Contact only after current ambiguity is rechecked and a non-empty reason is supplied;
+- the released Contact writer keeps its public signature but becomes **clear-only**: exact same-ID retry remains valid, while a new-ID ambiguous create fails closed with an identity-resolution-required error;
+- a revoked internal Contact insert/retry helper is shared by the clear-only writer and orchestration; it is implementation reuse, not a browser authority;
+- the released Lead command remains the canonical Lead creation authority;
+- no historical normalized-column backfill is required in V1; legacy rows are matched by applying the same canonical helpers to raw stored values, avoiding a migration that would rewrite Contact `updated_at` merely for derived fields;
+- all new Contact writes populate `phone_normalized` / `email_normalized`;
+- lock coverage includes every active match key: exact phone, BR legacy-phone equivalence when applicable, and exact email;
+- lock acquisition is transaction-scoped and deterministically ordered; final candidates are always recomputed after all locks;
+- a `contact_identity_resolved` entry in existing `crm_lead_activities` records the committed resolution without automatically copying raw phone/email;
+- existing text-only `audit_log` gets IDs/mode/count only; it does not receive raw phone/email or free-text reason.
+
+### Exact backend implementation artifacts
+
+- migration: `supabase-migrations/20260927_commercial_crm_contact_identity_resolution.sql`;
+- verifier: `supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_CONTACT_IDENTITY_RESOLUTION.sql`;
+- behavior cases: `tests/sql/commercial_crm_contact_identity_resolution_cases.sql`;
+- harness: `scripts/test-commercial-crm-contact-identity-resolution.sh`;
+- PostgreSQL 16/17 workflow: `.github/workflows/commercial-crm-contact-identity-resolution.yml`.
+
+### Execution boundary
+
+**Backend authority phase is authorized after this plan-review documentation is integrated.**
+
+Frontend resolution UX is a later phase inside MED-CRM-006 and must not depend on the new RPC until the backend migration is RELEASED in production.
+
+The backend rollout is intentionally backward-compatible for ordinary creation: zero-candidate stale clients continue to work; an ambiguous stale-client create fails closed instead of silently creating another Contact.
+
+The slice remains `DESIGNED` until implementation actually starts.
