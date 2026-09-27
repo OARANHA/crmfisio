@@ -1,8 +1,8 @@
 # MED-CRM-001 — Commercial Core
 
-**Status:** PROVED  
+**Status:** RELEASED  
 **Capability:** CRM commercial foundation  
-**Execution:** foundation micro-slice PROVED; merge decision APPROVED subject to latest-head checks/mergeability; read GitHub/main for mutable merge state  
+**Execution:** implementation PROVED + MERGED via #522; production rollout observed and pinned verifier passed on 2026-09-27  
 **Created:** 2026-09-26  
 **Design readback:** `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`  
 **Implementation readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`  
