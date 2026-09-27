@@ -2,7 +2,7 @@
 
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
-**Audited main:** `837935ef82a18849dcd05986a27f7978a9cdd10b`
+**Audited main:** `7e1ab2fba50d6188e718411c6b51b201ae417954`
 
 ## Canonical implementation checkpoint — 2026-09-27
 
@@ -15,7 +15,7 @@
 - protected squash merge with `expected_head_sha=aed1b2752ca86c43ea37a47abf8e5684434e2811` produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`;
 - post-merge comparison proved `main` identical to that merge SHA;
 - PR #542 remains non-authoritative prototype/reuse evidence only;
-- backend implementation is therefore PROVED in repository evidence and MERGED, but production rollout/readback has not occurred and frontend work remains unauthorized.
+- backend implementation is PROVED and MERGED; production rollout/readback is now also complete, so backend authority is RELEASED and frontend work is authorized as the next phase.
 
 
 ## Backend implementation proof — PR #544
@@ -32,9 +32,34 @@ Canonical artifacts integrated by PR #544:
 The dedicated workflow proves both PostgreSQL 16 and PostgreSQL 17 behavior. The harness includes the effective CRM migration stack, structural verifier, identity-resolution behavior cases, MED-CRM-002 and MED-CRM-004 regressions, and the real two-session concurrency harness. The repository proof is tied to final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` and merge `837935ef82a18849dcd05986a27f7978a9cdd10b`.
 
 
+## Production backend release proof — 2026-09-27
+
+Runtime authority and rollout evidence:
+
+- host: `28server` (Ubuntu 24.04.3 LTS observed at rollout);
+- PostgreSQL container: `supabase-db`;
+- `medicspro-db-readback`: read-only Agent Mesh target with only `postgres.pinned_readback`;
+- `medicspro-managed-admin`: approval-gated managed-admin path used for exact administrative steps;
+- the PostgreSQL read proxy remained pinned to `supabase-db`, exec user `postgres`, DB user `postgres`, DB `postgres`;
+- a dedicated `med-crm-006-verifier.conf` drop-in added only the new verifier id/hash mapping, preserving the prior four verifier mappings and existing service hardening;
+- before migration, the newly authorized pinned verifier reached PostgreSQL and failed with `crm_identity_function_missing`; this proved the MED-CRM-006 backend was absent and the pin/readback path was live;
+- canonical migration SHA-256: `f36f036f172b997292654f251b8a9d386839bc9ef41204636aa11de95605d31b`;
+- the migration hash was proved in the operator workspace and again inside `supabase-db` as user `postgres`;
+- exact migration execution used `psql -w -X -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/20260927_commercial_crm_contact_identity_resolution.sql`;
+- execution returned `BEGIN`, function/ACL/index operations and final `COMMIT` with exit code 0;
+- canonical verifier SHA-256: `4da932b767d18decbd8c0d881b679dc29735364abcbf3b5b0c73c2d75d88f785`;
+- the separate pinned read-only verifier passed checks 1..12 and returned `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED`;
+- post-rollout pinned regressions returned:
+  - `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`;
+  - `COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED`;
+  - `COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED`.
+
+Deterministic conclusion: MED-CRM-006 **backend authority is RELEASED** in production. Frontend identity-resolution UX is now authorized, but the overall slice is not yet final.
+
+
 ## Repository state
 
-- PR #540 is merged and is the latest integrated CRM handoff refresh at this checkpoint.
+- PR #545 is merged as `main@7e1ab2fba50d6188e718411c6b51b201ae417954` and records the post-#544 repository proof checkpoint before production rollout.
 - No branch matching `MED-CRM-006` existed before opening this slice.
 - PR #525 remains historical/open/non-mergeable and is not implementation authority.
 - `docs/SLICE_LEDGER.md` records MED-CRM-001..005 as RELEASED.
@@ -193,16 +218,14 @@ Deskcomm is used only for patterns/invariants, never as authority for MedicsPro 
 
 ## Evidence limitations
 
-This checkpoint proves repository implementation and merge only. It does **not** prove:
+This checkpoint proves backend repository implementation, production migration and production-safe readback. It does **not** prove:
 
-- that `20260927_commercial_crm_contact_identity_resolution.sql` has been applied to the real production PostgreSQL runtime;
-- production dependency/preflight state at rollout time;
-- production-safe verifier/readback success;
-- production distribution of historical normalized Contact values;
 - frontend candidate/resolution UX;
-- observed frontend production behavior after a later UI rollout.
+- browser behavior for explicit reuse/distinct decisions;
+- observed frontend production deployment;
+- full MED-CRM-006 end-to-end release reconciliation.
 
-No production mutation is claimed by this checkpoint. MED-CRM-006 must not be called RELEASED until the controlled database rollout and production verifier/readback are completed.
+Historical normalized Contact distribution was not mass-backfilled or used as release authority; legacy correctness remains server-side normalization of stored raw values. MED-CRM-006 as a whole remains open until the frontend phase is proved and observed in production.
 
 
 ## Implementation-plan review evidence — 2026-09-27
