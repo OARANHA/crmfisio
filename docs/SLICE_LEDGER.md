@@ -15,7 +15,7 @@
 | `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | RELEASED | [slice](slices/MED-CRM-001/README.md) | produção `28server/supabase-db` verificada: Core aplicado e `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`; próxima feature exige novos gates |
 | `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | RELEASED | [slice](slices/MED-CRM-002/README.md) | produção `28server/supabase-db` verificada: Command Boundary aplicada e ambos verifiers Core + Command passaram; reavaliar próximo conflito sem autoautorizar MED-CRM-003 |
 | `MED-CRM-003` | Commercial Board Cutover V1 — retirar Patient.funil_stage da autoridade comercial visível em /crm | ANALYZED | [evidence](slices/MED-CRM-003/EVIDENCE.md) | BLOCKED antes de EXECUTION: aguardar MED-CRM-004 atingir RELEASED; depois reconstruir a main e reabrir os quatro gates do Board |
-| `MED-CRM-004` | Archived Pipeline Transition Guard — fail closed para mudança de stage em pipeline arquivado | IMPLEMENTING | [slice](slices/MED-CRM-004/README.md) | validar migration/verifier/behavior em PostgreSQL 16/17 + checks do HEAD atual; produção só após PROVED + merge |
+| `MED-CRM-004` | Archived Pipeline Transition Guard — fail closed para mudança de stage em pipeline arquivado | PROVED | [slice](slices/MED-CRM-004/README.md) | PR #534 provada em PostgreSQL 16/17 + 21/21 workflows; revalidar HEAD documental, merge protegido e depois rollout/readback antes de RELEASED |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
