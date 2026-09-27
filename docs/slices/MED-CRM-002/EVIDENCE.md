@@ -165,12 +165,24 @@ confidence: 0.84
 
 The deterministic evidence above remains authoritative. This review supports closing VALIDATION and marking MED-CRM-002 PROVED; it does not decide merge or rollout.
 
+## Integration proof
+
+PR #524 was squash-merged into the canonical repository:
+
+```text
+merged_at: 2026-09-27T01:48:03Z
+merge/main SHA: 7a8badf5ad81e92746e82bedd142ba75899a4080
+final PR head: cf94434ca5294e4e9cc4de70661268d9e4765045
+final PR workflows: 21/21 SUCCESS
+```
+
+Therefore repository integration is proved.
+
 ## Explicit non-proof
 
-This evidence does **not** prove:
+This evidence still does **not** prove:
 
-- merge of #524;
-- deployment of #524;
+- deployment of #522/#524;
 - production schema installation;
 - CRM board/UI cutover;
 - Contact edit/merge/dedupe;
@@ -181,7 +193,7 @@ This evidence does **not** prove:
 Therefore:
 
 ```text
-PROVED != MERGED != RELEASED
+PROVED + MERGED != RELEASED
 ```
 
 ## Reproduction
