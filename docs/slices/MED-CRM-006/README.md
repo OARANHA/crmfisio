@@ -1,6 +1,6 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / SLICE NOT FINAL  
+**Status:** BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / SLICE NOT FINAL
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
 **Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
