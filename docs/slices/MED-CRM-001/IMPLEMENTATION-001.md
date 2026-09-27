@@ -1,6 +1,6 @@
 # MED-CRM-001 — Implementation 001 — Commercial Core Foundation
 
-**Status:** IMPLEMENTING  
+**Status:** PROVED  
 **Branch:** `feat/med-crm-001-commercial-core-foundation`  
 **Base readback:** `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`  
 **Scope:** schema + authorization/read boundaries only.
@@ -133,7 +133,7 @@ Expected database:
 - allow probability: `0.79`;
 - confidence: `0.73`.
 
-## Validation gate before merge
+## Validation evidence
 
 ### Proven on PR #522
 
@@ -181,15 +181,20 @@ Fix commit:
 No schema semantics, identity rules, tenant rules, Patient boundaries, mutation
 surface or UI scope were expanded by the fix.
 
-### Remaining required evidence
+### Final reconciliation
 
-- repository-required PR workflows must be green on the final documentation/code head;
-- final diff/readback against current main;
-- merge remains a separate review decision.
+- repository-required workflows: **8/8 SUCCESS** on reconciled head `472891f2ebd61902e5b323a0f821766822650c30`;
+- final compare against `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`: **13 ahead / 0 behind**;
+- changed files: **9**, limited to the intended foundation + slice documentation;
+- no UI/board, mutation RPC, Inbox, automation, attribution, provider or Lead→Patient conversion entered the slice.
+
+Therefore this implementation is **PROVED**. This does not mean merged or released.
+
+The subsequent status/handoff updates are documentation-only. Revalidate GitHub
+checks on the latest PR HEAD before merge.
 
 ## Next exact step
 
-Wait for/reconcile the repository-required workflows on the final PR head, inspect
-the final diff, and only then consider this foundation `PROVED`.
-
-Do not start mutation RPCs or UI until that final reconciliation is green.
+Revalidate PR #522 on its latest HEAD and make the merge decision separately.
+After merge/reconciliation, choose the next CRM micro-slice only through GAPS,
+CAPABILITY AUTHORITY / REUSE GATE, DECISION and SECOND ADVERSARIAL REVIEW.
