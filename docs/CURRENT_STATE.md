@@ -41,6 +41,11 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538
 
+### MED-CRM-006 — Contact Identity Resolution V1
+
+**Status:** IMPLEMENTING / VALIDATION PENDING. The implementation-plan review PR #543 is merged in `main@1a0e96392570d69090e87895d4072f0eea640d7a`. Canonical backend work is on `feat/med-crm-006-contact-identity-resolution-canonical`, created directly from that base. PR #542 is retained only as prototype/reuse evidence because it is green against a pre-#543 contract and is not merge authority. No production rollout and no frontend integration are authorized yet.
+
+
 **Canonical repository checkpoint:** `main@004fcb2c6c60ff7611bf6c1156e90edaac27ae9a` before this documentation-only MED-CRM-005 release reconciliation.
 
 **MED-CRM-001 Commercial Core:** **RELEASED**. PR #522 remains the implementation merge authority. The exact canonical migration `supabase-migrations/20260926_commercial_crm_core_foundation.sql` was applied to the real production PostgreSQL on `28server` / `supabase-db` after the versioned baseline reconciliation from PR #529. Its SHA-256 was proved both on the host and inside the PostgreSQL container as:

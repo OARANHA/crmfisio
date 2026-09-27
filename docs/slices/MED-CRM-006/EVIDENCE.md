@@ -4,6 +4,17 @@
 **Canonical repository:** `OARANHA/crmfisio`  
 **Audited main:** `7c5673d43262ef3a0681d3a916d554bcc9627f71`
 
+## Canonical implementation checkpoint — 2026-09-27
+
+- plan-review PR #543 merged; current canonical base is `main@1a0e96392570d69090e87895d4072f0eea640d7a`;
+- branch `feat/med-crm-006-contact-identity-resolution-canonical` was created directly from that base;
+- canonical backend migration, verifier, behavior suite, concurrency harness and PostgreSQL 16/17 workflow have been added;
+- canonical implementation PR #544 is open from `feat/med-crm-006-contact-identity-resolution-canonical`;
+- PR #542 is not merge authority: its all-green implementation predates #543 and diverges from the merged contract on the final RPC, lock-key/order and phone normalization;
+- no claim of PROVED is valid until the canonical branch exact HEAD completes its PostgreSQL 16/17 workflow and all applicable repository checks;
+- production rollout and frontend work remain out of scope at this checkpoint.
+
+
 ## Repository state
 
 - PR #540 is merged and is the latest integrated CRM handoff refresh at this checkpoint.
