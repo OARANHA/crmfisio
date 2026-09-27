@@ -1,0 +1,47 @@
+name: Commercial CRM Command Boundary
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260926_commercial_crm_core_foundation.sql'
+      - 'supabase-migrations/20260926_commercial_crm_command_boundary.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql'
+      - 'tests/sql/commercial_crm_core_foundation_fixture.sql'
+      - 'tests/sql/commercial_crm_command_boundary_cases.sql'
+      - 'scripts/test-commercial-crm-command-boundary.sh'
+      - '.github/workflows/commercial-crm-command-boundary.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres:
+    name: PostgreSQL ${{ matrix.postgresql }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgresql: ['16', '17']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgresql }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: commercial_crm_command_boundary_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres commercial_crm_command_boundary_test
+      - name: Run Commercial CRM foundation + command boundary proof
+        run: bash scripts/test-commercial-crm-command-boundary.sh
