@@ -214,7 +214,7 @@ Execution authority is bounded by [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.m
 
 Allowed now:
 - additive follow-up migration;
-- internal normalization/candidate/locking/shared-core helpers;
+- internal normalization/candidate/locking helpers plus one shared Contact core; the RELEASED public Lead command remains the Lead writer;
 - writer-scoped candidate RPC;
 - narrow resolved-prospect orchestration command;
 - structural verifier;
