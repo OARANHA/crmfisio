@@ -826,7 +826,7 @@ BEGIN
     RAISE EXCEPTION 'crm_lead_title_required' USING ERRCODE = '22023';
   END IF;
 
-  IF v_mode NOT IN ('create_if_clear', 'explicit_reuse', 'explicit_distinct') THEN
+  IF v_mode IS NULL OR v_mode NOT IN ('create_if_clear', 'explicit_reuse', 'explicit_distinct') THEN
     RAISE EXCEPTION 'crm_identity_resolution_mode_invalid' USING ERRCODE = '22023';
   END IF;
 
