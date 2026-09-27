@@ -4,7 +4,7 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Current integrated main:
+Frontend handoff baseline after #546:
 
 `main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2`
 
