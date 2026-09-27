@@ -131,3 +131,20 @@ The ledger must record MED-CRM-006 as `DESIGNED`, not IMPLEMENTING.
 ## Next exact step
 
 Finish this docs-only PR, validate its current HEAD, and merge only if the documentation remains coherent and checks are green. After integration, reconstruct current state again and perform the implementation-plan review before any product/runtime execution.
+
+## Fresh PR checkpoint before next-chat handoff
+
+Revalidated on 2026-09-27 before generating the next-chat prompt:
+
+- `origin/main = 7c5673d43262ef3a0681d3a916d554bcc9627f71`;
+- PR `#541 — docs: design MED-CRM-006 Contact Identity Resolution V1`;
+- PR state = OPEN;
+- merged = false;
+- mergeable = true;
+- base = `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`;
+- head = `18594cbc45eaae06e3c28ac3ad120f543c77b266`;
+- diff remains documentation-only;
+- current HEAD workflows are **not all complete**: some are success, others remain queued/in_progress;
+- therefore PR #541 is **not GREEN yet** and must not be merged from inherited evidence.
+
+The next chat must first revalidate this PR HEAD and all current checks. If the HEAD moves, discard the checkpoint above and use the new HEAD as authority.
