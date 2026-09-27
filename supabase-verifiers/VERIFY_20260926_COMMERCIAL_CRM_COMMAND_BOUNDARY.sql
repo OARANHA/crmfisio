@@ -100,7 +100,8 @@ BEGIN
   IF v_def LIKE '%p_patient_id%'
      OR v_def LIKE '%p_clinic%'
      OR v_def LIKE '%insert into public.patients%'
-     OR v_def NOT LIKE '%crm_current_mutator_clinic_id%' THEN
+     OR v_def NOT LIKE '%crm_current_mutator_clinic_id%'
+     OR v_def NOT LIKE '%anonymized_at is not null%' THEN
     RAISE EXCEPTION 'crm_contact_command_boundary_invalid';
   END IF;
 END $$;
@@ -111,6 +112,7 @@ DECLARE
   v_def text := lower(pg_get_functiondef('public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure));
 BEGIN
   IF v_def NOT LIKE '%stage_kind = ''open''%'
+     OR v_def NOT LIKE '%c.anonymized_at is null%'
      OR v_def NOT LIKE '%crm_lead_initial_stage_must_be_open%'
      OR v_def NOT LIKE '%crm_lead_activities%'
      OR v_def NOT LIKE '%lead_created%'
