@@ -354,7 +354,7 @@ SELECT * FROM public.create_current_clinic_crm_resolved_prospect(
 );
 RESET ROLE;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -375,7 +375,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'crm_explicit_reuse_edited_contact';
   END IF;
-END $;
+END $$;
 
 SELECT '9b) explicit_reuse exact retry is idempotent but changed normalized signals conflict' AS check;
 SET ROLE authenticated;
@@ -397,7 +397,7 @@ SELECT * FROM public.create_current_clinic_crm_resolved_prospect(
   'identity_reuse'
 );
 
-DO $
+DO $$
 BEGIN
   BEGIN
     PERFORM * FROM public.create_current_clinic_crm_resolved_prospect(
@@ -419,10 +419,10 @@ BEGIN
   EXCEPTION
     WHEN unique_violation THEN NULL;
   END;
-END $;
+END $$;
 RESET ROLE;
 
-DO $
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.crm_lead_activities
       WHERE lead_id='82000000-0000-0000-0000-000000000012'
@@ -432,7 +432,7 @@ BEGIN
            AND detalhe LIKE '%82000000-0000-0000-0000-000000000012%') <> 1 THEN
     RAISE EXCEPTION 'crm_explicit_reuse_retry_duplicated_resolution_evidence';
   END IF;
-END $;
+END $$;
 
 SELECT '10) explicit_distinct creates a new Contact only with bounded reason code' AS check;
 SET ROLE authenticated;
