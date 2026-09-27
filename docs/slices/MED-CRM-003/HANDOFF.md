@@ -1,269 +1,233 @@
 # MED-CRM-003 — Handoff
 
-## Current canonical checkpoint
+## Current checkpoint
 
-Always resolve current `origin/main`, open PRs and runtime again before acting. The checkpoint below is institutional memory, not a checkout instruction.
+Always resolve current `origin/main`, PR #536 HEAD/base/checks and runtime again before acting. This document is institutional memory, not permission to inherit stale checks.
 
 ```text
 canonical repository = OARANHA/crmfisio
-checkpoint main after MED-CRM-004 merge = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
 
-MED-CRM-001 = PROVED + MERGED + RELEASED
-MED-CRM-002 = PROVED + MERGED + RELEASED
+main reconstructed for MED-CRM-003 execution =
+01a2b947e13144a885549c248acceb25021c36a2
 
-MED-CRM-003 = ANALYZED
-PREREQUISITE GAP = CLOSED BY MED-CRM-004 RELEASED
-PREVIOUS SECOND ADVERSARIAL REVIEW = HISTORICAL BLOCK
-EXECUTION = NOT AUTHORIZED UNTIL FRESH FOUR-GATE REVIEW
+MED-CRM-001 = RELEASED
+MED-CRM-002 = RELEASED
+MED-CRM-004 = RELEASED
+
+MED-CRM-003 = PROVED ON BRANCH
+PR #536 = OPEN
+MERGED = NO
+RELEASED = NO
 ```
 
-The production backend release was proved on `28server` / `supabase-db` and is already documented in the MED-CRM-001/002 slice evidence. Do not repeat that rollout merely to continue this slice.
+PR #525 remains stale historical material. Do not merge it, rebase it blindly or use it as implementation authority.
 
-## Deep-review closure — choice C
+## Fresh four-gate result
 
-Current main/source/migrations/tests were re-read after #532. The frontend concerns around multi-pipeline selection, archived-stage targeting, lost reason, anonymized Contact presentation, read-only roles, Patient-domain separation and refetch-after-command all have bounded frontend designs.
+After PR #535 was safely merged, MED-CRM-003 was reconstructed from the resulting main.
 
-However, a prior server contract gap blocks the Board:
+### GAPS — CLOSED FOR BOUNDED SLICE
 
-```text
-crm_pipelines.archived_at IS NOT NULL
-+
-crm_stages.archived_at IS NULL
-        ↓
-transition_current_clinic_crm_lead_stage(...)
-does not check crm_pipelines.archived_at
-        ↓
-authorized writer can still transition a Lead inside an archived pipeline
-```
-
-Therefore a frontend-only “archived pipeline = read-only” rule would become a bypassable domain authority. That is not allowed.
-
-Decision:
+Canonical main still had the visible Board backed by:
 
 ```text
-A) frontend-only MED-CRM-003 now   NO
-B) split Board implementation      NO
-C) prior contract missing          YES
-```
-
-See [EVIDENCE.md](EVIDENCE.md) and [DECISION.md](DECISION.md).
-
-## Released prerequisite — MED-CRM-004
-
-The archived-pipeline server-contract gap isolated by the MED-CRM-003 deep review is now closed.
-
-```text
-MED-CRM-004 = Archived Pipeline Transition Guard
-implementation PR #534 = MERGED
-merge/main = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
-production rollout = COMPLETE
-pinned read-only verifier = PASSED
-status = RELEASED
-```
-
-The released canonical transition command now fails closed for a real stage change when the Lead's current pipeline is archived, while preserving exact same-stage side-effect-free retry idempotency. The release introduced no alternate CRM writer and did not touch the Board/frontend.
-
-This removes the specific prerequisite blocker. It does not revive the old Board decision automatically. MED-CRM-003 must be reconstructed from current main and pass fresh GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW before execution.
-
-See `../MED-CRM-004/README.md`, `DECISION.md`, `EVIDENCE.md` and `HANDOFF.md` in that slice.
-
-## Stale historical PR
-
-PR #525 (`docs/med-crm-002-merged-med-crm-003-design`) is historical input only.
-
-At this checkpoint:
-
-```text
-PR #525 = OPEN
-head = c00364b1395cdaf911c70cc56db03c7831b4c2ac
-compare vs current main = diverged
-ahead = 2
-behind = 7
-mergeable = false
-```
-
-Its old checks were successful, but they belong to the stale head and do not authorize current MED-CRM-003 execution. Do not merge, rebase blindly or treat #525 as current design authority.
-
-## Proven current source conflict
-
-Current `src/pages/Crm.tsx` still uses:
-
-```text
-usePatients()
-→ Patient[]
+Patient[]
 → patients.funil_stage
 → setFunilStage()
 ```
 
-for the visible CRM board and Patient-derived `leads no funil` metric.
+while the released commercial authority is Contact → Lead → Pipeline → Stage.
 
-The released commercial authority is:
+The remaining gap was the frontend cutover. No missing server capability remained after MED-CRM-004.
 
-```text
-Contact
-→ Lead
-→ crm_pipelines
-→ crm_stages
-→ list_current_clinic_crm_*
-→ transition_current_clinic_crm_lead_stage(...)
-```
+### CAPABILITY AUTHORITY / REUSE — CLOSED
 
-`CrmOperational.tsx` separately composes `TreatmentContinuityWatch`. NPS and churn content inside `Crm.tsx` are Patient-domain content and must not be reinterpreted as Commercial Lead state.
-
-## Existing authority to reuse
-
-Backend authority already exists and is RELEASED:
+The implementation reuses only:
 
 - `list_current_clinic_crm_pipelines()`;
 - `list_current_clinic_crm_stages(uuid)`;
 - `list_current_clinic_crm_leads()`;
 - `transition_current_clinic_crm_lead_stage(...)`;
+- server-derived current tenant;
 - `crm.access`;
-- active profile + canonical tenant;
-- writer roles `owner | admin | recep`;
-- read-only roles `professional | financeiro`;
-- activity/audit emitted by the canonical stage-transition command.
+- canonical roles;
+- canonical activity/audit side effects.
 
-Do not create a new CRM writer, raw table DML path, tenant source, entitlement, role or audit authority.
+No new CRM writer, raw table DML, tenant authority, entitlement, role or audit path is introduced.
 
-## Current candidate decision
+### DECISION — CLOSED
 
-The current candidate remains a **frontend-only CRM Board Cutover V1**.
+One frontend-only Commercial Board Cutover V1 remained the smallest correct slice.
 
-Possible bounded scope:
+### SECOND ADVERSARIAL REVIEW — CLOSED
 
-1. add a narrow frontend adapter/types for the existing released CRM RPCs;
-2. replace only the Patient-backed commercial board block with Lead/Pipeline/Stage projections;
-3. remove all `setFunilStage` use from the commercial board;
-4. replace the Patient-derived commercial lead metric with canonical Lead data;
-5. keep Treatment Continuity, NPS and churn as Patient-domain sections;
-6. refetch canonical projections after successful mutation rather than inventing client-side authority.
-
-This is still a candidate, not execution authorization.
-
-## Deep-review issues that must close before EXECUTION
-
-### 1. Multiple pipelines
-
-The schema allows multiple active pipelines while permitting at most one active default pipeline.
-
-A safe board must not silently hide non-default active pipelines. The current design direction is:
-
-- show active pipelines through a selector;
-- select the active default first when one exists;
-- no pipeline administration in this slice.
-
-### 2. Archived pipeline/stage state
-
-Read projections expose archived objects while transition commands reject archived target stages.
-
-The UI must:
-
-- never offer archived stages as mutation targets;
-- never silently drop Leads whose current pipeline/stage is archived or otherwise legacy;
-- surface those Leads in an explicit read-only legacy/archived state or equivalent bounded presentation.
-
-### 3. Lost-stage reason
-
-The canonical transition command requires a loss reason for `stage_kind='lost'`.
-
-The UI must collect a non-empty reason before invoking the RPC. Reuse the repository's existing `Modal + Field + Input` interaction pattern; do not weaken the DB invariant and do not use raw table writes.
-
-### 4. Contact anonymization / privacy
-
-The canonical Lead projection exposes `contact_anonymized_at`.
-
-If a Contact is anonymized, the board must not render Contact PII such as name, phone or email. Use a neutral anonymized presentation.
-
-`contact_patient_id` must not create automatic Patient navigation/link semantics in this slice.
-
-### 5. Authorization presentation
-
-`isOperationalRole(owner|admin|recep)` may control mutation affordances only.
-
-Server RPCs remain authority for tenant, role, entitlement, stage invariants, activity and audit. `professional` and `financeiro` stay read-only.
-
-### 6. Test boundary
-
-Follow existing repository test patterns:
-
-- Vitest;
-- `react-test-renderer`;
-- mocked current-user/RPC adapters;
-- tests for operational vs read-only roles;
-- anonymized Contact without PII;
-- lost transition requires reason;
-- archived target cannot be offered;
-- legacy/archived Lead remains visible;
-- no `setFunilStage`/Patient-stage mutation path in the commercial board.
-
-## Mandatory discipline state
+Initial advisory JEV requested deeper review:
 
 ```text
+deep_review = 0.72
+proceed_fast = 0.26
+block = 0.01
+```
+
+Deterministic deep review then closed the identified concerns, and the fresh advisory route became:
+
+```text
+proceed_fast = 0.83
+deep_review = 0.15
+block = 0.02
+```
+
+JEV is advisory. Code/schema/tests provided the execution authority.
+
+## Implementation boundary
+
+PR #536, branch:
+
+```text
+feat/med-crm-003-commercial-board-cutover-v1
+```
+
+implements:
+
+- canonical Commercial CRM adapter over released RPCs only;
+- all active pipelines explicit, default only initial selection;
+- archived pipeline/stage Leads visible in read-only legacy section;
+- archived stages never offered as mutation targets;
+- required lost reason before transition;
+- anonymized Contact with PII and free-form Lead title suppressed;
+- no automatic Patient navigation from `contact_patient_id`;
+- owner/admin/recep mutation affordance;
+- professional/financeiro read-only;
+- server RPC authority preserved;
+- refetch after successful command;
+- post-COMMIT refetch failure treated as stale projection warning;
+- Patient NPS/churn/Treatment Continuity kept in Patient-domain;
+- no `setFunilStage()` authority in commercial Board.
+
+No backend/schema/migration/RPC/table/RLS/role/entitlement/provider/automation/AI change is part of this slice.
+
+## Proven implementation HEAD before documentation refresh
+
+Before updating MED-CRM-003 documentation, PR #536 was at:
+
+```text
+head = 50ff38ff1427f71b30c62120b26259838a6b94b0
+base = main@01a2b947e13144a885549c248acceb25021c36a2
+behind main = 0
+mergeable = true
+```
+
+and GitHub proved:
+
+```text
+9 check-runs completed
+9 success
+0 failed
+
+npm test = SUCCESS
+typecheck = SUCCESS
+lint = SUCCESS
+build = SUCCESS
+dependency-audit = SUCCESS
+```
+
+The first CI attempt had caught a test-fixture typing issue after tests passed. It was fixed; the proof above belongs to the corrected implementation HEAD.
+
+## IMPORTANT — documentation refresh invalidates inherited checks
+
+The updates to `DECISION.md`, `EVIDENCE.md`, this `HANDOFF.md` and `SLICE_LEDGER.md` move PR #536 beyond `50ff38f...`.
+
+Therefore:
+
+> Do not call the final PR HEAD GREEN based on the 9/9 proof above.
+
+Before merge, revalidate the actual latest HEAD and all applicable checks.
+
+## Exact next gate — protected merge
+
+Revalidate:
+
+1. current `origin/main`;
+2. PR #536 state/head/base;
+3. compare/ahead/behind;
+4. mergeability;
+5. complete file diff;
+6. reviews and unresolved review threads;
+7. every workflow/check on the **actual latest HEAD**.
+
+Only if all are simultaneously true:
+
+```text
+PR #536 = OPEN
+base SHA = current origin/main
+behind = 0
+mergeable = true
+scope remains bounded
+all applicable checks = completed + success
+no blocking review/thread
+```
+
+perform a protected squash merge using `expected_head_sha` or equivalent.
+
+Then:
+
+1. re-resolve `origin/main`;
+2. prove PR #536 `merged=true`;
+3. read `CURRENT_STATE`, ledger and MED-CRM-003 docs from the resulting main;
+4. reconcile institutional docs to `PROVED + MERGED / NOT RELEASED` unless production rollout has also been proved.
+
+## Release gate after merge
+
+MED-CRM-003 has no database rollout.
+
+Do not call it RELEASED merely because GitHub merged.
+
+Reconstruct the repository's canonical frontend rollout path from current docs/runtime, then prove the deployed production frontend corresponds to the merged main and that the CRM route is healthy.
+
+Production proof should be sufficient to establish that the deployed bundle contains the Commercial CRM cutover and that there is no unexpected runtime failure on the production route. Do not weaken authentication/privacy boundaries just to obtain evidence.
+
+If frontend promotion requires an explicitly approval-gated administrative action, stop at that boundary and request only the exact required approval.
+
+After rollout/readback, update:
+
+- `docs/CURRENT_STATE.md`;
+- `docs/SLICE_LEDGER.md`;
+- MED-CRM-003 `EVIDENCE.md`;
+- MED-CRM-003 `HANDOFF.md`;
+
+and only then consider `RELEASED`.
+
+## Non-goals remain
+
+Do not add in this slice:
+
+- Contact/Lead creation UI;
+- intake rewrite;
+- Contact edit/merge/dedupe;
+- Lead→Patient conversion;
+- Inbox;
+- follow-up engine;
+- attribution;
+- provider/Evolution changes;
+- automation;
+- Commercial AI/MCP/RAG;
+- pipeline administration.
+
+## Required checkpoint format
+
+When reporting the next material checkpoint:
+
+```text
+REAL NOW
+PROVEN EVIDENCE
 GAPS
-  → MUST BE REBUILT against current main after MED-CRM-004 release
-
-CAPABILITY AUTHORITY / REUSE GATE
-  → expected authority remains released CRM projections + canonical transition command
-  → must be revalidated against current source before execution
-
+CAPABILITY AUTHORITY / REUSE
 DECISION
-  → previous choice C served its purpose; prerequisite is now RELEASED
-  → Board decision must be made again from current evidence
-
 SECOND ADVERSARIAL REVIEW
-  → previous BLOCK is historical evidence, not current authorization
-  → run a fresh review after GAPS / REUSE / DECISION close
-
 EXECUTION
-  → NOT AUTHORIZED YET
+VALIDATION
+DOCUMENTATION
+NEXT GATE
 ```
 
-JEV remains advisory. Deterministic repository/runtime evidence is authoritative.
-
-## Exact next-chat task
-
-Do not inherit the pre-prerequisite decision mechanically.
-
-First:
-
-1. revalidate current `origin/main`, PR #525 and any newer CRM PR/branch;
-2. reread MED-CRM-003 `EVIDENCE.md` / `DECISION.md`, MED-CRM-002 released command contract and MED-CRM-004 release evidence;
-3. rebuild GAPS from current frontend + schema + RPC + tests;
-4. close CAPABILITY AUTHORITY / REUSE without creating a new CRM writer, tenant source, entitlement, role or audit path;
-5. make a fresh DECISION for the bounded Board cutover;
-6. run a fresh SECOND ADVERSARIAL REVIEW;
-7. only if all four gates close, execute the smallest Board slice and validate it.
-
-Expected Board boundaries remain: active-pipeline selector, archived/legacy Lead visibility read-only, archived stages never mutation targets, lost reason before lost transition, anonymized Contact without PII, no automatic Patient navigation from `contact_patient_id`, owner/admin/recep mutation affordances only, professional/financeiro read-only, canonical RPC authority, refetch after successful mutation, and Patient-domain NPS/churn/Treatment Continuity kept separate.
-
-Do not add Contact/Lead creation UI, intake rewrite, Contact edit/merge/dedupe, Lead→Patient conversion, Inbox, follow-up, attribution, provider changes, automation or Commercial AI to MED-CRM-003.
-
-## Handoff refresh — 2026-09-27
-
-Immediately before generating the next-chat handoff, the repository was revalidated again:
-
-```text
-origin/main = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
-PR #535 = OPEN + mergeable
-PR #535 base = main @ bc667edced77e6f96f3ba1584c48c83dbfcb05e2
-PR #535 head before this refresh = dabcc972c98778dc9216605f26718c89a107e76b
-PR #535 workflows on that head = 20 completed / 20 success / 0 failed
-PR #525 = OPEN historical input only / mergeable=false
-MED-CRM-004 runtime = RELEASED with pinned read-only production verifier PASS
-```
-
-This handoff refresh itself advances the #535 head, so the 20/20 green workflow set above certifies `dabcc972c98778dc9216605f26718c89a107e76b`, not this new documentation commit automatically. The next chat must re-read the actual #535 head and its checks before merge.
-
-No product code, migration, RPC, schema, role, entitlement or runtime is changed by this refresh.
-
-Exact continuation order:
-
-1. revalidate current `origin/main`, PR #535 current HEAD/mergeability/checks and PR #525 status;
-2. merge #535 only if its current HEAD is still based on current main, mergeable and every applicable check is completed + success;
-3. re-resolve `origin/main` after merge and read the canonical MED-CRM-003 + MED-CRM-004 docs from main;
-4. reconstruct MED-CRM-003 from current code/schema/tests;
-5. execute GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW;
-6. do not start Board implementation unless all four gates close on current evidence.
-
-MED-CRM-004 release removes the specific archived-pipeline prerequisite. It does not itself authorize MED-CRM-003 execution.
+Do not declare GREEN, PROVED, MERGED or RELEASED without evidence at the level claimed.

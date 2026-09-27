@@ -1,67 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAgenda } from '../lib/agendaContext';
-import { useToast } from '../lib/toastContext';
 import { useFinance } from '../lib/financeContext';
 import { usePatients } from '../lib/patientContext';
 import { useClinical } from '../lib/clinicalContext';
 import { usePackages } from '../lib/packageContext';
-import { useCurrentUserAccess } from '../lib/currentUserAccess';
-import { canManagePatientFunnel } from '../lib/permissions';
-import { STAGE_META, type FunilStage, type Patient } from '../lib/types';
-import { Card, CardHead, Btn, IconStar, IconPhone, IconAlert } from '../lib/ui';
-import { IconWhats, IconSend, IconArrow } from '../components/icons';
+import { Card, CardHead, Btn, IconAlert } from '../lib/ui';
+import { IconWhats, IconSend } from '../components/icons';
+import { CommercialCrmBoard } from '../components/CommercialCrmBoard';
 import { Reveal, CountUp } from '../components/Reveal';
 import { buildChurnRiskList } from '../lib/churnRisk';
 
-const STAGES: FunilStage[] = ['lead', 'avaliacao', 'tratamento', 'alta'];
-
 export function Crm() {
-  const { user } = useCurrentUserAccess();
-  const { toast } = useToast();
   const { transactions } = useFinance();
-  const { patients, setFunilStage } = usePatients();
+  const { patients } = usePatients();
   const { appointments } = useAgenda();
   const { surveys } = useClinical();
   const { patientPackages } = usePackages();
   const navigate = useNavigate();
-  const [dragId, setDragId] = useState<string | null>(null);
-  const canManageFunnel = canManagePatientFunnel(user?.role);
-
-  const updateStage = (id: string, stage: FunilStage, successMessage: string) => {
-    if (!canManageFunnel) return;
-    void setFunilStage(id, stage)
-      .then(() => toast(successMessage))
-      .catch((error) => {
-        console.error('[MedicsPro] Falha ao atualizar o funil:', error);
-        toast('Falha ao atualizar o funil. Tente novamente.', 'warn');
-      });
-  };
-
-  const byStage = useMemo(() => {
-    const map = new Map<FunilStage, Patient[]>();
-    STAGES.forEach((s) => map.set(s, []));
-    patients.filter((p) => !p.anonimizado).forEach((p) => map.get(p.funilStage)?.push(p));
-    return map;
-  }, [patients]);
 
   const nps = useMemo(() => {
-    const notas = surveys.filter((s) => s.nota !== null).map((s) => s.nota as number);
-    const prom = notas.filter((n) => n >= 9).length;
-    const neut = notas.filter((n) => n === 7 || n === 8).length;
-    const det = notas.filter((n) => n <= 6).length;
+    const notas = surveys.filter((survey) => survey.nota !== null).map((survey) => survey.nota as number);
+    const prom = notas.filter((nota) => nota >= 9).length;
+    const neut = notas.filter((nota) => nota === 7 || nota === 8).length;
+    const det = notas.filter((nota) => nota <= 6).length;
     const score = notas.length ? Math.round(((prom - det) / notas.length) * 100) : 0;
     return { prom, neut, det, score, total: notas.length };
-  }, [surveys]);
-
-  const latestNpsByPatient = useMemo(() => {
-    const latest = new Map<string, number | null>();
-    [...surveys]
-      .sort((a, b) => b.data.localeCompare(a.data))
-      .forEach((survey) => {
-        if (!latest.has(survey.pacienteId)) latest.set(survey.pacienteId, survey.nota);
-      });
-    return latest;
   }, [surveys]);
 
   const churnRisks = useMemo(
@@ -75,8 +39,8 @@ export function Crm() {
       <Reveal>
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h1 className="medicspro-page-title">CRM · Jornada do Paciente</h1>
-            <p className="medicspro-page-subtitle">funil de captação, retenção e satisfação</p>
+            <h1 className="medicspro-page-title">CRM</h1>
+            <p className="medicspro-page-subtitle">pipeline comercial e relacionamento com pacientes em domínios separados</p>
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
             <Btn variant="subtle" onClick={() => navigate('/mensagens')}><IconWhats className="w-4 h-4" /> Selecionar confirmações</Btn>
@@ -85,73 +49,8 @@ export function Crm() {
         </div>
       </Reveal>
 
-      <Reveal delay={90}>
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
-          {STAGES.map((s) => {
-            const meta = STAGE_META[s];
-            const list = byStage.get(s) ?? [];
-            return (
-              <div
-                key={s}
-                onDragOver={canManageFunnel ? (e) => e.preventDefault() : undefined}
-                onDrop={canManageFunnel ? () => {
-                  if (dragId) {
-                    updateStage(dragId, s, `Paciente movido para "${meta.label}"`);
-                    setDragId(null);
-                  }
-                } : undefined}
-                className="border border-line bg-deep/60"
-              >
-                <div className="px-4 py-3 border-b border-line flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: meta.bar }} />
-                  <span className="font-display font-semibold text-[13.5px]">{meta.label}</span>
-                  <span className="ml-auto font-mono text-[11px] text-fog">{list.length}</span>
-                </div>
-                <div className="h-1" style={{ background: meta.bar, opacity: 0.7 }} />
-                <div className="p-2.5 space-y-2 min-h-[120px]">
-                  {list.length === 0 && <p className="font-mono text-[10.5px] text-fog/60 text-center py-6">vazio</p>}
-                  {list.map((p) => {
-                    const nota = latestNpsByPatient.get(p.id);
-                    return (
-                      <div
-                        key={p.id}
-                        draggable={canManageFunnel}
-                        onDragStart={canManageFunnel ? () => setDragId(p.id) : undefined}
-                        className={`node-card border border-line bg-panel px-3 py-2.5 hover:border-line2 ${canManageFunnel ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                      >
-                        <Link to={`/pacientes/${p.id}`} className="block font-display font-semibold text-[13px] hover:text-mint transition-colors truncate">{p.nome}</Link>
-                        <p className="text-[11px] text-fog truncate mt-0.5">{p.queixaPrincipal}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {p.optInWhats ? <IconWhats className="w-3.5 h-3.5 text-mint" /> : <IconPhone className="w-3.5 h-3.5 text-fog/60" />}
-                          <span className="font-mono text-[10px] text-fog truncate">{p.telefone}</span>
-                          {nota !== undefined && nota !== null && (
-                            <span className="ml-auto flex items-center gap-1 font-mono text-[10.5px] text-amber">
-                              <IconStar className="w-3 h-3" filled />{nota}
-                            </span>
-                          )}
-                        </div>
-                        {canManageFunnel && STAGE_META[p.funilStage].next && (
-                          <button
-                            onClick={() => {
-                              const next = STAGE_META[p.funilStage].next!;
-                              updateStage(p.id, next, `${p.nome} avançou para "${STAGE_META[next].label}"`);
-                            }}
-                            className="mt-2 w-full flex items-center justify-center gap-1.5 border border-line px-2 py-1 font-mono text-[10px] text-fog hover:text-mint hover:border-mint/40 transition-colors"
-                          >
-                            avançar <IconArrow className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="font-mono text-[10.5px] text-fog/70 mt-2">
-          {canManageFunnel ? 'arraste os cards entre colunas ou use "avançar" · mudanças refletem no prontuário' : 'visualização do funil em modo somente leitura'}
-        </p>
+      <Reveal delay={70}>
+        <CommercialCrmBoard />
       </Reveal>
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">
@@ -159,9 +58,9 @@ export function Crm() {
           <Card>
             <CardHead
               title="Pesquisa de satisfação (NPS)"
-              sub={`${nps.total} resposta(s) registrada(s) pós-atendimento`}
+              sub={nps.total + ' resposta(s) registrada(s) pós-atendimento'}
               right={
-                <span className={`font-display text-2xl font-bold ${nps.score >= 50 ? 'text-mint' : nps.score >= 0 ? 'text-amber' : 'text-pulse'}`}>
+                <span className={'font-display text-2xl font-bold ' + (nps.score >= 50 ? 'text-mint' : nps.score >= 0 ? 'text-amber' : 'text-pulse')}>
                   {nps.score}
                 </span>
               }
@@ -171,13 +70,13 @@ export function Crm() {
                 { l: 'Promotores (9–10)', n: nps.prom, c: '#4fd1a5' },
                 { l: 'Neutros (7–8)', n: nps.neut, c: '#f2b441' },
                 { l: 'Detratores (0–6)', n: nps.det, c: '#f2545b' },
-              ].map((x) => (
-                <div key={x.l}>
+              ].map((item) => (
+                <div key={item.l}>
                   <div className="flex justify-between font-mono text-[11px] text-fog mb-1">
-                    <span>{x.l}</span><span>{x.n}</span>
+                    <span>{item.l}</span><span>{item.n}</span>
                   </div>
                   <div className="h-2 bg-deep border border-line overflow-hidden">
-                    <div className="h-full bar-anim" style={{ width: `${nps.total ? (x.n / nps.total) * 100 : 0}%`, background: x.c }} />
+                    <div className="h-full bar-anim" style={{ width: (nps.total ? (item.n / nps.total) * 100 : 0) + '%', background: item.c }} />
                   </div>
                 </div>
               ))}
@@ -198,12 +97,12 @@ export function Crm() {
             <ul className="divide-y divide-line/70">
               {churnRisks.length === 0 && <li className="px-5 py-8 text-center font-mono text-[11.5px] text-fog">Nenhum tratamento com risco médio ou alto. 💚</li>}
               {churnRisks.map((risk) => {
-                const p = patients.find((patient) => patient.id === risk.patientId);
-                if (!p) return null;
+                const patient = patients.find((candidate) => candidate.id === risk.patientId);
+                if (!patient) return null;
                 return (
-                  <li key={p.id} className="px-5 py-3.5 flex flex-wrap items-center gap-3">
+                  <li key={patient.id} className="px-5 py-3.5 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <Link to={`/pacientes/${p.id}`} className="font-display font-semibold text-[13.5px] hover:text-mint transition-colors">{p.nome}</Link>
+                      <Link to={'/pacientes/' + patient.id} className="font-display font-semibold text-[13.5px] hover:text-mint transition-colors">{patient.nome}</Link>
                       <p className="font-mono text-[10.5px] text-fog mt-0.5">
                         risco {risk.level} · {risk.score} pontos · {risk.reasons.join(' · ')}
                       </p>
@@ -228,16 +127,15 @@ export function Crm() {
       </div>
 
       <Reveal delay={220}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-line border border-line">
           {[
-            { v: appointments.filter((a) => a.status === 'confirmado').length, l: 'sessões confirmadas' },
-            { v: patients.filter((p) => p.optInWhats && !p.anonimizado).length, l: 'opt-ins WhatsApp' },
+            { v: appointments.filter((appointment) => appointment.status === 'confirmado').length, l: 'sessões confirmadas' },
+            { v: patients.filter((patient) => patient.optInWhats && !patient.anonimizado).length, l: 'opt-ins WhatsApp' },
             { v: nps.total, l: 'respostas NPS' },
-            { v: byStage.get('lead')?.length ?? 0, l: 'leads no funil' },
-          ].map((x) => (
-            <div key={x.l} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
-              <CountUp to={x.v} className="font-display text-3xl font-bold text-mint" />
-              <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog mt-1">{x.l}</p>
+          ].map((item) => (
+            <div key={item.l} className="bg-panel px-5 py-4 hover:bg-raise/60 transition-colors">
+              <CountUp to={item.v} className="font-display text-3xl font-bold text-mint" />
+              <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-fog mt-1">{item.l}</p>
             </div>
           ))}
         </div>

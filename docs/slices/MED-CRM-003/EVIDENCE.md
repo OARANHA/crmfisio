@@ -1,192 +1,294 @@
-# MED-CRM-003 — Deep Review Evidence
+# MED-CRM-003 — Evidence
 
-**Audited against:** `OARANHA/crmfisio main@72a60262d09a14ce8382f3da9db12afcd15a8464`  
 **Date:** 2026-09-27  
-**Scope:** pre-execution deep review only. No feature code, schema, runtime or production mutation was executed.
+**Canonical main reconstructed before execution:** `01a2b947e13144a885549c248acceb25021c36a2`  
+**Implementation PR:** #536 — `feat: cut over commercial CRM board`  
+**Status:** PROVED ON BRANCH / NOT MERGED / NOT RELEASED
 
-## REAL NOW / proven state
+## REAL NOW before execution
 
-- MED-CRM-001 = PROVED + MERGED + RELEASED.
-- MED-CRM-002 = PROVED + MERGED + RELEASED.
-- MED-CRM-003 = ANALYZED.
-- current `/crm` commercial board still reads `usePatients()`, groups `Patient[]` by `funilStage` and mutates through `setFunilStage()`.
-- NPS/churn in `Crm.tsx` and `TreatmentContinuityWatch` in `CrmOperational.tsx` remain Patient-domain.
-- PR #525 is historical only: OPEN, head `c00364b1395cdaf911c70cc56db03c7831b4c2ac`, non-mergeable, compare against current main = diverged, 2 ahead / 7 behind.
-- no MED-CRM-003 implementation branch existed at the start of this review.
-
-Runtime was not re-read because the blocker below is provable from the released executable contract itself. Repeating the already-proved MED-CRM-001/002 production rollout would add no authority.
-
-## Revalidated released read contracts
-
-`list_current_clinic_crm_pipelines()`:
-
-- derives tenant through `crm_current_reader_clinic_id()`;
-- requires active profile + `crm.access`;
-- permits the five canonical clinic roles;
-- returns active and archived pipelines, including `is_default` and `archived_at`.
-
-`list_current_clinic_crm_stages(uuid)`:
-
-- derives the same current-clinic read authority;
-- returns active and archived stages;
-- exposes `pipeline_id`, `stage_kind`, `position` and `archived_at`.
-
-`list_current_clinic_crm_leads()`:
-
-- returns non-deleted Leads joined to Contact/Pipeline/Stage;
-- exposes `contact_anonymized_at`, Contact PII fields, pipeline/stage IDs and stage semantics;
-- does not filter archived pipeline/stage context, so legacy/archive Leads remain projectable.
-
-## Revalidated released mutation contract
-
-`transition_current_clinic_crm_lead_stage(uuid,uuid,text,text)`:
-
-- derives clinic server-side through the current active profile;
-- restricts writers to `owner | admin | recep` + `crm.access`;
-- locks the Lead `FOR UPDATE`;
-- requires target stage in the same current pipeline;
-- rejects a target stage whose `crm_stages.archived_at` is not null;
-- requires a nonblank reason for `stage_kind='lost'`;
-- derives terminal fields server-side;
-- emits `crm_lead_activities` + `audit_log` in the same transaction.
-
-Raw authenticated DML over the Commercial Core remains closed.
-
-## Deep-review findings that are frontend-bounded
-
-The following concerns can be handled without creating authority:
-
-1. **Multi-pipeline:** list every active pipeline in a selector; choose the active default initially when present; deterministic first-active fallback otherwise; no pipeline administration.
-2. **Archived stage target:** never offer archived stages as a target. The RPC also rejects them server-side.
-3. **Legacy visibility:** correlate full pipeline/stage projections with Lead rows and keep archived/missing context visible in an explicit read-only legacy/archive section.
-4. **Lost reason:** reuse `Modal + Field + Input`; do not call the RPC until the trimmed reason is nonempty.
-5. **Contact anonymization:** when `contact_anonymized_at` is set, suppress Contact name/phone/email and use neutral presentation. Do not create Patient navigation from `contact_patient_id`. A conservative UI should also avoid rendering free-form Lead title for an anonymized Contact.
-6. **Authorization presentation:** `isOperationalRole()` may control affordances only; the RPC remains tenant/role/entitlement authority.
-7. **Patient domain:** NPS, churn and Treatment Continuity remain Patient-domain; commercial metrics must be derived from canonical Lead projections.
-8. **Projection after command:** after a successful transition, refetch canonical projections. A post-COMMIT refetch failure must be reported as stale projection, not as command failure; do not use optimistic client state as authority.
-9. **Testability:** existing Vitest + `react-test-renderer` + current-user mocks and static boundary-test patterns are sufficient.
-
-## Blocking contract gap
-
-The deep review found one server-side semantic gap that prevents the proposed frontend-only slice from making archived pipelines read-only without creating a UI-only domain rule.
-
-The schema allows:
+PR #535 was revalidated on its actual final HEAD and merged only after all applicable checks were `completed + success`.
 
 ```text
-crm_pipelines.archived_at IS NOT NULL
-while
-crm_stages.archived_at IS NULL
+PR #535 final pre-merge head =
+20cf35c34e467d7843a84ea766a3014596592215
+
+PR #535 checks =
+20 workflow runs
+20 success
+0 failed
+
+squash merge / resulting main =
+01a2b947e13144a885549c248acceb25021c36a2
 ```
 
-No schema trigger couples pipeline archival to stage archival.
+PR #525 remained OPEN and non-mergeable historical material and was not used as implementation authority or base.
 
-The released transition RPC resolves the target with conditions equivalent to:
+No newer active CRM PR superseded MED-CRM-003 at reconstruction time.
 
-```sql
-s.id = p_to_stage_id
-AND s.clinic_id = v_clinic
-AND s.pipeline_id = v_lead.pipeline_id
-AND s.archived_at IS NULL
-```
+## Proven source conflict
 
-It does **not** join/check `crm_pipelines.archived_at`.
-
-Therefore an authenticated Commercial CRM writer can directly invoke the canonical RPC and move a Lead between non-archived stages inside an archived pipeline. Hiding that affordance in the Board would make the frontend the only enforcement of the proposed “archived pipeline = read-only” semantic.
-
-That conflicts with the authority/reuse doctrine: UI presentation may narrow affordances, but a domain mutation invariant must not depend on bypassable browser logic.
-
-Existing MED-CRM-002 verifier/tests prove same-pipeline, stage-active, locking, role/entitlement, activity/audit and Patient separation. They do not prove archived-pipeline immutability.
-
-## GAPS
-
-Primary product conflict still exists:
+On `main@01a2b947...`, `src/pages/Crm.tsx` still implemented the visible commercial Board through:
 
 ```text
-/crm
-→ Patient.funil_stage
+usePatients()
+→ Patient[]
+→ funilStage
 → setFunilStage()
 ```
 
-But the prerequisite gap is now more specific:
+and also derived a `leads no funil` metric from Patient state.
+
+The released Commercial CRM authority remained:
 
 ```text
-archived pipeline
-→ canonical transition RPC can still mutate through a non-archived stage
-→ Board cannot truthfully promise archived-pipeline read-only semantics by frontend alone
+Contact
+→ Lead
+→ crm_pipelines
+→ crm_stages
+→ list_current_clinic_crm_pipelines()
+→ list_current_clinic_crm_stages(uuid)
+→ list_current_clinic_crm_leads()
+→ transition_current_clinic_crm_lead_stage(...)
 ```
 
-## CAPABILITY AUTHORITY / REUSE GATE
+`CrmOperational.tsx` continued to compose `TreatmentContinuityWatch`; NPS and churn in `Crm.tsx` remained Patient-domain.
 
-**REUSE:**
+## Released authority revalidated
 
-- current tenant/active profile;
-- `crm.access`;
-- released Commercial Core projections;
-- released stage-transition command;
-- activity/audit authority;
-- canonical role model.
+### Read authority
 
-**DO NOT CREATE:**
+`crm_current_reader_clinic_id()` derives the active current clinic server-side and requires `crm.access`.
 
-- browser-side tenant authority;
-- raw table writer;
-- alternate CRM transition writer;
-- UI-only mutation invariant presented as domain authority.
+The released projections expose:
 
-Result: reuse gate does not authorize a frontend-only workaround for archived pipeline immutability.
+- active and archived pipelines, including `is_default` and `archived_at`;
+- active and archived stages, including `pipeline_id`, `stage_kind`, `position` and `archived_at`;
+- non-deleted Leads joined to Contact/Pipeline/Stage, including Contact PII fields, `contact_patient_id`, `contact_anonymized_at`, pipeline/stage identity and stage semantics.
 
-## DECISION
+### Mutation authority
 
-Choice **C — a prior contract/capability is still missing**.
+`transition_current_clinic_crm_lead_stage(...)` remains the single reused stage-transition writer:
 
-MED-CRM-003 remains `ANALYZED`. No Board feature implementation is authorized.
+- tenant/current clinic is server-derived;
+- writers remain `owner | admin | recep`;
+- `crm.access` remains mandatory;
+- Lead is locked;
+- cross-pipeline target is rejected;
+- archived target stage is rejected;
+- lost reason remains mandatory;
+- terminal fields are derived server-side;
+- activity + audit are emitted server-side;
+- raw authenticated Commercial CRM DML remains closed.
 
-Before re-opening MED-CRM-003 execution, a separate prerequisite change must make the canonical command fail closed for archived pipeline context and prove that behavior mechanically. At minimum the prerequisite should re-run its own gates and add:
+### MED-CRM-004 prerequisite proof
 
-- server-side rejection when the Lead/current pipeline is archived;
-- verifier assertion for the function definition/contract;
-- behavioral PostgreSQL case proving archived pipeline transition is rejected even if the target stage itself is not archived;
-- regression proof for tenant/RBAC, same-pipeline, lost reason, activity/audit and Patient separation;
-- production rollout/readback if the command contract changes in production.
+The RELEASED MED-CRM-004 guard now rejects a real state-changing transition when the Lead's current pipeline is archived, while preserving exact same-stage side-effect-free retry idempotency.
 
-The exact prerequisite slice identifier is intentionally not invented here; it must be created through the normal slice gate.
+Therefore archived-pipeline read-only presentation is no longer a browser-only domain invariant.
 
-## SECOND ADVERSARIAL REVIEW
+## Deterministic deep review
 
-Earlier review, before the archived-pipeline contract was isolated:
+The following points were re-proved before execution:
+
+- multiple active non-default pipelines are valid; at most one active default exists;
+- live Leads have tenant-preserving FKs to Contact/Pipeline/Stage with restrictive Lead references, so legacy context is not expected to disappear through ordinary referenced-row deletion;
+- Lead rows do not carry pipeline/stage archive timestamps themselves, but the complete Pipeline/Stage projections allow correlation by ID;
+- an anonymized Contact projection may still carry raw Contact fields, so the UI must actively suppress them;
+- `contact_patient_id` is not authorization or Patient navigation authority;
+- the lost invariant accepts a nonblank reason code or detail, so this slice can send a trimmed free-form `p_lost_reason_detail` without inventing taxonomy;
+- `isOperationalRole()` is appropriate only as presentation affordance; the RPC remains authorization authority;
+- the repository already has an established command-versus-projection pattern where post-COMMIT refresh failure is stale UI state rather than command failure.
+
+## Gates
+
+### GAPS
+
+Closed for the bounded Board slice. The remaining product gap was frontend cutover, not missing backend authority.
+
+### CAPABILITY AUTHORITY / REUSE
+
+Closed by reusing only released RPCs/tenant/role/entitlement/audit capabilities. No parallel authority was created.
+
+### DECISION
+
+Closed as one frontend-only micro-slice.
+
+### SECOND ADVERSARIAL REVIEW
+
+Initial advisory result:
 
 ```text
-route = deep_review
-deep_review = 0.71
-proceed_fast = 0.22
-block = 0.06
+deep_review = 0.72
+proceed_fast = 0.26
+block = 0.01
 split_task = 0.01
-confidence = 0.62
+confidence = 0.63
 ```
 
-Fresh review with the server-side archived-pipeline gap made explicit:
+After deterministic deep review:
 
 ```text
-route = block
-block = 0.70
-deep_review = 0.29
-split_task = 0.01
-proceed_fast = 0.00
-confidence = 0.59
+proceed_fast = 0.83
+deep_review = 0.15
+block = 0.02
+split_task = 0.00
+confidence = 0.76
 ```
 
-JEV is advisory. The deterministic reason for blocking is the executable RPC contract described above.
+No deterministic blocker remained.
 
-## Validation boundary
+## EXECUTION evidence
 
-No capability implementation was executed, so no implementation validation or release claim is made.
-
-The review itself was cross-checked against current main source, migrations, SQL cases/verifiers, permissions, UI primitives and frontend test patterns.
-
-## Result
+A fresh branch was created from exact canonical main:
 
 ```text
-A) one frontend-only micro-slice now     NO
-B) split MED-CRM-003 implementation     NO — the issue precedes Board execution
-C) prior contract/capability missing     YES
+branch = feat/med-crm-003-commercial-board-cutover-v1
+base = 01a2b947e13144a885549c248acceb25021c36a2
 ```
+
+Implementation files before documentation reconciliation:
+
+```text
+src/lib/commercialCrm.ts
+src/lib/commercialCrm.test.ts
+src/lib/commercialCrmFrontendBoundary.test.js
+src/components/CommercialCrmBoard.tsx
+src/components/CommercialCrmBoard.test.tsx
+src/pages/Crm.tsx
+```
+
+No migration, schema, RPC, table, RLS policy, grant, role, entitlement, tenant source, provider, automation or AI file was changed.
+
+### Adapter boundary
+
+`commercialCrm.ts` calls only:
+
+```text
+list_current_clinic_crm_pipelines
+list_current_clinic_crm_stages
+list_current_clinic_crm_leads
+transition_current_clinic_crm_lead_stage
+```
+
+It performs no raw table DML.
+
+### Board behavior
+
+The implementation:
+
+- lists every active pipeline in an explicit selector;
+- selects the active default initially when present;
+- uses only active stages as mutation columns/targets;
+- keeps archived pipeline/stage Leads in an explicit read-only legacy section;
+- collects a mandatory trimmed loss reason before invoking a lost transition;
+- hides Contact name/phone/email and free-form Lead title when the Contact is anonymized;
+- creates no Patient navigation from `contact_patient_id`;
+- exposes mutation affordances only to `owner | admin | recep`;
+- leaves `professional | financeiro` read-only;
+- delegates the actual mutation to the canonical RPC;
+- refetches canonical projections after command success;
+- reports post-COMMIT refetch failure as a stale-projection warning;
+- does not treat optimistic client state as authority;
+- removes Patient `funilStage` / `setFunilStage()` from the commercial Board;
+- keeps NPS/churn/Treatment Continuity in Patient-domain.
+
+A generic transition transport/RPC error deliberately avoids asserting that persistence definitely did or did not happen; the UI instructs the user to refresh before retry.
+
+## VALIDATION evidence
+
+### Controlled workspace
+
+The branch was cloned into the allowlisted MedicsPro operational workspace and `npm ci` completed successfully.
+
+The first focused test run produced:
+
+```text
+15 passed
+2 failed
+```
+
+Both failures were test-harness defects:
+
+1. a React serialization assertion expected adjacent text nodes as one JSON string;
+2. the Modal test ran in Node without a `window` stub.
+
+Those harness issues were corrected.
+
+### First GitHub CI attempt
+
+The full `npm test` passed, including the new Board/adapter/boundary tests.
+
+Typecheck then caught test-fixture types inferred too narrowly from `null` literals. The fixture was explicitly typed as `CommercialCrmSnapshot` and the head advanced.
+
+### Proven implementation head before this docs refresh
+
+```text
+50ff38ff1427f71b30c62120b26259838a6b94b0
+```
+
+On that HEAD, the current GitHub evidence was:
+
+```text
+npm test            SUCCESS
+typecheck           SUCCESS
+lint                SUCCESS
+production build    SUCCESS
+dependency-audit    SUCCESS
+
+GitHub check-runs:
+9 completed
+9 success
+0 failed
+```
+
+The production build transformed 1919 modules and completed successfully. The existing bundle-size warning remained a warning, not a build failure.
+
+The new tests cover at minimum:
+
+- every active pipeline + default initial selection;
+- writer versus read-only role presentation;
+- anonymized Contact without rendered PII or free-form Lead title;
+- archived pipeline/stage Lead remains visible read-only;
+- lost stage cannot invoke the command before a non-empty reason;
+- only canonical released CRM RPCs are used;
+- no raw Commercial CRM table DML;
+- no `setFunilStage`/Patient-stage commercial writer;
+- no Patient navigation in the commercial Board;
+- post-COMMIT projection failure remains stale projection instead of command failure.
+
+## Post-implementation review
+
+Advisory completion review:
+
+```text
+verify_more = 0.67
+incomplete = 0.22
+complete = 0.11
+confidence = 0.51
+```
+
+The remaining verification items supplied to that review were deliberately:
+
+- institutional documentation reconciliation;
+- merge proof;
+- production frontend deployment/readback.
+
+No new deterministic implementation blocker was identified.
+
+## DOCUMENTATION boundary
+
+This evidence update occurs after the implementation HEAD above. Therefore it will create a newer PR HEAD and **must cause a fresh final-head GitHub validation before merge**. The 9/9 success set above must not be inherited by the documentation commit automatically.
+
+`docs/CURRENT_STATE.md` is intentionally not rewritten to claim integrated Board state before PR #536 merges. Main still owns current integrated state.
+
+## Status
+
+```text
+MED-CRM-003 = PROVED ON BRANCH
+PR #536 = OPEN
+MERGED = NO
+RELEASED = NO
+```
+
+RELEASED requires production frontend rollout/readback after merge. There is no database rollout in this slice.

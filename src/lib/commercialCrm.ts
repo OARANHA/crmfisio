@@ -1,0 +1,242 @@
+import { supabase } from './supabaseClient';
+
+export type CommercialCrmStageKind = 'open' | 'won' | 'lost';
+
+export interface CommercialCrmPipeline {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  archivedAt: string | null;
+}
+
+export interface CommercialCrmStage {
+  id: string;
+  pipelineId: string;
+  name: string;
+  position: number;
+  stageKind: CommercialCrmStageKind;
+  archivedAt: string | null;
+}
+
+export interface CommercialCrmLead {
+  id: string;
+  title: string;
+  valueCents: number | null;
+  source: string | null;
+  lostReasonCode: string | null;
+  lostReasonDetail: string | null;
+  closedAt: string | null;
+  ownerId: string | null;
+  contactId: string;
+  contactName: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  contactPatientId: string | null;
+  contactAnonymizedAt: string | null;
+  pipelineId: string;
+  pipelineName: string;
+  stageId: string;
+  stageName: string;
+  stageKind: CommercialCrmStageKind;
+  stagePosition: number;
+}
+
+export interface CommercialCrmSnapshot {
+  pipelines: CommercialCrmPipeline[];
+  stages: CommercialCrmStage[];
+  leads: CommercialCrmLead[];
+}
+
+export interface CommercialCrmTransitionInput {
+  leadId: string;
+  toStageId: string;
+  lostReasonDetail?: string | null;
+}
+
+export interface CommercialCrmTransitionResult {
+  leadId: string;
+  fromStageId: string;
+  toStageId: string;
+  stageKind: CommercialCrmStageKind;
+  closedAt: string | null;
+}
+
+export interface CommercialCrmCommandOutcome {
+  command: CommercialCrmTransitionResult | null;
+  snapshot: CommercialCrmSnapshot | null;
+  projection: 'fresh' | 'stale';
+  projectionWarning: string | null;
+}
+
+type PipelineRow = {
+  id: string;
+  name: string;
+  is_default: boolean;
+  archived_at: string | null;
+};
+
+type StageRow = {
+  id: string;
+  pipeline_id: string;
+  name: string;
+  position: number;
+  stage_kind: CommercialCrmStageKind;
+  archived_at: string | null;
+};
+
+type LeadRow = {
+  lead_id: string;
+  title: string;
+  value_cents: number | null;
+  source: string | null;
+  lost_reason_code: string | null;
+  lost_reason_detail: string | null;
+  closed_at: string | null;
+  owner_id: string | null;
+  contact_id: string;
+  contact_name: string;
+  contact_phone: string | null;
+  contact_email: string | null;
+  contact_patient_id: string | null;
+  contact_anonymized_at: string | null;
+  pipeline_id: string;
+  pipeline_name: string;
+  stage_id: string;
+  stage_name: string;
+  stage_kind: CommercialCrmStageKind;
+  stage_position: number;
+};
+
+type TransitionRow = {
+  lead_id: string;
+  from_stage_id: string;
+  to_stage_id: string;
+  stage_kind: CommercialCrmStageKind;
+  closed_at: string | null;
+};
+
+function rows<T>(data: unknown): T[] {
+  return Array.isArray(data) ? data as T[] : [];
+}
+
+export async function listCurrentClinicCrmPipelines(): Promise<CommercialCrmPipeline[]> {
+  const { data, error } = await supabase.rpc('list_current_clinic_crm_pipelines');
+  if (error) throw error;
+
+  return rows<PipelineRow>(data).map((row) => ({
+    id: row.id,
+    name: row.name,
+    isDefault: row.is_default,
+    archivedAt: row.archived_at,
+  }));
+}
+
+export async function listCurrentClinicCrmStages(): Promise<CommercialCrmStage[]> {
+  const { data, error } = await supabase.rpc('list_current_clinic_crm_stages', {
+    p_pipeline_id: null,
+  });
+  if (error) throw error;
+
+  return rows<StageRow>(data).map((row) => ({
+    id: row.id,
+    pipelineId: row.pipeline_id,
+    name: row.name,
+    position: row.position,
+    stageKind: row.stage_kind,
+    archivedAt: row.archived_at,
+  }));
+}
+
+export async function listCurrentClinicCrmLeads(): Promise<CommercialCrmLead[]> {
+  const { data, error } = await supabase.rpc('list_current_clinic_crm_leads');
+  if (error) throw error;
+
+  return rows<LeadRow>(data).map((row) => ({
+    id: row.lead_id,
+    title: row.title,
+    valueCents: row.value_cents,
+    source: row.source,
+    lostReasonCode: row.lost_reason_code,
+    lostReasonDetail: row.lost_reason_detail,
+    closedAt: row.closed_at,
+    ownerId: row.owner_id,
+    contactId: row.contact_id,
+    contactName: row.contact_name,
+    contactPhone: row.contact_phone,
+    contactEmail: row.contact_email,
+    contactPatientId: row.contact_patient_id,
+    contactAnonymizedAt: row.contact_anonymized_at,
+    pipelineId: row.pipeline_id,
+    pipelineName: row.pipeline_name,
+    stageId: row.stage_id,
+    stageName: row.stage_name,
+    stageKind: row.stage_kind,
+    stagePosition: row.stage_position,
+  }));
+}
+
+export async function loadCurrentClinicCommercialCrm(): Promise<CommercialCrmSnapshot> {
+  const [pipelines, stages, leads] = await Promise.all([
+    listCurrentClinicCrmPipelines(),
+    listCurrentClinicCrmStages(),
+    listCurrentClinicCrmLeads(),
+  ]);
+  return { pipelines, stages, leads };
+}
+
+export async function transitionCurrentClinicCrmLeadStage(
+  input: CommercialCrmTransitionInput,
+): Promise<CommercialCrmTransitionResult | null> {
+  const { data, error } = await supabase.rpc('transition_current_clinic_crm_lead_stage', {
+    p_lead_id: input.leadId,
+    p_to_stage_id: input.toStageId,
+    p_lost_reason_code: null,
+    p_lost_reason_detail: input.lostReasonDetail?.trim() || null,
+  });
+  if (error) throw error;
+
+  const row = rows<TransitionRow>(data)[0];
+  if (!row) return null;
+  return {
+    leadId: row.lead_id,
+    fromStageId: row.from_stage_id,
+    toStageId: row.to_stage_id,
+    stageKind: row.stage_kind,
+    closedAt: row.closed_at,
+  };
+}
+
+interface CommercialCrmCommandDependencies {
+  transition?: typeof transitionCurrentClinicCrmLeadStage;
+  refresh?: typeof loadCurrentClinicCommercialCrm;
+}
+
+export async function executeCommercialCrmStageTransition(
+  input: CommercialCrmTransitionInput,
+  dependencies: CommercialCrmCommandDependencies = {},
+): Promise<CommercialCrmCommandOutcome> {
+  const transition = dependencies.transition ?? transitionCurrentClinicCrmLeadStage;
+  const refresh = dependencies.refresh ?? loadCurrentClinicCommercialCrm;
+
+  // COMMAND: only this rejection means the stage transition failed to persist.
+  const command = await transition(input);
+
+  // PROJECTION: a failed refetch after COMMIT is stale UI state, not command failure.
+  try {
+    const snapshot = await refresh();
+    return {
+      command,
+      snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    };
+  } catch (error) {
+    console.error('[MedicsPro] Falha ao atualizar projeção do CRM após transição persistida:', error);
+    return {
+      command,
+      snapshot: null,
+      projection: 'stale',
+      projectionWarning: 'Etapa atualizada, mas o quadro não pôde ser recarregado. Atualize novamente para ver o estado mais recente.',
+    };
+  }
+}
