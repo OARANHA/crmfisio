@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** PROVED
+**Status:** IMPLEMENTING — executable scope proven; latest PR-head checks pending
 **Capability:** canonical authenticated Commercial Core mutations
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **Branch:** `feat/med-crm-002-commercial-command-boundary`
@@ -166,7 +166,7 @@ Proof completed:
 - MED-CRM-002 verifier — GREEN;
 - 12 behavior blocks — GREEN;
 - implementation head `18ba481866a3af8412cfc200621290d3358a2b5e`: 8/8 repository workflows SUCCESS, 0 behind, mergeable, no reviews/threads;
-- final adversarial completion review: complete probability 0.92, confidence 0.87.
+- independent adversarial completion review after latest-head reconciliation: `verify_more` 0.72, confidence 0.58, solely because documentation-only head checks were still pending.
 
 Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
