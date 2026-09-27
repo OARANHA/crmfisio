@@ -14,6 +14,29 @@ fi
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -qAt)
 
+wait_for_external_advisory_lock() {
+  local attempt
+  local held
+  for attempt in {1..100}; do
+    held="$("${PSQL[@]}" <<'SQL'
+SELECT count(*)
+FROM pg_locks
+WHERE locktype='advisory'
+  AND granted
+  AND pid <> pg_backend_pid()
+  AND database = (SELECT oid FROM pg_database WHERE datname=current_database());
+SQL
+)"
+    if [[ "$held" -gt 0 ]]; then
+      return 0
+    fi
+    sleep 0.05
+  done
+
+  echo "Timed out waiting for the first concurrent session to hold its advisory lock" >&2
+  return 1
+}
+
 run_first_then_conflicting_second() {
   local label="$1"
   local first_contact="$2"
@@ -47,7 +70,7 @@ SQL
   ) &
   local first_pid=$!
 
-  sleep 0.35
+  wait_for_external_advisory_lock
 
   set +e
   "${PSQL[@]}" >"$dir/second.out" 2>"$dir/second.err" <<SQL
@@ -69,7 +92,16 @@ SQL
   local second_status=$?
   set -e
 
+  set +e
   wait "$first_pid"
+  local first_status=$?
+  set -e
+
+  if [[ "$first_status" -ne 0 ]]; then
+    echo "$label: first concurrent create failed" >&2
+    cat "$dir/first.err" >&2 || true
+    exit 1
+  fi
 
   if [[ "$second_status" -eq 0 ]]; then
     echo "$label: second concurrent create unexpectedly succeeded" >&2
@@ -97,6 +129,8 @@ SQL
   fi
 
   echo "$label: serialized and rechecked correctly"
+  rm -rf "$dir"
+  trap - RETURN
 }
 
 echo "1) different UUID + same exact phone serializes"
@@ -108,6 +142,7 @@ run_first_then_conflicting_second   "BR legacy-equivalent phone race"   "7300000
 echo "3) same phone+email concurrent lock set completes without deadlock"
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT
+declare -A pids
 
 for suffix in a b; do
   (
@@ -124,7 +159,9 @@ COMMIT;
 SQL
   ) &
   pids["$suffix"]=$!
-  sleep 0.1
+  if [[ "$suffix" == "a" ]]; then
+    wait_for_external_advisory_lock
+  fi
 done
 
 wait "${pids[a]}"
