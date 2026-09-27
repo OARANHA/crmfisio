@@ -26,7 +26,7 @@ Slice:
 
 Status:
 
-`PROVED + MERGED / NOT RELEASED`
+`RELEASED`
 
 MED-CRM-006 remains RELEASED and closed. Do not extend it.
 
@@ -115,32 +115,27 @@ PR #551 exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` completed 20/20 wo
 
 The implementation remains frontend-only and did not add schema/backend/RLS/RBAC/role/entitlement/tenant/audit/Patient authority.
 
-## Runtime checkpoint
+## Runtime release checkpoint
 
-The first production readback after the merge still served the prior entry `/assets/index-BYMym6it.js`. The MED-CRM-007 bundle has therefore not yet been observed live. Do not call the slice RELEASED from repository proof alone.
+The frontend rollout is now observed in production.
+
+Current live readback:
+
+- entry `/assets/index-DLkUkW9i.js`;
+- CRM chunk `/assets/CrmOperational-foLfVbZu.js`;
+- activity RPC marker present;
+- bounded timeline copy present;
+- old direct Contact/Lead Prospect writers absent;
+- no direct `crm_lead_activities` table access marker;
+- no `candidate_ids`, `actor_id`, `p_patient_id` or `create_patient` marker;
+- `/`, `/crm`, `/agenda`, `/pacientes` all HTTP 200.
+
+No authenticated human timeline smoke or production mutation is claimed.
 
 ## Next exact step
 
-Re-resolve current `origin/main`, then read `https://app.medicspro.com.br/` and its referenced CRM chunk. When the entry/chunk changes, prove that the live CRM chunk contains `list_current_clinic_crm_lead_activities`, does not reintroduce forbidden direct Prospect writers/raw CRM DML/Patient crossover, and smoke `/`, `/crm`, `/agenda`, `/pacientes`. Claim an authenticated timeline smoke only if it is actually performed.
+MED-CRM-007 is closed as RELEASED. Do not reopen or extend it unless contradictory evidence appears. Any next Commercial CRM capability must start as a new slice with a fresh reconstruction of `origin/main`, active PR/branch state, canonical docs, code/schema/tests and runtime as needed, followed by GAPS -> CAPABILITY AUTHORITY / REUSE GATE -> DECISION -> SECOND ADVERSARIAL REVIEW before execution.
 
-If the production entry remains the old build, keep the slice at PROVED + MERGED / NOT RELEASED and investigate the canonical Portainer deployment path rather than creating another code authority.
+## Closed proof
 
-## Proof required later
-
-Repository proof:
-
-- focused tests;
-- frontend boundary test;
-- typecheck;
-- lint;
-- build/diff-check;
-- applicable GitHub workflows on exact HEAD.
-
-Runtime proof after merge/deploy:
-
-- live CRM chunk contains the activity read RPC marker;
-- no new writer/raw DML marker;
-- public route health;
-- authenticated timeline smoke only if actually executed.
-
-Repository PROVED evidence now exists. Do not declare RELEASED until the frontend rollout/readback evidence exists.
+Repository and runtime release evidence are recorded in `EVIDENCE.md`. No authenticated human timeline smoke was performed; that limitation does not create a hidden claim and should not be rewritten as if it occurred.
