@@ -56,12 +56,12 @@ PR #533 was squash-merged and current continuation moved to a separate prerequis
 MED-CRM-004 = Archived Pipeline Transition Guard
 base = main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35
 branch = feat/med-crm-004-archived-pipeline-transition-guard
-status = IMPLEMENTING
+status = PROVED / PR #534 merge + release pending
 ```
 
 Fresh GAPS / REUSE / DECISION / SECOND ADVERSARIAL REVIEW closed for the prerequisite. Its bounded implementation strengthens the existing canonical transition RPC with an additive migration, preserves exact side-effect-free retry idempotency, and requires active current pipeline state under a row lock before any actual stage change.
 
-MED-CRM-003 remains blocked. Do not start the Board merely because MED-CRM-004 has code; wait for MED-CRM-004 to be mechanically PROVED, merged and RELEASED with production rollout/readback.
+MED-CRM-003 remains blocked. MED-CRM-004 is now mechanically PROVED on PR #534, but the Board must still wait for protected merge plus production rollout/readback so MED-CRM-004 can reach RELEASED.
 
 See `../MED-CRM-004/README.md`, `DECISION.md`, `EVIDENCE.md` and `HANDOFF.md` in that slice.
 
