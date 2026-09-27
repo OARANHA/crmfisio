@@ -58,12 +58,14 @@ Do not confuse speed with haste. Prefer coherent vertical slices that can be saf
 
 ### Canonical slice execution method
 
-For every significant slice, use [`docs/SLICE_EXECUTION_METHOD.md`](docs/SLICE_EXECUTION_METHOD.md) as the execution protocol:
+For every significant slice, use [`docs/SLICE_EXECUTION_METHOD.md`](docs/SLICE_EXECUTION_METHOD.md) as the execution protocol.
+
+First reconstruct the **ESTADO ATUAL COMPROVADO** from current `origin/main`, active branch/PR when applicable, canonical docs, executable code/schema/tests and runtime evidence when needed. This is a factual precondition, not a decision stage.
+
+Then follow exactly:
 
 ```text
-REAL NOW
-→ PROVEN EVIDENCE
-→ GAPS
+GAPS
 → CAPABILITY AUTHORITY / REUSE GATE
 → DECISION
 → SECOND ADVERSARIAL REVIEW
@@ -72,7 +74,13 @@ REAL NOW
 → DOCUMENTATION
 ```
 
-The repository, not chat memory, owns continuity. Active slices are indexed in `docs/SLICE_LEDGER.md`; each active slice should maintain its own evidence/decision record and a short `HANDOFF.md` that lets a new chat/agent restart from current evidence. Slice documents never outrank current code/schema/runtime evidence and do not replace `docs/CURRENT_STATE.md`, `TODO.md` or `PRODUCT_ROADMAP.md`.
+No new capability may enter EXECUTION without explicitly passing GAPS, CAPABILITY AUTHORITY / REUSE GATE, DECISION and SECOND ADVERSARIAL REVIEW.
+
+The repository, not chat memory, owns continuity. Start from [`docs/CANONICAL_INDEX.md`](docs/CANONICAL_INDEX.md) as the stable router, then use `docs/SLICE_LEDGER.md` and the active slice `README.md` + `HANDOFF.md`. Slice documents never outrank current code/schema/runtime evidence and do not replace `docs/CURRENT_STATE.md`, `TODO.md` or `PRODUCT_ROADMAP.md`.
+
+For an active slice, PR/branch state is part of the current evidence: verify PR, head SHA, base, diff, checks and merge state. Do not assume `main` contains work that is still open in a PR.
+
+When the user asks to **“generate the next chat text/prompt”**, revalidate the active PR/branch/checks, update the slice `HANDOFF.md` first, and only then generate a prompt that points the next chat back to the repository.
 
 Stable design/acceptance principles live in [`docs/doctrine/`](docs/doctrine/README.md). Significant slices must apply the relevant doctrine during DECISION / SECOND ADVERSARIAL REVIEW / VALIDATION. Doctrine does not create authority, replace domain contracts or override executable evidence.
 

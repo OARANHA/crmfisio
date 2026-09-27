@@ -14,12 +14,12 @@ Toda mudança significativa deve deixar evidência suficiente no repositório pa
 4. saber por que uma decisão foi tomada;
 5. continuar do próximo passo exato sem recriar foundation já existente.
 
-O ciclo canônico é:
+Antes do ciclo, toda slice significativa deve reconstruir o **ESTADO ATUAL COMPROVADO** usando evidência reproduzível. Isso é uma pré-condição factual, não uma etapa de decisão.
+
+A disciplina operacional canônica é:
 
 ```text
-REAL NOW
-→ PROVEN EVIDENCE
-→ GAPS
+GAPS
 → CAPABILITY AUTHORITY / REUSE GATE
 → DECISION
 → SECOND ADVERSARIAL REVIEW
@@ -28,11 +28,16 @@ REAL NOW
 → DOCUMENTATION
 ```
 
+Nenhuma capability nova deve avançar para EXECUTION sem atravessar explicitamente GAPS, CAPABILITY AUTHORITY / REUSE GATE, DECISION e SECOND ADVERSARIAL REVIEW.
+
 ## Hierarquia de autoridade
 
 Antes de aplicar o método, preservar a hierarquia definida em `AGENTS.md`.
 
 - `OARANHA/crmfisio` = produto/runtime canônico e único destino de implementação.
+- `docs/CANONICAL_INDEX.md` = roteador estável; não contém estado mutável.
+- branch/PR ativa = trabalho vivo da slice ainda não integrado; verificar HEAD, base, diff, checks e merge state.
+- `origin/main` = estado integrado no repositório; não representa automaticamente trabalho ainda aberto em PR.
 - `docs/CURRENT_STATE.md` = snapshot operacional global mutável; não copiar esse papel para slices.
 - `TODO.md` = trabalho aberto.
 - `PRODUCT_ROADMAP.md` = direção/prioridade de produto; não prova implementação.
@@ -42,25 +47,32 @@ Antes de aplicar o método, preservar a hierarquia definida em `AGENTS.md`.
 - runtime observado = autoridade para dizer o que está realmente implantado.
 - chats, memória, prompts antigos e handoffs = contexto; nunca superam evidência atual.
 
-## 1. REAL NOW
+## 0. ESTADO ATUAL COMPROVADO — pré-condição factual
 
-Responder: **qual é o estado real agora?**
+Responder: **qual é o estado comprovado do sistema antes de analisar os gaps?**
+
+Isto não é uma etapa extra da disciplina. É a base factual necessária para que GAPS não seja inferido de memória, roadmap ou conversa.
 
 Obrigatório para uma slice significativa:
 
-- resolver a `origin/main` atual;
 - ler `AGENTS.md`;
+- ler `docs/CANONICAL_INDEX.md`;
+- resolver a `origin/main` atual;
 - ler `docs/CURRENT_STATE.md`;
+- identificar a slice em `docs/SLICE_LEDGER.md`;
+- ler README + `HANDOFF.md` da slice;
+- se houver branch/PR ativa, verificar PR, HEAD, base, diff, checks e merge state;
 - localizar o documento canônico do domínio;
 - inspecionar consumidores reais;
 - inspecionar schema/migrations/RPC/RLS/Edge Functions/testes quando aplicável;
+- consultar runtime somente quando a pergunta depender do que está realmente implantado;
 - distinguir claramente `implementado`, `mergeado`, `deployado` e `validado em produção`.
 
 Não iniciar implementação a partir de um SHA, snippet ou estado copiado de chat.
 
-## 2. PROVEN EVIDENCE
+### Evidência comprovada
 
-Registrar apenas evidência reproduzível.
+O ESTADO ATUAL COMPROVADO deve registrar apenas evidência reproduzível.
 
 Ordem de força típica:
 
@@ -79,9 +91,9 @@ Uma afirmação deve carregar sua limitação. Exemplos:
 - “UI mostra” != “servidor autoriza”;
 - “documentado” != “implementado”.
 
-## 3. GAPS
+## 1. GAPS
 
-Comparar o objetivo da slice com o REAL NOW e classificar lacunas:
+Comparar o objetivo da slice com o ESTADO ATUAL COMPROVADO e classificar lacunas:
 
 - missing capability;
 - incomplete foundation;
@@ -95,7 +107,7 @@ Comparar o objetivo da slice com o REAL NOW e classificar lacunas:
 
 Não transformar automaticamente todo gap em feature nova.
 
-## 4. CAPABILITY AUTHORITY / REUSE GATE
+## 2. CAPABILITY AUTHORITY / REUSE GATE
 
 Antes de criar qualquer foundation, responder:
 
@@ -115,7 +127,7 @@ Antes de criar qualquer foundation, responder:
 - WhatsApp atual → Evolution API através das boundaries MedicsPro existentes;
 - Deskcomm → referência para padrões comerciais/conversacionais/agent platform; nunca autoridade de tenancy, auth ou runtime MedicsPro.
 
-## 5. DECISION
+## 3. DECISION
 
 Toda decisão relevante deve registrar:
 
@@ -130,7 +142,7 @@ Toda decisão relevante deve registrar:
 
 A decisão deve ser pequena o suficiente para produzir uma slice coerente e verificável.
 
-## 6. SECOND ADVERSARIAL REVIEW
+## 4. SECOND ADVERSARIAL REVIEW
 
 Antes de executar uma decisão relevante, realizar uma revisão hostil.
 
@@ -180,7 +192,7 @@ O Doctrine Gate não é um segundo workflow. Ele é uma régua de aceitação de
 
 Quando uma propriedade é enumerável de forma confiável no repositório, avaliar se ela deve virar gate mecânico/teste em vez de depender para sempre de checklist humano.
 
-## 7. EXECUTION
+## 5. EXECUTION
 
 Executar em branch dedicada e em mudanças pequenas.
 
@@ -194,7 +206,7 @@ Regras:
 - actions de IA/API/UI/automação devem convergir para a mesma boundary de domínio;
 - não alterar produção apenas para “testar” arquitetura.
 
-## 8. VALIDATION
+## 6. VALIDATION
 
 A validação depende da capability.
 
@@ -236,7 +248,7 @@ Usar somente quando a verdade necessária está no runtime/VPS:
 
 Não usar MCP_WANDORA_VPS para substituir leitura do repositório, decidir arquitetura ou inferir schema que o código pode provar.
 
-## 9. DOCUMENTATION
+## 7. DOCUMENTATION
 
 Depois da validação:
 
@@ -266,7 +278,7 @@ RELEASED
 Definições:
 
 - **DISCOVERED** — oportunidade/gap identificado.
-- **ANALYZED** — REAL NOW, evidência e gaps compreendidos.
+- **ANALYZED** — estado atual comprovado, evidência e gaps compreendidos.
 - **APPROVED** — decisão de produto/arquitetura aprovada; execução ainda pode não existir.
 - **DESIGNED** — contrato/schema/boundaries/validação definidos.
 - **IMPLEMENTING** — código/migration/artefatos em execução.
@@ -279,15 +291,25 @@ Definições:
 
 Cada slice ativa deve possuir um `HANDOFF.md` curto e autocontido.
 
-Um novo chat deve receber somente a instrução de:
+Quando o usuário pedir **“gere o próximo texto para chat”**, o agente deve primeiro atualizar esse HANDOFF com evidência fresca e o próximo passo exato. O prompt do próximo chat deve apontar para a memória canônica do repositório, não tentar substituir essa memória por um resumo de conversa.
+
+A forma preferida de retomada é:
+
+> **Retome o projeto MEDICSPRO pelo estado canônico do repositório `OARANHA/crmfisio`.**
+
+Um novo chat deve:
 
 1. ler `AGENTS.md`;
-2. ler `docs/doctrine/README.md`;
-3. ler `docs/SLICE_EXECUTION_METHOD.md`;
+2. ler `docs/CANONICAL_INDEX.md`;
+3. resolver a `origin/main` atual;
 4. ler `docs/CURRENT_STATE.md`;
-5. ler o `README.md` e `HANDOFF.md` da slice;
-6. resolver a main atual;
-7. repetir REAL NOW antes de executar.
+5. ler `docs/WORK_CONTEXT.md`;
+6. ler `docs/doctrine/README.md` e as doutrinas relevantes;
+7. ler este método;
+8. ler `docs/SLICE_LEDGER.md`;
+9. ler o `README.md` e `HANDOFF.md` da slice;
+10. revalidar branch/PR ativa, HEAD, base, diff, checks e merge state;
+11. reconstruir o ESTADO ATUAL COMPROVADO antes de decidir ou executar.
 
 O handoff nunca autoriza confiar em fatos mutáveis sem revalidação.
 

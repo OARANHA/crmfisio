@@ -9,14 +9,18 @@ Trabalhe no projeto **MedicsPro** usando **`OARANHA/crmfisio` como repositório 
 Antes de alterar qualquer código:
 
 1. leia integralmente `AGENTS.md`;
-2. leia `docs/CURRENT_STATE.md`;
-3. leia `docs/doctrine/README.md` e as doutrinas relevantes;
-4. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
-5. use `docs/WORK_CONTEXT.md` somente como roteador e identifique o documento canônico do domínio;
-6. se a missão já tiver slice em `docs/SLICE_LEDGER.md`, leia o README + `HANDOFF.md` da slice;
-7. verifique o HEAD atual da `main`;
-8. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
-9. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
+2. leia `docs/CANONICAL_INDEX.md`;
+3. resolva a `origin/main` atual;
+4. leia `docs/CURRENT_STATE.md`;
+5. leia `docs/WORK_CONTEXT.md`;
+6. leia `docs/doctrine/README.md` e as doutrinas relevantes;
+7. leia `docs/SLICE_EXECUTION_METHOD.md` para qualquer missão significativa;
+8. leia `docs/SLICE_LEDGER.md`;
+9. se houver slice ativa, leia o README + `HANDOFF.md` da slice;
+10. se houver branch/PR ativa, revalide PR, HEAD, base, diff, checks e merge state;
+11. identifique os documentos canônicos do domínio;
+12. inspecione código, testes, migrations, Edge Functions e documentação diretamente relacionados à tarefa;
+13. confirme se o fluxo já existe parcialmente ou foi fechado antes de propor uma implementação nova.
 
 ## Papel dos repositórios
 
@@ -124,12 +128,12 @@ Atue como CTO + Staff Engineer + Product Engineer + Security Engineer + especial
 
 Nunca invente schema, RPC, route, role, environment variable, provider ou infraestrutura quando o repositório puder responder.
 
-Para slices significativas, siga explicitamente:
+Para slices significativas, primeiro estabeleça o **ESTADO ATUAL COMPROVADO** a partir da `origin/main` atual, documentação canônica, código/schema/testes e runtime quando necessário. Esse estado factual é apenas a entrada para a disciplina; ele não é uma etapa de decisão.
+
+A disciplina operacional obrigatória é:
 
 ```text
-REAL NOW
-→ PROVEN EVIDENCE
-→ GAPS
+GAPS
 → CAPABILITY AUTHORITY / REUSE GATE
 → DECISION
 → SECOND ADVERSARIAL REVIEW
@@ -138,9 +142,37 @@ REAL NOW
 → DOCUMENTATION
 ```
 
+Nenhuma capability nova deve entrar em EXECUTION sem atravessar explicitamente GAPS, CAPABILITY AUTHORITY / REUSE GATE, DECISION e SECOND ADVERSARIAL REVIEW.
+
 Aplique também o MEDICSPRO DOCTRINE GATE da slice: sistema vivo, autoridade/fronteiras e as doutrinas especializadas relevantes. JEV pode atuar como segunda opinião adversarial, mas não substitui policy, segurança, testes ou autoridade canônica. MCP_WANDORA_VPS deve ser usado apenas quando a pergunta depende de runtime/VPS real.
 
-A continuidade entre chats pertence ao repositório: atualize o `HANDOFF.md` da slice com o próximo passo exato antes de encerrar.
+## Continuidade entre chats
+
+Frase padrão de retomada:
+
+> **Retome o projeto MEDICSPRO pelo estado canônico do repositório `OARANHA/crmfisio`.**
+
+A continuidade pertence ao repositório, não à memória de conversa. `docs/CANONICAL_INDEX.md` é o roteador estável; ele não substitui o estado mutável da PR/branch ativa, da main ou do runtime.
+
+Quando o usuário pedir **“gere o próximo texto para chat”**, antes de escrever o prompt:
+
+1. revalidar `origin/main`, branch/PR ativa e checks relevantes;
+2. ler `docs/WORK_CONTEXT.md`, `docs/SLICE_EXECUTION_METHOD.md` e `docs/SLICE_LEDGER.md`;
+3. identificar a slice ativa e atualizar seu `HANDOFF.md` com:
+   - estado atual comprovado;
+   - evidência realmente obtida;
+   - gaps residuais;
+   - decisões já tomadas;
+   - validações executadas;
+   - próximo passo exato;
+4. atualizar `docs/CURRENT_STATE.md` somente quando houver mudança de continuidade global/rollout;
+5. gerar o próximo prompt apontando para os documentos canônicos, sem transformar o chat anterior em fonte de verdade.
+
+O prompt de continuidade deve carregar somente a missão, boundaries, slice ativa e evidência fresca necessária para o próximo passo. Estado mutável deve ser relido no repositório.
+
+A regra institucional é:
+
+> **A memória do projeto vive no repositório e na evidência reproduzível. O próximo chat começa lendo essa memória antes de decidir ou executar.**
 
 ## Git / validação
 

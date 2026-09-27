@@ -14,25 +14,27 @@
 
 - <fora de escopo>
 
-## 1. REAL NOW
+## 0. ESTADO ATUAL COMPROVADO
 
-- main atual:
+- `origin/main` atual:
+- branch/PR ativa:
+- HEAD/base/diff/checks/merge state:
 - docs canônicos lidos:
 - código/schema/migrations/testes inspecionados:
 - runtime/VPS necessário? sim/não:
-- estado real:
+- estado comprovado:
 
-## 2. PROVEN EVIDENCE
+### Evidência comprovada
 
 | Evidência | Fonte | O que prova | Limitação |
 | --- | --- | --- | --- |
 | | | | |
 
-## 3. GAPS
+## 1. GAPS
 
 - 
 
-## 4. CAPABILITY AUTHORITY / REUSE GATE
+## 2. CAPABILITY AUTHORITY / REUSE GATE
 
 | Capability | Autoridade canônica | Reuso externo/histórico | Decisão |
 | --- | --- | --- | --- |
@@ -40,7 +42,7 @@
 
 Classificação: `REUSE | EXTEND | ADAPT | REBUILD | REJECT`.
 
-## 5. DECISION
+## 3. DECISION
 
 ### Escolha
 
@@ -52,7 +54,7 @@ Classificação: `REUSE | EXTEND | ADAPT | REBUILD | REJECT`.
 
 ### Rollback
 
-## 6. SECOND ADVERSARIAL REVIEW
+## 4. SECOND ADVERSARIAL REVIEW
 
 ### Self-review
 
@@ -88,14 +90,14 @@ Living System answers:
 - feedback signal:
 - authority reused / authority not granted:
 
-## 7. EXECUTION
+## 5. EXECUTION
 
 - [ ] branch dedicada
 - [ ] mudança 1
 - [ ] mudança 2
 - [ ] observabilidade/recovery se aplicável
 
-## 8. VALIDATION
+## 6. VALIDATION
 
 - [ ] testes focados
 - [ ] RLS/tenant boundary
@@ -108,7 +110,7 @@ Living System answers:
 
 Resultados reais:
 
-## 9. DOCUMENTATION
+## 7. DOCUMENTATION
 
 - [ ] atualizar este arquivo
 - [ ] atualizar `HANDOFF.md`
