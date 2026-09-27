@@ -1,6 +1,6 @@
 # MED-CRM-007 — Commercial Lead Activity Timeline V1
 
-**Status:** PROVED / MERGED / NOT RELEASED  
+**Status:** RELEASED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Design baseline:** `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120`  
@@ -160,8 +160,8 @@ CAPABILITY AUTHORITY / REUSE      CLOSED
 DECISION                          CLOSED
 SECOND ADVERSARIAL REVIEW         CLOSED
 EXECUTION                         CLOSED
-VALIDATION                        REPOSITORY PROVED / RUNTIME PENDING
-DOCUMENTATION                     IN PROGRESS
+VALIDATION                        CLOSED
+DOCUMENTATION                     IN PROGRESS (release reconciliation)
 ```
 
-Execution started only after revalidating `main@b8f7943960254ba33ec036a4462c6b2683367289`, confirming #550 was the only material CRM change and repeating the adversarial route. PR #551 exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` then completed 20/20 workflows successfully and was squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`. Repository proof is closed. Runtime proof is not: the first post-merge production readback still served the pre-MED-CRM-007 entry `/assets/index-BYMym6it.js`, so RELEASED is explicitly not claimed.
+Execution started only after revalidating `main@b8f7943960254ba33ec036a4462c6b2683367289`, confirming #550 was the only material CRM change and repeating the adversarial route. PR #551 exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` then completed 20/20 workflows successfully and was squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`. Repository proof is closed. The first post-merge readback still showed the previous entry, but the subsequent governed production readback observed `/assets/index-DLkUkW9i.js` referencing `CrmOperational-foLfVbZu.js`. The live CRM chunk contains `list_current_clinic_crm_lead_activities`, `Atividade comercial registrada` and `Ver histórico`; old direct Prospect writers remain absent; `/`, `/crm`, `/agenda` and `/pacientes` return HTTP 200. MED-CRM-007 is therefore RELEASED. No authenticated human timeline smoke is claimed.
