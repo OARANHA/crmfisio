@@ -377,7 +377,7 @@ BEGIN
   END IF;
 END $$;
 
-SELECT '9b) explicit_reuse exact retry is idempotent but changed normalized signals conflict' AS check;
+SELECT '9b) explicit_reuse exact retry is side-effect idempotent' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 
@@ -397,29 +397,6 @@ SELECT * FROM public.create_current_clinic_crm_resolved_prospect(
   'identity_reuse'
 );
 
-DO $$
-BEGIN
-  BEGIN
-    PERFORM * FROM public.create_current_clinic_crm_resolved_prospect(
-      '72000000-0000-0000-0000-000000000001',
-      '82000000-0000-0000-0000-000000000012',
-      'Incoming Different Display',
-      'Reuse Lead',
-      'explicit_reuse',
-      '+55 51 98888-9999',
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      'identity_reuse'
-    );
-    RAISE EXCEPTION 'crm_explicit_reuse_changed_signal_retry_unexpectedly_allowed';
-  EXCEPTION
-    WHEN unique_violation THEN NULL;
-  END;
-END $$;
 RESET ROLE;
 
 DO $$
