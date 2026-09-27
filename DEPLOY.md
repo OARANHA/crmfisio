@@ -193,3 +193,22 @@ Após atualização de comportamento:
 - `docs/CLINICAL_PILOT_ACCEPTANCE.md`
 - `docs/FINANCIAL_PILOT_ACCEPTANCE.md`
 - `PRODUCT_ROADMAP.md`
+
+### Commercial CRM baseline prerequisite — 2026-09-27
+
+The Commercial CRM production rollout has a proved baseline prerequisite on environments where `public.update_updated_at_column()` is absent.
+
+Required order:
+
+```text
+20260927_updated_at_helper_reconciliation.sql
+→ VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql
+→ 20260926_commercial_crm_core_foundation.sql
+→ VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql
+→ 20260926_commercial_crm_command_boundary.sql
+→ VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql
+```
+
+A real production attempt on 2026-09-27 proved that skipping the reconciliation step can fail the Core migration at trigger creation. The failed Core attempt was transactionally rolled back and `public.contacts` remained absent.
+
+Do not create `update_updated_at_column()` manually as an undocumented production-only patch. Use the versioned 20260927 reconciliation migration, stop on error and verify immediately before retrying the unchanged CRM migrations.
