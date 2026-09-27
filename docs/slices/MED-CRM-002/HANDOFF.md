@@ -17,97 +17,105 @@
 13. `docs/slices/MED-CRM-002/DECISION.md`
 14. `docs/slices/MED-CRM-002/EVIDENCE.md`
 
-Then resolve current `origin/main`, PR #524/head/base/diff/checks/reviews/merge state. Mutable facts below are a checkpoint, never an instruction to trust an old SHA.
+Then resolve current `origin/main` and runtime evidence again. Do not use the SHA below as a future checkout instruction without revalidation.
 
-## Proven executable checkpoint
-
-- base at proof: `main@652ea7b3aea4cd03a09944b780ef697168016bc3`;
-- implementation-proven head: `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`;
-- PR: #524 — `feat/med-crm-002-commercial-command-boundary`;
-- compare at proof: 36 ahead / 0 behind;
-- mergeable: true;
-- reviews: 0;
-- review threads: 0;
-- main ruleset: squash only; required `validate` + `dependency-audit`; zero approving reviews required.
-
-## Slice state
+## Canonical checkpoint
 
 ```text
-MED-CRM-002
-PROVED
-NOT MERGED
-NOT RELEASED
+main = 7a8badf5ad81e92746e82bedd142ba75899a4080
+PR #524 = MERGED (squash)
+final PR head = cf94434ca5294e4e9cc4de70661268d9e4765045
+MED-CRM-002 = PROVED + MERGED
+MED-CRM-002 = NOT RELEASED
 ```
 
-The proof decision and merge decision are separate.
+Final PR validation:
 
-## Scope proved
+- 21/21 repository workflows SUCCESS;
+- Commercial CRM PostgreSQL 16.15 — SUCCESS;
+- Commercial CRM PostgreSQL 17.11 — SUCCESS;
+- `validate` — SUCCESS;
+- `dependency-audit` — SUCCESS;
+- reviews: 0;
+- review threads: 0.
 
-Exactly the designed Commercial Core mutation boundary:
+## Scope integrated
 
-- internal current-clinic CRM mutator guard;
-- authenticated Contact creation;
-- authenticated Lead creation;
-- authenticated same-pipeline Lead stage transition;
-- commercial activity + audit side effects;
-- anonymized Contact cannot be replayed as active or receive a new Lead;
+Exactly the canonical Commercial Core mutation boundary:
+
+- current-clinic mutator guard;
+- Contact creation;
+- Lead creation;
+- same-pipeline Lead stage transition;
+- activity + audit parity;
+- anonymized Contact cannot be replayed or receive a new Lead;
 - no new table/column/domain engine;
 - no Patient link/conversion;
 - no Patient/Encounter/Patient Journey mutation;
-- no CRM board/UI cutover;
-- no Inbox/follow-up/attribution/AI/provider/automation engine.
+- no Board/Inbox/follow-up/attribution/provider/AI/automation engine.
 
-Authority reused:
+## Release boundary
 
-- `current_active_profile()`;
-- `crm.access`;
-- canonical `owner/admin/recep` writer roles;
-- MED-CRM-001 Contact/Lead/Pipeline/Stage/Activity model and constraints;
-- `audit_log`.
+Repository merge is not rollout proof.
 
-## Latest validation
+The current `medicspro-agent` target can run controlled workspace processes but does not expose production database/container access, so this session cannot prove that #522/#524 migrations are installed in production. Do not mark RELEASED from GitHub evidence alone.
 
-Dedicated workflow `Commercial CRM Command Boundary`, run `36286051483`, on executable head `1d7655d...`:
+## Post-merge capability decision
 
-- PostgreSQL 16.15 — SUCCESS;
-- PostgreSQL 17.11 — SUCCESS;
-- migration replay — PASS;
-- MED-CRM-001 verifier — PASS;
-- MED-CRM-002 verifier — PASS;
-- 13 behavior cases — PASS;
-- anonymized Contact case executed — PASS.
+The capability map was reaudited against `main@7a8badf5...`.
 
-Ruleset gates on the same executable head:
+The strongest product conflict is still the legacy Patient-backed commercial board in `src/pages/Crm.tsx`, which reads `patients.funilStage` and writes through `setFunilStage`.
 
-- `validate` — SUCCESS;
-- `dependency-audit` — SUCCESS.
-
-The prior red CI was diagnosed from raw job logs. Both versions failed at behavior-case line 172 on `DO $`. Commit `0161da...` introduced that malformed test delimiter. The correction changed only `DO $` / `END $;` to `DO $$` / `END $$;`; no domain/security code changed.
-
-Final JEV completion review: `complete=0.89`, confidence `0.84`. Advisory only.
-
-## Methodological state
+A proposed next slice, **CRM Board Cutover V1**, was adversarially reviewed with the current evidence. JEV returned:
 
 ```text
-GAPS
-→ CAPABILITY AUTHORITY / REUSE GATE
-→ DECISION
-→ SECOND ADVERSARIAL REVIEW
-→ EXECUTION
-→ VALIDATION
-→ DOCUMENTATION
+block: 0.98
+deep_review: 0.02
+confidence: 0.97
 ```
 
-VALIDATION is closed for the executable proof above. This handoff is the documentation reconciliation.
+Reason preserved: the canonical Commercial Core/commands are merged but their production installation is not proved. Therefore Board execution is not authorized yet.
 
 ## Exact next step
 
-1. revalidate the live PR head after this documentation commit;
-2. require `Commercial CRM PostgreSQL 16/17`, `validate` and `dependency-audit` green on the applicable final head/equivalent executable proof;
-3. confirm 0 behind or explicitly reconcile, mergeable, no reviews/threads and final diff in scope;
-4. make a separate merge decision;
-5. if merge is approved, use squash only and confirm the resulting `main` integration;
-6. do not declare RELEASED without production rollout/runtime proof;
-7. only after integration, rebuild `NEXT_CAPABILITY_MAP.md` against the new main before selecting another micro-slice through fresh GAPS → REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW.
+1. obtain production database/readback authority;
+2. prove whether #522 and #524 are already installed;
+3. if absent, run the controlled migration rollout + verifiers/readback;
+4. only then mark MED-CRM-001/002 RELEASED when evidence supports it;
+5. reconstruct the capability map once more after runtime proof;
+6. re-run GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW for the next feature.
 
-Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation or commercial AI before #524 is correctly integrated.
+Do not start Board/UI, pre-clinical intake, follow-up, Inbox, attribution, Lead→Patient conversion, CRM automation or commercial AI before the release gate closes.
+
+
+## Next-chat continuity checkpoint
+
+Revalidated before generating the next-chat prompt:
+
+```text
+origin/main = 7a8badf5ad81e92746e82bedd142ba75899a4080
+PR #526 = OPEN
+branch = docs/med-crm-post-merge-reconcile
+pre-handoff-update head = 038ccd082e33cd1392585873bb2cb0fa7db439f7
+compare to main = 3 ahead / 0 behind
+mergeable = true
+reviews = 0
+review threads = 0
+scope = 6 documentation files only
+workflow runs on 038ccd082... = 20/20 SUCCESS
+required dependency-audit = SUCCESS
+required validate = SUCCESS
+```
+
+PR #526 exists only to reconcile the canonical documentation after #524. It does not change schema, runtime, authorization, Patient/Encounter, provider, automation or UI behavior.
+
+This HANDOFF update itself advances the PR head, so the next chat must revalidate the new #526 head/checks before merging. Do not infer green status for the new head from the pre-update checkpoint above.
+
+After #526 is safely integrated, the next operational gate remains unchanged:
+
+1. reconstruct current main and runtime authority;
+2. obtain production database/readback authority for MEDICSPRO;
+3. prove whether #522/#524 migrations are already installed in production;
+4. if absent, execute only the controlled rollout + verifier/readback path already authorized by repository doctrine;
+5. mark RELEASED only with runtime evidence;
+6. only after release proof, rebuild the capability map and run fresh GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW before MED-CRM-003 or any Board/UI work.

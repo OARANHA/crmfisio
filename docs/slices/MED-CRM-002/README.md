@@ -1,9 +1,9 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** PROVED — latest executable head proven; merge decision pending; not RELEASED
+**Status:** PROVED + MERGED — PR #524 squash-integrated; not RELEASED
 **Capability:** canonical authenticated Commercial Core mutations
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
-**Branch:** `feat/med-crm-002-commercial-command-boundary`
+**PR / merge:** #524 → `main@7a8badf5ad81e92746e82bedd142ba75899a4080`
 
 ## Objective
 
@@ -186,14 +186,27 @@ This advisory review does not replace the deterministic gates above.
 
 Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
-`PROVED` does not mean `MERGED` or `RELEASED`.
+`PROVED + MERGED` does not mean `RELEASED`.
+
+## Integration proof
+
+PR #524 was squash-merged at 2026-09-27T01:48:03Z as:
+
+```text
+main@7a8badf5ad81e92746e82bedd142ba75899a4080
+```
+
+The final PR head `cf94434ca5294e4e9cc4de70661268d9e4765045` completed 21/21 repository workflows successfully, including the dedicated Commercial CRM PostgreSQL 16/17 proof plus `validate` and `dependency-audit`.
+
+Merge proves repository integration only. It does not prove production schema installation.
 
 ## Next exact step
 
-1. revalidate the post-proof documentation head of PR #524, especially `validate`, `dependency-audit`, dedicated PostgreSQL 16/17 proof, behind count, mergeability and reviews/threads;
-2. make the merge decision separately from the PROVED decision;
-3. if merged, confirm the squash integration in current `main`;
-4. keep status below RELEASED until production rollout is actually observed;
-5. only after correct integration, rebuild the post-foundation capability map against the new main before selecting another micro-slice.
+1. prove whether the #522/#524 migrations are installed in the real production database;
+2. if absent, execute the normal controlled rollout with verifier/readback rather than inferring deploy from GitHub;
+3. only after runtime proof may MED-CRM-001/002 move to RELEASED;
+4. re-run the capability selection gate after release before starting CRM Board Cutover or another feature.
 
-Do not append board/UI, Inbox, follow-up, attribution, conversion or AI to PR #524.
+The current next-product candidate is CRM Board Cutover V1 because `src/pages/Crm.tsx` still treats `Patient.funil_stage` as the commercial board authority. Its EXECUTION is deliberately blocked until #522/#524 runtime installation is proved.
+
+Do not append pre-clinical intake, Inbox, follow-up, attribution, conversion, pipeline admin or AI before that gate closes.
