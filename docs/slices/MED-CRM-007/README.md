@@ -1,11 +1,12 @@
 # MED-CRM-007 — Commercial Lead Activity Timeline V1
 
-**Status:** IMPLEMENTING  
+**Status:** PROVED / MERGED / NOT RELEASED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Design baseline:** `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120`  
 **Execution baseline:** `main@b8f7943960254ba33ec036a4462c6b2683367289` (design PR #550 merged)  
 **Execution branch:** `feat/med-crm-007-lead-activity-timeline`  
+**Implementation PR:** `#551` — exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7`, 20/20 workflows successful, squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`  
 **Created:** 2026-09-27
 
 ## Objective
@@ -19,7 +20,7 @@ The V1 is intentionally a projection/integration slice. The server-side activity
 - `public.crm_current_reader_clinic_id()`;
 - existing `crm.access`, active-profile and tenant boundaries.
 
-The current frontend does not consume that read RPC.
+At the design baseline, the frontend did not consume that read RPC. PR #551 now consumes it through the bounded frontend projection defined by this slice.
 
 ## Non-goals
 
@@ -158,9 +159,9 @@ GAPS                              CLOSED
 CAPABILITY AUTHORITY / REUSE      CLOSED
 DECISION                          CLOSED
 SECOND ADVERSARIAL REVIEW         CLOSED
-EXECUTION                         IN PROGRESS
-VALIDATION                        NOT STARTED
+EXECUTION                         CLOSED
+VALIDATION                        REPOSITORY PROVED / RUNTIME PENDING
 DOCUMENTATION                     IN PROGRESS
 ```
 
-Execution started only after revalidating `main@b8f7943960254ba33ec036a4462c6b2683367289`, confirming #550 was the only material CRM change and repeating the adversarial route. The current implementation remains frontend-only; PROVED/RELEASED are not claimed until exact-head CI and runtime evidence exist.
+Execution started only after revalidating `main@b8f7943960254ba33ec036a4462c6b2683367289`, confirming #550 was the only material CRM change and repeating the adversarial route. PR #551 exact HEAD `6714ed5672fa2b08934ce7538fbab016d3d2f8f7` then completed 20/20 workflows successfully and was squash-merged as `main@7f1eda9631407ac8ddaa6fae4c87c293db024945`. Repository proof is closed. Runtime proof is not: the first post-merge production readback still served the pre-MED-CRM-007 entry `/assets/index-BYMym6it.js`, so RELEASED is explicitly not claimed.
