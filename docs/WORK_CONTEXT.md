@@ -5,14 +5,16 @@
 ## Ordem obrigatória de leitura
 
 1. `AGENTS.md` — regras operacionais, invariantes e hierarquia de fontes;
-2. resolver a `origin/main` atual — não reutilizar SHA de conversa/snapshot;
-3. `docs/CURRENT_STATE.md` — estado operacional e evidência de rollout;
-4. `docs/doctrine/README.md` — princípios estáveis e roteamento das doutrinas aplicáveis;
-5. `docs/SLICE_EXECUTION_METHOD.md` — método obrigatório para slices significativas;
-6. `docs/SLICE_LEDGER.md` + `docs/slices/<SLICE-ID>/` — somente quando a missão já pertence a uma slice registrada;
-7. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
-8. documento(s) canônico(s) do domínio tocado;
-9. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
+2. `docs/CANONICAL_INDEX.md` — roteador estável de continuidade;
+3. resolver a `origin/main` atual — não reutilizar SHA de conversa/snapshot;
+4. `docs/CURRENT_STATE.md` — estado operacional e evidência de rollout;
+5. `docs/doctrine/README.md` — princípios estáveis e roteamento das doutrinas aplicáveis;
+6. `docs/SLICE_EXECUTION_METHOD.md` — método obrigatório para slices significativas;
+7. `docs/SLICE_LEDGER.md` + `docs/slices/<SLICE-ID>/` — quando a missão já pertence a uma slice registrada;
+8. branch/PR ativa da slice — HEAD, base, diff, checks e merge state;
+9. `TODO.md` — trabalho realmente aberto, quando a missão envolver prioridade;
+10. documento(s) canônico(s) do domínio tocado;
+11. código, schema, migrations, RPC/RLS, Edge Functions, verifiers e testes relevantes.
 
 Se houver divergência, não force o runtime a obedecer este arquivo. Inspecione a implementação/evidência real e corrija a documentação apropriada.
 
@@ -39,6 +41,12 @@ platform entitlement != clinic configuration != user authorization
 Nexus avançado permanece `nexus.*` fail-closed. Instrumentos clínicos neutros usam boundaries/capabilities próprios e não recebem `nexus.*` como atalho.
 
 Encounter Record continua a unidade editável do novo atendimento; Evolution oficial é a materialização após confirmação humana. Registros finalizados não são sobrescritos; correções/adendos usam mecanismo explícito e auditável.
+
+## Frase padrão de retomada
+
+> **Retome o projeto MEDICSPRO pelo estado canônico do repositório `OARANHA/crmfisio`.**
+
+Essa frase significa: não confiar em memória de chat; reconstruir estado atual pelo repositório, slice ativa, PR/branch, checks e runtime quando necessário.
 
 ## Protocolo para nova missão
 
