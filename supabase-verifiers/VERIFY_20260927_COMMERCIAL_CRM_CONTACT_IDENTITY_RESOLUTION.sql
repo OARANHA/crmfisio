@@ -15,7 +15,6 @@ BEGIN
     to_regprocedure('public.crm_contact_identity_candidates_for_clinic(uuid,text,text)'),
     to_regprocedure('public.list_current_clinic_crm_contact_identity_candidates(text,text)'),
     to_regprocedure('public.crm_create_contact_internal(uuid,uuid,text,text,text,text,text)'),
-    to_regprocedure('public.crm_create_lead_internal(uuid,uuid,uuid,text,uuid,uuid,uuid,bigint,text)'),
     to_regprocedure('public.create_current_clinic_crm_resolved_prospect(uuid,uuid,text,text,text,text,text,text,uuid,uuid,uuid,bigint,text)')
   ]
   LOOP
@@ -38,8 +37,7 @@ BEGIN
     'public.crm_contact_identity_lock_key(uuid,text,text)'::regprocedure,
     'public.crm_lock_contact_identity_signals(uuid,text,text)'::regprocedure,
     'public.crm_contact_identity_candidates_for_clinic(uuid,text,text)'::regprocedure,
-    'public.crm_create_contact_internal(uuid,uuid,text,text,text,text,text)'::regprocedure,
-    'public.crm_create_lead_internal(uuid,uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure
+    'public.crm_create_contact_internal(uuid,uuid,text,text,text,text,text)'::regprocedure
   ]
   LOOP
     IF has_function_privilege('anon', v_fn, 'EXECUTE')
@@ -78,7 +76,6 @@ BEGIN
       'public.crm_contact_identity_candidates_for_clinic(uuid,text,text)'::regprocedure::oid,
       'public.list_current_clinic_crm_contact_identity_candidates(text,text)'::regprocedure::oid,
       'public.crm_create_contact_internal(uuid,uuid,text,text,text,text,text)'::regprocedure::oid,
-      'public.crm_create_lead_internal(uuid,uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure::oid,
       'public.create_current_clinic_crm_contact(uuid,text,text,text)'::regprocedure::oid,
       'public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure::oid,
       'public.create_current_clinic_crm_resolved_prospect(uuid,uuid,text,text,text,text,text,text,uuid,uuid,uuid,bigint,text)'::regprocedure::oid
@@ -176,8 +173,8 @@ BEGIN
   END IF;
 END $$;
 
-SELECT '8) Lead public contract composes shared core and serializes same Lead UUID' AS check;
-DO $$
+SELECT '8) released Lead authority remains in the public command and serializes same Lead UUID' AS check;
+DO $
 DECLARE
   v_def text := lower(pg_get_functiondef(
     'public.create_current_clinic_crm_lead(uuid,uuid,text,uuid,uuid,uuid,bigint,text)'::regprocedure
@@ -186,10 +183,15 @@ BEGIN
   IF v_def NOT LIKE '%crm_current_mutator_clinic_id%'
      OR v_def NOT LIKE '%lead_retry%'
      OR v_def NOT LIKE '%pg_advisory_xact_lock%'
-     OR v_def NOT LIKE '%crm_create_lead_internal%' THEN
-    RAISE EXCEPTION 'crm_lead_shared_core_or_retry_lock_missing';
+     OR v_def NOT LIKE '%stage_kind = ''open''%'
+     OR v_def NOT LIKE '%c.anonymized_at is null%'
+     OR v_def NOT LIKE '%crm_lead_activities%'
+     OR v_def NOT LIKE '%lead_created%'
+     OR v_def NOT LIKE '%audit_log%'
+     OR v_def NOT LIKE '%crm_lead_created%' THEN
+    RAISE EXCEPTION 'crm_lead_released_authority_or_retry_lock_missing';
   END IF;
-END $$;
+END $;
 
 SELECT '9) final orchestration is narrow, explicit and Patient-free' AS check;
 DO $$
@@ -204,7 +206,7 @@ BEGIN
      OR v_def NOT LIKE '%crm_lock_contact_identity_signals%'
      OR v_def NOT LIKE '%crm_contact_identity_candidates_for_clinic%'
      OR v_def NOT LIKE '%crm_create_contact_internal%'
-     OR v_def NOT LIKE '%crm_create_lead_internal%'
+     OR v_def NOT LIKE '%create_current_clinic_crm_lead%'
      OR v_def NOT LIKE '%contact_identity_resolved%'
      OR v_def NOT LIKE '%signal_fingerprint%'
      OR v_def NOT LIKE '%crm_contact_identity_resolved%' THEN
