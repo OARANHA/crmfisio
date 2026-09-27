@@ -20,6 +20,7 @@ describe('commercial CRM board frontend boundary', () => {
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_pipelines'");
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_stages'");
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_leads'");
+    expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_lead_activities'");
     expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_contact'");
     expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_lead'");
     expect(adapter).toContain("supabase.rpc('transition_current_clinic_crm_lead_stage'");
@@ -27,6 +28,19 @@ describe('commercial CRM board frontend boundary', () => {
     expect(adapter).toContain("supabase.rpc('resolve_current_clinic_crm_prospect_identity'");
     expect(adapter).not.toContain("supabase.rpc('create_current_clinic_crm_prospect'");
     expect(adapter).not.toMatch(/supabase\s*\.from\s*\(\s*['"](?:contacts|crm_)/);
+  });
+
+  it('keeps the Lead timeline read-only, bounded and separate from Patient history', () => {
+    expect(board).toContain('listCurrentClinicCrmLeadActivities');
+    expect(board).toContain('Ver histórico');
+    expect(board).toContain('Timeline operacional do CRM comercial. Não é histórico clínico.');
+    expect(board).toContain('Atividade comercial registrada.');
+    expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_lead_activities'");
+    expect(adapter).not.toContain('metadata: row.metadata');
+    expect(adapter).not.toContain('actorId: row.actor_id');
+    expect(board).not.toContain('candidate_ids');
+    expect(board).not.toContain('actorId');
+    expect(board).not.toContain('/pacientes/');
   });
 
   it('keeps role checks as UI affordance while the RPC adapter owns the mutation call', () => {
