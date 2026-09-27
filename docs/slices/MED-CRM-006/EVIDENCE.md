@@ -175,3 +175,88 @@ This documentation checkpoint did not:
 - run provider or frontend E2E.
 
 Those belong to the implementation-plan / execution / validation gates.
+
+
+## Implementation-plan review evidence — 2026-09-27
+
+### Repository reconciliation
+
+- PR #541 final HEAD `3f6240c3dd48622e59e34ae4f44c4b6a16a37be7` was 8 ahead / 0 behind, docs-only and mergeable.
+- Current HEAD had 20/20 workflow runs `completed + success`.
+- `Clinical workflow CI / validate` passed `npm ci`, `npm test`, typecheck, lint and build.
+- `dependency-audit` passed.
+- reviews = 0; review threads = 0.
+- protected squash merge produced `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`.
+- PR #525 remains historical/open/non-mergeable and is not authority.
+- no newer competing CRM PR was found at this checkpoint.
+
+### New deterministic gaps found by the plan review
+
+1. The design had only `explicit_reuse` / `explicit_distinct`, but zero candidates require a normal non-override intent. This is now `create_if_clear`.
+2. The released Contact command remained directly callable and could otherwise bypass identity resolution with a new UUID. V1 must harden it as clear-only while preserving exact same-ID retry.
+
+These findings refine the #541 design; they do not create a second Contact authority.
+
+### Existing audit shape
+
+The repository proves `audit_log.detalhe` is `text`, while `crm_lead_activities.metadata` is `jsonb`.
+
+Therefore:
+
+- structured resolution context belongs to the existing Lead activity timeline;
+- audit remains an append-only summary with IDs/mode/count;
+- raw phone/email must not be copied to audit;
+- no new audit table or browser audit path is justified.
+
+### Historical normalized data
+
+The current Contact writer never populated `phone_normalized/email_normalized`, so existing Contacts may legitimately have NULL derived fields.
+
+A V1 mass backfill was rejected during plan review because the Contact `updated_at` trigger would rewrite business timestamps for a derived-field migration.
+
+Chosen compatibility rule:
+
+- canonical helper applied to raw stored value remains the correctness path for legacy rows;
+- stored normalized columns may optimize new rows;
+- all new Contact writes populate the derived columns.
+
+Runtime distribution of historical NULL values is not required to decide this correctness contract. A production readback may measure it before rollout without changing the design.
+
+### PostgreSQL advisory-lock reference check
+
+Current PostgreSQL 16/17 documentation confirms:
+
+- `pg_advisory_xact_lock(bigint)` is an exclusive transaction-level advisory lock;
+- transaction-level advisory locks are automatically released at transaction end;
+- advisory keys are application-defined;
+- deadlocks remain possible when locks are acquired in inconsistent order.
+
+MED-CRM-006 therefore requires deterministic material ordering plus server-side candidate recheck after all locks.
+
+### Second adversarial review
+
+JEV remains advisory.
+
+First plan pass, before refinements:
+
+- route = `deep_review`;
+- deep_review = 0.82;
+- proceed_fast = 0.09;
+- block = 0.08;
+- confidence = 0.76.
+
+After adding `create_if_clear`, hardening the old Contact writer, covering BR legacy lock keys, defining retry activity locking and backend-first fail-closed rollout:
+
+- route = `proceed_fast`;
+- proceed_fast = 0.72;
+- deep_review = 0.26;
+- block = 0.01;
+- confidence = 0.63.
+
+Deterministic review, not JEV, is the execution authority.
+
+### Deterministic conclusion
+
+No blocker remains for the **backend authority implementation phase** provided the code and tests match the refined decision.
+
+Frontend implementation and production rollout are not authorized by this review alone.
