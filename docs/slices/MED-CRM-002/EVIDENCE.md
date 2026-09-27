@@ -1,6 +1,6 @@
 # MED-CRM-002 — Evidence
 
-**Slice status target:** PROVED
+**Slice status target:** IMPLEMENTING → PROVED after current-head checks
 **Implementation-proven head:** `18ba481866a3af8412cfc200621290d3358a2b5e`
 **Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **PR:** #524
@@ -145,14 +145,16 @@ The eight successful workflows were:
 
 ## Final adversarial completion review
 
-JEV completion review after both PostgreSQL versions and current-head GitHub checks:
+Independent JEV completion review after both PostgreSQL versions and after discovering a newer documentation-only PR head:
 
 ```text
-complete: 0.92
-verify_more: 0.07
-incomplete: 0.01
-confidence: 0.87
+verify_more: 0.72
+complete: 0.19
+incomplete: 0.09
+confidence: 0.58
 ```
+
+Reason to preserve: executable proof is strong, but the current PR head `b3b55d7e07e352a29c883b58ac7dfe0f09149cb1` had repository workflows still queued/in-progress. The slice must not be promoted/merged based on the older implementation-head checks alone.
 
 This is advisory evidence only; deterministic repository/database proof remains authoritative.
 
