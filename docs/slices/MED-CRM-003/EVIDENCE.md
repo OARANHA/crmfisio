@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Canonical main reconstructed before execution:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat: cut over commercial CRM board`  
-**Status:** PROVED + MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## REAL NOW before execution
 
@@ -285,10 +285,10 @@ This evidence update occurs after the implementation HEAD above. Therefore it wi
 ## Status
 
 ```text
-MED-CRM-003 = PROVED + MERGED
+MED-CRM-003 = PROVED + MERGED + RELEASED
 PR #536 = MERGED
 merge/main = 9962a14cb31ff09666234129590b59524a2d85c3
-RELEASED = NO
+production frontend = UPDATED + READBACK PROVED
 ```
 
 RELEASED requires production frontend rollout/readback after merge. There is no database rollout in this slice.
@@ -326,11 +326,46 @@ main =
 9962a14cb31ff09666234129590b59524a2d85c3
 ```
 
-## Production pre-readback after merge
+## Production rollout / readback
 
-A read-only public frontend observation was executed from the production host after the merge.
+The first post-merge check only inspected the Vite entry chunk and therefore was **not sufficient by itself** to decide whether the CRM lazy chunk was deployed. It was retained as a transient observation, not used as final release evidence.
 
-The application remained healthy:
+A later readback proved that the production entry asset had changed to:
+
+```text
+/assets/index-HtujlU6h.js
+```
+
+The active entry build referenced 43 lazy chunks. The live CRM chunk was identified as:
+
+```text
+/assets/CrmOperational-C3MqVds_.js
+```
+
+Both entry and CRM chunks returned HTTP 200.
+
+The live CRM chunk contained all expected MED-CRM-003 markers:
+
+```text
+list_current_clinic_crm_pipelines                 PRESENT
+list_current_clinic_crm_stages                    PRESENT
+list_current_clinic_crm_leads                     PRESENT
+transition_current_clinic_crm_lead_stage          PRESENT
+Leads arquivados / legado                         PRESENT
+Contato anonimizado                               PRESENT
+Etapa atualizada, mas o quadro não pôde ser recarregado  PRESENT
+```
+
+Explicit text from the old Patient-backed Board was absent:
+
+```text
+CRM · Jornada do Paciente             ABSENT
+mudanças refletem no prontuário       ABSENT
+leads no funil                        ABSENT
+Paciente movido para                  ABSENT
+```
+
+Public route health at the same readback:
 
 ```text
 /           HTTP 200
@@ -339,21 +374,14 @@ The application remained healthy:
 /pacientes  HTTP 200
 ```
 
-At that observation point, production still served:
+This proves the frontend auto-update reached production with the MED-CRM-003 cutover. No database migration, RPC deployment or manual managed-admin action was required for this slice.
+
+## Release conclusion
 
 ```text
-/assets/index-D1eGcOhA.js
+MED-CRM-003 = PROVED + MERGED + RELEASED
+runtime proof = active production frontend bundle + route health
+database rollout = none
+manual production mutation = none
 ```
 
-and the active bundle did **not** contain these MED-CRM-003 markers:
-
-```text
-list_current_clinic_crm_pipelines        ABSENT
-transition_current_clinic_crm_lead_stage ABSENT
-Leads arquivados / legado                ABSENT
-Contato anonimizado                      ABSENT
-```
-
-Therefore the production readback proves that merge had occurred **before** the auto-deploy completed. It is positive evidence for `NOT RELEASED`, not a release failure.
-
-No database or backend rollout is required by MED-CRM-003. Release remains gated only on observing the updated production frontend and a bounded health/readback check.
