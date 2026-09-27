@@ -269,7 +269,10 @@ describe('CommercialCrmBoard', () => {
     await verifyProspect(renderer);
 
     const rendered = JSON.stringify(renderer.toJSON());
-    expect(rendered).toContain('2 Contact(s) candidato(s)');
+    const decisionCopy = renderer.root.findAllByType('p').find((paragraph) =>
+      paragraph.children.join('') === 'O servidor encontrou 2 Contact(s) candidato(s). Revise os sinais abaixo; eles não afirmam que os registros representam a mesma pessoa.',
+    );
+    expect(decisionCopy).toBeTruthy();
     expect(rendered).toContain('Maria A');
     expect(rendered).toContain('Maria B');
     expect(testState.executeResolution).not.toHaveBeenCalled();
