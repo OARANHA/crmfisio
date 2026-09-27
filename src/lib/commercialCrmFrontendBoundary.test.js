@@ -20,14 +20,29 @@ describe('commercial CRM board frontend boundary', () => {
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_pipelines'");
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_stages'");
     expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_leads'");
+    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_contact'");
+    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_lead'");
     expect(adapter).toContain("supabase.rpc('transition_current_clinic_crm_lead_stage'");
+    expect(adapter).not.toContain("supabase.rpc('create_current_clinic_crm_prospect'");
     expect(adapter).not.toMatch(/supabase\s*\.from\s*\(\s*['"](?:contacts|crm_)/);
   });
 
   it('keeps role checks as UI affordance while the RPC adapter owns the mutation call', () => {
     expect(board).toContain('isOperationalRole(user?.role)');
     expect(board).toContain('executeCommercialCrmStageTransition');
+    expect(board).toContain('executeCommercialCrmProspectCreation');
+    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_contact'");
+    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_lead'");
     expect(adapter).toContain("supabase.rpc('transition_current_clinic_crm_lead_stage'");
+  });
+
+  it('keeps Prospect Intake inside Contact/Lead authority without Patient creation', () => {
+    expect(board).toContain('Novo prospect');
+    expect(board).toContain('Cria Contact + Lead');
+    expect(board).not.toContain('addPatient');
+    expect(board).not.toContain('create_patient');
+    expect(adapter).not.toContain('patient_id');
+    expect(adapter).not.toContain('create_patient');
   });
 
   it('never creates Patient navigation from the Commercial Lead projection', () => {
