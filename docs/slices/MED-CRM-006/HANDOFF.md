@@ -6,21 +6,40 @@ Canonical repository: `OARANHA/crmfisio`
 
 Integrated base:
 
-`main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
+`main@1a0e96392570d69090e87895d4072f0eea640d7a`
 
 Design PR:
 
 `#541 — MERGED`
 
-Plan-review branch / PR:
+Implementation-plan review:
 
-`docs/med-crm-006-implementation-plan-review` / `#543 — docs: close MED-CRM-006 implementation plan review`
+`#543 — MERGED`
 
-PR #543 was opened from `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`. Revalidate its current HEAD/checks before merge.
+Canonical backend implementation branch:
+
+`feat/med-crm-006-contact-identity-resolution-canonical`
+
+Prototype implementation PR:
+
+`#542 — DO NOT MERGE AS AUTHORITY`
+
+Reason: #542 is all-green against a pre-#543 contract but materially diverges from the merged authority (wide resolver, SHA-256/ascending-key locking, plus-prefixed phone normalization and different Contact-ID semantics). Its code/tests are reuse evidence only.
 
 Status:
 
-`DESIGNED / BACKEND EXECUTION AUTHORIZED / EXECUTION NOT STARTED`
+`IMPLEMENTING / VALIDATION PENDING / FRONTEND NOT AUTHORIZED`
+
+Current canonical backend artifacts exist on the implementation branch:
+
+- `supabase-migrations/20260927_commercial_crm_contact_identity_resolution.sql`;
+- `supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_CONTACT_IDENTITY_RESOLUTION.sql`;
+- `tests/sql/commercial_crm_contact_identity_resolution_cases.sql`;
+- `scripts/test-commercial-crm-contact-identity-resolution.sh`;
+- `scripts/test-commercial-crm-contact-identity-resolution-concurrency.sh`;
+- `.github/workflows/commercial-crm-contact-identity-resolution.yml`.
+
+They have not yet earned PROVED. Open the canonical PR and require PostgreSQL 16/17 plus all applicable repository checks on its exact HEAD.
 
 Revalidate all mutable values before acting.
 
