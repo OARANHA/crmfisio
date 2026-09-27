@@ -231,12 +231,11 @@ No mode auto-selects a Contact.
 
 The orchestration acquires the per-lead lock first.
 
-A prior `contact_identity_resolved` activity for the same Lead is the persisted orchestration contract. The activity stores a SHA-256 `signal_fingerprint` derived from canonical phone/email signals (never raw phone/email). An exact retry validates:
+A prior `contact_identity_resolved` activity for the same Lead is the persisted orchestration contract. Identity signals are decision evidence, not persisted retry authority after an explicit human reuse decision. An exact retry validates:
 
 - same clinic;
 - same effective Contact UUID;
 - same resolution mode;
-- same canonical signal fingerprint;
 - same override reason code;
 - same persisted Contact contract for modes that created Contact;
 - same persisted Lead title/owner/value/source and any explicitly supplied pipeline/stage.
