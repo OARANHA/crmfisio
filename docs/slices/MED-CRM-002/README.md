@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING  
 **Capability:** canonical authenticated Commercial Core mutations  
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`  
 **Branch:** `feat/med-crm-002-commercial-command-boundary`
