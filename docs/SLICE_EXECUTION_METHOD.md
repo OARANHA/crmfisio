@@ -14,12 +14,12 @@ Toda mudança significativa deve deixar evidência suficiente no repositório pa
 4. saber por que uma decisão foi tomada;
 5. continuar do próximo passo exato sem recriar foundation já existente.
 
-O ciclo canônico é:
+Antes do ciclo, toda slice significativa deve reconstruir o **ESTADO ATUAL COMPROVADO** usando evidência reproduzível. Isso é uma pré-condição factual, não uma etapa de decisão.
+
+A disciplina operacional canônica é:
 
 ```text
-REAL NOW
-→ PROVEN EVIDENCE
-→ GAPS
+GAPS
 → CAPABILITY AUTHORITY / REUSE GATE
 → DECISION
 → SECOND ADVERSARIAL REVIEW
@@ -27,6 +27,8 @@ REAL NOW
 → VALIDATION
 → DOCUMENTATION
 ```
+
+Nenhuma capability nova deve avançar para EXECUTION sem atravessar explicitamente GAPS, CAPABILITY AUTHORITY / REUSE GATE, DECISION e SECOND ADVERSARIAL REVIEW.
 
 ## Hierarquia de autoridade
 
@@ -42,9 +44,11 @@ Antes de aplicar o método, preservar a hierarquia definida em `AGENTS.md`.
 - runtime observado = autoridade para dizer o que está realmente implantado.
 - chats, memória, prompts antigos e handoffs = contexto; nunca superam evidência atual.
 
-## 1. REAL NOW
+## 0. ESTADO ATUAL COMPROVADO — pré-condição factual
 
-Responder: **qual é o estado real agora?**
+Responder: **qual é o estado comprovado do sistema antes de analisar os gaps?**
+
+Isto não é uma etapa extra da disciplina. É a base factual necessária para que GAPS não seja inferido de memória, roadmap ou conversa.
 
 Obrigatório para uma slice significativa:
 
@@ -58,9 +62,9 @@ Obrigatório para uma slice significativa:
 
 Não iniciar implementação a partir de um SHA, snippet ou estado copiado de chat.
 
-## 2. PROVEN EVIDENCE
+### Evidência comprovada
 
-Registrar apenas evidência reproduzível.
+O ESTADO ATUAL COMPROVADO deve registrar apenas evidência reproduzível.
 
 Ordem de força típica:
 
@@ -81,7 +85,7 @@ Uma afirmação deve carregar sua limitação. Exemplos:
 
 ## 3. GAPS
 
-Comparar o objetivo da slice com o REAL NOW e classificar lacunas:
+Comparar o objetivo da slice com o ESTADO ATUAL COMPROVADO e classificar lacunas:
 
 - missing capability;
 - incomplete foundation;
@@ -266,7 +270,7 @@ RELEASED
 Definições:
 
 - **DISCOVERED** — oportunidade/gap identificado.
-- **ANALYZED** — REAL NOW, evidência e gaps compreendidos.
+- **ANALYZED** — estado atual comprovado, evidência e gaps compreendidos.
 - **APPROVED** — decisão de produto/arquitetura aprovada; execução ainda pode não existir.
 - **DESIGNED** — contrato/schema/boundaries/validação definidos.
 - **IMPLEMENTING** — código/migration/artefatos em execução.
@@ -279,6 +283,8 @@ Definições:
 
 Cada slice ativa deve possuir um `HANDOFF.md` curto e autocontido.
 
+Quando o usuário pedir **“gere o próximo texto para chat”**, o agente deve primeiro atualizar esse HANDOFF com evidência fresca e o próximo passo exato. O prompt do próximo chat deve apontar para a memória canônica do repositório, não tentar substituir essa memória por um resumo de conversa.
+
 Um novo chat deve receber somente a instrução de:
 
 1. ler `AGENTS.md`;
@@ -287,7 +293,7 @@ Um novo chat deve receber somente a instrução de:
 4. ler `docs/CURRENT_STATE.md`;
 5. ler o `README.md` e `HANDOFF.md` da slice;
 6. resolver a main atual;
-7. repetir REAL NOW antes de executar.
+7. reconstruir o ESTADO ATUAL COMPROVADO antes de decidir ou executar.
 
 O handoff nunca autoriza confiar em fatos mutáveis sem revalidação.
 
