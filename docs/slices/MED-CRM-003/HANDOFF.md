@@ -6,15 +6,15 @@ Always resolve current `origin/main`, open PRs and runtime again before acting. 
 
 ```text
 canonical repository = OARANHA/crmfisio
-checkpoint main after #533 merge = 2bcadc00a730eb9a1c1c063a688ccebf8982ce35
+checkpoint main after MED-CRM-004 merge = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
 
 MED-CRM-001 = PROVED + MERGED + RELEASED
 MED-CRM-002 = PROVED + MERGED + RELEASED
 
 MED-CRM-003 = ANALYZED
-DEEP REVIEW = CLOSED WITH PREREQUISITE GAP
-SECOND ADVERSARIAL REVIEW = BLOCK
-EXECUTION = FORBIDDEN
+PREREQUISITE GAP = CLOSED BY MED-CRM-004 RELEASED
+PREVIOUS SECOND ADVERSARIAL REVIEW = HISTORICAL BLOCK
+EXECUTION = NOT AUTHORIZED UNTIL FRESH FOUR-GATE REVIEW
 ```
 
 The production backend release was proved on `28server` / `supabase-db` and is already documented in the MED-CRM-001/002 slice evidence. Do not repeat that rollout merely to continue this slice.
@@ -48,20 +48,22 @@ C) prior contract missing          YES
 
 See [EVIDENCE.md](EVIDENCE.md) and [DECISION.md](DECISION.md).
 
-## Active prerequisite — MED-CRM-004
+## Released prerequisite — MED-CRM-004
 
-PR #533 was squash-merged and current continuation moved to a separate prerequisite slice rather than expanding the Board.
+The archived-pipeline server-contract gap isolated by the MED-CRM-003 deep review is now closed.
 
 ```text
 MED-CRM-004 = Archived Pipeline Transition Guard
-base = main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35
-branch = feat/med-crm-004-archived-pipeline-transition-guard
-status = PROVED / PR #534 merge + release pending
+implementation PR #534 = MERGED
+merge/main = bc667edced77e6f96f3ba1584c48c83dbfcb05e2
+production rollout = COMPLETE
+pinned read-only verifier = PASSED
+status = RELEASED
 ```
 
-Fresh GAPS / REUSE / DECISION / SECOND ADVERSARIAL REVIEW closed for the prerequisite. Its bounded implementation strengthens the existing canonical transition RPC with an additive migration, preserves exact side-effect-free retry idempotency, and requires active current pipeline state under a row lock before any actual stage change.
+The released canonical transition command now fails closed for a real stage change when the Lead's current pipeline is archived, while preserving exact same-stage side-effect-free retry idempotency. The release introduced no alternate CRM writer and did not touch the Board/frontend.
 
-MED-CRM-003 remains blocked. MED-CRM-004 is now mechanically PROVED on PR #534, but the Board must still wait for protected merge plus production rollout/readback so MED-CRM-004 can reach RELEASED.
+This removes the specific prerequisite blocker. It does not revive the old Board decision automatically. MED-CRM-003 must be reconstructed from current main and pass fresh GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW before execution.
 
 See `../MED-CRM-004/README.md`, `DECISION.md`, `EVIDENCE.md` and `HANDOFF.md` in that slice.
 
@@ -199,52 +201,41 @@ Follow existing repository test patterns:
 
 ```text
 GAPS
-  → current Patient-backed board conflicts with released Commercial Core
+  → MUST BE REBUILT against current main after MED-CRM-004 release
 
 CAPABILITY AUTHORITY / REUSE GATE
-  → reuse released CRM projections + transition command
-  → no new backend/domain authority
+  → expected authority remains released CRM projections + canonical transition command
+  → must be revalidated against current source before execution
 
 DECISION
-  → choice C: prior command contract is missing
-  → frontend-only Board is not authorized
+  → previous choice C served its purpose; prerequisite is now RELEASED
+  → Board decision must be made again from current evidence
 
 SECOND ADVERSARIAL REVIEW
-  → CLOSED AS BLOCK
-  → deterministic blocker: archived pipeline is not rejected by the canonical transition RPC
+  → previous BLOCK is historical evidence, not current authorization
+  → run a fresh review after GAPS / REUSE / DECISION close
 
 EXECUTION
-  → NOT STARTED
-  → FORBIDDEN until prerequisite server contract is proved
+  → NOT AUTHORIZED YET
 ```
 
-Latest advisory review after isolating the archived-pipeline server contract gap:
-
-```text
-route = block
-block = 0.70
-deep_review = 0.29
-split_task = 0.01
-proceed_fast = 0.00
-confidence = 0.59
-```
-
-JEV is advisory. Deterministic repository/runtime evidence remains authoritative.
+JEV remains advisory. Deterministic repository/runtime evidence is authoritative.
 
 ## Exact next-chat task
 
-The next chat must **not start MED-CRM-003 implementation**.
+Do not inherit the pre-prerequisite decision mechanically.
 
 First:
 
 1. revalidate current `origin/main`, PR #525 and any newer CRM PR/branch;
-2. re-read [EVIDENCE.md](EVIDENCE.md), [DECISION.md](DECISION.md) and the released MED-CRM-002 command contract;
-3. create/identify a separate prerequisite slice only after its own GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW;
-4. that prerequisite must make the canonical transition command fail closed when the Lead/current pipeline is archived, with verifier + PostgreSQL behavioral case;
-5. validate and, if production is changed, prove rollout/readback before calling the prerequisite RELEASED;
-6. only then reconstruct MED-CRM-003 from current main and re-run its four pre-execution gates.
+2. reread MED-CRM-003 `EVIDENCE.md` / `DECISION.md`, MED-CRM-002 released command contract and MED-CRM-004 release evidence;
+3. rebuild GAPS from current frontend + schema + RPC + tests;
+4. close CAPABILITY AUTHORITY / REUSE without creating a new CRM writer, tenant source, entitlement, role or audit path;
+5. make a fresh DECISION for the bounded Board cutover;
+6. run a fresh SECOND ADVERSARIAL REVIEW;
+7. only if all four gates close, execute the smallest Board slice and validate it.
 
-Do not hide the gap with a frontend-only guard.
+Expected Board boundaries remain: active-pipeline selector, archived/legacy Lead visibility read-only, archived stages never mutation targets, lost reason before lost transition, anonymized Contact without PII, no automatic Patient navigation from `contact_patient_id`, owner/admin/recep mutation affordances only, professional/financeiro read-only, canonical RPC authority, refetch after successful mutation, and Patient-domain NPS/churn/Treatment Continuity kept separate.
 
 Do not add Contact/Lead creation UI, intake rewrite, Contact edit/merge/dedupe, Lead→Patient conversion, Inbox, follow-up, attribution, provider changes, automation or Commercial AI to MED-CRM-003.
 
