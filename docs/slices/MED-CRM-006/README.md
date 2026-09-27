@@ -54,14 +54,14 @@ Backend implementation is PROVED in repository CI, merged and RELEASED in produc
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- `origin/main`: `7e1ab2fba50d6188e718411c6b51b201ae417954` after post-merge documentation PR #545; re-resolve before frontend execution;
+- live frontend execution base was revalidated as `origin/main@e2902917f247ab92683988e3beed8b5e4badd225`; PR #548 was created from that exact base; re-resolve both main and PR HEAD before any validation/merge claim;
 - canonical implementation PR #544 is merged; its final validated HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
 - PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
 - repository validation is complete: 21/21 workflows success; PostgreSQL 16 and 17 dedicated jobs success; Clinical workflow `validate` and `dependency-audit` success;
-- production backend rollout/readback is complete and the next gate is frontend candidate/resolution UX.
+- production backend rollout/readback is complete; frontend candidate/resolution UX is implemented in open PR #548 and its next gate is exact-HEAD repository validation.
 
 ### Evidência comprovada
 
