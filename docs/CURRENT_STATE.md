@@ -39,7 +39,7 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — RELEASED checkpoint #522 / #524
+## Commercial CRM — RELEASED checkpoint #522 / #524 / #534
 
 **Canonical repository checkpoint:** `main@9ed72fa51b536a9efa8b35b910fbb49547daf7fa` before this documentation-only release reconciliation.
 
@@ -79,11 +79,19 @@ COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
 
 **Boundaries preserved:** `Contact != Lead != Patient`; raw browser DML remains closed; tenant/RLS/RBAC checks passed; professional/financeiro remain read-only; owner/admin/recep are the CRM writer roles behind `crm.access`; Patient Journey remains separate; no Lead→Patient conversion, Inbox, follow-up engine, provider authority, automation engine or Commercial AI was introduced by MED-CRM-001/002.
 
-The legacy `/crm` frontend is still Patient-backed via `patients.funil_stage`. MED-CRM-003 deep review was completed against `main@72a60262d09a14ce8382f3da9db12afcd15a8464` and **did not authorize Board execution**. The released transition RPC rejects archived target stages but does not reject an archived current pipeline when that pipeline still has non-archived stages. A frontend-only “archived pipeline = read-only” rule would therefore become bypassable domain authority.
+The legacy `/crm` frontend is still Patient-backed via `patients.funil_stage`. MED-CRM-003 therefore still requires a deliberate Board cutover to the Commercial Core; Patient Journey content must remain a separate domain.
 
-Current continuation is now **MED-CRM-004 — Archived Pipeline Transition Guard**, created from `main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35` after #533 was merged. Its four pre-execution gates closed against current schema/command/test evidence and a fresh advisory JEV review; execution is limited to an additive hardening of the existing canonical stage-transition RPC plus verifier/PostgreSQL proof. MED-CRM-004 is **PROVED, not MERGED and not RELEASED**. PR #534 head `2e783c08363e6922804bf6e96d377125778c0499` completed 21/21 workflow runs successfully; its dedicated guard harness passed on PostgreSQL 16 and 17, and independent workspace validation passed 668 Vitest tests plus typecheck/lint/build. A documentation refresh after that proof must itself be revalidated before merge.
+**MED-CRM-004 Archived Pipeline Transition Guard:** **RELEASED**. PR #534 was revalidated on its final head with 21/21 workflow runs successful, including the dedicated PostgreSQL 16/17 proof, and squash-merged as `main@bc667edced77e6f96f3ba1584c48c83dbfcb05e2`. The additive migration hardens the existing canonical `transition_current_clinic_crm_lead_stage(...)`: state-changing transitions require the current pipeline to remain active under a row lock, while exact same-stage side-effect-free retries preserve idempotency.
 
-MED-CRM-003 remains **ANALYZED / EXECUTION FORBIDDEN**. It may only be reconstructed after MED-CRM-004 reaches RELEASED with production rollout/readback evidence. No MED-CRM-003 Board/frontend feature implementation has started.
+Production pre-readback proved the new guard was absent before rollout. The exact canonical migration was then hash-verified, applied transactionally through the governed managed-admin path, and the separate pinned read-only verifier returned:
+
+```text
+COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED
+```
+
+The production verifier also confirmed that tenant/stage/audit/Patient boundaries and authenticated-only RPC ACL remain present. No new table, role, entitlement, tenant source, parallel CRM writer or Patient-domain authority was introduced.
+
+MED-CRM-003 remains **ANALYZED** and its previous BLOCK was tied to the prerequisite now closed by MED-CRM-004. That does **not** auto-authorize execution: before any Board/frontend code, reconstruct current `origin/main` and rerun **GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW**.
 
 
 ---
