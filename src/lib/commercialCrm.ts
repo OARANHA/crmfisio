@@ -47,6 +47,28 @@ export interface CommercialCrmSnapshot {
   leads: CommercialCrmLead[];
 }
 
+export interface CommercialCrmProspectInput {
+  contactId: string;
+  leadId: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  title: string;
+  pipelineId: string | null;
+}
+
+export interface CommercialCrmProspectResult {
+  contactId: string;
+  leadId: string;
+}
+
+export interface CommercialCrmProspectOutcome {
+  command: CommercialCrmProspectResult;
+  snapshot: CommercialCrmSnapshot | null;
+  projection: 'fresh' | 'stale';
+  projectionWarning: string | null;
+}
+
 export interface CommercialCrmTransitionInput {
   leadId: string;
   toStageId: string;
@@ -184,6 +206,36 @@ export async function loadCurrentClinicCommercialCrm(): Promise<CommercialCrmSna
   return { pipelines, stages, leads };
 }
 
+export async function createCurrentClinicCrmContact(
+  input: Pick<CommercialCrmProspectInput, 'contactId' | 'name' | 'phone' | 'email'>,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_current_clinic_crm_contact', {
+    p_contact_id: input.contactId,
+    p_name: input.name.trim(),
+    p_phone: input.phone?.trim() || null,
+    p_email: input.email?.trim() || null,
+  });
+  if (error) throw error;
+  return typeof data === 'string' ? data : input.contactId;
+}
+
+export async function createCurrentClinicCrmLead(
+  input: Pick<CommercialCrmProspectInput, 'leadId' | 'contactId' | 'title' | 'pipelineId'>,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_current_clinic_crm_lead', {
+    p_lead_id: input.leadId,
+    p_contact_id: input.contactId,
+    p_title: input.title.trim(),
+    p_pipeline_id: input.pipelineId,
+    p_stage_id: null,
+    p_owner_id: null,
+    p_value_cents: null,
+    p_source: null,
+  });
+  if (error) throw error;
+  return typeof data === 'string' ? data : input.leadId;
+}
+
 export async function transitionCurrentClinicCrmLeadStage(
   input: CommercialCrmTransitionInput,
 ): Promise<CommercialCrmTransitionResult | null> {
@@ -204,6 +256,45 @@ export async function transitionCurrentClinicCrmLeadStage(
     stageKind: row.stage_kind,
     closedAt: row.closed_at,
   };
+}
+
+interface CommercialCrmProspectDependencies {
+  createContact?: typeof createCurrentClinicCrmContact;
+  createLead?: typeof createCurrentClinicCrmLead;
+  refresh?: typeof loadCurrentClinicCommercialCrm;
+}
+
+export async function executeCommercialCrmProspectCreation(
+  input: CommercialCrmProspectInput,
+  dependencies: CommercialCrmProspectDependencies = {},
+): Promise<CommercialCrmProspectOutcome> {
+  const createContact = dependencies.createContact ?? createCurrentClinicCrmContact;
+  const createLead = dependencies.createLead ?? createCurrentClinicCrmLead;
+  const refresh = dependencies.refresh ?? loadCurrentClinicCommercialCrm;
+
+  // Reuse the released commands in order. Stable caller-supplied UUIDs make
+  // an exact retry idempotent if the second call or its response is uncertain.
+  const contactId = await createContact(input);
+  const leadId = await createLead(input);
+  const command = { contactId, leadId };
+
+  try {
+    const snapshot = await refresh();
+    return {
+      command,
+      snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    };
+  } catch (error) {
+    console.error('[MedicsPro] Falha ao atualizar projeção do CRM após prospect persistido:', error);
+    return {
+      command,
+      snapshot: null,
+      projection: 'stale',
+      projectionWarning: 'Prospect criado, mas o quadro não pôde ser recarregado. Atualize novamente para ver o estado mais recente.',
+    };
+  }
 }
 
 interface CommercialCrmCommandDependencies {
