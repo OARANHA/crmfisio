@@ -89,6 +89,7 @@ BEGIN
     IF NOT FOUND
        OR v_existing.clinic_id IS DISTINCT FROM v_clinic
        OR v_existing.deleted_at IS NOT NULL
+       OR v_existing.anonymized_at IS NOT NULL
        OR v_existing.patient_id IS NOT NULL
        OR v_existing.name IS DISTINCT FROM v_name
        OR v_existing.phone IS DISTINCT FROM v_phone
@@ -158,6 +159,7 @@ BEGIN
     WHERE c.id = p_contact_id
       AND c.clinic_id = v_clinic
       AND c.deleted_at IS NULL
+      AND c.anonymized_at IS NULL
   ) THEN
     RAISE EXCEPTION 'crm_contact_not_found' USING ERRCODE = 'P0002';
   END IF;
