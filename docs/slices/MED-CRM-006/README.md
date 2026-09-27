@@ -2,7 +2,7 @@
 
 **Status:** DESIGNED  
 **Owner domain:** Commercial CRM  
-**Branch/PR:** `docs/med-crm-006-contact-identity-resolution` / PR pending  
+**Branch/PR:** `docs/med-crm-006-contact-identity-resolution` / PR #541  
 **Created:** 2026-09-27  
 **Last reconciled:** 2026-09-27 against `main@7c5673d43262ef3a0681d3a916d554bcc9627f71`
 
@@ -240,8 +240,8 @@ For the later implementation plan, require at minimum:
 - [x] create DECISION
 - [x] create EVIDENCE
 - [x] create HANDOFF
-- [ ] update ledger in this branch
-- [ ] open docs-only PR
+- [x] update ledger in this branch
+- [x] open docs-only PR
 - [ ] merge only after current HEAD checks are green
 
 ## Residual / next exact step
