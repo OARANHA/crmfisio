@@ -220,42 +220,45 @@ Living System answers:
 
 ## 5. EXECUTION
 
-**NOT STARTED.**
+**BACKEND IMPLEMENTATION COMPLETE IN REPOSITORY.**
 
-No migration, RPC, frontend, runtime or production mutation belongs to this documentation PR.
+PR #544 implemented the canonical migration, verifier, behavioral cases, concurrency harness and PostgreSQL 16/17 workflow, then merged through the protected branch path.
+
+Repository execution does **not** include production deployment. No MED-CRM-006 production database mutation or frontend mutation is claimed here.
 
 ## 6. VALIDATION
 
-For the later implementation plan, require at minimum:
+Repository validation is complete for final implementation HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`:
 
-- same UUID exact retry;
-- same UUID divergent replay conflict;
-- different UUID same exact phone race;
-- different UUID same exact email race;
-- phone/email split-conflict;
-- BR legacy phone variant candidate;
-- explicit reuse;
-- explicit distinct + reason;
-- deterministic multi-signal lock order;
-- no-signal no-global-lock;
-- different tenant isolation;
-- deleted/anonymized exclusion;
-- no Patient input/output/join;
-- no PII in audit;
-- existing Lead activity/audit remains correct;
-- PostgreSQL 16/17 behavioral proof if repository policy remains current;
-- current verifiers plus new structural/behavior verifier;
-- frontend tests only after backend authority is proved.
+- same UUID exact retry and divergent replay behavior are covered;
+- different UUID same-signal races and BR legacy-phone concurrency are covered;
+- exact phone/email, split conflict, explicit reuse/distinct and fail-closed ambiguity behavior are covered;
+- deterministic multi-signal lock ordering and no-signal behavior are covered;
+- tenant/role/entitlement denial and deleted/anonymized exclusion are covered;
+- Patient authority remains excluded;
+- audit PII constraints and MED-CRM-002 / MED-CRM-004 regressions are covered;
+- dedicated PostgreSQL 16 job = success;
+- dedicated PostgreSQL 17 job = success;
+- all 21 applicable workflows = success;
+- Clinical workflow `validate` = success;
+- Clinical workflow `dependency-audit` = success.
+
+Production validation remains pending and is a separate gate.
 
 ## 7. DOCUMENTATION
 
-- [x] create slice README
-- [x] create DECISION
-- [x] create EVIDENCE
-- [x] create HANDOFF
-- [x] update ledger in this branch
-- [x] open docs-only PR
-- [ ] merge only after current HEAD checks are green
+- [x] slice README
+- [x] DECISION
+- [x] EVIDENCE
+- [x] HANDOFF
+- [x] ledger
+- [x] canonical backend implementation PR #544
+- [x] exact-head repository validation
+- [x] protected squash merge
+- [ ] controlled production DB rollout
+- [ ] production-safe verifier/readback
+- [ ] mark backend RELEASED only after runtime proof
+- [ ] authorize frontend resolution UX only after backend RELEASED
 
 ## Implementation-plan review — CLOSED
 
