@@ -68,7 +68,10 @@ Do not include:
 A narrow authenticated-only SECURITY DEFINER command should:
 
 - derive tenant with `crm_current_mutator_clinic_id()`;
+- receive the current projection's `lead_updated_at` as `expected_updated_at`;
 - lock current-clinic non-deleted Lead;
+- treat desired-state equality as exact retry/no-op before stale-token rejection;
+- otherwise reject when the locked row `updated_at` differs from `expected_updated_at`, forcing a canonical refetch;
 - validate/normalize title, value cents and source;
 - update only those three fields;
 - return cleanly on exact no-change retry without duplicate evidence;
@@ -88,7 +91,8 @@ Before PROVED, require:
 - non-empty title;
 - nullable/non-negative integer cents;
 - source trim/null behavior;
-- exact no-change retry = no extra activity/audit;
+- exact no-change retry = no extra activity/audit, including retry with the pre-COMMIT timestamp when the desired persisted details already match;
+- stale `expected_updated_at` + different desired state = explicit conflict, no overwrite;
 - real change = exactly one update activity + audit;
 - stage/pipeline/contact/owner/terminal fields unchanged;
 - raw browser DML remains denied;
