@@ -3,7 +3,7 @@
 **Decision date:** 2026-09-27  
 **Audited main:** `01a2b947e13144a885549c248acceb25021c36a2`  
 **Implementation PR:** #536 — `feat/med-crm-003-commercial-board-cutover-v1`  
-**Status:** PROVED + MERGED / NOT RELEASED
+**Status:** PROVED + MERGED + RELEASED
 
 ## Context
 
@@ -171,4 +171,4 @@ It does **not** mean:
 
 Merge is now separately proved: PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after the final PR HEAD `2f0d8bc3cf9a7b61677abc053a64218d120dacf6` was `0 behind`, mergeable, with 9/9 check-runs `completed + success` and no blocking review/thread.
 
-`RELEASED` still requires observed production frontend rollout/readback. Immediate post-merge public readback served the previous bundle and did not contain the MED-CRM-003 markers, so release is not inferred from merge.
+`RELEASED` is now separately proved by production frontend readback. The active entry build changed to `/assets/index-HtujlU6h.js`, which references the live CRM lazy chunk `/assets/CrmOperational-C3MqVds_.js`. That chunk returned HTTP 200 and contained the released CRM RPC names plus the new archived/anonymized/stale-projection Board markers. Explicit copy from the old Patient-backed Board was absent, and `/`, `/crm`, `/agenda` and `/pacientes` all returned HTTP 200. No manual production mutation was required because the Portainer frontend auto-update completed.
