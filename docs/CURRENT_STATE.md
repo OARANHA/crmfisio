@@ -43,13 +43,13 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 
 ### MED-CRM-007 — Commercial Lead Activity Timeline V1
 
-**Status:** **DESIGNED / NOT IMPLEMENTED.** Fresh reconstruction against `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120` selected a bounded successor slice after MED-CRM-006. The existing RELEASED Commercial Core already owns `crm_lead_activities` and authenticated `list_current_clinic_crm_lead_activities(uuid)`; current Core tests/verifiers prove current-clinic read isolation and raw browser DML remains closed.
+**Status:** **IMPLEMENTING / NOT PROVED.** Design PR #550 was exact-head verified with 20/20 successful workflows and squash-merged as `main@b8f7943960254ba33ec036a4462c6b2683367289`. A fresh post-merge reconstruction found no product/schema/backend change beyond that docs-only design merge and no competing current CRM authority, so execution started on `feat/med-crm-007-lead-activity-timeline`.
 
-The proved gap is frontend integration: `src/lib/commercialCrm.ts` and `CommercialCrmBoard` do not consume that activity RPC, and the current production CRM chunk `/assets/CrmOperational-6R-i_o-S.js` does not contain `list_current_clinic_crm_lead_activities`. MED-CRM-007 therefore reuses the existing read authority instead of creating a second timeline, writer or audit path.
+The implementation remains frontend-only and reuses the RELEASED `list_current_clinic_crm_lead_activities(uuid)`. The adapter projects activity rows into a bounded shape and deliberately drops raw metadata, actor IDs, candidate IDs, Contact signals and Patient data. The Board loads history only on demand for a selected Lead, resolves stage UUIDs only against the already-loaded Commercial CRM stage projection, renders known events with bounded copy and renders unknown events as a neutral commercial activity.
 
-Design boundary: frontend-only while the existing RPC remains sufficient; on-demand per-Lead timeline; explicit allowlist/presenter for known commercial events; no raw `metadata` dump, internal UUIDs, candidate IDs, Contact PII reconstruction, Patient links/data or clinical history. owner/admin/recep writer authority and professional/financeiro read-only behavior remain unchanged. No SQL/schema/RPC/RLS/role/entitlement/tenant/audit mutation is authorized by this design checkpoint.
+No SQL/schema/migration/RPC/RLS/RBAC/role/entitlement/tenant/audit authority has been added. `Contact != Lead != Patient`, owner/admin/recep writers and professional/financeiro read-only boundaries remain unchanged.
 
-**Next exact gate:** before any implementation, re-resolve current `origin/main` and active CRM PRs, then confirm this design remains valid. Do not advance beyond `DESIGNED` without implementation and proof evidence.
+**Next exact gate:** exact-head repository validation and GitHub Actions for the implementation branch. Do not declare PROVED before those checks pass; do not declare RELEASED before frontend rollout/readback.
 
 ### MED-CRM-006 — Contact Identity Resolution V1
 
