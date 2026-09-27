@@ -10,11 +10,14 @@ import {
   createCurrentClinicCrmContact,
   createCurrentClinicCrmLead,
   executeCommercialCrmProspectCreation,
+  executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
+  listCurrentClinicCrmContactIdentityCandidates,
   listCurrentClinicCrmLeads,
   listCurrentClinicCrmPipelines,
   listCurrentClinicCrmStages,
   loadCurrentClinicCommercialCrm,
+  resolveCurrentClinicCrmProspectIdentity,
   transitionCurrentClinicCrmLeadStage,
 } from './commercialCrm';
 
@@ -99,6 +102,115 @@ describe('commercial CRM canonical frontend adapter', () => {
     await listCurrentClinicCrmLeads();
 
     expect(rpc).toHaveBeenCalledTimes(3);
+  });
+
+  it('maps the released Contact identity candidate projection without Patient fields', async () => {
+    rpc.mockResolvedValueOnce({
+      data: [{
+        contact_id: 'contact-a',
+        display_name: 'Maria Silva',
+        phone: '51999999999',
+        email: 'maria@example.com',
+        match_reasons: ['phone_exact', 'email_exact'],
+        open_lead_count: 2,
+      }],
+      error: null,
+    });
+
+    const candidates = await listCurrentClinicCrmContactIdentityCandidates({
+      phone: '  51999999999  ',
+      email: '  maria@example.com  ',
+    });
+
+    expect(rpc).toHaveBeenCalledWith('list_current_clinic_crm_contact_identity_candidates', {
+      p_phone: '51999999999',
+      p_email: 'maria@example.com',
+    });
+    expect(candidates).toEqual([{
+      contactId: 'contact-a',
+      displayName: 'Maria Silva',
+      phone: '51999999999',
+      email: 'maria@example.com',
+      matchReasons: ['phone_exact', 'email_exact'],
+      openLeadCount: 2,
+    }]);
+    expect(JSON.stringify(candidates)).not.toContain('patient');
+  });
+
+  it('calls the RELEASED prospect identity resolver with stable caller IDs and explicit mode', async () => {
+    rpc.mockResolvedValueOnce({
+      data: [{
+        contact_id: 'contact-existing',
+        lead_id: 'lead-new',
+        resolution_mode: 'explicit_reuse',
+      }],
+      error: null,
+    });
+
+    const result = await resolveCurrentClinicCrmProspectIdentity({
+      contactId: 'contact-draft',
+      leadId: 'lead-new',
+      name: '  Maria Prospect  ',
+      phone: '  51999999999  ',
+      email: '  maria@example.com  ',
+      title: '  Avaliação comercial  ',
+      pipelineId: 'pipeline-a',
+      resolutionMode: 'explicit_reuse',
+      selectedContactId: 'contact-existing',
+      distinctReason: null,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('resolve_current_clinic_crm_prospect_identity', {
+      p_contact_id: 'contact-draft',
+      p_lead_id: 'lead-new',
+      p_name: 'Maria Prospect',
+      p_title: 'Avaliação comercial',
+      p_resolution_mode: 'explicit_reuse',
+      p_phone: '51999999999',
+      p_email: 'maria@example.com',
+      p_pipeline_id: 'pipeline-a',
+      p_selected_contact_id: 'contact-existing',
+      p_distinct_reason: null,
+    });
+    expect(result).toEqual({
+      contactId: 'contact-existing',
+      leadId: 'lead-new',
+      resolutionMode: 'explicit_reuse',
+    });
+  });
+
+  it('keeps a resolved prospect successful when only the canonical CRM refetch fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await executeCommercialCrmProspectResolution(
+      {
+        contactId: 'contact-draft',
+        leadId: 'lead-new',
+        name: 'Maria Prospect',
+        phone: null,
+        email: null,
+        title: 'Avaliação comercial',
+        pipelineId: 'pipeline-a',
+        resolutionMode: 'create_if_clear',
+      },
+      {
+        resolve: vi.fn().mockResolvedValue({
+          contactId: 'contact-draft',
+          leadId: 'lead-new',
+          resolutionMode: 'create_if_clear',
+        }),
+        refresh: vi.fn().mockRejectedValue(new Error('projection unavailable')),
+      },
+    );
+
+    expect(result.command).toEqual({
+      contactId: 'contact-draft',
+      leadId: 'lead-new',
+      resolutionMode: 'create_if_clear',
+    });
+    expect(result.snapshot).toBeNull();
+    expect(result.projection).toBe('stale');
+    expect(result.projectionWarning).toContain('Prospect resolvido');
   });
 
   it('creates Contact and Lead only through the released current-clinic commands', async () => {

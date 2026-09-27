@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  executeCommercialCrmProspectCreation,
+  executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
+  listCurrentClinicCrmContactIdentityCandidates,
   loadCurrentClinicCommercialCrm,
+  type CommercialCrmIdentityCandidate,
+  type CommercialCrmIdentityResolutionMode,
   type CommercialCrmLead,
   type CommercialCrmPipeline,
   type CommercialCrmSnapshot,
@@ -45,6 +48,40 @@ function isLegacyLead(
 function contactLabel(lead: CommercialCrmLead): string {
   if (lead.contactAnonymizedAt) return 'Contato anonimizado';
   return lead.contactName || 'Contato sem nome';
+}
+
+const IDENTITY_REASON_LABEL: Record<string, string> = {
+  phone_exact: 'telefone exato',
+  phone_br_legacy: 'variante histórica de telefone',
+  email_exact: 'e-mail exato',
+};
+
+function identityReasonLabel(reason: string): string {
+  return IDENTITY_REASON_LABEL[reason] ?? reason.replace(/_/g, ' ');
+}
+
+function hasSplitSignalConflict(candidates: CommercialCrmIdentityCandidate[]): boolean {
+  const phoneIds = new Set(
+    candidates
+      .filter((candidate) => candidate.matchReasons.some((reason) => reason.startsWith('phone_')))
+      .map((candidate) => candidate.contactId),
+  );
+  const emailIds = new Set(
+    candidates
+      .filter((candidate) => candidate.matchReasons.includes('email_exact'))
+      .map((candidate) => candidate.contactId),
+  );
+
+  return phoneIds.size > 0
+    && emailIds.size > 0
+    && !Array.from(phoneIds).some((contactId) => emailIds.has(contactId));
+}
+
+function crmErrorContains(error: unknown, marker: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as Record<string, unknown>;
+  return [record.message, record.details, record.hint]
+    .some((value) => typeof value === 'string' && value.includes(marker));
 }
 
 function CommercialLeadCard({
@@ -138,6 +175,13 @@ export function CommercialCrmBoard() {
   const [prospectEmail, setProspectEmail] = useState('');
   const [prospectTitle, setProspectTitle] = useState('');
   const [prospectPipelineId, setProspectPipelineId] = useState('');
+  const [prospectCandidates, setProspectCandidates] = useState<CommercialCrmIdentityCandidate[] | null>(null);
+  const [prospectDistinctReason, setProspectDistinctReason] = useState('');
+  const [prospectRetryIntent, setProspectRetryIntent] = useState<{
+    mode: CommercialCrmIdentityResolutionMode;
+    selectedContactId: string | null;
+    distinctReason: string | null;
+  } | null>(null);
   const [prospectError, setProspectError] = useState<string | null>(null);
   const [creatingProspect, setCreatingProspect] = useState(false);
   const canMutate = isOperationalRole(user?.role);
@@ -196,16 +240,23 @@ export function CommercialCrmBoard() {
     [activeLeads, selectedPipelineId],
   );
 
-  const closeProspect = () => {
-    if (creatingProspect) return;
-    setProspectOpen(false);
+  const resetProspectForm = () => {
     setProspectIds(null);
     setProspectName('');
     setProspectPhone('');
     setProspectEmail('');
     setProspectTitle('');
     setProspectPipelineId('');
+    setProspectCandidates(null);
+    setProspectDistinctReason('');
+    setProspectRetryIntent(null);
     setProspectError(null);
+  };
+
+  const closeProspect = () => {
+    if (creatingProspect) return;
+    setProspectOpen(false);
+    resetProspectForm();
   };
 
   const openProspect = () => {
@@ -219,53 +270,198 @@ export function CommercialCrmBoard() {
     setProspectEmail('');
     setProspectTitle('');
     setProspectPipelineId(choosePipeline(activePipelines, selectedPipelineId) ?? '');
+    setProspectCandidates(null);
+    setProspectDistinctReason('');
+    setProspectRetryIntent(null);
     setProspectError(null);
     setProspectOpen(true);
   };
 
-  const saveProspect = async () => {
-    if (!canMutate || !prospectIds || creatingProspect) return;
-
+  const prospectDraft = () => {
+    if (!prospectIds) return null;
     const name = prospectName.trim();
     const title = prospectTitle.trim();
     const pipelineId = prospectPipelineId || null;
     if (!name || !title || !pipelineId) {
       setProspectError('Informe nome, interesse comercial e pipeline.');
+      return null;
+    }
+
+    return {
+      ...prospectIds,
+      name,
+      phone: prospectPhone,
+      email: prospectEmail,
+      title,
+      pipelineId,
+    };
+  };
+
+  const applyProspectSuccess = (
+    outcome: Awaited<ReturnType<typeof executeCommercialCrmProspectResolution>>,
+  ) => {
+    if (outcome.snapshot) applySnapshot(outcome.snapshot);
+    if (outcome.projectionWarning) {
+      toast(outcome.projectionWarning, 'warn');
+    } else if (outcome.command.resolutionMode === 'explicit_reuse') {
+      toast('Novo Lead criado no Contact selecionado.');
+    } else {
+      toast('Prospect criado no CRM comercial.');
+    }
+    setProspectOpen(false);
+    resetProspectForm();
+  };
+
+  const refreshIdentityCandidatesAfterServerRejection = async (): Promise<void> => {
+    try {
+      const candidates = await listCurrentClinicCrmContactIdentityCandidates({
+        phone: prospectPhone,
+        email: prospectEmail,
+      });
+      setProspectCandidates(candidates.length > 0 ? candidates : null);
+    } catch {
+      setProspectCandidates(null);
+    }
+  };
+
+  const handleProspectResolutionError = async (
+    error: unknown,
+    retryIntent: {
+      mode: CommercialCrmIdentityResolutionMode;
+      selectedContactId: string | null;
+      distinctReason: string | null;
+    },
+  ) => {
+    if (
+      crmErrorContains(error, 'crm_contact_identity_resolution_required')
+      || crmErrorContains(error, 'crm_selected_contact_not_identity_candidate')
+      || crmErrorContains(error, 'crm_explicit_distinct_requires_candidate')
+      || crmErrorContains(error, 'crm_contact_not_found')
+    ) {
+      setProspectRetryIntent(null);
+      await refreshIdentityCandidatesAfterServerRejection();
+      setProspectError(
+        'A situação dos possíveis contatos mudou no servidor. Revise os candidatos atuais antes de continuar; nenhuma escolha foi feita automaticamente.',
+      );
       return;
     }
+
+    if (crmErrorContains(error, 'crm_prospect_resolution_idempotency_conflict')) {
+      setProspectRetryIntent(null);
+      setProspectError(
+        'Esta tentativa já possui um contrato diferente no servidor. Feche este rascunho e inicie outro somente depois de confirmar o estado atual do CRM.',
+      );
+      return;
+    }
+
+    setProspectRetryIntent(retryIntent);
+    setProspectError(
+      'A resposta do servidor ficou incerta. Repita exatamente a mesma tentativa; os mesmos IDs e a mesma decisão serão reutilizados sem refazer o preview.',
+    );
+    toast('Não foi possível confirmar a criação do prospect. Tente novamente com a mesma decisão.', 'warn');
+  };
+
+  const runProspectResolution = async (
+    mode: CommercialCrmIdentityResolutionMode,
+    selectedContactId: string | null = null,
+    distinctReason: string | null = null,
+  ) => {
+    if (!canMutate || creatingProspect) return;
+    const draft = prospectDraft();
+    if (!draft) return;
+
+    if (mode === 'explicit_distinct' && !distinctReason?.trim()) {
+      setProspectError('Informe por que este Contact deve ser tratado como distinto.');
+      return;
+    }
+
+    const retryIntent = {
+      mode,
+      selectedContactId,
+      distinctReason: distinctReason?.trim() || null,
+    };
 
     setCreatingProspect(true);
     setProspectError(null);
     try {
-      const outcome = await executeCommercialCrmProspectCreation({
-        ...prospectIds,
-        name,
-        phone: prospectPhone,
-        email: prospectEmail,
-        title,
-        pipelineId,
+      const outcome = await executeCommercialCrmProspectResolution({
+        ...draft,
+        resolutionMode: mode,
+        selectedContactId,
+        distinctReason,
       });
-      if (outcome.snapshot) applySnapshot(outcome.snapshot);
-      if (outcome.projectionWarning) {
-        toast(outcome.projectionWarning, 'warn');
-      } else {
-        toast('Prospect criado no CRM comercial.');
-      }
-      setProspectOpen(false);
-      setProspectIds(null);
-      setProspectName('');
-      setProspectPhone('');
-      setProspectEmail('');
-      setProspectTitle('');
-      setProspectPipelineId('');
-      setProspectError(null);
+      applyProspectSuccess(outcome);
     } catch (error) {
-      console.error('[MedicsPro] Falha ao criar prospect comercial:', error);
-      setProspectError('Não foi possível confirmar a criação. Tente novamente sem alterar os dados; a mesma tentativa será reutilizada.');
-      toast('Não foi possível confirmar a criação do prospect. Tente novamente com os mesmos dados.', 'warn');
+      await handleProspectResolutionError(error, retryIntent);
     } finally {
       setCreatingProspect(false);
     }
+  };
+
+  const verifyProspectIdentity = async () => {
+    if (!canMutate || creatingProspect || prospectRetryIntent) return;
+    const draft = prospectDraft();
+    if (!draft) return;
+
+    setCreatingProspect(true);
+    setProspectError(null);
+
+    let candidates: CommercialCrmIdentityCandidate[];
+    try {
+      candidates = await listCurrentClinicCrmContactIdentityCandidates({
+        phone: draft.phone,
+        email: draft.email,
+      });
+    } catch {
+      setProspectError(
+        'Não foi possível verificar possíveis Contacts agora. Nenhum cadastro foi enviado. Tente novamente.',
+      );
+      setCreatingProspect(false);
+      return;
+    }
+
+    if (candidates.length > 0) {
+      setProspectCandidates(candidates);
+      setCreatingProspect(false);
+      return;
+    }
+
+    const retryIntent = {
+      mode: 'create_if_clear' as const,
+      selectedContactId: null,
+      distinctReason: null,
+    };
+
+    try {
+      const outcome = await executeCommercialCrmProspectResolution({
+        ...draft,
+        resolutionMode: retryIntent.mode,
+        selectedContactId: retryIntent.selectedContactId,
+        distinctReason: retryIntent.distinctReason,
+      });
+      applyProspectSuccess(outcome);
+    } catch (error) {
+      if (crmErrorContains(error, 'crm_contact_identity_resolution_required')) {
+        setProspectRetryIntent(null);
+        await refreshIdentityCandidatesAfterServerRejection();
+        setProspectError(
+          'O servidor encontrou uma ambiguidade nova. Revise os candidatos antes de continuar; nenhum Contact foi selecionado automaticamente.',
+        );
+      } else {
+        await handleProspectResolutionError(error, retryIntent);
+      }
+    } finally {
+      setCreatingProspect(false);
+    }
+  };
+
+  const retryProspectResolution = () => {
+    if (!prospectRetryIntent || creatingProspect) return;
+    void runProspectResolution(
+      prospectRetryIntent.mode,
+      prospectRetryIntent.selectedContactId,
+      prospectRetryIntent.distinctReason,
+    );
   };
 
   const persistTransition = async (
@@ -481,7 +677,8 @@ export function CommercialCrmBoard() {
         >
           <div className="space-y-4">
             <div className="border border-aqua/25 bg-aqua/5 px-3 py-2.5 text-[11.5px] text-fog">
-              Cria Contact + Lead usando os comandos canônicos já liberados. Não cria Patient e não altera a jornada clínica.
+              Verifica possíveis Contacts pela projection canônica e resolve Contact + novo Lead no servidor.
+              Nenhuma correspondência é escolhida automaticamente e nenhum Patient é criado.
             </div>
             <Field label="Nome do contato · obrigatório">
               <Input
@@ -491,7 +688,7 @@ export function CommercialCrmBoard() {
                   if (prospectError) setProspectError(null);
                 }}
                 placeholder="Nome do contato"
-                disabled={creatingProspect}
+                disabled={creatingProspect || Boolean(prospectRetryIntent)}
               />
             </Field>
             <div className="grid gap-3 md:grid-cols-2">
@@ -500,10 +697,12 @@ export function CommercialCrmBoard() {
                   value={prospectPhone}
                   onChange={(event) => {
                     setProspectPhone(event.target.value);
+                    setProspectCandidates(null);
+                    setProspectDistinctReason('');
                     if (prospectError) setProspectError(null);
                   }}
                   placeholder="Telefone (opcional)"
-                  disabled={creatingProspect}
+                  disabled={creatingProspect || Boolean(prospectRetryIntent)}
                 />
               </Field>
               <Field label="E-mail">
@@ -511,10 +710,12 @@ export function CommercialCrmBoard() {
                   value={prospectEmail}
                   onChange={(event) => {
                     setProspectEmail(event.target.value);
+                    setProspectCandidates(null);
+                    setProspectDistinctReason('');
                     if (prospectError) setProspectError(null);
                   }}
                   placeholder="E-mail (opcional)"
-                  disabled={creatingProspect}
+                  disabled={creatingProspect || Boolean(prospectRetryIntent)}
                 />
               </Field>
             </div>
@@ -526,7 +727,7 @@ export function CommercialCrmBoard() {
                   if (prospectError) setProspectError(null);
                 }}
                 placeholder="Interesse / assunto comercial"
-                disabled={creatingProspect}
+                disabled={creatingProspect || Boolean(prospectRetryIntent)}
               />
             </Field>
             <Field label="Pipeline · obrigatório">
@@ -536,7 +737,7 @@ export function CommercialCrmBoard() {
                   setProspectPipelineId(event.target.value);
                   if (prospectError) setProspectError(null);
                 }}
-                disabled={creatingProspect}
+                disabled={creatingProspect || Boolean(prospectRetryIntent)}
               >
                 {activePipelines.map((pipeline) => (
                   <option key={pipeline.id} value={pipeline.id}>
@@ -545,17 +746,107 @@ export function CommercialCrmBoard() {
                 ))}
               </Select>
             </Field>
+
+            {prospectCandidates && prospectCandidates.length > 0 && (
+              <div className="space-y-3 border border-amber/35 bg-amber/[0.04] p-3">
+                <div>
+                  <p className="font-display text-[13px] font-semibold">Decisão de identidade necessária</p>
+                  <p className="mt-1 text-[11.5px] text-fog">
+                    O servidor encontrou {prospectCandidates.length} Contact(s) candidato(s). Revise os sinais abaixo;
+                    eles não afirmam que os registros representam a mesma pessoa.
+                  </p>
+                </div>
+
+                {hasSplitSignalConflict(prospectCandidates) && (
+                  <p className="border border-pulse/35 bg-pulse/[0.05] px-3 py-2 text-[11.5px] text-pulse">
+                    Conflito de sinais: telefone e e-mail apontam para Contacts diferentes. O sistema não escolheu nenhum automaticamente.
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  {prospectCandidates.map((candidate) => (
+                    <div key={candidate.contactId} className="border border-line bg-panel p-3">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-[13px] font-semibold">{candidate.displayName || 'Contact sem nome'}</p>
+                          {(candidate.phone || candidate.email) && (
+                            <p className="mt-1 font-mono text-[10.5px] text-fog">
+                              {[candidate.phone, candidate.email].filter(Boolean).join(' · ')}
+                            </p>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {candidate.matchReasons.map((reason) => (
+                              <Chip key={reason}>{identityReasonLabel(reason)}</Chip>
+                            ))}
+                            {candidate.openLeadCount > 0 && (
+                              <Chip className="border-amber/45 text-amber">
+                                {candidate.openLeadCount} Lead(s) aberto(s)
+                              </Chip>
+                            )}
+                          </div>
+                        </div>
+                        <Btn
+                          className="!px-3 !py-1.5 !text-[11px]"
+                          onClick={() => void runProspectResolution('explicit_reuse', candidate.contactId)}
+                          disabled={creatingProspect || Boolean(prospectRetryIntent)}
+                        >
+                          Criar novo Lead neste Contact
+                        </Btn>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-line pt-3">
+                  <p className="text-[11.5px] text-fog">
+                    Se nenhum candidato representa o Contact deste novo prospect, registre explicitamente por que ele deve ser tratado como distinto.
+                  </p>
+                  <div className="mt-2">
+                    <Field label="Razão para Contact distinto · obrigatória">
+                      <Input
+                        value={prospectDistinctReason}
+                        onChange={(event) => {
+                          setProspectDistinctReason(event.target.value);
+                          if (prospectError) setProspectError(null);
+                        }}
+                        placeholder="Explique por que este Contact é distinto"
+                        disabled={creatingProspect || Boolean(prospectRetryIntent)}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <Btn
+                      variant="subtle"
+                      onClick={() => void runProspectResolution('explicit_distinct', null, prospectDistinctReason)}
+                      disabled={!prospectDistinctReason.trim() || creatingProspect || Boolean(prospectRetryIntent)}
+                    >
+                      Criar Contact distinto + Lead
+                    </Btn>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {prospectError && <p className="text-[11.5px] text-pulse">{prospectError}</p>}
             <div className="flex justify-end gap-2">
-              <Btn variant="ghost" onClick={closeProspect} disabled={creatingProspect}>
+              <Btn variant="ghost" onClick={closeProspect} disabled={creatingProspect || Boolean(prospectRetryIntent)}>
                 Cancelar
               </Btn>
-              <Btn
-                onClick={() => void saveProspect()}
-                disabled={!prospectName.trim() || !prospectTitle.trim() || !prospectPipelineId || creatingProspect}
-              >
-                {creatingProspect ? 'Criando…' : 'Criar prospect'}
-              </Btn>
+              {prospectRetryIntent ? (
+                <Btn
+                  onClick={retryProspectResolution}
+                  disabled={creatingProspect}
+                >
+                  {creatingProspect ? 'Repetindo…' : 'Repetir mesma tentativa'}
+                </Btn>
+              ) : !prospectCandidates ? (
+                <Btn
+                  onClick={() => void verifyProspectIdentity()}
+                  disabled={!prospectName.trim() || !prospectTitle.trim() || !prospectPipelineId || creatingProspect}
+                >
+                  {creatingProspect ? 'Verificando…' : 'Verificar e continuar'}
+                </Btn>
+              ) : null}
             </div>
           </div>
         </Modal>

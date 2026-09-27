@@ -1,6 +1,6 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CommercialCrmSnapshot } from '../lib/commercialCrm';
+import type { CommercialCrmIdentityCandidate, CommercialCrmSnapshot } from '../lib/commercialCrm';
 import { CommercialCrmBoard } from './CommercialCrmBoard';
 
 const testState = vi.hoisted(() => ({
@@ -42,7 +42,8 @@ const testState = vi.hoisted(() => ({
   } as CommercialCrmSnapshot,
   load: vi.fn(),
   execute: vi.fn(),
-  executeProspect: vi.fn(),
+  listCandidates: vi.fn(),
+  executeResolution: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -60,7 +61,8 @@ vi.mock('../lib/commercialCrm', async (importOriginal) => {
     ...original,
     loadCurrentClinicCommercialCrm: testState.load,
     executeCommercialCrmStageTransition: testState.execute,
-    executeCommercialCrmProspectCreation: testState.executeProspect,
+    listCurrentClinicCrmContactIdentityCandidates: testState.listCandidates,
+    executeCommercialCrmProspectResolution: testState.executeResolution,
   };
 });
 
@@ -111,6 +113,52 @@ function baseSnapshot(): CommercialCrmSnapshot {
   };
 }
 
+function identityCandidate(
+  contactId: string,
+  displayName: string,
+  matchReasons: string[],
+): CommercialCrmIdentityCandidate {
+  return {
+    contactId,
+    displayName,
+    phone: matchReasons.some((reason) => reason.startsWith('phone_')) ? '51999999999' : null,
+    email: matchReasons.includes('email_exact') ? 'maria@example.com' : null,
+    matchReasons,
+    openLeadCount: 0,
+  };
+}
+
+function fillProspectForm(renderer: ReactTestRenderer) {
+  const openButton = renderer.root.findAllByType('button').find((button) =>
+    button.props.children === 'Novo prospect',
+  );
+  expect(openButton).toBeTruthy();
+  act(() => openButton?.props.onClick());
+
+  const nameInput = renderer.root.findByProps({ placeholder: 'Nome do contato' });
+  const phoneInput = renderer.root.findByProps({ placeholder: 'Telefone (opcional)' });
+  const emailInput = renderer.root.findByProps({ placeholder: 'E-mail (opcional)' });
+  const titleInput = renderer.root.findByProps({ placeholder: 'Interesse / assunto comercial' });
+
+  act(() => {
+    nameInput.props.onChange({ target: { value: '  Maria Prospect  ' } });
+    phoneInput.props.onChange({ target: { value: '  51999999999  ' } });
+    emailInput.props.onChange({ target: { value: '  maria@example.com  ' } });
+    titleInput.props.onChange({ target: { value: '  Avaliação comercial  ' } });
+  });
+}
+
+async function verifyProspect(renderer: ReactTestRenderer) {
+  const verifyButton = renderer.root.findAllByType('button').find((button) =>
+    button.props.children === 'Verificar e continuar',
+  );
+  expect(verifyButton).toBeTruthy();
+  await act(async () => {
+    verifyButton?.props.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 describe('CommercialCrmBoard', () => {
   beforeEach(() => {
     vi.stubGlobal('window', {
@@ -137,10 +185,12 @@ describe('CommercialCrmBoard', () => {
       projection: 'fresh',
       projectionWarning: null,
     }));
-    testState.executeProspect.mockReset().mockImplementation(async (input) => ({
+    testState.listCandidates.mockReset().mockResolvedValue([]);
+    testState.executeResolution.mockReset().mockImplementation(async (input) => ({
       command: {
-        contactId: input.contactId,
+        contactId: input.selectedContactId ?? input.contactId,
         leadId: input.leadId,
+        resolutionMode: input.resolutionMode,
       },
       snapshot: testState.snapshot,
       projection: 'fresh',
@@ -172,64 +222,224 @@ describe('CommercialCrmBoard', () => {
     expect(JSON.stringify(reception.toJSON())).toContain('Novo prospect');
   });
 
-  it('reuses the same Contact and Lead UUIDs when prospect creation is retried', async () => {
+  it('uses create_if_clear when the canonical preview returns zero candidates', async () => {
     testState.role = 'recep';
-    testState.executeProspect.mockRejectedValueOnce(new Error('uncertain response'));
+    testState.listCandidates.mockResolvedValueOnce([]);
 
     const renderer = await renderBoard();
-    const openButton = renderer.root.findAllByType('button').find((button) =>
-      button.props.children === 'Novo prospect',
-    );
-    expect(openButton).toBeTruthy();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
 
-    act(() => openButton?.props.onClick());
-
-    const nameInput = renderer.root.findByProps({ placeholder: 'Nome do contato' });
-    const phoneInput = renderer.root.findByProps({ placeholder: 'Telefone (opcional)' });
-    const emailInput = renderer.root.findByProps({ placeholder: 'E-mail (opcional)' });
-    const titleInput = renderer.root.findByProps({ placeholder: 'Interesse / assunto comercial' });
-
-    act(() => {
-      nameInput.props.onChange({ target: { value: '  Maria Prospect  ' } });
-      phoneInput.props.onChange({ target: { value: '  51999999999  ' } });
-      emailInput.props.onChange({ target: { value: '  maria@example.com  ' } });
-      titleInput.props.onChange({ target: { value: '  Avaliação comercial  ' } });
-    });
-
-    let createButton = renderer.root.findAllByType('button').find((button) =>
-      button.props.children === 'Criar prospect',
-    );
-    expect(createButton?.props.disabled).toBe(false);
-
-    await act(async () => {
-      createButton?.props.onClick();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(testState.executeProspect).toHaveBeenCalledTimes(1);
-    expect(testState.executeProspect.mock.calls[0]?.[0]).toMatchObject({
+    expect(testState.executeResolution).toHaveBeenCalledTimes(1);
+    expect(testState.executeResolution.mock.calls[0]?.[0]).toMatchObject({
       contactId: 'contact-new',
       leadId: 'lead-new',
-      name: 'Maria Prospect',
-      phone: '  51999999999  ',
-      email: '  maria@example.com  ',
-      title: 'Avaliação comercial',
-      pipelineId: 'pipeline-a',
+      resolutionMode: 'create_if_clear',
+      selectedContactId: null,
+      distinctReason: null,
     });
-    expect(JSON.stringify(renderer.toJSON())).toContain('mesma tentativa será reutilizada');
+  });
 
-    createButton = renderer.root.findAllByType('button').find((button) =>
-      button.props.children === 'Criar prospect',
+  it('requires an explicit human decision when exactly one candidate is returned', async () => {
+    testState.role = 'recep';
+    testState.listCandidates.mockResolvedValueOnce([
+      identityCandidate('contact-a', 'Maria existente', ['phone_exact']),
+    ]);
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    const rendered = JSON.stringify(renderer.toJSON());
+    expect(rendered).toContain('Decisão de identidade necessária');
+    expect(rendered).toContain('Maria existente');
+    expect(rendered).toContain('Criar novo Lead neste Contact');
+    expect(testState.executeResolution).not.toHaveBeenCalled();
+  });
+
+  it('requires an explicit human decision when multiple candidates are returned', async () => {
+    testState.role = 'recep';
+    testState.listCandidates.mockResolvedValueOnce([
+      identityCandidate('contact-a', 'Maria A', ['phone_exact']),
+      identityCandidate('contact-b', 'Maria B', ['phone_br_legacy']),
+    ]);
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    const rendered = JSON.stringify(renderer.toJSON());
+    const decisionCopy = renderer.root.findAllByType('p').find((paragraph) =>
+      paragraph.children.join('') === 'O servidor encontrou 2 Contact(s) candidato(s). Revise os sinais abaixo; eles não afirmam que os registros representam a mesma pessoa.',
     );
+    expect(decisionCopy).toBeTruthy();
+    expect(rendered).toContain('Maria A');
+    expect(rendered).toContain('Maria B');
+    expect(testState.executeResolution).not.toHaveBeenCalled();
+  });
+
+  it('renders phone/email split conflict without selecting a Contact automatically', async () => {
+    testState.role = 'recep';
+    testState.listCandidates.mockResolvedValueOnce([
+      identityCandidate('contact-phone', 'Contato telefone', ['phone_exact']),
+      identityCandidate('contact-email', 'Contato e-mail', ['email_exact']),
+    ]);
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    expect(JSON.stringify(renderer.toJSON())).toContain(
+      'Conflito de sinais: telefone e e-mail apontam para Contacts diferentes',
+    );
+    expect(testState.executeResolution).not.toHaveBeenCalled();
+  });
+
+  it('sends explicit_reuse only after the user selects a candidate', async () => {
+    testState.role = 'recep';
+    testState.listCandidates.mockResolvedValueOnce([
+      identityCandidate('contact-existing', 'Maria existente', ['phone_exact', 'email_exact']),
+    ]);
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    const reuseButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Criar novo Lead neste Contact',
+    );
+    expect(reuseButton).toBeTruthy();
 
     await act(async () => {
-      createButton?.props.onClick();
+      reuseButton?.props.onClick();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(testState.executeProspect).toHaveBeenCalledTimes(2);
-    expect(testState.executeProspect.mock.calls[1]?.[0].contactId).toBe('contact-new');
-    expect(testState.executeProspect.mock.calls[1]?.[0].leadId).toBe('lead-new');
+    expect(testState.executeResolution).toHaveBeenCalledWith(expect.objectContaining({
+      contactId: 'contact-new',
+      leadId: 'lead-new',
+      resolutionMode: 'explicit_reuse',
+      selectedContactId: 'contact-existing',
+      distinctReason: null,
+    }));
+  });
+
+  it('blocks explicit_distinct until a non-empty reason is provided', async () => {
+    testState.role = 'recep';
+    testState.listCandidates.mockResolvedValueOnce([
+      identityCandidate('contact-existing', 'Maria existente', ['phone_exact']),
+    ]);
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    const reasonInput = renderer.root.findByProps({ placeholder: 'Explique por que este Contact é distinto' });
+    let distinctButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Criar Contact distinto + Lead',
+    );
+    expect(distinctButton?.props.disabled).toBe(true);
+
+    act(() => reasonInput.props.onChange({ target: { value: '  Homônima confirmada pela recepção  ' } }));
+
+    distinctButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Criar Contact distinto + Lead',
+    );
+    expect(distinctButton?.props.disabled).toBe(false);
+
+    await act(async () => {
+      distinctButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.executeResolution).toHaveBeenCalledWith(expect.objectContaining({
+      contactId: 'contact-new',
+      leadId: 'lead-new',
+      resolutionMode: 'explicit_distinct',
+      selectedContactId: null,
+      distinctReason: '  Homônima confirmada pela recepção  ',
+    }));
+  });
+
+  it('surfaces a stale server rejection and refreshes candidates instead of falling back to Contact create', async () => {
+    testState.role = 'recep';
+    testState.listCandidates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        identityCandidate('contact-newly-visible', 'Contato atualizado', ['email_exact']),
+      ]);
+    testState.executeResolution.mockRejectedValueOnce({
+      message: 'crm_contact_identity_resolution_required',
+      code: '23514',
+    });
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    const rendered = JSON.stringify(renderer.toJSON());
+    expect(rendered).toContain('ambiguidade nova');
+    expect(rendered).toContain('Contato atualizado');
+    expect(testState.executeResolution).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries the same create_if_clear intent with the same UUIDs without re-preview after transport uncertainty', async () => {
+    testState.role = 'recep';
+    testState.listCandidates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        identityCandidate('contact-new', 'Self candidate after hidden commit', ['phone_exact']),
+      ]);
+    testState.executeResolution
+      .mockRejectedValueOnce(new Error('uncertain response'))
+      .mockImplementationOnce(async (input) => ({
+        command: {
+          contactId: input.contactId,
+          leadId: input.leadId,
+          resolutionMode: input.resolutionMode,
+        },
+        snapshot: testState.snapshot,
+        projection: 'fresh',
+        projectionWarning: null,
+      }));
+
+    const renderer = await renderBoard();
+    fillProspectForm(renderer);
+    await verifyProspect(renderer);
+
+    expect(testState.listCandidates).toHaveBeenCalledTimes(1);
+    expect(testState.executeResolution).toHaveBeenCalledTimes(1);
+    expect(testState.executeResolution.mock.calls[0]?.[0]).toMatchObject({
+      contactId: 'contact-new',
+      leadId: 'lead-new',
+      resolutionMode: 'create_if_clear',
+      selectedContactId: null,
+      distinctReason: null,
+    });
+
+    const renderedAfterUncertainty = JSON.stringify(renderer.toJSON());
+    expect(renderedAfterUncertainty).toContain('Repetir mesma tentativa');
+    expect(renderedAfterUncertainty).toContain('sem refazer o preview');
+
+    const retryButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Repetir mesma tentativa',
+    );
+    expect(retryButton).toBeTruthy();
+
+    await act(async () => {
+      retryButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.listCandidates).toHaveBeenCalledTimes(1);
+    expect(testState.executeResolution).toHaveBeenCalledTimes(2);
+    expect(testState.executeResolution.mock.calls[1]?.[0]).toMatchObject({
+      contactId: 'contact-new',
+      leadId: 'lead-new',
+      resolutionMode: 'create_if_clear',
+      selectedContactId: null,
+      distinctReason: null,
+    });
   });
 
   it('suppresses Contact PII and free-form Lead title when the Contact is anonymized', async () => {

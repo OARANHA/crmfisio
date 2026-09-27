@@ -2,7 +2,7 @@
 
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
-**Audited main:** `7e1ab2fba50d6188e718411c6b51b201ae417954`
+**Audited main:** live frontend execution base `e2902917f247ab92683988e3beed8b5e4badd225`
 
 ## Canonical implementation checkpoint — 2026-09-27
 
@@ -215,6 +215,45 @@ From `docs/DESKCOMM_ADOPTION_MATRIX.md` and `docs/slices/MED-DOC-001/FINAL-ABSOR
 - external/reference proof does not become MedicsPro proof automatically.
 
 Deskcomm is used only for patterns/invariants, never as authority for MedicsPro identity semantics.
+
+## Frontend execution evidence — PR #548 (NOT YET PROVED)
+
+Fresh reconstruction before execution proved:
+
+- live `origin/main = e2902917f247ab92683988e3beed8b5e4badd225`, the #547 frontend handoff merge;
+- PRs #544, #546 and #547 are merged; backend RELEASED evidence remains intact;
+- historical PR #525 remains open/non-mergeable and is not authority;
+- no newer open Prospect/Contact Identity Resolution PR was found before opening #548;
+- `/crm` still routes through `CrmOperational → Crm → CommercialCrmBoard` behind the CRM module gate, `crm.access` entitlement gate and privacy boundary;
+- the current intake generated caller Contact/Lead UUIDs once when opening the draft and preserved them after uncertain errors;
+- the pre-#548 intake still composed `create_current_clinic_crm_contact` then `create_current_clinic_crm_lead`, which now fails closed on identity ambiguity but could only surface a generic frontend error.
+
+The frontend reuse gate selected only RELEASED capabilities: candidate lookup, final resolver, existing writer/tenant authority, resolver-owned Contact/Lead/activity/audit behavior, stable draft IDs and canonical CRM projections.
+
+PR #548 currently changes only frontend adapter/UI/tests/docs. Product code adds no SQL/schema/RPC/table/role/entitlement/tenant/audit authority. Prospect Intake now uses the dedicated candidate projection for preview and the final resolver for commit; it has no fallback to the old separate Contact/Lead browser writers.
+
+New tests cover:
+
+- zero candidates → `create_if_clear`;
+- one candidate → human decision required;
+- multiple candidates → human decision required;
+- phone/email split conflict;
+- `explicit_reuse` only after candidate selection;
+- `explicit_distinct` blocked until reason is non-empty;
+- stale server rejection refreshes candidates instead of creating a Contact client-side;
+- retry after transport uncertainty preserves the same Contact/Lead draft IDs;
+- adapter shape for candidate/resolver RPCs and no Patient fields;
+- static frontend boundary: no Prospect Intake fallback to old Contact/Lead writers and no Lead projection used as identity matching authority.
+
+This is implementation evidence only. The exact current PR HEAD still requires all applicable GitHub workflows, unit/frontend tests, typecheck, lint, build, validate and dependency-audit before frontend can be called PROVED.
+
+## Frontend adversarial retry correction — 2026-09-27
+
+A post-implementation deterministic review found one retry bug before proof/merge: after a transport-uncertain `create_if_clear` attempt, rerunning candidate preview first could observe the caller's own just-committed Contact as a new candidate and prevent the resolver from exercising its canonical self-candidate exact-retry path.
+
+PR #548 was corrected so transport uncertainty stores the exact resolution intent and freezes the draft fields. The next action repeats the same resolver call directly with the same Contact UUID, Lead UUID and resolution intent **without re-running candidate preview**. Known semantic stale/ambiguity errors clear this retry state and return to canonical candidate review instead.
+
+The regression test deliberately prepares a self-candidate for a hypothetical second preview, then proves that the retry performs no second candidate lookup and repeats `create_if_clear` with the same IDs. This closes the frontend retry/idempotency gap without changing backend authority.
 
 ## Evidence limitations
 

@@ -1,18 +1,18 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** BACKEND RELEASED / FRONTEND PHASE AUTHORIZED / SLICE NOT FINAL  
+**Status:** BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / SLICE NOT FINAL
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
 **Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
 **Implementation PR:** #544 — MERGED as `main@837935ef82a18849dcd05986a27f7978a9cdd10b` from final validated HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@7e1ab2fba50d6188e718411c6b51b201ae417954` plus production runtime proof on `28server` / `supabase-db`
+**Last reconciled:** 2026-09-27 against live `main@e2902917f247ab92683988e3beed8b5e4badd225`, backend production proof, and frontend implementation PR #548 (OPEN; not yet PROVED)
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-Backend implementation is PROVED in repository CI, merged and RELEASED in production. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including PostgreSQL 16/17 and Clinical workflow `validate` / `dependency-audit`. The exact canonical migration was then hash-proved and applied to production `28server` / `supabase-db`; the pinned production verifier and CRM regressions passed. Frontend candidate/resolution UX is now authorized as the next phase, but MED-CRM-006 as a whole remains open until that UI phase is merged and observed in production.
+Backend implementation is PROVED in repository CI, merged and RELEASED in production. PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811` passed 21/21 workflows, including PostgreSQL 16/17 and Clinical workflow `validate` / `dependency-audit`. The exact canonical migration was then hash-proved and applied to production `28server` / `supabase-db`; the pinned production verifier and CRM regressions passed. Frontend candidate/resolution UX is now under implementation in PR #548, but it is not yet PROVED. MED-CRM-006 as a whole remains open until that exact frontend HEAD is validated, merged and observed in production.
 
 ## Repository proof checkpoint — 2026-09-27
 
@@ -54,14 +54,14 @@ Backend implementation is PROVED in repository CI, merged and RELEASED in produc
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- `origin/main`: `7e1ab2fba50d6188e718411c6b51b201ae417954` after post-merge documentation PR #545; re-resolve before frontend execution;
+- live frontend execution base was revalidated as `origin/main@e2902917f247ab92683988e3beed8b5e4badd225`; PR #548 was created from that exact base; re-resolve both main and PR HEAD before any validation/merge claim;
 - canonical implementation PR #544 is merged; its final validated HEAD was `aed1b2752ca86c43ea37a47abf8e5684434e2811`;
 - PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
 - repository validation is complete: 21/21 workflows success; PostgreSQL 16 and 17 dedicated jobs success; Clinical workflow `validate` and `dependency-audit` success;
-- production backend rollout/readback is complete and the next gate is frontend candidate/resolution UX.
+- production backend rollout/readback is complete; frontend candidate/resolution UX is implemented in open PR #548 and its next gate is exact-HEAD repository validation.
 
 ### Evidência comprovada
 
@@ -240,6 +240,26 @@ Living System answers:
 PR #544 implemented the canonical migration, verifier, behavioral cases, concurrency harness and PostgreSQL 16/17 workflow, then merged through the protected branch path. Production rollout used the exact hash-proved migration through the approval-gated managed-admin path and completed through `COMMIT`.
 
 No frontend mutation is claimed by the backend rollout.
+
+## Frontend execution checkpoint — PR #548
+
+Frontend work started only after re-resolving live `main@e2902917f247ab92683988e3beed8b5e4badd225`, auditing the current Prospect Intake code/tests, closing GAPS + REUSE + DECISION + SECOND ADVERSARIAL REVIEW, and creating a fresh branch from that exact base.
+
+Implemented scope in PR #548:
+
+- candidate preview through `list_current_clinic_crm_contact_identity_candidates(text,text)`;
+- zero candidates → final resolver with `create_if_clear`;
+- one or multiple candidates → explicit human decision, never auto-reuse;
+- phone/email split candidates → explicit conflict copy, no automatic winner;
+- selected candidate → `explicit_reuse` and a new Lead through the server resolver;
+- distinct Contact → `explicit_distinct` with required reason;
+- final commit authority only through `resolve_current_clinic_crm_prospect_identity(...)`;
+- server rejection after stale preview re-enters candidate review fail-closed;
+- caller Contact/Lead UUIDs remain stable for retry uncertainty;
+- canonical CRM refetch remains the post-command projection authority;
+- no Patient input/output/matching, no backend SQL change, and no fallback from Prospect Intake to the old Contact + Lead browser sequencing.
+
+Frontend tests were extended for zero/one/multiple candidates, split conflict, reuse, distinct reason, stale server rejection, stable retry IDs, Patient boundary and no-writer-fallback boundary. These tests are **implemented but not yet accepted as proof** until the exact current PR HEAD completes repository CI successfully.
 
 ## 6. VALIDATION
 

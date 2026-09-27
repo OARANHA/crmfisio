@@ -23,6 +23,8 @@ describe('commercial CRM board frontend boundary', () => {
     expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_contact'");
     expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_lead'");
     expect(adapter).toContain("supabase.rpc('transition_current_clinic_crm_lead_stage'");
+    expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_contact_identity_candidates'");
+    expect(adapter).toContain("supabase.rpc('resolve_current_clinic_crm_prospect_identity'");
     expect(adapter).not.toContain("supabase.rpc('create_current_clinic_crm_prospect'");
     expect(adapter).not.toMatch(/supabase\s*\.from\s*\(\s*['"](?:contacts|crm_)/);
   });
@@ -30,19 +32,45 @@ describe('commercial CRM board frontend boundary', () => {
   it('keeps role checks as UI affordance while the RPC adapter owns the mutation call', () => {
     expect(board).toContain('isOperationalRole(user?.role)');
     expect(board).toContain('executeCommercialCrmStageTransition');
-    expect(board).toContain('executeCommercialCrmProspectCreation');
-    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_contact'");
-    expect(adapter).toContain("supabase.rpc('create_current_clinic_crm_lead'");
+    expect(board).toContain('listCurrentClinicCrmContactIdentityCandidates');
+    expect(board).toContain('executeCommercialCrmProspectResolution');
+    expect(board).not.toContain('executeCommercialCrmProspectCreation');
+    expect(board).not.toContain('createCurrentClinicCrmContact');
+    expect(board).not.toContain('createCurrentClinicCrmLead');
+    expect(adapter).toContain("supabase.rpc('list_current_clinic_crm_contact_identity_candidates'");
+    expect(adapter).toContain("supabase.rpc('resolve_current_clinic_crm_prospect_identity'");
     expect(adapter).toContain("supabase.rpc('transition_current_clinic_crm_lead_stage'");
   });
 
   it('keeps Prospect Intake inside Contact/Lead authority without Patient creation', () => {
     expect(board).toContain('Novo prospect');
-    expect(board).toContain('Cria Contact + Lead');
+    expect(board).toContain('Nenhuma correspondência é escolhida automaticamente');
+    expect(board).toContain("'create_if_clear'");
+    expect(board).toContain("'explicit_reuse'");
+    expect(board).toContain("'explicit_distinct'");
     expect(board).not.toContain('addPatient');
     expect(board).not.toContain('create_patient');
     expect(adapter).not.toContain('p_patient_id');
     expect(adapter).not.toContain('create_patient');
+  });
+
+  it('keeps identity preview on its dedicated released projection and never uses Lead projection as matching authority', () => {
+    const candidateFunctionStart = adapter.indexOf('export async function listCurrentClinicCrmContactIdentityCandidates');
+    const resolverFunctionStart = adapter.indexOf('export async function resolveCurrentClinicCrmProspectIdentity');
+    const candidateFunction = adapter.slice(candidateFunctionStart, resolverFunctionStart);
+
+    expect(candidateFunctionStart).toBeGreaterThanOrEqual(0);
+    expect(candidateFunction).toContain("supabase.rpc('list_current_clinic_crm_contact_identity_candidates'");
+    expect(candidateFunction).not.toContain('listCurrentClinicCrmLeads');
+    expect(candidateFunction).not.toContain('contactPatientId');
+    expect(candidateFunction).not.toContain('p_patient_id');
+  });
+
+  it('has no Prospect Intake fallback to the old Contact or Lead browser writers', () => {
+    expect(board).toContain('executeCommercialCrmProspectResolution');
+    expect(board).not.toContain('executeCommercialCrmProspectCreation');
+    expect(board).not.toContain('createCurrentClinicCrmContact');
+    expect(board).not.toContain('createCurrentClinicCrmLead');
   });
 
   it('never creates Patient navigation from the Commercial Lead projection', () => {

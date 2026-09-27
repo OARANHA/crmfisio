@@ -36,9 +36,23 @@ Reason: #542 is all-green against a pre-#543 contract but materially diverges fr
 
 Status:
 
-`BACKEND RELEASED / FRONTEND EXECUTION AUTHORIZED / SLICE NOT FINAL`
+`BACKEND RELEASED / FRONTEND IMPLEMENTING IN PR #548 / FRONTEND NOT YET PROVED / SLICE NOT FINAL`
 
-This HANDOFF is the canonical transition point from the completed backend phase into the frontend phase. Revalidate mutable GitHub/runtime state before acting; do not re-open backend authority unless new evidence invalidates the released contract.
+Live frontend execution base was revalidated as:
+
+`main@e2902917f247ab92683988e3beed8b5e4badd225`
+
+Frontend implementation PR:
+
+`#548 — feat: complete MED-CRM-006 Contact Identity Resolution frontend`
+
+Branch:
+
+`feat/med-crm-006-contact-identity-resolution-frontend`
+
+Immediately before this HANDOFF refresh, the branch HEAD was `1c10c4de73cbe0e6f534043b17f2c91b5109cc23`, 0 behind its original base. This HANDOFF update itself moves the PR HEAD again, so **re-resolve the current #548 HEAD and its checks before making any GREEN/PROVED/merge statement**.
+
+The backend authority remains RELEASED and must not be reopened without new contradictory evidence. The live work is now strictly the frontend adapter/UX phase.
 
 Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f7978a9cdd10b`:
 
@@ -238,13 +252,63 @@ Deterministic conclusion:
 
 `BACKEND RELEASED / FRONTEND EXECUTION AUTHORIZED`
 
+## Frontend implementation checkpoint — PR #548
+
+The four frontend gates were closed again against live `main@e2902917f247ab92683988e3beed8b5e4badd225` before execution.
+
+### GAPS proved
+
+- current `Novo prospect` still created stable draft Contact/Lead UUIDs but sequenced the old Contact writer then Lead writer;
+- the now-hardened Contact writer correctly failed closed on ambiguity, but the UI reduced that to a generic retry error;
+- the released candidate projection/resolver had no frontend adapter or human-resolution surface;
+- no newer competing Prospect/identity PR was found; historical #525 remains non-authoritative.
+
+### Reuse gate
+
+Frontend reuses only:
+
+- `list_current_clinic_crm_contact_identity_candidates(text,text)`;
+- `resolve_current_clinic_crm_prospect_identity(...)`;
+- the existing stable draft UUIDs;
+- server-side tenant/writer/`crm.access` authority;
+- resolver-owned Contact/Lead/activity/audit behavior;
+- canonical CRM projection refresh.
+
+No frontend fallback to the old separate Contact/Lead writers is allowed.
+
+### Decision implemented
+
+- zero candidates → `create_if_clear`;
+- one or multiple candidates → explicit human decision;
+- split phone/email candidate sets → explicit conflict message, no automatic winner;
+- candidate selection → `explicit_reuse`;
+- distinct Contact → `explicit_distinct` with non-empty reason;
+- stale commit-time rejection → re-query candidates and remain fail-closed;
+- retry uncertainty → preserve the same draft Contact/Lead UUIDs;
+- no Patient identity input/output/navigation/matching is added.
+
+### Second adversarial review
+
+Deterministic review covered auto-reuse, Patient leak, browser authority, TOCTOU, UUID retry, duplicate Lead, distinct reason, split-signal conflict, stale-error handling, read-only roles, PII logging, zero-candidate regression and Board refresh. No deterministic blocker remained.
+
+Fresh JEV advisory returned `deep_review=0.58`, `proceed_fast=0.35`, `block=0.00`, confidence `0.44`. The deterministic deep review was therefore completed before execution; JEV did not authorize the change.
+
+### Post-execution adversarial correction
+
+A fresh deterministic review after the first UI implementation found a transport-uncertainty edge case: a second preview before exact retry could surface the newly committed self Contact and derail the canonical resolver retry contract. #548 now records the exact pending resolution intent after an uncertain response, freezes the draft and offers `Repetir mesma tentativa`; that retry calls the resolver directly with the same IDs/decision and does not query candidates again. A focused test proves a hypothetical self-candidate remains unread because the second preview is intentionally skipped.
+
+### Validation status
+
+Frontend/unit/boundary tests have been added but **the exact current PR HEAD is not yet declared GREEN or PROVED**. Repository CI, typecheck, lint, build, validate and dependency-audit must all be revalidated on the post-HANDOFF HEAD.
+
 ## Rollout order
 
 1. [x] implement/prove backend authority on a fresh branch from current `main`;
 2. [x] merge only after PostgreSQL 16/17 + repo checks are green;
 3. [x] controlled DB rollout + production-safe verifier/readback;
-4. [ ] implement frontend candidate/resolution UX;
-5. [ ] observe frontend production and reconcile MED-CRM-006 final release state.
+4. [x] implement frontend candidate/resolution UX in PR #548;
+5. [ ] validate exact #548 HEAD and merge only if GREEN;
+6. [ ] observe frontend production and reconcile MED-CRM-006 final release state.
 
 Between backend DB rollout and frontend UX rollout, stale frontend behavior is intentionally fail-closed:
 
@@ -253,12 +317,13 @@ Between backend DB rollout and frontend UX rollout, stale frontend behavior is i
 
 ## Next exact step
 
-1. re-resolve current `origin/main` and require it to include `main@1107dd95b5f00af9e6a0c518db6f6e21489abbe2` or a later descendant before frontend work;
-2. audit the released Prospect Intake UI/client path again against the now-RELEASED backend RPCs;
-3. preserve `Contact != Lead != Patient` and keep identity decision authority server-side;
-4. implement candidate preview + explicit `reuse` / `distinct` UX as a frontend adapter over the released RPCs, without new browser-side identity authority;
-5. validate frontend tests, repository CI and regression boundaries;
-6. merge only from an exact green HEAD;
-7. observe the frontend production deployment and run the final MED-CRM-006 release reconciliation.
+1. re-resolve live `origin/main` and PR #548 current HEAD after this HANDOFF refresh;
+2. prove #548 remains 0 behind, mergeable and scoped to frontend/tests/docs only;
+3. inspect every applicable workflow/check on that exact HEAD;
+4. if any test/typecheck/lint/build/validate/dependency-audit check fails, fix only the bounded frontend implementation and rerun;
+5. only after the exact #548 HEAD is fully GREEN, record frontend PROVED evidence and merge through the protected path;
+6. re-resolve the resulting `main`;
+7. observe the actual frontend deployment, verify the live CRM chunk exposes the candidate/resolver UX without Patient creation or old Prospect writer fallback, and smoke the relevant routes;
+8. only after production observation, reconcile whether MED-CRM-006 as a whole can be marked RELEASED.
 
 Do not mark the whole slice RELEASED until the frontend phase is observed in production.

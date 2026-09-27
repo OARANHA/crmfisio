@@ -57,13 +57,44 @@ export interface CommercialCrmProspectInput {
   pipelineId: string | null;
 }
 
+export type CommercialCrmIdentityResolutionMode =
+  | 'create_if_clear'
+  | 'explicit_reuse'
+  | 'explicit_distinct';
+
+export interface CommercialCrmIdentityCandidate {
+  contactId: string;
+  displayName: string;
+  phone: string | null;
+  email: string | null;
+  matchReasons: string[];
+  openLeadCount: number;
+}
+
+export interface CommercialCrmProspectResolutionInput extends CommercialCrmProspectInput {
+  resolutionMode: CommercialCrmIdentityResolutionMode;
+  selectedContactId?: string | null;
+  distinctReason?: string | null;
+}
+
 export interface CommercialCrmProspectResult {
   contactId: string;
   leadId: string;
 }
 
+export interface CommercialCrmProspectResolutionResult extends CommercialCrmProspectResult {
+  resolutionMode: CommercialCrmIdentityResolutionMode;
+}
+
 export interface CommercialCrmProspectOutcome {
   command: CommercialCrmProspectResult;
+  snapshot: CommercialCrmSnapshot | null;
+  projection: 'fresh' | 'stale';
+  projectionWarning: string | null;
+}
+
+export interface CommercialCrmProspectResolutionOutcome {
+  command: CommercialCrmProspectResolutionResult;
   snapshot: CommercialCrmSnapshot | null;
   projection: 'fresh' | 'stale';
   projectionWarning: string | null;
@@ -127,6 +158,21 @@ type LeadRow = {
   stage_name: string;
   stage_kind: CommercialCrmStageKind;
   stage_position: number;
+};
+
+type IdentityCandidateRow = {
+  contact_id: string;
+  display_name: string;
+  phone: string | null;
+  email: string | null;
+  match_reasons: string[] | null;
+  open_lead_count: number | string | null;
+};
+
+type ProspectResolutionRow = {
+  contact_id: string;
+  lead_id: string;
+  resolution_mode: CommercialCrmIdentityResolutionMode;
 };
 
 type TransitionRow = {
@@ -206,6 +252,54 @@ export async function loadCurrentClinicCommercialCrm(): Promise<CommercialCrmSna
   return { pipelines, stages, leads };
 }
 
+export async function listCurrentClinicCrmContactIdentityCandidates(
+  input: Pick<CommercialCrmProspectInput, 'phone' | 'email'>,
+): Promise<CommercialCrmIdentityCandidate[]> {
+  const { data, error } = await supabase.rpc('list_current_clinic_crm_contact_identity_candidates', {
+    p_phone: input.phone?.trim() || null,
+    p_email: input.email?.trim() || null,
+  });
+  if (error) throw error;
+
+  return rows<IdentityCandidateRow>(data).map((row) => ({
+    contactId: row.contact_id,
+    displayName: row.display_name,
+    phone: row.phone,
+    email: row.email,
+    matchReasons: Array.isArray(row.match_reasons)
+      ? row.match_reasons.filter((reason): reason is string => typeof reason === 'string')
+      : [],
+    openLeadCount: Number(row.open_lead_count ?? 0),
+  }));
+}
+
+export async function resolveCurrentClinicCrmProspectIdentity(
+  input: CommercialCrmProspectResolutionInput,
+): Promise<CommercialCrmProspectResolutionResult> {
+  const { data, error } = await supabase.rpc('resolve_current_clinic_crm_prospect_identity', {
+    p_contact_id: input.contactId,
+    p_lead_id: input.leadId,
+    p_name: input.name.trim(),
+    p_title: input.title.trim(),
+    p_resolution_mode: input.resolutionMode,
+    p_phone: input.phone?.trim() || null,
+    p_email: input.email?.trim() || null,
+    p_pipeline_id: input.pipelineId,
+    p_selected_contact_id: input.selectedContactId ?? null,
+    p_distinct_reason: input.distinctReason?.trim() || null,
+  });
+  if (error) throw error;
+
+  const row = rows<ProspectResolutionRow>(data)[0];
+  if (!row) throw new Error('crm_prospect_resolution_empty_result');
+
+  return {
+    contactId: row.contact_id,
+    leadId: row.lead_id,
+    resolutionMode: row.resolution_mode,
+  };
+}
+
 export async function createCurrentClinicCrmContact(
   input: Pick<CommercialCrmProspectInput, 'contactId' | 'name' | 'phone' | 'email'>,
 ): Promise<string> {
@@ -256,6 +350,42 @@ export async function transitionCurrentClinicCrmLeadStage(
     stageKind: row.stage_kind,
     closedAt: row.closed_at,
   };
+}
+
+interface CommercialCrmProspectResolutionDependencies {
+  resolve?: typeof resolveCurrentClinicCrmProspectIdentity;
+  refresh?: typeof loadCurrentClinicCommercialCrm;
+}
+
+export async function executeCommercialCrmProspectResolution(
+  input: CommercialCrmProspectResolutionInput,
+  dependencies: CommercialCrmProspectResolutionDependencies = {},
+): Promise<CommercialCrmProspectResolutionOutcome> {
+  const resolve = dependencies.resolve ?? resolveCurrentClinicCrmProspectIdentity;
+  const refresh = dependencies.refresh ?? loadCurrentClinicCommercialCrm;
+
+  // The RELEASED resolver is the final identity authority. It rechecks
+  // candidates under server-side transaction locks before Contact/Lead outcome.
+  const command = await resolve(input);
+
+  try {
+    const snapshot = await refresh();
+    return {
+      command,
+      snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    };
+  } catch {
+    // Do not log the RPC payload or Contact PII from this identity path.
+    console.error('[MedicsPro] Falha ao atualizar projeção do CRM após resolução de prospect persistida.');
+    return {
+      command,
+      snapshot: null,
+      projection: 'stale',
+      projectionWarning: 'Prospect resolvido, mas o quadro não pôde ser recarregado. Atualize novamente para ver o estado mais recente.',
+    };
+  }
 }
 
 interface CommercialCrmProspectDependencies {
