@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** IMPLEMENTING — executable scope proven; latest PR-head checks pending
+**Status:** PROVED — latest executable head proven; merge decision pending; not RELEASED
 **Capability:** canonical authenticated Commercial Core mutations
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **Branch:** `feat/med-crm-002-commercial-command-boundary`
@@ -139,34 +139,50 @@ Low confidence is preserved as a reason for stronger mechanical validation, not 
 
 ## Validation completed
 
-The repository SQL harness proved:
+Latest executable proof head: `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`.
 
-- migration replay/idempotency;
-- helper/function ACL and SECURITY DEFINER contract;
-- active profile + role + `crm.access`;
-- owner/admin/recep success;
-- professional/financeiro denial;
-- tenant isolation/cross-tenant negative cases;
-- Contact retry success + replay conflict;
-- Lead retry success + replay conflict;
-- initial terminal stage denial;
-- stage transition same-pipeline only;
-- lost/won/open terminal semantics;
-- stage retry no duplicate activity/audit;
-- raw authenticated table DML remains denied;
-- no Patient row or Patient Journey mutation;
-- audit details exclude supplied name/phone/email;
-- existing Commercial Core structural verifier still passes.
-
-Proof completed:
+The dedicated GitHub Actions workflow `Commercial CRM Command Boundary`, run `36286051483`, proved on that executable state:
 
 - PostgreSQL 16.15 — GREEN;
 - PostgreSQL 17.11 — GREEN;
-- MED-CRM-001 foundation verifier still GREEN after MED-CRM-002 replay;
+- migration replay/idempotency;
+- MED-CRM-001 foundation verifier — GREEN;
 - MED-CRM-002 verifier — GREEN;
-- 12 behavior blocks — GREEN;
-- implementation head `18ba481866a3af8412cfc200621290d3358a2b5e`: 8/8 repository workflows SUCCESS, 0 behind, mergeable, no reviews/threads;
-- independent adversarial completion review after latest-head reconciliation: `verify_more` 0.72, confidence 0.58, solely because documentation-only head checks were still pending.
+- 13 behavior blocks — GREEN, including denial of replay/new Lead for an anonymized Contact;
+- final behavior marker `COMMERCIAL CRM COMMAND BOUNDARY BEHAVIOR CASES PASSED`.
+
+Ruleset-required checks on the same executable head:
+
+- `validate` — SUCCESS;
+- `dependency-audit` — SUCCESS.
+
+The failing dedicated runs before this proof were caused by a test-only PL/pgSQL delimiter defect introduced with the new anonymized-Contact case: `DO $` / `END $;` instead of `DO $$` / `END $$;`. The correction changed only those two delimiter lines. No migration, verifier, command, RLS/RBAC, entitlement, role, Patient or clinical boundary changed.
+
+Current GitHub readback at proof time:
+
+- base: `main@652ea7b3aea4cd03a09944b780ef697168016bc3`;
+- compare: 36 ahead / 0 behind;
+- mergeable: true;
+- reviews: 0;
+- review threads: 0;
+- main ruleset: squash only, required `validate` + `dependency-audit`, zero approving reviews required.
+
+Structural scope readback on the command migration:
+
+- 0 `CREATE TABLE`;
+- 0 `ALTER TABLE`;
+- no Patient/Encounter/Patient Journey mutation;
+- no raw Commercial Core table grant;
+- exactly four narrow functions (one internal guard + three commands).
+
+Independent JEV completion review after current-head proof:
+
+- `complete`: 0.89;
+- `verify_more`: 0.08;
+- `incomplete`: 0.03;
+- confidence: 0.84.
+
+This advisory review does not replace the deterministic gates above.
 
 Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
@@ -174,9 +190,10 @@ Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
 ## Next exact step
 
-1. revalidate the latest documentation head of PR #524: base, diff, checks, reviews and mergeability;
-2. make the merge decision separately from the proof decision;
-3. if merged, reconcile current `main` and keep status below RELEASED until production rollout is actually observed;
-4. only after that, return to the post-foundation capability map for the next slice.
+1. revalidate the post-proof documentation head of PR #524, especially `validate`, `dependency-audit`, dedicated PostgreSQL 16/17 proof, behind count, mergeability and reviews/threads;
+2. make the merge decision separately from the PROVED decision;
+3. if merged, confirm the squash integration in current `main`;
+4. keep status below RELEASED until production rollout is actually observed;
+5. only after correct integration, rebuild the post-foundation capability map against the new main before selecting another micro-slice.
 
 Do not append board/UI, Inbox, follow-up, attribution, conversion or AI to PR #524.

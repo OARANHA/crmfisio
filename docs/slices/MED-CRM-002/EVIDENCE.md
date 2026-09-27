@@ -1,12 +1,14 @@
 # MED-CRM-002 — Evidence
 
-**Slice status target:** IMPLEMENTING → PROVED after current-head checks
-**Implementation-proven head:** `18ba481866a3af8412cfc200621290d3358a2b5e`
+**Slice status:** PROVED
+**Implementation-proven head:** `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`
 **Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **PR:** #524
 **Date:** 2026-09-26
 
 > This file records reproducible proof for the executable MED-CRM-002 scope. Later documentation-only commits do not silently become implementation proof; their GitHub checks must be revalidated separately.
+>
+> The older `18ba481...` proof remains historical only. The current proof below includes the later `anonymized_at` hardening and the 13-case behavior suite.
 
 ## Scope proved
 
@@ -77,20 +79,21 @@ The PostgreSQL processes were stopped by the harness trap. No production databas
 
 ## Behavior proof
 
-The 12 behavior blocks prove:
+The 13 behavior blocks prove:
 
 1. owner creates Contact; exact retry does not duplicate row/audit;
 2. divergent Contact replay fails explicitly;
 3. admin/reception are writers; professional/financeiro are denied;
 4. disabled `crm.access` fails closed;
-5. Lead creation starts in an open stage and exact retry does not duplicate activity/audit;
-6. divergent Lead replay, cross-tenant Contact and terminal initial stage fail;
-7. lost transition is atomic and exact retry does not duplicate side effects;
-8. conflicting same-stage terminal replay is rejected;
-9. won/open transitions derive and clear terminal fields correctly;
-10. stage transition cannot cross pipeline;
-11. authenticated raw Commercial Core DML remains denied;
-12. Patient rows, `patients.funil_stage` and Patient Journey events remain untouched.
+5. anonymized Contact cannot be replayed as active and cannot receive a new Lead;
+6. Lead creation starts in an open stage and exact retry does not duplicate activity/audit;
+7. divergent Lead replay, cross-tenant Contact and terminal initial stage fail;
+8. lost transition is atomic and exact retry does not duplicate side effects;
+9. conflicting same-stage terminal replay is rejected;
+10. won/open transitions derive and clear terminal fields correctly;
+11. stage transition cannot cross pipeline;
+12. authenticated raw Commercial Core DML remains denied;
+13. Patient rows, `patients.funil_stage` and Patient Journey events remain untouched.
 
 ## Security/authority verifier
 
@@ -111,52 +114,56 @@ The MED-CRM-001 verifier also passes after MED-CRM-002 is applied twice.
 
 ## Defects found by the proof itself
 
-The proof process found two test-only defects before green:
+The proof process found test/verifier defects without broadening domain authority:
 
 1. the first verifier wording rejected a defensive read of `existing.patient_id`; the check was narrowed to reject a patient argument/mutation instead of rejecting safe defensive inspection;
-2. the first behavior case queried closed raw CRM tables while acting as `authenticated`; the test was corrected to use the canonical authenticated read projections instead of weakening table privileges.
+2. the first behavior case queried closed raw CRM tables while acting as `authenticated`; the test was corrected to use the canonical authenticated read projections instead of weakening table privileges;
+3. after the anonymized-Contact hardening, commit `0161da95520383aa79f9cac7ed571814a879be79` introduced malformed PL/pgSQL delimiters `DO $` / `END $;` in behavior case 5. Dedicated PostgreSQL 16/17 CI failed at the same parser line. The fix changed only those two lines to `DO $$` / `END $$;`.
 
-Neither fix broadened authorization or changed the command implementation.
+No item above weakened authorization or changed the intended command contract.
 
-## GitHub proof on implementation head
+## GitHub proof on latest executable head
 
-For `18ba481866a3af8412cfc200621290d3358a2b5e`:
+For `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`:
 
 ```text
 base: main@652ea7b3aea4cd03a09944b780ef697168016bc3
-ahead: 14
+ahead: 36
 behind: 0
 mergeable: true
-repository workflows: 8/8 SUCCESS
 reviews: 0
 review threads: 0
+validate: SUCCESS
+dependency-audit: SUCCESS
+Commercial CRM Command Boundary run: 36286051483
+PostgreSQL 16.15: SUCCESS
+PostgreSQL 17.11: SUCCESS
 ```
 
-The eight successful workflows were:
+Both PostgreSQL jobs logged:
 
-- Clinical Foundation Reconciliation;
-- Nexus C-06 PostgreSQL Authorization;
-- Nexus C-04 PostgreSQL Clinical Record;
-- Nexus C-02 PostgreSQL Write Contract;
-- Nexus C-01 PostgreSQL RLS;
-- Clinical workflow CI;
-- Clinical Authorization Reconciliation;
-- Nexus C-03 PostgreSQL Clinical Lifecycle.
+```text
+COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED
+COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
+5) anonymized Contact cannot be replayed or receive a new Lead
+COMMERCIAL CRM COMMAND BOUNDARY BEHAVIOR CASES PASSED
+commercial CRM command boundary: PostgreSQL verifier and behavior cases passed
+```
+
+The active `Protect main` ruleset requires squash merge and the `validate` + `dependency-audit` status checks; it requires zero approving reviews.
 
 ## Final adversarial completion review
 
-Independent JEV completion review after both PostgreSQL versions and after discovering a newer documentation-only PR head:
+Independent JEV completion review after the latest executable proof:
 
 ```text
-verify_more: 0.72
-complete: 0.19
-incomplete: 0.09
-confidence: 0.58
+complete: 0.89
+verify_more: 0.08
+incomplete: 0.03
+confidence: 0.84
 ```
 
-Reason to preserve: executable proof is strong, but the current PR head `b3b55d7e07e352a29c883b58ac7dfe0f09149cb1` had repository workflows still queued/in-progress. The slice must not be promoted/merged based on the older implementation-head checks alone.
-
-This is advisory evidence only; deterministic repository/database proof remains authoritative.
+The deterministic evidence above remains authoritative. This review supports closing VALIDATION and marking MED-CRM-002 PROVED; it does not decide merge or rollout.
 
 ## Explicit non-proof
 
