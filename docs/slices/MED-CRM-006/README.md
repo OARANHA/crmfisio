@@ -1,17 +1,18 @@
 # MED-CRM-006 — Contact Identity Resolution V1
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTING  
 **Owner domain:** Commercial CRM  
 **Design PR:** #541 — MERGED at `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`  
-**Plan-review branch:** `docs/med-crm-006-implementation-plan-review`  
+**Plan-review PR:** #543 — MERGED at `main@1a0e96392570d69090e87895d4072f0eea640d7a`  
+**Implementation branch:** `feat/med-crm-006-contact-identity-resolution-canonical`  
 **Created:** 2026-09-27  
-**Last reconciled:** 2026-09-27 against `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`
+**Last reconciled:** 2026-09-27 against `main@1a0e96392570d69090e87895d4072f0eea640d7a`
 
 ## Objective
 
 Add a bounded Contact Identity Resolution contract for the Commercial CRM so a new prospect can explicitly reuse an existing Contact or deliberately create a distinct Contact without treating phone/email as unique identity, without creating Patient authority, and without allowing client-only lookup to become the final authority.
 
-This slice is design-only at this checkpoint. Product/runtime execution has not started.
+Backend implementation has started on the canonical branch from the post-#543 `main`. Validation is pending; no production rollout or frontend integration has started.
 
 ## Non-goals
 
@@ -28,13 +29,13 @@ This slice is design-only at this checkpoint. Product/runtime execution has not 
 
 ## 0. ESTADO ATUAL COMPROVADO
 
-- `origin/main`: `7c5673d43262ef3a0681d3a916d554bcc9627f71`;
-- latest integrated CRM reconciliation: PR #540 merged;
-- no successor CRM slice or `MED-CRM-006` branch existed before this slice;
+- `origin/main`: `1a0e96392570d69090e87895d4072f0eea640d7a` after plan-review PR #543 merged;
+- canonical implementation branch: `feat/med-crm-006-contact-identity-resolution-canonical`, created directly from that `main`;
+- PR #542 is a green prototype built from the pre-#543 contract and is not merge authority because it diverges on RPC width, lock-key derivation/order and phone normalization;
 - PR #525 remains historical/open/non-mergeable and is not authority;
 - MED-CRM-001..005 are RELEASED;
 - MED-CRM-005 keeps the bounded path `Novo prospect → Contact → Lead`;
-- runtime/VPS is not required for this design checkpoint.
+- runtime/VPS is not part of the current implementation-validation checkpoint.
 
 ### Evidência comprovada
 
