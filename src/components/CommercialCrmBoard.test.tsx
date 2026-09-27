@@ -380,9 +380,13 @@ describe('CommercialCrmBoard', () => {
     expect(testState.executeResolution).toHaveBeenCalledTimes(1);
   });
 
-  it('reuses the same Contact and Lead UUIDs when prospect resolution is retried after transport uncertainty', async () => {
+  it('retries the same create_if_clear intent with the same UUIDs without re-preview after transport uncertainty', async () => {
     testState.role = 'recep';
-    testState.listCandidates.mockResolvedValue([]);
+    testState.listCandidates
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        identityCandidate('contact-new', 'Self candidate after hidden commit', ['phone_exact']),
+      ]);
     testState.executeResolution
       .mockRejectedValueOnce(new Error('uncertain response'))
       .mockImplementationOnce(async (input) => ({
@@ -400,21 +404,38 @@ describe('CommercialCrmBoard', () => {
     fillProspectForm(renderer);
     await verifyProspect(renderer);
 
+    expect(testState.listCandidates).toHaveBeenCalledTimes(1);
     expect(testState.executeResolution).toHaveBeenCalledTimes(1);
     expect(testState.executeResolution.mock.calls[0]?.[0]).toMatchObject({
       contactId: 'contact-new',
       leadId: 'lead-new',
       resolutionMode: 'create_if_clear',
+      selectedContactId: null,
+      distinctReason: null,
     });
-    expect(JSON.stringify(renderer.toJSON())).toContain('mesmos IDs do rascunho');
 
-    await verifyProspect(renderer);
+    const renderedAfterUncertainty = JSON.stringify(renderer.toJSON());
+    expect(renderedAfterUncertainty).toContain('Repetir mesma tentativa');
+    expect(renderedAfterUncertainty).toContain('sem refazer o preview');
 
+    const retryButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Repetir mesma tentativa',
+    );
+    expect(retryButton).toBeTruthy();
+
+    await act(async () => {
+      retryButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.listCandidates).toHaveBeenCalledTimes(1);
     expect(testState.executeResolution).toHaveBeenCalledTimes(2);
     expect(testState.executeResolution.mock.calls[1]?.[0]).toMatchObject({
       contactId: 'contact-new',
       leadId: 'lead-new',
       resolutionMode: 'create_if_clear',
+      selectedContactId: null,
+      distinctReason: null,
     });
   });
 
