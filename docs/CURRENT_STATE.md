@@ -41,6 +41,16 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548
 
+### MED-CRM-007 — Commercial Lead Activity Timeline V1
+
+**Status:** **DESIGNED / NOT IMPLEMENTED.** Fresh reconstruction against `main@7e04f9d4c3bc84e95d90b7ad1ef2a15d02632120` selected a bounded successor slice after MED-CRM-006. The existing RELEASED Commercial Core already owns `crm_lead_activities` and authenticated `list_current_clinic_crm_lead_activities(uuid)`; current Core tests/verifiers prove current-clinic read isolation and raw browser DML remains closed.
+
+The proved gap is frontend integration: `src/lib/commercialCrm.ts` and `CommercialCrmBoard` do not consume that activity RPC, and the current production CRM chunk `/assets/CrmOperational-6R-i_o-S.js` does not contain `list_current_clinic_crm_lead_activities`. MED-CRM-007 therefore reuses the existing read authority instead of creating a second timeline, writer or audit path.
+
+Design boundary: frontend-only while the existing RPC remains sufficient; on-demand per-Lead timeline; explicit allowlist/presenter for known commercial events; no raw `metadata` dump, internal UUIDs, candidate IDs, Contact PII reconstruction, Patient links/data or clinical history. owner/admin/recep writer authority and professional/financeiro read-only behavior remain unchanged. No SQL/schema/RPC/RLS/role/entitlement/tenant/audit mutation is authorized by this design checkpoint.
+
+**Next exact gate:** before any implementation, re-resolve current `origin/main` and active CRM PRs, then confirm this design remains valid. Do not advance beyond `DESIGNED` without implementation and proof evidence.
+
 ### MED-CRM-006 — Contact Identity Resolution V1
 
 **Status:** **RELEASED.** Backend PR #544 remains the canonical server authority and is verified in production. Frontend PR #548 final HEAD `d2c6356883a767f302ac98af834a9319f678529e` completed 20/20 workflow runs successfully and was protected-squash-merged as `main@910dff50cf113a350e21192bcf5cd2209db1ab71`.
