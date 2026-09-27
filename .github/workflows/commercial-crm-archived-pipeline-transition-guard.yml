@@ -1,0 +1,52 @@
+name: Commercial CRM Archived Pipeline Transition Guard
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260927_updated_at_helper_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql'
+      - 'supabase-migrations/20260926_commercial_crm_core_foundation.sql'
+      - 'supabase-migrations/20260926_commercial_crm_command_boundary.sql'
+      - 'supabase-migrations/20260927_commercial_crm_archived_pipeline_transition_guard.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql'
+      - 'supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_ARCHIVED_PIPELINE_TRANSITION_GUARD.sql'
+      - 'tests/sql/commercial_crm_core_foundation_fixture.sql'
+      - 'tests/sql/commercial_crm_command_boundary_cases.sql'
+      - 'tests/sql/commercial_crm_archived_pipeline_transition_guard_cases.sql'
+      - 'scripts/test-commercial-crm-archived-pipeline-transition-guard.sh'
+      - '.github/workflows/commercial-crm-archived-pipeline-transition-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres:
+    name: PostgreSQL ${{ matrix.postgresql }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgresql: ['16', '17']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgresql }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: commercial_crm_archived_pipeline_guard_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres commercial_crm_archived_pipeline_guard_test
+      - name: Run archived-pipeline transition guard proof
+        run: bash scripts/test-commercial-crm-archived-pipeline-transition-guard.sh

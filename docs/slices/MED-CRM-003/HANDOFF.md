@@ -6,7 +6,7 @@ Always resolve current `origin/main`, open PRs and runtime again before acting. 
 
 ```text
 canonical repository = OARANHA/crmfisio
-checkpoint main = 72a60262d09a14ce8382f3da9db12afcd15a8464
+checkpoint main after #533 merge = 2bcadc00a730eb9a1c1c063a688ccebf8982ce35
 
 MED-CRM-001 = PROVED + MERGED + RELEASED
 MED-CRM-002 = PROVED + MERGED + RELEASED
@@ -47,6 +47,23 @@ C) prior contract missing          YES
 ```
 
 See [EVIDENCE.md](EVIDENCE.md) and [DECISION.md](DECISION.md).
+
+## Active prerequisite — MED-CRM-004
+
+PR #533 was squash-merged and current continuation moved to a separate prerequisite slice rather than expanding the Board.
+
+```text
+MED-CRM-004 = Archived Pipeline Transition Guard
+base = main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35
+branch = feat/med-crm-004-archived-pipeline-transition-guard
+status = PROVED / PR #534 merge + release pending
+```
+
+Fresh GAPS / REUSE / DECISION / SECOND ADVERSARIAL REVIEW closed for the prerequisite. Its bounded implementation strengthens the existing canonical transition RPC with an additive migration, preserves exact side-effect-free retry idempotency, and requires active current pipeline state under a row lock before any actual stage change.
+
+MED-CRM-003 remains blocked. MED-CRM-004 is now mechanically PROVED on PR #534, but the Board must still wait for protected merge plus production rollout/readback so MED-CRM-004 can reach RELEASED.
+
+See `../MED-CRM-004/README.md`, `DECISION.md`, `EVIDENCE.md` and `HANDOFF.md` in that slice.
 
 ## Stale historical PR
 
