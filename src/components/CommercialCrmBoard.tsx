@@ -57,7 +57,7 @@ const IDENTITY_REASON_LABEL: Record<string, string> = {
 };
 
 function identityReasonLabel(reason: string): string {
-  return IDENTITY_REASON_LABEL[reason] ?? reason.replaceAll('_', ' ');
+  return IDENTITY_REASON_LABEL[reason] ?? reason.replace(/_/g, ' ');
 }
 
 function hasSplitSignalConflict(candidates: CommercialCrmIdentityCandidate[]): boolean {
