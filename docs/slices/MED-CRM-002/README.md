@@ -186,7 +186,7 @@ This advisory review does not replace the deterministic gates above.
 
 Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
-`PROVED` does not mean `MERGED` or `RELEASED`.
+`PROVED + MERGED` does not mean `RELEASED`.
 
 ## Integration proof
 
