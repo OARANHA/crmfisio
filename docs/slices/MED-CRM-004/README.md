@@ -1,9 +1,9 @@
 # MED-CRM-004 — Archived Pipeline Transition Guard
 
-**Status:** PROVED
+**Status:** RELEASED
 **Base audited:** `main@2bcadc00a730eb9a1c1c063a688ccebf8982ce35`
 **Depends on:** MED-CRM-001 + MED-CRM-002 RELEASED
-**Unblocks:** re-analysis of MED-CRM-003 only after this slice is RELEASED
+**Unblocks:** fresh re-analysis of MED-CRM-003; execution still requires its own four gates
 
 ## Purpose
 
@@ -48,7 +48,7 @@ The slice cannot become PROVED until mechanical validation shows:
 
 ### Validation checkpoint
 
-On PR #534 head `2e783c08363e6922804bf6e96d377125778c0499`:
+On final PR #534 head `8b0c4c331c78f09e472f83567c59bde2a258790e`:
 
 - dedicated PostgreSQL guard workflow: PostgreSQL 16 SUCCESS + PostgreSQL 17 SUCCESS;
 - all 21 GitHub workflow runs for that exact head: SUCCESS;
@@ -58,4 +58,12 @@ On PR #534 head `2e783c08363e6922804bf6e96d377125778c0499`:
 - `npm run build`: PASS;
 - `bash -n` and `git diff --check`: PASS.
 
-Because this changes a production command contract, RELEASED additionally requires controlled production rollout and readback. Merge alone is not release proof.
+PR #534 was squash-merged as `main@bc667edced77e6f96f3ba1584c48c83dbfcb05e2`.
+
+Production rollout was then performed through the governed managed-admin path. Pre-rollout pinned readback failed on the missing archived-pipeline guard, proving the production RPC had not yet received this slice. The canonical migration artifact was hash-verified before application, applied transactionally with stop-on-error, and the separate pinned read-only verifier then returned:
+
+```text
+COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED
+```
+
+Therefore MED-CRM-004 is RELEASED for this bounded server-side contract. This does not authorize MED-CRM-003 execution; that slice must be reconstructed from current main and rerun GAPS → CAPABILITY AUTHORITY / REUSE → DECISION → SECOND ADVERSARIAL REVIEW.
