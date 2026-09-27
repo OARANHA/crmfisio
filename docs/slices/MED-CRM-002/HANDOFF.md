@@ -21,7 +21,7 @@ Then resolve current `origin/main`, active PR/head/checks/diff and reconstruct E
 ## Current slice
 
 - ID: MED-CRM-002
-- status: PROVED
+- status: IMPLEMENTING (implementation proven; current PR head checks pending)
 - base at design: `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 - branch: `feat/med-crm-002-commercial-command-boundary`
 - objective: canonical Contact/Lead/stage mutation boundary
@@ -39,7 +39,7 @@ Then resolve current `origin/main`, active PR/head/checks/diff and reconstruct E
 - DECISION: three commands only.
 - SECOND ADVERSARIAL REVIEW: initial deep_review; refined guard returned allow with low confidence, recorded in README.
 - EXECUTION: exactly three authenticated Commercial Core commands + internal mutator guard; no new table/engine/UI/provider/Patient mutation.
-- VALIDATION: migration replay, old foundation verifier, new verifier and 12 behavior blocks GREEN on PostgreSQL 16.15 and 17.11; final JEV completion = complete 0.92 / confidence 0.87.
+- VALIDATION: migration replay, old foundation verifier, new verifier and 12 behavior blocks GREEN on PostgreSQL 16.15 and 17.11; independent final JEV review currently says verify_more 0.72 because latest documentation-head workflows still need completion.
 - DOCUMENTATION: README/DECISION/EVIDENCE/HANDOFF + ledger/current-state reconciliation.
 
 ## Exact next step
