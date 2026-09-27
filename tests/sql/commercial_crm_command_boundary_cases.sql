@@ -148,7 +148,47 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '5) owner creates Lead in default open stage; retry does not duplicate side effects' AS check;
+SELECT '5) anonymized Contact cannot be replayed or receive a new Lead' AS check;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
+SELECT public.create_current_clinic_crm_contact(
+  '71000000-0000-0000-0000-000000000016',
+  'Contato Anonimizado'
+);
+RESET ROLE;
+
+UPDATE public.contacts
+SET anonymized_at = now()
+WHERE id='71000000-0000-0000-0000-000000000016';
+
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
+DO $
+BEGIN
+  BEGIN
+    PERFORM public.create_current_clinic_crm_contact(
+      '71000000-0000-0000-0000-000000000016',
+      'Contato Anonimizado'
+    );
+    RAISE EXCEPTION 'anonymized_contact_replay_unexpectedly_allowed';
+  EXCEPTION
+    WHEN unique_violation THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.create_current_clinic_crm_lead(
+      '81000000-0000-0000-0000-000000000016',
+      '71000000-0000-0000-0000-000000000016',
+      'Lead indevido de contato anonimizado'
+    );
+    RAISE EXCEPTION 'anonymized_contact_lead_unexpectedly_allowed';
+  EXCEPTION
+    WHEN no_data_found THEN NULL;
+  END;
+END $;
+RESET ROLE;
+
+SELECT '7) owner creates Lead in default open stage; retry does not duplicate side effects' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 
@@ -199,7 +239,7 @@ BEGIN
   END IF;
 END $$;
 
-SELECT '6) Lead replay conflict, cross-tenant Contact and terminal initial stage fail' AS check;
+SELECT '7) Lead replay conflict, cross-tenant Contact and terminal initial stage fail' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 
@@ -259,7 +299,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '7) lost transition is atomic and exact retry is side-effect idempotent' AS check;
+SELECT '8) lost transition is atomic and exact retry is side-effect idempotent' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 
@@ -314,7 +354,7 @@ BEGIN
   END IF;
 END $$;
 
-SELECT '8) conflicting same-stage retry is rejected' AS check;
+SELECT '9) conflicting same-stage retry is rejected' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 DO $$
@@ -339,7 +379,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '9) won then open transitions derive and clear terminal fields' AS check;
+SELECT '10) won then open transitions derive and clear terminal fields' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 DO $$
@@ -391,7 +431,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '10) transition cannot cross pipeline' AS check;
+SELECT '11) transition cannot cross pipeline' AS check;
 INSERT INTO public.crm_pipelines (
   id, clinic_id, name, is_default
 ) VALUES (
@@ -428,7 +468,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '11) authenticated browser still cannot mutate raw Commercial Core tables' AS check;
+SELECT '12) authenticated browser still cannot mutate raw Commercial Core tables' AS check;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 DO $$
@@ -452,7 +492,7 @@ BEGIN
 END $$;
 RESET ROLE;
 
-SELECT '12) Patient and Patient Journey remain untouched' AS check;
+SELECT '13) Patient and Patient Journey remain untouched' AS check;
 DO $$
 BEGIN
   IF (SELECT count(*) FROM public.patients) <> 2 THEN
