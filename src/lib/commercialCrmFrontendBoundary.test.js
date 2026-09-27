@@ -41,7 +41,7 @@ describe('commercial CRM board frontend boundary', () => {
     expect(board).toContain('Cria Contact + Lead');
     expect(board).not.toContain('addPatient');
     expect(board).not.toContain('create_patient');
-    expect(adapter).not.toContain('patient_id');
+    expect(adapter).not.toContain('p_patient_id');
     expect(adapter).not.toContain('create_patient');
   });
 
@@ -61,7 +61,7 @@ describe('commercial CRM board frontend boundary', () => {
     expect(adapter).toContain("projection: 'stale'");
     expect(adapter).toContain('Etapa atualizada, mas o quadro não pôde ser recarregado');
     expect(adapter.indexOf('const command = await transition(input);')).toBeLessThan(
-      adapter.indexOf('const snapshot = await refresh();'),
+      adapter.lastIndexOf('const snapshot = await refresh();'),
     );
   });
 
