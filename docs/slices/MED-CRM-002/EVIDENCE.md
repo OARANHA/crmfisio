@@ -1,9 +1,9 @@
 # MED-CRM-002 — Evidence
 
-**Slice status target:** PROVED  
-**Implementation-proven head:** `18ba481866a3af8412cfc200621290d3358a2b5e`  
-**Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`  
-**PR:** #524  
+**Slice status target:** PROVED
+**Implementation-proven head:** `18ba481866a3af8412cfc200621290d3358a2b5e`
+**Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
+**PR:** #524
 **Date:** 2026-09-26
 
 > This file records reproducible proof for the executable MED-CRM-002 scope. Later documentation-only commits do not silently become implementation proof; their GitHub checks must be revalidated separately.
