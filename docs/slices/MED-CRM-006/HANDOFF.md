@@ -16,9 +16,9 @@ Implementation-plan review:
 
 `#543 — MERGED`
 
-Canonical backend implementation branch:
+Canonical backend implementation branch / PR:
 
-`feat/med-crm-006-contact-identity-resolution-canonical`
+`feat/med-crm-006-contact-identity-resolution-canonical` / `#544 — feat: implement canonical MED-CRM-006 Contact Identity Resolution V1`
 
 Prototype implementation PR:
 
@@ -39,7 +39,7 @@ Current canonical backend artifacts exist on the implementation branch:
 - `scripts/test-commercial-crm-contact-identity-resolution-concurrency.sh`;
 - `.github/workflows/commercial-crm-contact-identity-resolution.yml`.
 
-They have not yet earned PROVED. Open the canonical PR and require PostgreSQL 16/17 plus all applicable repository checks on its exact HEAD.
+They have not yet earned PROVED. PR #544 is the canonical implementation PR; require PostgreSQL 16/17 plus all applicable repository checks on its exact HEAD before any merge.
 
 Revalidate all mutable values before acting.
 
