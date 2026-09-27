@@ -1,18 +1,12 @@
-name: Commercial CRM Command Boundary
+name: Updated At Helper Reconciliation
 
 on:
   pull_request:
     paths:
       - 'supabase-migrations/20260927_updated_at_helper_reconciliation.sql'
       - 'supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql'
-      - 'supabase-migrations/20260926_commercial_crm_core_foundation.sql'
-      - 'supabase-migrations/20260926_commercial_crm_command_boundary.sql'
-      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql'
-      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql'
-      - 'tests/sql/commercial_crm_core_foundation_fixture.sql'
-      - 'tests/sql/commercial_crm_command_boundary_cases.sql'
-      - 'scripts/test-commercial-crm-command-boundary.sh'
-      - '.github/workflows/commercial-crm-command-boundary.yml'
+      - 'scripts/test-updated-at-helper-reconciliation.sh'
+      - '.github/workflows/updated-at-helper-reconciliation.yml'
   workflow_dispatch:
 
 jobs:
@@ -40,10 +34,10 @@ jobs:
       PGPORT: 5432
       PGUSER: postgres
       PGPASSWORD: postgres
-      PGDATABASE: commercial_crm_command_boundary_test
+      PGDATABASE: updated_at_helper_reconciliation_test
     steps:
       - uses: actions/checkout@v7
       - name: Create isolated database
-        run: createdb -h localhost -U postgres commercial_crm_command_boundary_test
-      - name: Run Commercial CRM foundation + command boundary proof
-        run: bash scripts/test-commercial-crm-command-boundary.sh
+        run: createdb -h localhost -U postgres updated_at_helper_reconciliation_test
+      - name: Run updated_at helper reconciliation proof
+        run: bash scripts/test-updated-at-helper-reconciliation.sh
