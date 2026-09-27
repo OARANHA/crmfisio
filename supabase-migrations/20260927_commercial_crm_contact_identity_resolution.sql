@@ -142,34 +142,6 @@ FROM PUBLIC, anon, authenticated;
 COMMENT ON FUNCTION public.crm_normalize_contact_email(text) IS
   'Internal MED-CRM-006 canonical Contact email normalizer: trim, preserve local-part, lowercase domain only.';
 
-CREATE OR REPLACE FUNCTION public.crm_contact_identity_signal_fingerprint(
-  p_phone text,
-  p_email text
-)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-SET search_path = public, pg_temp
-AS $
-  SELECT encode(
-    sha256(
-      convert_to(
-        'medicspro.crm.contact_identity.signal.v1|' ||
-        coalesce(public.crm_normalize_contact_phone(p_phone), '') || '|' ||
-        coalesce(public.crm_normalize_contact_email(p_email), ''),
-        'UTF8'
-      )
-    ),
-    'hex'
-  )
-$;
-
-REVOKE ALL ON FUNCTION public.crm_contact_identity_signal_fingerprint(text,text)
-FROM PUBLIC, anon, authenticated;
-
-COMMENT ON FUNCTION public.crm_contact_identity_signal_fingerprint(text,text) IS
-  'Internal PII-safe MED-CRM-006 retry fingerprint over canonical phone/email signals. Does not store raw identity values.';
-
 CREATE OR REPLACE FUNCTION public.crm_contact_identity_lock_key(
   p_clinic_id uuid,
   p_kind text,
@@ -348,6 +320,9 @@ AS $$
     (
       SELECT count(*)::bigint
       FROM public.crm_leads l
+      JOIN public.crm_pipelines p
+        ON p.id = l.pipeline_id
+       AND p.clinic_id = l.clinic_id
       JOIN public.crm_stages s
         ON s.id = l.stage_id
        AND s.pipeline_id = l.pipeline_id
@@ -355,6 +330,9 @@ AS $$
       WHERE l.clinic_id = p_clinic_id
         AND l.contact_id = m.id
         AND l.deleted_at IS NULL
+        AND l.closed_at IS NULL
+        AND p.archived_at IS NULL
+        AND s.archived_at IS NULL
         AND s.stage_kind = 'open'
     ) AS open_lead_count
   FROM matched m
@@ -826,7 +804,6 @@ DECLARE
   v_email text := nullif(btrim(coalesce(p_email, '')), '');
   v_phone_normalized text := public.crm_normalize_contact_phone(p_phone);
   v_email_normalized text := public.crm_normalize_contact_email(p_email);
-  v_signal_fingerprint text := public.crm_contact_identity_signal_fingerprint(p_phone, p_email);
   v_reason text := nullif(btrim(coalesce(p_override_reason, '')), '');
   v_source text := nullif(btrim(coalesce(p_source, '')), '');
   v_candidate_ids uuid[] := ARRAY[]::uuid[];
@@ -889,7 +866,6 @@ BEGIN
   IF FOUND THEN
     IF (v_resolution->>'contact_id')::uuid IS DISTINCT FROM p_contact_id
        OR v_resolution->>'resolution_mode' IS DISTINCT FROM v_mode
-       OR v_resolution->>'signal_fingerprint' IS DISTINCT FROM v_signal_fingerprint
        OR nullif(v_resolution->>'override_reason', '') IS DISTINCT FROM v_reason THEN
       RAISE EXCEPTION 'crm_prospect_resolution_idempotency_conflict' USING ERRCODE = '23505';
     END IF;
@@ -1052,7 +1028,6 @@ BEGIN
       jsonb_build_object(
         'resolution_mode', v_mode,
         'contact_id', p_contact_id,
-        'signal_fingerprint', v_signal_fingerprint,
         'candidate_ids', to_jsonb(v_candidate_ids),
         'match_reasons', to_jsonb(v_match_reasons),
         'override_reason', CASE
