@@ -97,7 +97,7 @@ DO $$
 DECLARE
   v_def text := lower(pg_get_functiondef('public.create_current_clinic_crm_contact(uuid,text,text,text)'::regprocedure));
 BEGIN
-  IF v_def LIKE '%patient_id%'
+  IF v_def LIKE '%p_patient_id%'
      OR v_def LIKE '%p_clinic%'
      OR v_def LIKE '%insert into public.patients%'
      OR v_def NOT LIKE '%crm_current_mutator_clinic_id%' THEN
