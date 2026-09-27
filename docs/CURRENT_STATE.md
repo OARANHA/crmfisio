@@ -39,7 +39,7 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — backend RELEASED #522 / #524 / #534; Board #536 MERGED / rollout pending
+## Commercial CRM — RELEASED #522 / #524 / #534 / #536
 
 **Canonical repository checkpoint:** `main@9ed72fa51b536a9efa8b35b910fbb49547daf7fa` before this documentation-only release reconciliation.
 
@@ -79,7 +79,7 @@ COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
 
 **Boundaries preserved:** `Contact != Lead != Patient`; raw browser DML remains closed; tenant/RLS/RBAC checks passed; professional/financeiro remain read-only; owner/admin/recep are the CRM writer roles behind `crm.access`; Patient Journey remains separate; no Lead→Patient conversion, Inbox, follow-up engine, provider authority, automation engine or Commercial AI was introduced by MED-CRM-001/002.
 
-**MED-CRM-003 Commercial Board Cutover V1:** **PROVED + MERGED, NOT RELEASED at this checkpoint.** PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after its final HEAD passed 9/9 check-runs. Canonical source now uses the RELEASED Commercial CRM projections and `transition_current_clinic_crm_lead_stage(...)` for the visible Board instead of `Patient.funil_stage` / `setFunilStage()`. Patient NPS, churn and Treatment Continuity remain separate Patient-domain content.
+**MED-CRM-003 Commercial Board Cutover V1:** **PROVED + MERGED + RELEASED.** PR #536 was squash-merged as `main@9962a14cb31ff09666234129590b59524a2d85c3` after its final HEAD passed 9/9 check-runs. Canonical source and the observed production frontend now use the RELEASED Commercial CRM projections and `transition_current_clinic_crm_lead_stage(...)` for the visible Board instead of `Patient.funil_stage` / `setFunilStage()`. Patient NPS, churn and Treatment Continuity remain separate Patient-domain content.
 
 **MED-CRM-004 Archived Pipeline Transition Guard:** **RELEASED**. PR #534 was revalidated on its final head with 21/21 workflow runs successful, including the dedicated PostgreSQL 16/17 proof, and squash-merged as `main@bc667edced77e6f96f3ba1584c48c83dbfcb05e2`. The additive migration hardens the existing canonical `transition_current_clinic_crm_lead_stage(...)`: state-changing transitions require the current pipeline to remain active under a row lock, while exact same-stage side-effect-free retries preserve idempotency.
 
@@ -91,7 +91,7 @@ COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED
 
 The production verifier also confirmed that tenant/stage/audit/Patient boundaries and authenticated-only RPC ACL remain present. No new table, role, entitlement, tenant source, parallel CRM writer or Patient-domain authority was introduced.
 
-Immediate public readback after the #536 merge still served `/assets/index-D1eGcOhA.js`; the bundle did not contain the canonical CRM RPC names or new Board markers, although `/`, `/crm`, `/agenda` and `/pacientes` returned HTTP 200. Therefore merge is proved but frontend rollout is not yet observed. MED-CRM-003 must not be marked RELEASED until the Portainer/frontend auto-deploy (or an explicitly approved manual promotion) is observed and the active bundle/readback proves the cutover.
+Production auto-deploy was then observed without manual mutation. The active entry build became `/assets/index-HtujlU6h.js` and referenced the live CRM lazy chunk `/assets/CrmOperational-C3MqVds_.js`. The CRM chunk returned HTTP 200 and contained `list_current_clinic_crm_pipelines`, `list_current_clinic_crm_stages`, `list_current_clinic_crm_leads`, `transition_current_clinic_crm_lead_stage`, the archived/legacy presentation and anonymized-Contact marker, plus the stale-projection warning. Explicit copy from the old Patient-backed Board was absent. `/`, `/crm`, `/agenda` and `/pacientes` all returned HTTP 200. No database or manual managed-admin rollout was required.
 
 
 ---
