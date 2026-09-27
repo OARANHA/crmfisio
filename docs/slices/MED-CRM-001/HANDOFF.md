@@ -125,16 +125,19 @@ Além do runtime proof PostgreSQL 16/17:
 - decisão de merge foi concluída e #522 está integrada em `main@652ea7b3aea4cd03a09944b780ef697168016bc3`;
 - estado da foundation: `PROVED + MERGED`, ainda **não RELEASED** sem rollout observado;
 - capability map pós-foundation: [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
-- continuidade comercial ativa: MED-CRM-002 / PR #524.
+- MED-CRM-002 Commercial Command Boundary: PROVED + MERGED em #524 / `main@7a8badf5ad81e92746e82bedd142ba75899a4080`, ainda não RELEASED;
+- capability map re-medido após #524: [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
+- próxima continuidade comercial selecionada: MED-CRM-003 — Commercial Board V1, DESIGNED e ainda não executada.
 
 ## Next exact step
 
 MED-CRM-001 não é mais a slice de execução ativa.
 
-1. confirmar a `main` atual e não inferir rollout da #522;
+1. confirmar a `main` atual e não inferir rollout de #522/#524;
 2. ler [`NEXT_CAPABILITY_MAP.md`](NEXT_CAPABILITY_MAP.md);
-3. para continuidade atual, seguir `docs/slices/MED-CRM-002/HANDOFF.md`;
-4. toda capability posterior continua sujeita a `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+3. para continuidade atual, seguir `docs/slices/MED-CRM-003/HANDOFF.md`;
+4. MED-CRM-003 está DESIGNED, não IMPLEMENTING; revalidar o estado antes de EXECUTION;
+5. toda capability posterior continua sujeita a `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
 ## Implementation validation
 
@@ -167,4 +170,4 @@ Merge concluído em #522; revalidar runtime apenas quando a pergunta depender de
 
 O prompt histórico desta slice foi removido porque ficou stale após o merge da #522.
 
-Para um novo chat, use a frase estável de `docs/CANONICAL_INDEX.md`, reconstrua o estado atual e leia o HANDOFF da slice realmente ativa. Neste checkpoint, a continuidade comercial está em `docs/slices/MED-CRM-002/HANDOFF.md`.
+Para um novo chat, use a frase estável de `docs/CANONICAL_INDEX.md`, reconstrua o estado atual e leia o HANDOFF da slice realmente ativa. Neste checkpoint, a continuidade comercial está em `docs/slices/MED-CRM-003/HANDOFF.md`.

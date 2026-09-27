@@ -1,6 +1,6 @@
 # MED-CRM-002 — Commercial Command Boundary
 
-**Status:** PROVED — latest executable head proven; merge decision pending; not RELEASED
+**Status:** PROVED + MERGED — PR #524 → `main@7a8badf5ad81e92746e82bedd142ba75899a4080`; not RELEASED
 **Capability:** canonical authenticated Commercial Core mutations
 **Base:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **Branch:** `feat/med-crm-002-commercial-command-boundary`
@@ -186,14 +186,34 @@ This advisory review does not replace the deterministic gates above.
 
 Full reproducible evidence: [EVIDENCE.md](EVIDENCE.md).
 
-`PROVED` does not mean `MERGED` or `RELEASED`.
+`PROVED + MERGED` does not mean `RELEASED`.
+
+## Merge integration
+
+Final PR head `cf94434ca5294e4e9cc4de70661268d9e4765045` closed with:
+
+- 21/21 repository workflows SUCCESS;
+- PostgreSQL 16/17 dedicated proof SUCCESS;
+- `validate` SUCCESS;
+- `dependency-audit` SUCCESS;
+- 38 ahead / 0 behind before merge;
+- mergeable=true;
+- reviews=0;
+- review threads=0.
+
+The separate merge gate used squash as required by the active ruleset. GitHub readback confirmed:
+
+```text
+PR #524: closed / merged=true
+main: 7a8badf5ad81e92746e82bedd142ba75899a4080
+```
+
+No production rollout was inferred from the merge.
 
 ## Next exact step
 
-1. revalidate the post-proof documentation head of PR #524, especially `validate`, `dependency-audit`, dedicated PostgreSQL 16/17 proof, behind count, mergeability and reviews/threads;
-2. make the merge decision separately from the PROVED decision;
-3. if merged, confirm the squash integration in current `main`;
-4. keep status below RELEASED until production rollout is actually observed;
-5. only after correct integration, rebuild the post-foundation capability map against the new main before selecting another micro-slice.
+MED-CRM-002 is complete as an integrated repository slice. Do not append board/UI or a new capability to #524.
 
-Do not append board/UI, Inbox, follow-up, attribution, conversion or AI to PR #524.
+Continue through the re-measured [NEXT_CAPABILITY_MAP](../MED-CRM-001/NEXT_CAPABILITY_MAP.md) and [MED-CRM-003](../MED-CRM-003/README.md). MED-CRM-003 is DESIGNED only; revalidate current state before EXECUTION.
+
+Do not declare MED-CRM-002 RELEASED without production rollout/runtime proof.

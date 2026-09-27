@@ -1,6 +1,6 @@
 # MED-CRM-002 — Evidence
 
-**Slice status:** PROVED
+**Slice status:** PROVED + MERGED — NOT RELEASED
 **Implementation-proven head:** `1d7655d3e282962f8ebc5760f3f2b17f84c73bf5`
 **Base at proof:** `main@652ea7b3aea4cd03a09944b780ef697168016bc3`
 **PR:** #524
@@ -165,23 +165,41 @@ confidence: 0.84
 
 The deterministic evidence above remains authoritative. This review supports closing VALIDATION and marking MED-CRM-002 PROVED; it does not decide merge or rollout.
 
+## Merge readback
+
+Final PR head: `cf94434ca5294e4e9cc4de70661268d9e4765045`.
+
+Immediately before squash:
+
+```text
+origin/main: 652ea7b3aea4cd03a09944b780ef697168016bc3
+ahead: 38
+behind: 0
+mergeable: true
+reviews: 0
+review threads: 0
+validate: SUCCESS
+dependency-audit: SUCCESS
+Commercial CRM PostgreSQL 16: SUCCESS
+Commercial CRM PostgreSQL 17: SUCCESS
+repository workflows: 21/21 SUCCESS
+```
+
+The separate merge decision used expected-head guarded squash. GitHub returned merge SHA `7a8badf5ad81e92746e82bedd142ba75899a4080`; readback then confirmed PR #524 `closed/merged=true` and current `main` at that SHA.
+
 ## Explicit non-proof
 
-This evidence does **not** prove:
+Repository integration is proved. This evidence does **not** prove:
 
-- merge of #524;
-- deployment of #524;
-- production schema installation;
+- production deployment/schema installation of #522/#524;
 - CRM board/UI cutover;
 - Contact edit/merge/dedupe;
 - Lead→Patient conversion;
 - Inbox/follow-up/attribution/AI/automation;
 - provider-real behavior.
 
-Therefore:
-
 ```text
-PROVED != MERGED != RELEASED
+PROVED + MERGED != RELEASED
 ```
 
 ## Reproduction

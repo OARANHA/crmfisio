@@ -13,7 +13,8 @@
 | Slice | Capability | Status | Documento | Próximo gate |
 | --- | --- | --- | --- | --- |
 | `MED-CRM-001` | Commercial Core — separar Contact / Lead / Patient e preparar pipeline comercial | PROVED | [slice](slices/MED-CRM-001/README.md) | MERGED em #522; não declarar RELEASED sem rollout; capability map pós-foundation concluído |
-| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | merge decision separada na PR #524; após merge confirmar `main`; sem RELEASED antes de rollout |
+| `MED-CRM-002` | Commercial Command Boundary — mutations canônicas de Contact/Lead/stage | PROVED | [slice](slices/MED-CRM-002/README.md) | MERGED em #524 / `main@7a8badf5`; não declarar RELEASED sem rollout |
+| `MED-CRM-003` | Commercial Board V1 — cutover do funil comercial `/crm` para Lead/Stage canônicos | DESIGNED | [slice](slices/MED-CRM-003/README.md) | antes de EXECUTION revalidar main/source/authority; implementação ainda não iniciada |
 | `MED-DOC-001` | Deskcomm documentation & architecture mining | PROVED | [slice](slices/MED-DOC-001/README.md) | usar a síntese por capability; revalidar só a área relevante quando uma slice de produto absorver um padrão |
 
 ## Regras do ledger
