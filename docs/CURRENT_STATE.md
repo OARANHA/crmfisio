@@ -79,7 +79,9 @@ COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED
 
 **Boundaries preserved:** `Contact != Lead != Patient`; raw browser DML remains closed; tenant/RLS/RBAC checks passed; professional/financeiro remain read-only; owner/admin/recep are the CRM writer roles behind `crm.access`; Patient Journey remains separate; no Lead→Patient conversion, Inbox, follow-up engine, provider authority, automation engine or Commercial AI was introduced by MED-CRM-001/002.
 
-The legacy `/crm` frontend is still Patient-backed via `patients.funil_stage`. That is now the leading **product authority conflict** to re-audit, not a reason to reinterpret Patient Journey. MED-CRM-003 is **not automatically authorized** by this release. Before any new slice executes, re-run **GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW** against current `origin/main`, active PRs and runtime.
+The legacy `/crm` frontend is still Patient-backed via `patients.funil_stage`. MED-CRM-003 deep review was completed against `main@72a60262d09a14ce8382f3da9db12afcd15a8464` and **did not authorize Board execution**. The released transition RPC rejects archived target stages but does not reject an archived current pipeline when that pipeline still has non-archived stages. A frontend-only “archived pipeline = read-only” rule would therefore become bypassable domain authority.
+
+Current continuation is **choice C: prior contract/capability missing**. Before MED-CRM-003 can re-enter its execution gates, a separate prerequisite server change must fail closed for archived pipeline transitions and prove that behavior with verifier + PostgreSQL case; if production changes, it must also reach RELEASED with rollout/readback evidence. No MED-CRM-003 feature implementation has started.
 
 
 ---
