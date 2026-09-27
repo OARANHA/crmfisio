@@ -20,18 +20,19 @@ Leia:
 
 Depois resolva a `origin/main` atual, revalide a PR #522 (HEAD, base, diff, checks e merge state) e reconstrua o **ESTADO ATUAL COMPROVADO** antes de decidir ou executar.
 
-A PR documental #523 propõe a nova disciplina de continuidade e o `docs/CANONICAL_INDEX.md`; revalide o estado dela. Não assuma que já está em `main`.
+A PR documental #523 foi integrada em `main` como `542fd289bb8060c7c0c69b20359f0b758092d946`; `docs/CANONICAL_INDEX.md` agora é o roteador estável. Ainda assim, sempre resolva a `main` atual antes de executar.
 
 ## Slice
 
 - ID: `MED-CRM-001`
 - status: `PROVED`
 - objective: separar Contact/Lead comercial de Patient, com conversão explícita e auditável;
-- execution: **foundation micro-slice PROVED; PR #522 ainda aberta/unmerged**;
+- execution: **foundation micro-slice PROVED; merge decision APPROVED subject to latest-head checks/mergeability; merge state é fato mutável e deve ser relido**;
 - design readback: `main@a0e8fd717302ddca3366d0fc6731a0ed2642269b`;
 - design branch: `docs/med-crm-001-design`;
 - implementation branch: `feat/med-crm-001-commercial-core-foundation`;
-- implementation readback: `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`.
+- implementation readback: `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`;
+- merge-decision readback: `main@542fd289bb8060c7c0c69b20359f0b758092d946` após #523; mudança documental disjunta dos 9 arquivos da foundation.
 
 ## Proven
 
@@ -115,23 +116,23 @@ was touched.
 
 Além do runtime proof PostgreSQL 16/17:
 
-- os 8 repository-required workflows ficaram `completed/success` no head reconciliado `472891f2ebd61902e5b323a0f821766822650c30`;
-- compare contra `main@948223da46bd2a8dec3ff1f73f00d91fe8ed52d9`: 13 commits à frente, 0 atrás;
-- diff limitado a 9 arquivos esperados da foundation + documentação;
+- o último head com implementação inalterada antes desta reconciliação documental, `ec48f9561c99d818af90001dbed133cf079822eb`, teve 8/8 repository-required workflows `completed/success`;
+- #523 foi mergeada depois e moveu `main` para `542fd289bb8060c7c0c69b20359f0b758092d946`, sem sobrepor nenhum arquivo da #522;
+- compare revalidado: 17 ahead / 1 behind exclusivamente por essa mudança documental disjunta; mergeability voltou a `true` após recálculo do GitHub;
+- migration/verifier/fixture/cases/harness continuam inalterados desde o proof PostgreSQL 16/17;
 - não entrou board/UI, Inbox, automação, attribution, provider ou Lead→Patient conversion;
-- PR #522 segue aberta e mergeable;
+- decisão de merge: APPROVED, condicionada apenas aos checks/mergeability do HEAD mais recente;
 - `PROVED` não significa `MERGED` nem `RELEASED`.
 
-Este update de HANDOFF/status é documental; revalide checks do HEAD atual antes do merge.
+Este update de HANDOFF/status é documental; revalide checks do HEAD atual antes de concluir o merge.
 
 ## Next exact step
 
-1. revalidar `origin/main` e a PR #522 no HEAD atual;
-2. confirmar checks/mergeability/diff após este handoff;
-3. fazer revisão/decisão de merge separada para #522;
-4. se mergeada, reconciliar `main` e documentação global aplicável;
-5. só então iniciar o mapa de capacidades do próximo CRM slice;
-6. antes de qualquer nova capability, seguir `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+1. resolver `origin/main` e o estado atual da PR #522;
+2. se ainda aberta, confirmar checks/mergeability do HEAD documental mais recente e concluir o merge já aprovado;
+3. se já mergeada, confirmar a integração em `main` sem inferir deploy/release;
+4. então produzir o capability map + dependency graph antes de escolher qualquer nova feature;
+5. antes de qualquer nova capability, seguir `GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
 
 A próxima slice ainda **não está escolhida**. Candidatos como mutation boundary, Contact operations, Lead operations, stage transition/activity, tasks/next action, board e conversion devem passar primeiro por GAPS + REUSE GATE e dependency graph.
 
