@@ -1,7 +1,7 @@
 # MED-CRM-004 — Evidence
 
-**Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`  
-**Branch:** `feat/med-crm-004-archived-pipeline-transition-guard`  
+**Audited main:** `2bcadc00a730eb9a1c1c063a688ccebf8982ce35`
+**Branch:** `feat/med-crm-004-archived-pipeline-transition-guard`
 **Status:** PROVED — merge/release pending
 
 ## REAL NOW
