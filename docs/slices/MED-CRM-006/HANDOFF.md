@@ -4,9 +4,9 @@
 
 Canonical repository: `OARANHA/crmfisio`
 
-Current integrated main:
+Current integrated main before this release-documentation branch:
 
-`main@837935ef82a18849dcd05986a27f7978a9cdd10b`
+`main@7e1ab2fba50d6188e718411c6b51b201ae417954`
 
 Design PR:
 
@@ -32,7 +32,7 @@ Reason: #542 is all-green against a pre-#543 contract but materially diverges fr
 
 Status:
 
-`BACKEND PROVED / MERGED / PRODUCTION ROLLOUT PENDING / FRONTEND NOT AUTHORIZED`
+`BACKEND RELEASED / FRONTEND EXECUTION AUTHORIZED / SLICE NOT FINAL`
 
 Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f7978a9cdd10b`:
 
@@ -45,7 +45,9 @@ Canonical backend artifacts are integrated in `main@837935ef82a18849dcd05986a27f
 
 Repository proof is complete for PR #544 final HEAD `aed1b2752ca86c43ea37a47abf8e5684434e2811`: 21/21 workflows completed successfully, including `Commercial CRM Contact Identity Resolution` with PostgreSQL 16 and PostgreSQL 17 both successful, plus `Clinical workflow CI` with `validate` and `dependency-audit` successful. The protected squash merge produced `main@837935ef82a18849dcd05986a27f7978a9cdd10b`.
 
-This proves the backend implementation in the repository. It does **not** prove production rollout. No MED-CRM-006 production database mutation or runtime readback is claimed yet, so the slice is not RELEASED and frontend execution remains unauthorized.
+Production backend proof is complete on the real runtime `28server` / `supabase-db`. The canonical migration SHA-256 `f36f036f172b997292654f251b8a9d386839bc9ef41204636aa11de95605d31b` was proved in the workspace and again inside the PostgreSQL container as user `postgres`, then applied with `ON_ERROR_STOP=1` and completed through `COMMIT`. The pinned verifier SHA-256 `4da932b767d18decbd8c0d881b679dc29735364abcbf3b5b0c73c2d75d88f785` passed all 12 checks and returned `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED`. Core, Command Boundary and Archived Pipeline Guard pinned regressions also passed afterward.
+
+The backend authority is therefore RELEASED. Frontend resolution UX is now authorized as the next phase, but MED-CRM-006 as a whole is not final until the frontend is implemented, merged and observed in production.
 
 Revalidate all mutable values before acting.
 
@@ -228,17 +230,15 @@ JEV is advisory only.
 
 Deterministic conclusion:
 
-`BACKEND EXECUTION AUTHORIZED`
-
-Frontend execution is **not** yet authorized.
+`BACKEND RELEASED / FRONTEND EXECUTION AUTHORIZED`
 
 ## Rollout order
 
-1. implement/prove backend authority on a fresh branch from current `main`;
-2. merge only after PostgreSQL 16/17 + repo checks are green;
-3. controlled DB rollout + production-safe verifier/readback;
-4. only then implement frontend candidate/resolution UX;
-5. observe frontend production and reconcile MED-CRM-006 release state.
+1. [x] implement/prove backend authority on a fresh branch from current `main`;
+2. [x] merge only after PostgreSQL 16/17 + repo checks are green;
+3. [x] controlled DB rollout + production-safe verifier/readback;
+4. [ ] implement frontend candidate/resolution UX;
+5. [ ] observe frontend production and reconcile MED-CRM-006 final release state.
 
 Between backend DB rollout and frontend UX rollout, stale frontend behavior is intentionally fail-closed:
 
@@ -247,12 +247,12 @@ Between backend DB rollout and frontend UX rollout, stale frontend behavior is i
 
 ## Next exact step
 
-1. re-resolve current `origin/main` and confirm `main@837935ef82a18849dcd05986a27f7978a9cdd10b` remains the integrated MED-CRM-006 backend checkpoint before rollout work;
-2. perform a production-safe read-only preflight against the real PostgreSQL runtime and prove the dependencies expected by the migration/verifier;
-3. stage and hash-pin the exact canonical migration and verifier from current `main`;
-4. apply the migration only through the governed production DB mutation path, transactionally and with explicit approval if the runtime capability requires it;
-5. run the separate production-safe/pinned readback verifier and preserve exact evidence;
-6. only after successful production proof update the slice to `BACKEND RELEASED`;
-7. only then authorize the frontend candidate/resolution UX phase.
+1. re-resolve current `origin/main` before frontend work;
+2. audit the released Prospect Intake UI/client path again against the now-RELEASED backend RPCs;
+3. preserve `Contact != Lead != Patient` and keep identity decision authority server-side;
+4. implement candidate preview + explicit `reuse` / `distinct` UX as a frontend adapter over the released RPCs, without new browser-side identity authority;
+5. validate frontend tests, repository CI and regression boundaries;
+6. merge only from an exact green HEAD;
+7. observe the frontend production deployment and run the final MED-CRM-006 release reconciliation.
 
-Do not call MED-CRM-006 RELEASED from repository CI alone. Production runtime proof is mandatory.
+Do not mark the whole slice RELEASED until the frontend phase is observed in production.
