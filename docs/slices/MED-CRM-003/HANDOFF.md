@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-Always resolve current `origin/main`, PR #536 HEAD/base/checks and runtime again before acting. This document is institutional memory, not permission to inherit stale checks.
+Always resolve current `origin/main`, active PRs/branches and runtime again before acting. PR #536 is already merged and must not be treated as active work. This document is institutional memory, not permission to inherit stale checks.
 
 ```text
 canonical repository = OARANHA/crmfisio
