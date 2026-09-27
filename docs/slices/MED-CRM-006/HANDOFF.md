@@ -12,9 +12,11 @@ Design PR:
 
 `#541 — MERGED`
 
-Plan-review branch:
+Plan-review branch / PR:
 
-`docs/med-crm-006-implementation-plan-review`
+`docs/med-crm-006-implementation-plan-review` / `#543 — docs: close MED-CRM-006 implementation plan review`
+
+PR #543 was opened from `main@2140c3351843e5398a08d2a4bc40ba3972ac6329`. Revalidate its current HEAD/checks before merge.
 
 Status:
 
