@@ -247,6 +247,14 @@ New tests cover:
 
 This is implementation evidence only. The exact current PR HEAD still requires all applicable GitHub workflows, unit/frontend tests, typecheck, lint, build, validate and dependency-audit before frontend can be called PROVED.
 
+## Frontend adversarial retry correction — 2026-09-27
+
+A post-implementation deterministic review found one retry bug before proof/merge: after a transport-uncertain `create_if_clear` attempt, rerunning candidate preview first could observe the caller's own just-committed Contact as a new candidate and prevent the resolver from exercising its canonical self-candidate exact-retry path.
+
+PR #548 was corrected so transport uncertainty stores the exact resolution intent and freezes the draft fields. The next action repeats the same resolver call directly with the same Contact UUID, Lead UUID and resolution intent **without re-running candidate preview**. Known semantic stale/ambiguity errors clear this retry state and return to canonical candidate review instead.
+
+The regression test deliberately prepares a self-candidate for a hypothetical second preview, then proves that the retry performs no second candidate lookup and repeats `create_if_clear` with the same IDs. This closes the frontend retry/idempotency gap without changing backend authority.
+
 ## Evidence limitations
 
 This checkpoint proves backend repository implementation, production migration and production-safe readback. It does **not** prove:
