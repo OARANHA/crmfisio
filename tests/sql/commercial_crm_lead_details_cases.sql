@@ -379,13 +379,61 @@ END $$;
 RESET ROLE;
 
 SELECT '7) crm.access disabled, cross-tenant, missing and deleted Leads fail closed' AS check;
+
+-- Identity Resolution regressions deliberately enable Clinic B crm.access, so
+-- restore the disabled entitlement fixture here and create a real Clinic B Lead
+-- as superuser to distinguish cross-tenant denial from a merely missing row.
+DO $
+DECLARE
+  v_pipeline uuid;
+  v_stage uuid;
+BEGIN
+  SELECT id INTO v_pipeline
+  FROM public.crm_pipelines
+  WHERE clinic_id='20000000-0000-0000-0000-000000000002'
+    AND is_default IS TRUE
+    AND archived_at IS NULL;
+
+  SELECT id INTO v_stage
+  FROM public.crm_stages
+  WHERE clinic_id='20000000-0000-0000-0000-000000000002'
+    AND pipeline_id=v_pipeline
+    AND stage_kind='open'
+    AND archived_at IS NULL
+  ORDER BY position
+  LIMIT 1;
+
+  INSERT INTO public.contacts (id, clinic_id, name)
+  VALUES (
+    '71000000-0000-0000-0000-000000000090',
+    '20000000-0000-0000-0000-000000000002',
+    'Contato B Details'
+  );
+
+  INSERT INTO public.crm_leads (
+    id, clinic_id, contact_id, pipeline_id, stage_id, title
+  ) VALUES (
+    '81000000-0000-0000-0000-000000000090',
+    '20000000-0000-0000-0000-000000000002',
+    '71000000-0000-0000-0000-000000000090',
+    v_pipeline,
+    v_stage,
+    'Lead B Details'
+  );
+END $;
+
+UPDATE public.platform_clinic_entitlements
+SET enabled=false
+WHERE clinic_id='20000000-0000-0000-0000-000000000002'
+  AND entitlement_key='crm.access';
+
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000004', false);
 DO $$
 BEGIN
   BEGIN
     PERFORM public.update_current_clinic_crm_lead_details(
-      '80000000-0000-0000-0000-000000000006',
+      '81000000-0000-0000-0000-000000000090',
       now(),
       'Clinic B bloqueado',
       NULL,
@@ -404,7 +452,7 @@ DO $$
 BEGIN
   BEGIN
     PERFORM public.update_current_clinic_crm_lead_details(
-      '80000000-0000-0000-0000-000000000006',
+      '81000000-0000-0000-0000-000000000090',
       now(),
       'Cross tenant',
       NULL,
