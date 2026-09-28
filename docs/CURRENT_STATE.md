@@ -4,7 +4,7 @@
 
 **Regra de continuidade:** antes de encerrar uma slice significativa, atualizar este snapshot e o documento do domínio com base/branch/PR/head, validações concluídas, estado de produção, riscos pendentes e próximo passo seguro. Outro chat/agente deve começar por este arquivo para evitar reconstrução ou duplicação de trabalho.
 
-**Data do snapshot:** 2026-09-27
+**Data do snapshot:** 2026-09-28
 **Regra de base:** todo novo trabalho deve resolver a `origin/main` atual antes de decidir ou implementar; não usar um SHA deste snapshot como instrução de checkout.
 **Último SHA funcional com rollout registrado nesta sequência:** `47f9b1e1f6f509fe8f72641e2aad91f7350e23ae` (#516 Message Template Admin Boundary V1), após #515 e sobre a configuração de Comunicação #512/#513.ning #513), sobre a foundation de Clinic Configuration #406/#407/#408 e Plan Catalog #508/#509.
 
@@ -39,29 +39,41 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — implementation validated in PR / not released
+## Commercial CRM — RELEASED MED-CRM-008
 
 ### MED-CRM-008 — Lead Commercial Details V1
 
-**Status:** **IMPLEMENTING / VALIDATED IN PR #554 / NOT RELEASED** on branch `feat/med-crm-008-lead-commercial-details`.
+**Status:** **RELEASED** on 2026-09-28.
 
-The docs-only design from PR #553 is already integrated in `main@4654bd95c4d1305754d44886c0d1fbad7fd59126`. PR #554 implements the bounded Lead-details writer and Board UX without expanding authority beyond `title + value_cents + source`.
+Repository proof:
 
-Validated implementation checkpoint before documentation closeout: exact HEAD `eb58c09d7f9aeed99eef52f5d71304049b43e6cb`, `0 behind` main, mergeable, no reviews/threads, **10/10 applicable workflows successful**. The dedicated `Commercial CRM Lead Details` workflow passed PostgreSQL 16/17 with released CRM regressions; `Clinical workflow CI` also passed and executes unit tests, typecheck, lint and build.
+- implementation PR #554 final HEAD `2e56256426994eebaa643bd6b1537053f51d22d7` completed **22/22 applicable workflows with success** and merged as `main@7fbd255d8bb60932cc3ee839f325f35ce7568e01`;
+- docs handoff PR #555 merged as `main@ae58ba701717f4b9e41f8c95340cffae433f6b52`;
+- PR #525 remains historical/open/non-mergeable and is not authority.
 
-Implemented boundaries:
+Production backend proof:
 
-- tenant/role/entitlement authority remains `crm_current_mutator_clinic_id()`;
-- optimistic concurrency reuses canonical `lead_updated_at`;
-- exact desired-state retry is side-effect free before real-change privacy/archive/stale guards;
-- Contact/pipeline/stage are revalidated under row locks for real changes;
-- raw browser `UPDATE crm_leads` remains closed;
-- activity/audit metadata records only changed-field categories/IDs, never raw edited values;
-- Board never exposes this editor to professional/financeiro, anonymized Contacts or legacy archived Leads;
-- stale conflicts refetch canonical projection and never silently retry the mutation;
-- `Contact != Lead != Patient`; no owner, Contact, Patient, stage/pipeline admin, Lead→Patient, follow-up, Inbox or attribution authority was added.
+- canonical migration `20260928_commercial_crm_lead_details.sql` SHA-256 = `677494f6f48c9a5465c799bb677a9c139c9d6f93d5ec9ff8bc2ad4b3844a64f4`;
+- canonical verifier `VERIFY_20260928_COMMERCIAL_CRM_LEAD_DETAILS.sql` SHA-256 = `43afe4130ef7db4cca8a6bbeca0021d8472ce30abb973cc6b64d8b34733d6879`;
+- pinned pre-readback reached production PostgreSQL and failed specifically with `crm_lead_details_function_missing`, proving the RPC was absent before rollout;
+- the exact canonical migration was staged and hash-verified on the host and inside `supabase-db`;
+- an initial in-container hash attempt failed on file permissions and **no SQL was executed**; after read-only file permission correction, the exact hash matched;
+- approval-gated apply completed `BEGIN → CREATE FUNCTION → REVOKE → GRANT → COMMENT → COMMIT`;
+- pinned production verifier returned `COMMERCIAL CRM LEAD DETAILS VERIFY PASSED`;
+- released Commercial Core, Command Boundary, Archived Pipeline Guard and Contact Identity Resolution verifiers all remained green.
 
-Documentation commits after the checkpoint above create a newer PR head and **must be revalidated on the exact final HEAD before merge**. Production deployment/runtime readback is still pending and no RELEASED claim exists yet.
+Frontend/runtime proof:
+
+- production serves entry `/assets/index-DKx3td63.js` referencing `/assets/CrmOperational-BBRV2_h_.js`;
+- the live CRM chunk contains `update_current_clinic_crm_lead_details`, `Editar detalhes`, `Salvar detalhes`, `crm_lead_details_stale`, stale/refetch copy, activity read and canonical stage transition;
+- the live CRM chunk does not contain `setFunilStage`, `create_patient`, `addPatient` or direct `.from("crm_leads")` mutation markers;
+- `/`, `/crm`, `/agenda` and `/pacientes` returned HTTP 200 after backend rollout.
+
+Boundaries preserved: tenant/role/entitlement authority remains `crm_current_mutator_clinic_id()`; mutation remains limited to `title + value_cents + source`; raw authenticated `UPDATE crm_leads` remains closed; activity/audit remain bounded; optimistic concurrency uses `lead_updated_at`; `Contact != Lead != Patient`; no Patient, owner assignment, stage/pipeline admin, follow-up, Inbox, attribution, provider, automation or AI authority was introduced.
+
+No authenticated human edit against real production data was performed for release proof. The release is based on exact-head CI/behavior proof, canonical hash-pinned rollout, production read-only verifier/regressions, served frontend readback and public route health.
+
+**MED-CRM-008 is closed. Do not start a successor capability without a fresh slice and the full gates.**
 
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548 / #551
 

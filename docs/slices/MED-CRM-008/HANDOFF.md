@@ -1,5 +1,30 @@
 # MED-CRM-008 — Handoff
 
+## Release closure — 2026-09-28
+
+Fresh closure state:
+
+- canonical baseline at rollout: `main@ae58ba701717f4b9e41f8c95340cffae433f6b52`;
+- PR #554 final head `2e56256426994eebaa643bd6b1537053f51d22d7` passed 22/22 applicable workflows and is merged;
+- migration SHA-256 `677494f6f48c9a5465c799bb677a9c139c9d6f93d5ec9ff8bc2ad4b3844a64f4`;
+- verifier SHA-256 `43afe4130ef7db4cca8a6bbeca0021d8472ce30abb973cc6b64d8b34733d6879`;
+- production pre-readback proved `crm_lead_details_function_missing`;
+- exact migration was hash-proved and applied transactionally;
+- MED-CRM-008 pinned production verifier passed;
+- Core, Command Boundary, Archived Pipeline Guard and Contact Identity Resolution production regressions passed;
+- live frontend is `/assets/index-DKx3td63.js` → `/assets/CrmOperational-BBRV2_h_.js`, with Lead-details RPC/editor/stale handling present and direct legacy/Patient writer markers absent;
+- `/`, `/crm`, `/agenda`, `/pacientes` returned HTTP 200 after rollout;
+- `Contact != Lead != Patient` remains preserved;
+- no authenticated human production edit was used as a release probe.
+
+**MED-CRM-008 = RELEASED / CLOSED.**
+
+Do not continue implementing MED-CRM-008 and do not infer MED-CRM-009 scope from this handoff. Any successor capability must begin from the then-current `origin/main` and repeat:
+
+`GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+
+
+
 ## Post-merge handoff refresh — 2026-09-28
 
 Fresh canonical revalidation before generating the next-chat prompt:
