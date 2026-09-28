@@ -658,7 +658,6 @@ describe('CommercialCrmBoard', () => {
     expect(rendered).not.toContain('contact-secret');
     expect(rendered).not.toContain('51999990000');
     expect(rendered).not.toContain('patient-secret');
-    expect(rendered).not.toContain('Editar detalhes');
     expect(rendered).not.toContain('actor-secret');
   });
 
@@ -742,6 +741,7 @@ describe('CommercialCrmBoard', () => {
     expect(rendered).not.toContain('51911112222');
     expect(rendered).not.toContain('segredo@example.com');
     expect(rendered).not.toContain('patient-secret');
+    expect(rendered).not.toContain('Editar detalhes');
 
     const historyButton = renderer.root.findAllByType('button').find((button) =>
       button.props.children === 'Ver histórico',
