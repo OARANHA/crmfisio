@@ -39,17 +39,21 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — MED-CRM-009 DESIGNED / EXECUTION NOT STARTED
+## Commercial CRM — MED-CRM-009 PROVED / IMPLEMENTATION PR OPEN
 
 ### MED-CRM-009 — Commercial Lead Activity Read Boundary V1
 
-**Status:** **DESIGNED. PRODUCT EXECUTION NOT STARTED.**
+**Status:** **PROVED at repository level. NOT MERGED. NOT RELEASED.**
 
-Fresh audit against `main@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7` found that the RELEASED `list_current_clinic_crm_lead_activities(uuid)` reader correctly enforces current-clinic/`crm.access` but still returns raw `actor_id` and generic activity `metadata` to the authenticated browser. MED-CRM-007 discards internal identity-resolution/candidate metadata only in the frontend adapter, after the payload has crossed the server boundary.
+Design PR #558 was revalidated on exact HEAD `182d33fe5d566aaa2cf808b3df33e6992c38fc3e` with 20/20 workflows successful, 0 behind, mergeable, docs-only and no blocking review/thread, then protected-squash-merged as `main@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`.
 
-The selected next micro-slice hardens the existing read projection instead of creating a parallel activity reader. Full `crm_lead_activities` persistence, writers, audit, tenant authority and frontend defense-in-depth remain unchanged. Pipeline/Stage admin, lost-reason taxonomy/reporting, follow-up, Inbox/Conversation, attribution and Lead→Patient remain outside this slice.
+A fresh consumer audit confirmed that `list_current_clinic_crm_lead_activities(uuid)` can be narrowed without creating a second reader authority: the Commercial CRM browser adapter/Board only need activity type/time, stage from/to IDs and validated identity `resolution_mode`; writer/retry paths use canonical persistence directly.
 
-Design gates GAPS → REUSE → DECISION → SECOND ADVERSARIAL REVIEW are closed and recorded under `docs/slices/MED-CRM-009/`. This checkpoint is documentation only; no schema/product/runtime change is claimed.
+Implementation PR #559, branch `feat/med-crm-009-lead-activity-read-boundary`, hardens the existing RPC while preserving function identity/signature/row type, ACL, `crm_current_reader_clinic_id()`, raw table DML closure and complete server-side `crm_lead_activities` storage. Browser projection now sets `actor_id = NULL`, preserves only constrained coarse `actor_kind`, allowlists metadata for `stage_changed` / `contact_identity_resolved`, and fail-closes other/unknown metadata to `{}`.
+
+Exact implementation proof HEAD `5e22d610024e0b5ba46acda481e3f11f111eed28` completed **11/11 applicable workflows with success**. The dedicated boundary proof passed PostgreSQL 16/17; Contact Identity Resolution and Lead Details PG16/17 regressions passed; `validate` passed npm test/typecheck/lint/build and dependency audit passed.
+
+This documentation refresh moves PR #559 to a new HEAD, so merge still requires fresh exact-head checks. No production rollout/readback has been performed. MED-CRM-009 must not be called RELEASED until the merged canonical migration is hash-pinned/applied if absent and a separate production verifier/regression/frontend readback proves the boundary.
 
 ## Commercial CRM — RELEASED MED-CRM-008
 

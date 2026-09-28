@@ -1,5 +1,63 @@
 # MED-CRM-009 — Handoff
 
+## Implementation PROVED checkpoint — 2026-09-28
+
+Fresh state before this documentation refresh:
+
+- canonical repository: `OARANHA/crmfisio`;
+- `origin/main = 6bc436f2789341b95c3800d8a82cfe7dbed6c78e`;
+- design PR #558 = MERGED;
+- design exact HEAD `182d33fe5d566aaa2cf808b3df33e6992c38fc3e` = 20/20 workflow runs success before protected squash merge;
+- implementation PR #559 = OPEN / unmerged / mergeable;
+- implementation branch: `feat/med-crm-009-lead-activity-read-boundary`;
+- exact implementation proof HEAD before this documentation refresh: `5e22d610024e0b5ba46acda481e3f11f111eed28`;
+- compare at proof time: 8 commits ahead / 0 behind before this documentation commit is added;
+- product scope: same activity-reader RPC hardening; no frontend, writer, Patient, tenant, role, entitlement or parallel-reader authority;
+- exact proof HEAD: **11/11 applicable workflow runs completed + success**;
+- dedicated MED-CRM-009 PostgreSQL 16 + 17 jobs: success;
+- Contact Identity Resolution PG16/17 regression: success;
+- Lead Details PG16/17 regression: success;
+- validate: `npm test`, typecheck, lint, build = success;
+- dependency-audit = success;
+- production rollout/readback = NOT STARTED.
+
+The repository-level state is:
+
+```text
+GAPS                              CLOSED / REVALIDATED
+CAPABILITY AUTHORITY / REUSE      CLOSED / REVALIDATED
+DECISION                          CLOSED / REVALIDATED
+SECOND ADVERSARIAL REVIEW         CLOSED / FRESH
+EXECUTION                         IMPLEMENTED
+VALIDATION                        PROVED ON 5e22d610...
+DOCUMENTATION                     THIS REFRESH
+MERGE                             PENDING
+RELEASE                           NOT STARTED
+```
+
+**Important:** this documentation refresh moves PR #559 to a new exact HEAD. Do not reuse the 11/11 result from `5e22d610...` as merge authorization for the new HEAD. Re-resolve the PR and require every applicable workflow/check on the new HEAD to complete successfully.
+
+Next safe gate:
+
+1. resolve current `origin/main`;
+2. resolve PR #559 exact HEAD/base/mergeability/ahead-behind/diff;
+3. confirm no blocking reviews/threads;
+4. require all applicable workflows/checks of that exact HEAD to be completed + success;
+5. only then protected-squash-merge #559 using expected-head protection;
+6. confirm `merged=true` and re-resolve the resulting `origin/main`;
+7. do **not** call MED-CRM-009 RELEASED after merge;
+8. reconstruct production authority/capabilities;
+9. perform production pre-readback of the current RPC contract;
+10. hash-pin the exact canonical migration/verifier from merged main;
+11. if migration is absent, perform a fresh rollout adversarial review and only then governed transactional apply;
+12. run pinned read-only verifier + relevant CRM regressions;
+13. read back the served frontend/timeline and route health without mutating real production data merely for proof;
+14. only with that evidence may MED-CRM-009 become RELEASED.
+
+No MED-CRM-010 or successor capability is authorized by this checkpoint.
+
+---
+
 ## Next-chat generation checkpoint — 2026-09-28
 
 Fresh revalidation immediately before generating the next-chat prompt:

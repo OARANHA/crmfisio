@@ -1,7 +1,8 @@
 # MED-CRM-009 — Decision
 
-**Decision status:** DESIGNED / EXECUTION NOT STARTED  
-**Baseline:** `OARANHA/crmfisio@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
+**Decision status:** IMPLEMENTED / REPOSITORY PROVED / PRE-MERGE  
+**Design baseline:** `OARANHA/crmfisio@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
+**Implementation baseline:** `OARANHA/crmfisio@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`  
 **Date:** 2026-09-28
 
 ## Decision statement
@@ -219,9 +220,22 @@ The advisory result did not authorize execution. The deterministic deep review a
 
 ### Final adversarial conclusion
 
-No deterministic blocker remains for the **design**.
+No deterministic blocker remained for the design.
 
-Product implementation is not started in this branch. After this design is integrated, implementation must re-resolve `origin/main`, re-check consumers and repeat the implementation-plan/adversarial gate if the contract has changed.
+After #558 integrated, the implementation gate was repeated against `main@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`. The consumer audit found no legitimate dependency on raw actor UUIDs or generic metadata, and the retry/writer paths continue to read/write canonical persistence directly.
+
+A fresh JEV advisory review returned:
+
+```text
+proceed_fast = 0.87
+deep_review = 0.12
+block = 0.01
+confidence = 0.83
+```
+
+This advisory result did not authorize execution by itself. Deterministic consumer/schema/test evidence closed the implementation gate.
+
+The implemented decision therefore remains: harden the **same released RPC** with no new reader authority, no storage mutation and no Patient authority.
 
 ## Reconsideration triggers
 
@@ -233,3 +247,23 @@ Return to the appropriate gate if:
 - the function cannot be narrowed without a breaking return-contract change;
 - safe projection requires Patient or clinical data;
 - minimization cannot preserve current timeline behavior.
+
+
+## Implemented decision — PR #559
+
+The implementation uses the additive follow-up migration:
+
+`supabase-migrations/20260928_commercial_crm_lead_activity_read_boundary.sql`
+
+It preserves:
+
+- `list_current_clinic_crm_lead_activities(uuid)` identity, arguments and return row type;
+- SECURITY DEFINER + STABLE semantics and pinned search path;
+- authenticated-only ACL;
+- `crm_current_reader_clinic_id()` tenant/role/`crm.access` authority;
+- canonical `crm_lead_activities` rows and metadata;
+- all existing writers, locking/idempotency and audit paths.
+
+It changes only returned values according to the reviewed projection allowlist. No frontend change is necessary because MED-CRM-007 already consumes only this bounded subset and remains defense in depth.
+
+Repository proof on exact HEAD `5e22d610024e0b5ba46acda481e3f11f111eed28` satisfied the PROVED criteria. Merge and production release remain separate gates.
