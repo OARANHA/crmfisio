@@ -1,6 +1,27 @@
 # MED-CRM-009 — Commercial Lead Activity Read Boundary V1
 
-**Status:** PROVED / IMPLEMENTATION PR OPEN / NOT MERGED / NOT RELEASED  
+## Release checkpoint — 2026-09-28
+
+MED-CRM-009 is **MERGED + RELEASED**.
+
+Canonical implementation:
+- design PR #558 merged as `main@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`;
+- implementation PR #559 final exact HEAD `3a6656334432f6960615da714ec05f0909ba7d75` completed **23/23 exact-HEAD workflow runs successfully** and was protected-squash-merged as `main@9c97c7235afd423b653dd8b6feb8e4372512fb2d`;
+- production rollout used the exact canonical migration SHA-256 `db827127dc2bc80d743e7be9f27a4ab68ca618ee1e19eb547346d588f85144b1`;
+- production verifier was pinned at SHA-256 `1784ac2bd43e9d1fb49a15036e2c64354c2fb5bf74e3dc1887752fe0d070e865`.
+
+Production proof:
+- pre-readback failed specifically with `crm_lead_activity_projection_allowlist_missing`, proving the old reader was still live before rollout;
+- the hash-verified migration applied successfully through `BEGIN → CREATE FUNCTION → REVOKE → GRANT → COMMENT → COMMIT`;
+- pinned read-only post-verifier returned `COMMERCIAL CRM LEAD ACTIVITY READ BOUNDARY VERIFY PASSED`;
+- all six prior pinned CRM verifiers remained green: Commercial Core, Command Boundary, updated-at reconciliation, Archived Pipeline Guard, Contact Identity Resolution and Lead Details;
+- `/`, `/crm`, `/agenda` and `/pacientes` returned HTTP 200 from the production runtime;
+- production entry `/assets/index-DKx3td63.js` references `/assets/CrmOperational-BBRV2_h_.js`;
+- the live CRM chunk contains `list_current_clinic_crm_lead_activities`, `contact_identity_resolved`, `stage_changed` and `resolution_mode`, while `actor_id` and `candidate_ids` are absent.
+
+No authenticated human Lead/Contact mutation was performed for release proof. The production mutation was limited to replacing the existing reader function with the canonical, compatibility-preserving projection hardening. Tenant/RBAC/`crm.access`, raw table closure, canonical stored activity rows, writers, audit authority and the `Contact != Lead != Patient` boundary remain unchanged.
+
+**Status:** RELEASED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Design baseline:** `main@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
@@ -104,7 +125,7 @@ SECOND ADVERSARIAL REVIEW         CLOSED / FRESH IMPLEMENTATION REVIEW
 EXECUTION                         IMPLEMENTED IN PR #559
 VALIDATION                        REPOSITORY PROVED ON HEAD 5e22d610...
 DOCUMENTATION                     UPDATED / FINAL PR HEAD MUST BE REVALIDATED
-RELEASE                           NOT STARTED
+RELEASE                           RELEASED
 ```
 
 ## Intended implementation shape after design integration
@@ -145,4 +166,4 @@ Implementation PR #559, branch `feat/med-crm-009-lead-activity-read-boundary`, p
 
 Exact implementation HEAD `5e22d610024e0b5ba46acda481e3f11f111eed28` completed **11/11 applicable workflow runs with success**. The dedicated MED-CRM-009 workflow passed PostgreSQL 16 and 17. `Clinical workflow CI / validate` passed `npm test`, typecheck, lint and build; dependency audit passed. Contact Identity Resolution and Lead Details PostgreSQL 16/17 regressions also passed.
 
-This is **repository-level PROVED only**. PR #559 is not yet merged at this documentation checkpoint and no production rollout/readback has occurred.
+Historical checkpoint: this statement described the pre-merge repository proof. The release checkpoint above is now authoritative.
