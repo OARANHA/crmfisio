@@ -1,6 +1,6 @@
 # MED-CRM-008 — Decision
 
-**Decision status:** DESIGNED  
+**Decision status:** IMPLEMENTED / VALIDATED IN PR #554 / NOT RELEASED  
 **Baseline:** `OARANHA/crmfisio@7b75b77c667b1c17b6eb408ee7047ad866e78a73`  
 **Date:** 2026-09-27
 
@@ -116,3 +116,21 @@ Return to fresh gates if:
 - safe update requires owner/stage/pipeline/Contact/Patient mutation;
 - activity/audit cannot avoid sensitive field values;
 - a new domain requirement turns `source` into structured attribution rather than a manual label.
+
+
+## Implementation outcome — 2026-09-28
+
+The implemented PR #554 kept the original decision boundary intact:
+
+- canonical writer: `update_current_clinic_crm_lead_details(...)`;
+- write set remains only `title + value_cents + source`;
+- no owner, Contact, Patient, stage, pipeline or terminal-field mutation was added;
+- optimistic concurrency reuses `lead_updated_at`;
+- exact retry/no-op semantics remain before real-change lifecycle guards;
+- activity/audit metadata remains value-free;
+- frontend stale handling refetches and requires human review instead of retrying the mutation.
+
+Exact validated implementation head before documentation refresh:
+`eb58c09d7f9aeed99eef52f5d71304049b43e6cb`.
+
+No reconsideration trigger fired during implementation. Production release remains a separate deployment/runtime proof.
