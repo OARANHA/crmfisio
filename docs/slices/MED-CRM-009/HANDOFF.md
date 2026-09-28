@@ -1,5 +1,45 @@
 # MED-CRM-009 — Handoff
 
+## Post-release next-chat generation checkpoint — 2026-09-28
+
+Fresh canonical state immediately before generating the next-chat prompt:
+
+- canonical repository: `OARANHA/crmfisio`;
+- `origin/main = dbb2ae15393a815aadfa7a7a5b3beccfd2344ff3`;
+- MED-CRM-009 = **PROVED + MERGED + RELEASED**;
+- release-documentation PR #560 = MERGED as `main@dbb2ae15393a815aadfa7a7a5b3beccfd2344ff3`;
+- no successor Commercial CRM slice is active or authorized;
+- PR #525 remains open on an old historical CRM documentation branch and is not current authority;
+- older unrelated open PRs do not authorize CRM continuation.
+
+Candidate discovery radar carried forward from the released MED-CRM-009 evidence:
+
+- Pipeline / Stage administration: schema + read projections exist; no canonical admin writer set is proved; create/edit/archive/reorder/default semantics and live-Lead compatibility remain open;
+- lost-reason taxonomy/reporting: no canonical tenant catalog authority is proved;
+- Lead follow-up / next action: no canonical Lead task aggregate is proved;
+- Lead Inbox / Conversation: current message-center/outbox authority is Patient/appointment/waitlist-oriented and must not be reused by convenience;
+- attribution: `crm_leads.source` is only a manual commercial label; no acquisition chain is proved;
+- Lead → Patient conversion: no conversion authority exists and the clinical identity boundary must remain explicit, audited and idempotent.
+
+The next chat is authorized for **discovery/audit only**, with Pipeline / Stage administration as the first candidate to investigate because existing schema/read/authorization foundations may be reusable. This is **not** a decision to implement and does **not** create MED-CRM-010 automatically.
+
+Mandatory order for the next chat:
+
+```text
+REAL NOW / PROVEN EVIDENCE
+→ GAPS
+→ CAPABILITY AUTHORITY / REUSE GATE
+→ DECISION
+→ SECOND ADVERSARIAL REVIEW
+→ only then, if justified, EXECUTION
+→ VALIDATION
+→ DOCUMENTATION
+```
+
+The next chat must reconstruct current `origin/main` again before acting, inspect current schema/migrations/RPCs/RLS/RBAC/tests/frontend consumers and relevant runtime authority, and determine whether Pipeline / Stage administration can reuse existing Commercial CRM foundations without creating parallel authority. It must explicitly preserve tenant isolation, auditability and `Contact != Lead != Patient`.
+
+Do not create code, migration, PR, new table, writer, role, entitlement or a named MED-CRM-010 slice until the first four gates close with evidence.
+
 ## Release checkpoint — 2026-09-28
 
 MED-CRM-009 is **MERGED + RELEASED**.
