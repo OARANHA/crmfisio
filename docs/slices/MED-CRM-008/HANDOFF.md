@@ -1,5 +1,34 @@
 # MED-CRM-008 — Handoff
 
+## Next-chat checkpoint — 2026-09-28
+
+Fresh revalidation immediately before generating the next-chat prompt:
+
+- canonical repository: `OARANHA/crmfisio`;
+- current `origin/main`: `746909b3aadb19a0c0a7254ac6330dd84ceb4450`;
+- PR #556 is CLOSED + MERGED at that SHA;
+- exact docs-closeout head `b88f17aab0509d37e95302e76fece541bfc61855` completed **20/20 workflows with success, 0 failures, 0 pending**;
+- MED-CRM-008 remains `RELEASED / CLOSED`;
+- production backend verifier/regressions and served frontend/smoke evidence remain recorded in this slice's `EVIDENCE.md`;
+- historical PR #525 remains non-authoritative;
+- no MED-CRM-009 scope is authorized or implied by the MED-CRM-008 closure.
+
+The next chat must start from the then-current `origin/main`, not from the SHA above, and reconstruct the current CRM capability map before naming or implementing a successor slice.
+
+Required discipline:
+
+`GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW → EXECUTION → VALIDATION → DOCUMENTATION`.
+
+For the successor decision, explicitly re-audit at least the remaining candidate areas already identified institutionally — Pipeline/Stage administration, lost-reason/reporting, follow-up/next action, Inbox/Conversation, attribution, and Lead→Patient — plus any newer source/runtime evidence. Do not choose from that list by backlog order. Select only after proving the smallest coherent gap with reusable authority and safe boundaries.
+
+Hard boundary remains:
+
+`Contact != Lead != Patient`.
+
+Do not create a successor implementation branch, schema/RPC, UI writer, Patient authority, messaging authority, automation/AI authority, or production mutation before the first four gates are complete and documented.
+
+
+
 ## Release closure — 2026-09-28
 
 Fresh closure state:
