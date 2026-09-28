@@ -383,7 +383,7 @@ SELECT '7) crm.access disabled, cross-tenant, missing and deleted Leads fail clo
 -- Identity Resolution regressions deliberately enable Clinic B crm.access, so
 -- restore the disabled entitlement fixture here and create a real Clinic B Lead
 -- as superuser to distinguish cross-tenant denial from a merely missing row.
-DO $
+DO $fixture$
 DECLARE
   v_pipeline uuid;
   v_stage uuid;
@@ -420,7 +420,7 @@ BEGIN
     v_stage,
     'Lead B Details'
   );
-END $;
+END $fixture$;
 
 UPDATE public.platform_clinic_entitlements
 SET enabled=false
