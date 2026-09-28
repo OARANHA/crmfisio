@@ -1,6 +1,27 @@
 # MED-CRM-009 — Evidence
 
-**Evidence status:** REPOSITORY PROVED / PRE-MERGE / NOT RELEASED  
+## Release checkpoint — 2026-09-28
+
+MED-CRM-009 is **MERGED + RELEASED**.
+
+Canonical implementation:
+- design PR #558 merged as `main@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`;
+- implementation PR #559 final exact HEAD `3a6656334432f6960615da714ec05f0909ba7d75` completed **23/23 exact-HEAD workflow runs successfully** and was protected-squash-merged as `main@9c97c7235afd423b653dd8b6feb8e4372512fb2d`;
+- production rollout used the exact canonical migration SHA-256 `db827127dc2bc80d743e7be9f27a4ab68ca618ee1e19eb547346d588f85144b1`;
+- production verifier was pinned at SHA-256 `1784ac2bd43e9d1fb49a15036e2c64354c2fb5bf74e3dc1887752fe0d070e865`.
+
+Production proof:
+- pre-readback failed specifically with `crm_lead_activity_projection_allowlist_missing`, proving the old reader was still live before rollout;
+- the hash-verified migration applied successfully through `BEGIN → CREATE FUNCTION → REVOKE → GRANT → COMMENT → COMMIT`;
+- pinned read-only post-verifier returned `COMMERCIAL CRM LEAD ACTIVITY READ BOUNDARY VERIFY PASSED`;
+- all six prior pinned CRM verifiers remained green: Commercial Core, Command Boundary, updated-at reconciliation, Archived Pipeline Guard, Contact Identity Resolution and Lead Details;
+- `/`, `/crm`, `/agenda` and `/pacientes` returned HTTP 200 from the production runtime;
+- production entry `/assets/index-DKx3td63.js` references `/assets/CrmOperational-BBRV2_h_.js`;
+- the live CRM chunk contains `list_current_clinic_crm_lead_activities`, `contact_identity_resolved`, `stage_changed` and `resolution_mode`, while `actor_id` and `candidate_ids` are absent.
+
+No authenticated human Lead/Contact mutation was performed for release proof. The production mutation was limited to replacing the existing reader function with the canonical, compatibility-preserving projection hardening. Tenant/RBAC/`crm.access`, raw table closure, canonical stored activity rows, writers, audit authority and the `Contact != Lead != Patient` boundary remain unchanged.
+
+**Evidence status:** RELEASED  
 **Audited repository:** `OARANHA/crmfisio`  
 **Design audited main:** `1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
 **Implementation baseline:** `6bc436f2789341b95c3800d8a82cfe7dbed6c78e`  
@@ -179,9 +200,9 @@ Deterministic review then narrowed the proposal to the same existing RPC and sam
 
 During proof construction, CI exposed three harness-fixture issues which were corrected without weakening product invariants: the shared concurrency script test-database allowlist omitted the new isolated DB; an initial fixture attempted a second `contact_identity_resolved` event on one Lead and was correctly rejected by the existing exactly-once constraint; inactive/no-profile deny uses canonical `no_data_found` in addition to permission-deny paths. The final exact HEAD is green after those corrections.
 
-**Repository conclusion:** MED-CRM-009 is PROVED at repository level. It is not yet MERGED and not RELEASED.
+**Historical repository conclusion:** this was the pre-merge checkpoint. The release checkpoint above supersedes it for current state.
 
-## Runtime evidence required for RELEASED
+## Historical runtime evidence required for RELEASED
 
 - production current function pre-readback;
 - exact hash-pinned migration/verifier;
