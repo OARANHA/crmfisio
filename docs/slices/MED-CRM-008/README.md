@@ -1,6 +1,6 @@
 # MED-CRM-008 — Lead Commercial Details V1
 
-**Status:** DESIGNED  
+**Status:** IMPLEMENTED / VALIDATED IN PR #554 / NOT RELEASED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Design baseline:** `main@7b75b77c667b1c17b6eb408ee7047ad866e78a73`  
@@ -89,14 +89,34 @@ GAPS                              CLOSED
 CAPABILITY AUTHORITY / REUSE      CLOSED
 DECISION                          CLOSED
 SECOND ADVERSARIAL REVIEW         CLOSED
-EXECUTION                         NOT STARTED
-VALIDATION                        NOT STARTED
-DOCUMENTATION                     DESIGN CHECKPOINT
+EXECUTION                         CLOSED IN PR #554
+VALIDATION                        CLOSED ON EXACT PR HEAD
+DOCUMENTATION                     IMPLEMENTATION CHECKPOINT
 ```
+
+## Implementation checkpoint
+
+PR #554 implements the designed shape without expanding authority:
+
+- additive authenticated-only SECURITY DEFINER `update_current_clinic_crm_lead_details(...)`;
+- `lead_updated_at` mapped as the optimistic concurrency token;
+- exact desired-state retry before real-change privacy/archive/stale guards;
+- Contact/pipeline/stage revalidation under row locks for real changes;
+- mutation restricted to `title + value_cents + source`;
+- bounded activity/audit metadata without raw edited values;
+- Board editor hidden for read-only roles, anonymized Contacts and legacy archived Leads;
+- stale UI conflict refetches the canonical projection and never silently retries the mutation.
+
+Validated implementation head before this documentation refresh:
+`eb58c09d7f9aeed99eef52f5d71304049b43e6cb`.
+
+That exact head completed all 10 applicable PR workflows with success, including PostgreSQL 16/17 Commercial CRM Lead Details proof and Clinical workflow CI (`npm test`, typecheck, lint, build).
+
+No production rollout or runtime readback is claimed by this checkpoint.
 
 ## Implementation shape
 
-Expected additive migration:
+Implemented additive migration:
 
 - add one authenticated-only SECURITY DEFINER RPC for Lead commercial details;
 - reuse the current mutator guard;
