@@ -1,5 +1,56 @@
 # MED-CRM-008 — Handoff
 
+## Post-merge handoff refresh — 2026-09-28
+
+Fresh canonical revalidation before generating the next-chat prompt:
+
+- canonical repository: `OARANHA/crmfisio`;
+- canonical `main` after implementation merge: `7fbd255d8bb60932cc3ee839f325f35ce7568e01`;
+- PR #554 is CLOSED + MERGED;
+- protected merge used exact final PR head `2e56256426994eebaa643bd6b1537053f51d22d7`;
+- that exact final PR head completed **22/22 applicable workflows with success and 0 failures** before merge;
+- PR #554 had no blocking reviews or review threads at merge;
+- compare after merge proved `main` identical to merge commit `7fbd255d8bb60932cc3ee839f325f35ce7568e01`;
+- the merge commit itself has no separate push workflow/status records, so do not invent a second CI proof;
+- historical PR #525 remains OPEN, unmerged and non-mergeable against an old base; it is not current authority;
+- no newer competing Commercial CRM Lead-details writer was found;
+- production rollout/runtime readback for MED-CRM-008 is still **NOT PROVED**.
+
+Current source state now merged into `main`:
+
+- additive authenticated-only SECURITY DEFINER `update_current_clinic_crm_lead_details(...)`;
+- tenant/role/entitlement authority reused through `crm_current_mutator_clinic_id()`;
+- mutation restricted to `title + value_cents + source`;
+- exact desired-state retry/no-op before real-change privacy/archive/stale guards;
+- Contact/pipeline/stage real-change revalidation under row locks;
+- optimistic concurrency through canonical `lead_updated_at`;
+- bounded `lead_details_updated` activity and `CRM_LEAD_DETAILS_UPDATED` audit without raw edited values;
+- raw browser `UPDATE crm_leads` remains closed;
+- Board editor is writer-only, absent for anonymized Contacts and legacy archived Leads;
+- stale UI conflict refetches canonical projection and never silently retries the mutation;
+- `Contact != Lead != Patient` remains preserved.
+
+## Next safe gate — production rollout/readback
+
+Do **not** start a new product capability yet. First close MED-CRM-008 release proof.
+
+Required sequence in the next chat:
+
+1. resolve the current `origin/main` again; never assume the SHA above is still current;
+2. re-read this HANDOFF plus MED-CRM-008 README/DECISION/EVIDENCE and current canonical migration/verifier;
+3. reconstruct current production state before any mutation;
+4. prove whether the MED-CRM-008 backend RPC/migration is absent or already present in production;
+5. if absent, stage/hash-verify and apply only the canonical MED-CRM-008 migration through the governed production write path, with exact approval and transactional/fail-closed behavior;
+6. run the canonical pinned/read-only MED-CRM-008 verifier against production and retain exact evidence;
+7. re-check the previously RELEASED Commercial CRM boundaries needed to prove no regression where the production verifier contract requires it;
+8. observe the frontend deployment/readback and prove the live CRM bundle contains the MED-CRM-008 Lead-details editor/RPC markers while preserving the released Contact/Lead/Patient boundaries;
+9. run public route health/smoke appropriate to the existing release doctrine;
+10. update `CURRENT_STATE.md`, `SLICE_LEDGER.md`, MED-CRM-008 `EVIDENCE.md` and this HANDOFF from observed runtime evidence;
+11. only after backend production verifier + frontend runtime readback are both proved may MED-CRM-008 advance to `RELEASED`.
+
+Do not perform an authenticated human data mutation merely to prove release unless the canonical rollout doctrine explicitly requires it. Do not declare `GREEN`, `PROVED` or `RELEASED` from repository CI alone.
+
+
 ## Implementation handoff refresh — 2026-09-28
 
 Fresh GitHub revalidation before documentation closeout:
