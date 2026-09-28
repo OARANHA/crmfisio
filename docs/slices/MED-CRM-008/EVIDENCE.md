@@ -1,5 +1,144 @@
 # MED-CRM-008 — Evidence
 
+## Production release proof — 2026-09-28
+
+**Final bounded status: RELEASED.**
+
+### Canonical repository revalidation
+
+- canonical repository: `OARANHA/crmfisio`;
+- production-release baseline revalidated as `main@ae58ba701717f4b9e41f8c95340cffae433f6b52`;
+- implementation PR #554 is merged; exact final head `2e56256426994eebaa643bd6b1537053f51d22d7` completed 22/22 applicable workflows successfully before protected squash merge as `7fbd255d8bb60932cc3ee839f325f35ce7568e01`;
+- documentation PR #555 is merged as `ae58ba701717f4b9e41f8c95340cffae433f6b52`;
+- historical PR #525 remains open, unmerged and non-mergeable against an old base and is not current authority;
+- no newer competing Lead-details writer was found before rollout.
+
+### Exact production artifacts
+
+Canonical migration:
+
+`supabase-migrations/20260928_commercial_crm_lead_details.sql`
+
+SHA-256:
+
+`677494f6f48c9a5465c799bb677a9c139c9d6f93d5ec9ff8bc2ad4b3844a64f4`
+
+Canonical verifier:
+
+`supabase-verifiers/VERIFY_20260928_COMMERCIAL_CRM_LEAD_DETAILS.sql`
+
+SHA-256:
+
+`43afe4130ef7db4cca8a6bbeca0021d8472ce30abb973cc6b64d8b34733d6879`
+
+Both hashes were derived from the current canonical main. The migration hash was independently matched again inside `supabase-db` before execution.
+
+### Production pre-readback
+
+The existing governed PostgreSQL readback channel was extended only by pinning the new verifier id/hash; generic PostgreSQL, Docker or process authority was not granted.
+
+Before rollout the pinned MED-CRM-008 verifier reached the real production PostgreSQL and failed specifically with:
+
+`crm_lead_details_function_missing`
+
+Therefore the new RPC was proved absent before mutation.
+
+### Governed rollout
+
+The exact canonical migration was staged from current main into the operator workspace and copied to `supabase-db`.
+
+The first in-container SHA-256 attempt as `postgres` failed with file `Permission denied`. No SQL had been executed. The specific staged file permission was changed to read-only-compatible `0644`, after which `postgres` returned the exact canonical SHA-256 shown above.
+
+The approval-gated production apply then executed only the hash-proved file with `psql -w -X -v ON_ERROR_STOP=1 -U postgres -d postgres -f ...`.
+
+Observed result:
+
+```text
+BEGIN
+CREATE FUNCTION
+REVOKE
+GRANT
+COMMENT
+COMMIT
+```
+
+Exit code was 0.
+
+### Production verifier and regressions
+
+The separate `medicspro-db-readback` target, which has only `postgres.pinned_readback`, returned:
+
+`COMMERCIAL CRM LEAD DETAILS VERIFY PASSED`
+
+The verifier proved:
+
+- canonical command exists;
+- authenticated-only ACL;
+- SECURITY DEFINER with pinned search path;
+- canonical tenant guard and Lead row lock;
+- exact-retry/lifecycle/stale ordering;
+- mutation surface limited to title/value/source;
+- no Patient authority;
+- bounded activity/audit path;
+- `lead_updated_at` optimistic-concurrency projection;
+- raw authenticated `UPDATE crm_leads` remains closed.
+
+Post-rollout released regressions also passed:
+
+- `COMMERCIAL CRM CORE FOUNDATION VERIFY PASSED`;
+- `COMMERCIAL CRM COMMAND BOUNDARY VERIFY PASSED`;
+- `COMMERCIAL CRM ARCHIVED PIPELINE TRANSITION GUARD VERIFY PASSED`;
+- `COMMERCIAL CRM CONTACT IDENTITY RESOLUTION VERIFY PASSED`.
+
+### Served frontend and smoke
+
+After backend rollout, production served:
+
+- entry: `/assets/index-DKx3td63.js`;
+- CRM chunk: `/assets/CrmOperational-BBRV2_h_.js`;
+- observed Last-Modified for both: `Mon, 28 Sep 2026 04:25:26 GMT`.
+
+The served CRM chunk contains:
+
+- `update_current_clinic_crm_lead_details`;
+- `Editar detalhes`;
+- `Salvar detalhes`;
+- `crm_lead_details_stale`;
+- explicit stale/refetch copy;
+- released activity read and canonical stage transition markers.
+
+The served CRM chunk does not contain:
+
+- `setFunilStage`;
+- `create_patient`;
+- `addPatient`;
+- direct `.from("crm_leads")` writer markers.
+
+Public post-rollout smoke:
+
+```text
+/          200
+/crm       200
+/agenda    200
+/pacientes 200
+```
+
+### Release conclusion
+
+The release proof combines repository/CI evidence, exact canonical artifact hashes, pre-rollout absence proof, approval-gated transactional backend rollout, pinned production verifier and released CRM regressions, served frontend readback and public route health.
+
+No authenticated human edit against real production data was performed. No destructive or business-data mutation was used merely as a release probe.
+
+Preserved invariant:
+
+`Contact != Lead != Patient`
+
+No owner assignment, Contact mutation, Patient mutation/creation, pipeline/stage administration, Lead→Patient conversion, follow-up, Inbox, attribution, provider, automation or AI authority was introduced.
+
+**MED-CRM-008 is RELEASED and closed. MED-CRM-009 is not started by this closure.**
+
+
+
 **Checkpoint:** 2026-09-27  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Audited main:** `7b75b77c667b1c17b6eb408ee7047ad866e78a73`
