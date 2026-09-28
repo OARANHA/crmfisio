@@ -35,6 +35,8 @@ SELECT
 FROM public.crm_leads
 WHERE id = '81000000-0000-0000-0000-000000000080';
 
+GRANT SELECT ON medicspro_details_before TO authenticated;
+
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
 DO $$
@@ -631,6 +633,8 @@ CREATE TEMP TABLE medicspro_details_archive_retry AS
 SELECT updated_at
 FROM public.crm_leads
 WHERE id='81000000-0000-0000-0000-000000000086';
+
+GRANT SELECT ON medicspro_details_archive_retry TO authenticated;
 
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '40000000-0000-0000-0000-000000000001', false);
