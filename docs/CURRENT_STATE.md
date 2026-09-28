@@ -39,6 +39,18 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
+## Commercial CRM — MED-CRM-009 DESIGNED / EXECUTION NOT STARTED
+
+### MED-CRM-009 — Commercial Lead Activity Read Boundary V1
+
+**Status:** **DESIGNED. PRODUCT EXECUTION NOT STARTED.**
+
+Fresh audit against `main@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7` found that the RELEASED `list_current_clinic_crm_lead_activities(uuid)` reader correctly enforces current-clinic/`crm.access` but still returns raw `actor_id` and generic activity `metadata` to the authenticated browser. MED-CRM-007 discards internal identity-resolution/candidate metadata only in the frontend adapter, after the payload has crossed the server boundary.
+
+The selected next micro-slice hardens the existing read projection instead of creating a parallel activity reader. Full `crm_lead_activities` persistence, writers, audit, tenant authority and frontend defense-in-depth remain unchanged. Pipeline/Stage admin, lost-reason taxonomy/reporting, follow-up, Inbox/Conversation, attribution and Lead→Patient remain outside this slice.
+
+Design gates GAPS → REUSE → DECISION → SECOND ADVERSARIAL REVIEW are closed and recorded under `docs/slices/MED-CRM-009/`. This checkpoint is documentation only; no schema/product/runtime change is claimed.
+
 ## Commercial CRM — RELEASED MED-CRM-008
 
 ### MED-CRM-008 — Lead Commercial Details V1
