@@ -1,0 +1,65 @@
+name: Commercial CRM Lead Details
+
+on:
+  pull_request:
+    paths:
+      - 'supabase-migrations/20260927_updated_at_helper_reconciliation.sql'
+      - 'supabase-verifiers/VERIFY_20260927_UPDATED_AT_HELPER_RECONCILIATION.sql'
+      - 'supabase-migrations/20260926_commercial_crm_core_foundation.sql'
+      - 'supabase-migrations/20260926_commercial_crm_command_boundary.sql'
+      - 'supabase-migrations/20260927_commercial_crm_archived_pipeline_transition_guard.sql'
+      - 'supabase-migrations/20260927_commercial_crm_contact_identity_resolution.sql'
+      - 'supabase-migrations/20260928_commercial_crm_lead_details.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_CORE_FOUNDATION.sql'
+      - 'supabase-verifiers/VERIFY_20260926_COMMERCIAL_CRM_COMMAND_BOUNDARY.sql'
+      - 'supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_ARCHIVED_PIPELINE_TRANSITION_GUARD.sql'
+      - 'supabase-verifiers/VERIFY_20260927_COMMERCIAL_CRM_CONTACT_IDENTITY_RESOLUTION.sql'
+      - 'supabase-verifiers/VERIFY_20260928_COMMERCIAL_CRM_LEAD_DETAILS.sql'
+      - 'tests/sql/commercial_crm_core_foundation_fixture.sql'
+      - 'tests/sql/commercial_crm_core_foundation_cases.sql'
+      - 'tests/sql/commercial_crm_command_boundary_cases.sql'
+      - 'tests/sql/commercial_crm_archived_pipeline_transition_guard_cases.sql'
+      - 'tests/sql/commercial_crm_contact_identity_resolution_cases.sql'
+      - 'tests/sql/commercial_crm_lead_details_cases.sql'
+      - 'scripts/test-commercial-crm-contact-identity-resolution-concurrency.sh'
+      - 'scripts/test-commercial-crm-lead-details.sh'
+      - 'src/lib/commercialCrm.ts'
+      - 'src/lib/commercialCrm.test.ts'
+      - 'src/lib/commercialCrmFrontendBoundary.test.js'
+      - 'src/components/CommercialCrmBoard.tsx'
+      - 'src/components/CommercialCrmBoard.test.tsx'
+      - '.github/workflows/commercial-crm-lead-details.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres:
+    name: PostgreSQL ${{ matrix.postgresql }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgresql: ['16', '17']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgresql }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: commercial_crm_lead_details_test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated database
+        run: createdb -h localhost -U postgres commercial_crm_lead_details_test
+      - name: Run Lead details authority and released regressions
+        run: bash scripts/test-commercial-crm-lead-details.sh

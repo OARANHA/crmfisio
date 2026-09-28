@@ -7,10 +7,14 @@ set -euo pipefail
 : "${PGDATABASE:=commercial_crm_contact_identity_resolution_test}"
 export PGHOST PGPORT PGUSER PGDATABASE
 
-if [[ "$PGDATABASE" != "commercial_crm_contact_identity_resolution_test" ]]; then
-  echo "Refusing to run Contact identity concurrency proof outside commercial_crm_contact_identity_resolution_test" >&2
-  exit 1
-fi
+case "$PGDATABASE" in
+  commercial_crm_contact_identity_resolution_test|commercial_crm_lead_details_test)
+    ;;
+  *)
+    echo "Refusing to run Contact identity concurrency proof outside an explicit isolated CRM test database" >&2
+    exit 1
+    ;;
+esac
 
 PSQL=(psql -v ON_ERROR_STOP=1 -X -qAt)
 

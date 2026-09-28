@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  executeCommercialCrmLeadDetailsUpdate,
   executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
   listCurrentClinicCrmContactIdentityCandidates,
@@ -102,6 +103,10 @@ function activityDescription(
     return 'Etapa comercial alterada.';
   }
 
+  if (activity.activityType === 'lead_details_updated') {
+    return 'Detalhes comerciais do Lead atualizados.';
+  }
+
   if (activity.activityType === 'contact_identity_resolved') {
     if (activity.resolutionMode === 'create_if_clear') {
       return 'Identidade comercial verificada sem correspondência prévia; novo Contact usado no Lead.';
@@ -135,6 +140,7 @@ function CommercialLeadCard({
   onDragStart,
   onMove,
   onOpenTimeline,
+  onEditDetails,
 }: {
   lead: CommercialCrmLead;
   stages: CommercialCrmStage[];
@@ -143,6 +149,7 @@ function CommercialLeadCard({
   onDragStart: () => void;
   onMove: (stage: CommercialCrmStage) => void;
   onOpenTimeline: () => void;
+  onEditDetails: () => void;
 }) {
   const stageIndex = stages.findIndex((stage) => stage.id === lead.stageId);
   const nextStage = stageIndex >= 0 ? stages[stageIndex + 1] : undefined;
@@ -165,6 +172,16 @@ function CommercialLeadCard({
         <p className="font-mono text-[10px] text-fog/80 mt-2">
           Dados comerciais identificáveis ocultados.
         </p>
+      )}
+      {canMutate && !anonymized && (
+        <button
+          type="button"
+          onClick={onEditDetails}
+          disabled={busy}
+          className="mt-2 w-full border border-line px-2 py-1 font-mono text-[10px] text-fog hover:text-aqua hover:border-aqua/40 transition-colors disabled:opacity-40"
+        >
+          Editar detalhes
+        </button>
       )}
       <button
         type="button"
@@ -233,6 +250,12 @@ export function CommercialCrmBoard() {
   const [timelineActivities, setTimelineActivities] = useState<CommercialCrmLeadActivity[] | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [detailsLead, setDetailsLead] = useState<CommercialCrmLead | null>(null);
+  const [detailsTitle, setDetailsTitle] = useState('');
+  const [detailsValue, setDetailsValue] = useState('');
+  const [detailsSource, setDetailsSource] = useState('');
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [savingDetails, setSavingDetails] = useState(false);
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
   const [movingLeadId, setMovingLeadId] = useState<string | null>(null);
   const [lossTarget, setLossTarget] = useState<{ lead: CommercialCrmLead; stage: CommercialCrmStage } | null>(null);
@@ -336,6 +359,103 @@ export function CommercialCrmBoard() {
       setTimelineError('Não foi possível carregar o histórico comercial deste Lead.');
     } finally {
       if (timelineRequestId.current === requestId) setTimelineLoading(false);
+    }
+  };
+
+  const closeDetails = () => {
+    if (savingDetails) return;
+    setDetailsLead(null);
+    setDetailsTitle('');
+    setDetailsValue('');
+    setDetailsSource('');
+    setDetailsError(null);
+  };
+
+  const openDetails = (lead: CommercialCrmLead) => {
+    if (!canMutate || lead.contactAnonymizedAt) return;
+    setDetailsLead(lead);
+    setDetailsTitle(lead.title);
+    setDetailsValue(lead.valueCents === null ? '' : (lead.valueCents / 100).toFixed(2));
+    setDetailsSource(lead.source ?? '');
+    setDetailsError(null);
+  };
+
+  const saveDetails = async () => {
+    if (!canMutate || !detailsLead || savingDetails) return;
+
+    const title = detailsTitle.trim();
+    if (!title) {
+      setDetailsError('Informe o interesse / assunto comercial.');
+      return;
+    }
+
+    let valueCents: number | null = null;
+    const rawValue = detailsValue.trim();
+    if (rawValue) {
+      const normalized = rawValue.replace(',', '.');
+      if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+        setDetailsError('Informe um valor comercial válido, com até duas casas decimais.');
+        return;
+      }
+      valueCents = Math.round(Number(normalized) * 100);
+      if (!Number.isSafeInteger(valueCents) || valueCents < 0) {
+        setDetailsError('Informe um valor comercial válido.');
+        return;
+      }
+    }
+
+    setSavingDetails(true);
+    setDetailsError(null);
+    try {
+      const outcome = await executeCommercialCrmLeadDetailsUpdate({
+        leadId: detailsLead.id,
+        expectedUpdatedAt: detailsLead.updatedAt,
+        title,
+        valueCents,
+        source: detailsSource,
+      });
+
+      if (outcome.snapshot) applySnapshot(outcome.snapshot);
+      setDetailsLead(null);
+      setDetailsTitle('');
+      setDetailsValue('');
+      setDetailsSource('');
+
+      if (outcome.projectionWarning) {
+        toast(outcome.projectionWarning, 'warn');
+      } else {
+        toast('Detalhes comerciais do Lead atualizados.');
+      }
+    } catch (error) {
+      if (crmErrorContains(error, 'crm_lead_details_stale')) {
+        try {
+          await refresh(false);
+          setDetailsLead(null);
+          setDetailsTitle('');
+          setDetailsValue('');
+          setDetailsSource('');
+          toast('Este Lead mudou no servidor. O quadro foi atualizado; revise os dados antes de editar novamente.', 'warn');
+        } catch {
+          setDetailsError(
+            'Este Lead mudou no servidor e o quadro não pôde ser atualizado. Atualize o CRM antes de tentar novamente.',
+          );
+        }
+        return;
+      }
+
+      if (
+        crmErrorContains(error, 'crm_lead_contact_not_mutable')
+        || crmErrorContains(error, 'crm_lead_details_current_pipeline_archived')
+        || crmErrorContains(error, 'crm_lead_details_current_stage_archived')
+      ) {
+        setDetailsError('Este Lead ficou somente leitura. Atualize o quadro antes de tentar novamente.');
+        return;
+      }
+
+      console.error('[MedicsPro] Falha ao atualizar detalhes comerciais do Lead.');
+      setDetailsError('Não foi possível salvar os detalhes comerciais. Nenhuma nova tentativa foi feita automaticamente.');
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -734,6 +854,7 @@ export function CommercialCrmBoard() {
                           onDragStart={() => setDragLeadId(lead.id)}
                           onMove={(target) => requestTransition(lead, target)}
                           onOpenTimeline={() => void openTimeline(lead)}
+                          onEditDetails={() => openDetails(lead)}
                         />
                       ))}
                     </div>
@@ -831,6 +952,74 @@ export function CommercialCrmBoard() {
                 ))}
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {detailsLead && (
+        <Modal
+          open
+          title="Editar detalhes comerciais"
+          onClose={closeDetails}
+        >
+          <div className="space-y-4">
+            <div className="border border-aqua/25 bg-aqua/5 px-3 py-2.5">
+              <p className="font-display text-[13px] font-semibold">{contactLabel(detailsLead)}</p>
+              <p className="mt-1 text-[11.5px] text-fog">
+                Edita somente o Lead comercial. Contact, etapa, responsável e Patient não são alterados aqui.
+              </p>
+            </div>
+
+            <Field label="Interesse / assunto comercial · obrigatório">
+              <Input
+                value={detailsTitle}
+                onChange={(event) => {
+                  setDetailsTitle(event.target.value);
+                  if (detailsError) setDetailsError(null);
+                }}
+                placeholder="Interesse / assunto comercial"
+                disabled={savingDetails}
+              />
+            </Field>
+
+            <Field label="Valor comercial (R$)">
+              <Input
+                value={detailsValue}
+                onChange={(event) => {
+                  setDetailsValue(event.target.value);
+                  if (detailsError) setDetailsError(null);
+                }}
+                placeholder="0,00"
+                inputMode="decimal"
+                disabled={savingDetails}
+              />
+            </Field>
+
+            <Field label="Origem manual">
+              <Input
+                value={detailsSource}
+                onChange={(event) => {
+                  setDetailsSource(event.target.value);
+                  if (detailsError) setDetailsError(null);
+                }}
+                placeholder="Ex.: indicação, site, evento"
+                disabled={savingDetails}
+              />
+            </Field>
+
+            {detailsError && <p className="text-[11.5px] text-pulse">{detailsError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <Btn variant="ghost" onClick={closeDetails} disabled={savingDetails}>
+                Cancelar
+              </Btn>
+              <Btn
+                onClick={() => void saveDetails()}
+                disabled={!detailsTitle.trim() || savingDetails}
+              >
+                {savingDetails ? 'Salvando…' : 'Salvar detalhes'}
+              </Btn>
+            </div>
           </div>
         </Modal>
       )}

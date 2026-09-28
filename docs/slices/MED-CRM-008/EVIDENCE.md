@@ -109,3 +109,45 @@ Implementation-plan review also identified two direct-RPC bypass risks: editing 
 Implementation-plan review additionally proved that `FOR UPDATE` alone is insufficient against stale full-form overwrites. The final design requires `lead_updated_at` as an optimistic-concurrency token after row lock, while exact desired-state retries remain side-effect-free no-ops.
 
 No production mutation, schema rollout or human smoke is claimed by this design checkpoint.
+
+
+## Implementation checkpoint — 2026-09-28
+
+Fresh repository revalidation after implementation:
+
+- docs-only design PR #553 was squash-merged into `main@4654bd95c4d1305754d44886c0d1fbad7fd59126`;
+- implementation branch is `feat/med-crm-008-lead-commercial-details`;
+- implementation PR is #554;
+- exact implementation head validated before this documentation refresh: `eb58c09d7f9aeed99eef52f5d71304049b43e6cb`;
+- that head was `0 behind` canonical main, mergeable, non-draft, with no reviews and no review threads;
+- all 10 applicable pull-request workflows completed with `success`.
+
+Server implementation evidence on that exact head:
+
+- additive `public.update_current_clinic_crm_lead_details(uuid,timestamptz,text,bigint,text)`;
+- tenant/role/entitlement authority reused from `crm_current_mutator_clinic_id()`;
+- current-clinic non-deleted Lead locked `FOR UPDATE`;
+- exact desired-state retry returns before privacy/archive/stale write guards and emits no duplicate evidence;
+- real changes revalidate Contact, pipeline and stage under `FOR SHARE`;
+- stale `expected_updated_at` fails explicitly with no overwrite;
+- only `title`, `value_cents` and `source` are updated;
+- `lead_details_updated` activity contains bounded `changed_fields` metadata only;
+- `CRM_LEAD_DETAILS_UPDATED` audit contains Lead ID/change categories only;
+- raw authenticated `UPDATE crm_leads` remains denied;
+- Patient/Patient Journey stay untouched in behavior tests.
+
+Validation evidence:
+
+- `Commercial CRM Lead Details` workflow passed on PostgreSQL 16 and 17;
+- its harness re-runs released Commercial Core, Command Boundary, Archived Pipeline Guard and Contact Identity Resolution verifiers/regressions, plus the Contact identity concurrency proof and MED-CRM-008 behavior cases;
+- `Commercial CRM Contact Identity Resolution` remained green on the exact implementation head;
+- `Clinical workflow CI` completed with success and its workflow runs `npm test`, `npm run typecheck`, `npm run lint` and `npm run build`;
+- Board tests prove writer/read-only role behavior, exact projection concurrency token usage, stale refetch without silent retry, no edit affordance for anonymized/legacy archived Leads, and bounded activity rendering.
+
+Adversarial review:
+
+- advisory JEV final review routed `deep_review` with low block probability;
+- deterministic review retained the designed lock/idempotency ordering and found no competing Lead-details writer or authority expansion in the PR;
+- `Contact != Lead != Patient` remains preserved.
+
+This is source/CI evidence only. Production deployment and runtime readback are not claimed here.

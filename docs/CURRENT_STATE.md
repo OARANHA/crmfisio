@@ -39,15 +39,29 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — next designed slice (not implemented)
+## Commercial CRM — implementation validated in PR / not released
 
 ### MED-CRM-008 — Lead Commercial Details V1
 
-**Status:** **DESIGNED / EXECUTION NOT STARTED** on branch `docs/med-crm-008-lead-commercial-details`, audited from `main@7b75b77c667b1c17b6eb408ee7047ad866e78a73`.
+**Status:** **IMPLEMENTING / VALIDATED IN PR #554 / NOT RELEASED** on branch `feat/med-crm-008-lead-commercial-details`.
 
-Fresh post-MED-CRM-007 audit selected a deliberately narrow gap: the canonical Lead already stores/projects `title`, `value_cents` and `source`, but the current Board has no canonical update command or edit UX for these fields. Raw browser `UPDATE crm_leads` remains closed. The design therefore reuses `crm_current_mutator_clinic_id()`, `crm.access`, current-clinic tenant authority, existing Lead constraints, `crm_lead_activities` and `audit_log`.
+The docs-only design from PR #553 is already integrated in `main@4654bd95c4d1305754d44886c0d1fbad7fd59126`. PR #554 implements the bounded Lead-details writer and Board UX without expanding authority beyond `title + value_cents + source`.
 
-The adversarial review **removed `owner_id` from V1** because current server semantics only prove same-tenant/active-profile ownership, not which operational roles are legitimate Lead owners. MED-CRM-008 also excludes stage/pipeline mutation, Contact edit, loss-reason taxonomy, follow-up, Inbox, attribution engine and Lead→Patient. No product code, migration, runtime rollout or production mutation is claimed by this design checkpoint.
+Validated implementation checkpoint before documentation closeout: exact HEAD `eb58c09d7f9aeed99eef52f5d71304049b43e6cb`, `0 behind` main, mergeable, no reviews/threads, **10/10 applicable workflows successful**. The dedicated `Commercial CRM Lead Details` workflow passed PostgreSQL 16/17 with released CRM regressions; `Clinical workflow CI` also passed and executes unit tests, typecheck, lint and build.
+
+Implemented boundaries:
+
+- tenant/role/entitlement authority remains `crm_current_mutator_clinic_id()`;
+- optimistic concurrency reuses canonical `lead_updated_at`;
+- exact desired-state retry is side-effect free before real-change privacy/archive/stale guards;
+- Contact/pipeline/stage are revalidated under row locks for real changes;
+- raw browser `UPDATE crm_leads` remains closed;
+- activity/audit metadata records only changed-field categories/IDs, never raw edited values;
+- Board never exposes this editor to professional/financeiro, anonymized Contacts or legacy archived Leads;
+- stale conflicts refetch canonical projection and never silently retry the mutation;
+- `Contact != Lead != Patient`; no owner, Contact, Patient, stage/pipeline admin, Lead→Patient, follow-up, Inbox or attribution authority was added.
+
+Documentation commits after the checkpoint above create a newer PR head and **must be revalidated on the exact final HEAD before merge**. Production deployment/runtime readback is still pending and no RELEASED claim exists yet.
 
 ## Commercial CRM — RELEASED #522 / #524 / #534 / #536 / #538 / #548 / #551
 

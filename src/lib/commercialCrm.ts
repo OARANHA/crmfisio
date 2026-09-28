@@ -26,6 +26,7 @@ export interface CommercialCrmLead {
   lostReasonCode: string | null;
   lostReasonDetail: string | null;
   closedAt: string | null;
+  updatedAt: string;
   ownerId: string | null;
   contactId: string;
   contactName: string;
@@ -130,6 +131,25 @@ export interface CommercialCrmCommandOutcome {
   projectionWarning: string | null;
 }
 
+export interface CommercialCrmLeadDetailsInput {
+  leadId: string;
+  expectedUpdatedAt: string;
+  title: string;
+  valueCents: number | null;
+  source: string | null;
+}
+
+export interface CommercialCrmLeadDetailsResult {
+  leadId: string;
+}
+
+export interface CommercialCrmLeadDetailsOutcome {
+  command: CommercialCrmLeadDetailsResult;
+  snapshot: CommercialCrmSnapshot | null;
+  projection: 'fresh' | 'stale';
+  projectionWarning: string | null;
+}
+
 type PipelineRow = {
   id: string;
   name: string;
@@ -154,6 +174,7 @@ type LeadRow = {
   lost_reason_code: string | null;
   lost_reason_detail: string | null;
   closed_at: string | null;
+  lead_updated_at: string;
   owner_id: string | null;
   contact_id: string;
   contact_name: string;
@@ -265,6 +286,7 @@ export async function listCurrentClinicCrmLeads(): Promise<CommercialCrmLead[]> 
     lostReasonCode: row.lost_reason_code,
     lostReasonDetail: row.lost_reason_detail,
     closedAt: row.closed_at,
+    updatedAt: row.lead_updated_at,
     ownerId: row.owner_id,
     contactId: row.contact_id,
     contactName: row.contact_name,
@@ -412,6 +434,56 @@ export async function transitionCurrentClinicCrmLeadStage(
     stageKind: row.stage_kind,
     closedAt: row.closed_at,
   };
+}
+
+export async function updateCurrentClinicCrmLeadDetails(
+  input: CommercialCrmLeadDetailsInput,
+): Promise<CommercialCrmLeadDetailsResult> {
+  const { data, error } = await supabase.rpc('update_current_clinic_crm_lead_details', {
+    p_lead_id: input.leadId,
+    p_expected_updated_at: input.expectedUpdatedAt,
+    p_title: input.title.trim(),
+    p_value_cents: input.valueCents,
+    p_source: input.source?.trim() || null,
+  });
+  if (error) throw error;
+
+  return {
+    leadId: typeof data === 'string' ? data : input.leadId,
+  };
+}
+
+interface CommercialCrmLeadDetailsDependencies {
+  update?: typeof updateCurrentClinicCrmLeadDetails;
+  refresh?: typeof loadCurrentClinicCommercialCrm;
+}
+
+export async function executeCommercialCrmLeadDetailsUpdate(
+  input: CommercialCrmLeadDetailsInput,
+  dependencies: CommercialCrmLeadDetailsDependencies = {},
+): Promise<CommercialCrmLeadDetailsOutcome> {
+  const update = dependencies.update ?? updateCurrentClinicCrmLeadDetails;
+  const refresh = dependencies.refresh ?? loadCurrentClinicCommercialCrm;
+
+  const command = await update(input);
+
+  try {
+    const snapshot = await refresh();
+    return {
+      command,
+      snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    };
+  } catch {
+    console.error('[MedicsPro] Falha ao atualizar projeção do CRM após detalhes do Lead persistidos.');
+    return {
+      command,
+      snapshot: null,
+      projection: 'stale',
+      projectionWarning: 'Detalhes salvos, mas o quadro não pôde ser recarregado. Atualize novamente para ver o estado mais recente.',
+    };
+  }
 }
 
 interface CommercialCrmProspectResolutionDependencies {

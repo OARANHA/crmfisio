@@ -1,5 +1,42 @@
 # MED-CRM-008 — Handoff
 
+## Implementation handoff refresh — 2026-09-28
+
+Fresh GitHub revalidation before documentation closeout:
+
+- canonical `main` is `4654bd95c4d1305754d44886c0d1fbad7fd59126`, containing the merged MED-CRM-008 design from PR #553;
+- implementation PR #554 is OPEN, non-draft and mergeable;
+- validated implementation head before this documentation refresh: `eb58c09d7f9aeed99eef52f5d71304049b43e6cb`;
+- that exact head was `0 behind` main;
+- all **10/10 applicable PR workflows completed with success**;
+- `Commercial CRM Lead Details` passed PostgreSQL 16/17 with released CRM regressions and MED-CRM-008 behavior;
+- `Clinical workflow CI` passed and executes `npm test`, typecheck, lint and build;
+- PR #554 has no reviews and no review threads;
+- final deterministic review found no authority expansion beyond `title + value_cents + source`;
+- production deployment/runtime readback is **not** claimed.
+
+Implementation now present in PR #554:
+
+- authenticated-only SECURITY DEFINER `update_current_clinic_crm_lead_details(...)`;
+- tenant/role/entitlement reuse through `crm_current_mutator_clinic_id()`;
+- Lead `FOR UPDATE`, exact desired-state retry/no-op, related Contact/pipeline/stage `FOR SHARE`, then stale token check;
+- bounded activity/audit without raw edited values;
+- typed `lead_updated_at` concurrency token;
+- Board editor for operational roles only;
+- no edit affordance for anonymized Contacts or legacy archived Leads;
+- stale edit rejection refetches canonical projection and never silently retries the mutation.
+
+This documentation refresh creates a newer PR head than the already-green implementation head above. Therefore the next action is deterministic:
+
+1. resolve the new exact PR #554 HEAD;
+2. require every applicable workflow on that exact HEAD to be `completed + success`;
+3. require PR to remain mergeable, `0 behind`, with no blocking review/thread;
+4. only then squash-merge PR #554;
+5. resolve the resulting new `main` SHA;
+6. update canonical state/ledger only from the merged main;
+7. treat production deployment/runtime readback as a separate release proof — do not label MED-CRM-008 RELEASED from CI alone.
+
+
 ## Handoff refresh — 2026-09-27 20:40 BRT
 
 Fresh GitHub revalidation before opening the next chat:

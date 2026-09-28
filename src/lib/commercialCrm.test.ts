@@ -9,6 +9,7 @@ vi.mock('./supabaseClient', () => ({
 import {
   createCurrentClinicCrmContact,
   createCurrentClinicCrmLead,
+  executeCommercialCrmLeadDetailsUpdate,
   executeCommercialCrmProspectCreation,
   executeCommercialCrmProspectResolution,
   executeCommercialCrmStageTransition,
@@ -20,6 +21,7 @@ import {
   loadCurrentClinicCommercialCrm,
   resolveCurrentClinicCrmProspectIdentity,
   transitionCurrentClinicCrmLeadStage,
+  updateCurrentClinicCrmLeadDetails,
 } from './commercialCrm';
 
 describe('commercial CRM canonical frontend adapter', () => {
@@ -53,6 +55,7 @@ describe('commercial CRM canonical frontend adapter', () => {
           lost_reason_code: null,
           lost_reason_detail: null,
           closed_at: null,
+          lead_updated_at: '2026-09-28T03:00:00Z',
           owner_id: null,
           contact_id: 'contact-a',
           contact_name: 'Maria',
@@ -86,6 +89,7 @@ describe('commercial CRM canonical frontend adapter', () => {
       contactId: 'contact-a',
       pipelineId: 'pipeline-a',
       stageId: 'stage-a',
+      updatedAt: '2026-09-28T03:00:00Z',
     });
     expect(rpc.mock.calls.map((call) => call[0])).toEqual([
       'list_current_clinic_crm_pipelines',
@@ -369,6 +373,94 @@ describe('commercial CRM canonical frontend adapter', () => {
     expect(result.snapshot).toBeNull();
     expect(result.projection).toBe('stale');
     expect(result.projectionWarning).toContain('Prospect criado');
+  });
+
+  it('updates Lead commercial details only through the canonical RPC with the projection token', async () => {
+    rpc.mockResolvedValueOnce({
+      data: 'lead-a',
+      error: null,
+    });
+
+    const result = await updateCurrentClinicCrmLeadDetails({
+      leadId: 'lead-a',
+      expectedUpdatedAt: '2026-09-28T03:00:00Z',
+      title: '  Avaliação premium  ',
+      valueCents: 125000,
+      source: '  indicação  ',
+    });
+
+    expect(rpc).toHaveBeenCalledWith('update_current_clinic_crm_lead_details', {
+      p_lead_id: 'lead-a',
+      p_expected_updated_at: '2026-09-28T03:00:00Z',
+      p_title: 'Avaliação premium',
+      p_value_cents: 125000,
+      p_source: 'indicação',
+    });
+    expect(result).toEqual({ leadId: 'lead-a' });
+  });
+
+  it('normalizes an empty manual source to null before the details command', async () => {
+    rpc.mockResolvedValueOnce({ data: 'lead-a', error: null });
+
+    await updateCurrentClinicCrmLeadDetails({
+      leadId: 'lead-a',
+      expectedUpdatedAt: '2026-09-28T03:00:00Z',
+      title: 'Avaliação',
+      valueCents: null,
+      source: '   ',
+    });
+
+    expect(rpc).toHaveBeenCalledWith('update_current_clinic_crm_lead_details', {
+      p_lead_id: 'lead-a',
+      p_expected_updated_at: '2026-09-28T03:00:00Z',
+      p_title: 'Avaliação',
+      p_value_cents: null,
+      p_source: null,
+    });
+  });
+
+  it('keeps persisted Lead details successful when only the canonical refetch fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await executeCommercialCrmLeadDetailsUpdate(
+      {
+        leadId: 'lead-a',
+        expectedUpdatedAt: '2026-09-28T03:00:00Z',
+        title: 'Avaliação premium',
+        valueCents: 125000,
+        source: 'indicação',
+      },
+      {
+        update: vi.fn().mockResolvedValue({ leadId: 'lead-a' }),
+        refresh: vi.fn().mockRejectedValue(new Error('projection unavailable')),
+      },
+    );
+
+    expect(result.command).toEqual({ leadId: 'lead-a' });
+    expect(result.snapshot).toBeNull();
+    expect(result.projection).toBe('stale');
+    expect(result.projectionWarning).toContain('Detalhes salvos');
+  });
+
+  it('does not refetch when the Lead details command itself rejects', async () => {
+    const refresh = vi.fn();
+    const commandError = new Error('crm_lead_details_stale');
+
+    await expect(executeCommercialCrmLeadDetailsUpdate(
+      {
+        leadId: 'lead-a',
+        expectedUpdatedAt: '2026-09-28T03:00:00Z',
+        title: 'Avaliação stale',
+        valueCents: null,
+        source: null,
+      },
+      {
+        update: vi.fn().mockRejectedValue(commandError),
+        refresh,
+      },
+    )).rejects.toBe(commandError);
+
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('sends a trimmed free-form lost reason through the canonical transition RPC', async () => {
