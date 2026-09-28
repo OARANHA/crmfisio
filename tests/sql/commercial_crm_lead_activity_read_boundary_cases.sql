@@ -29,6 +29,18 @@ SELECT public.create_current_clinic_crm_lead(
   '71000000-0000-0000-0000-000000000099',
   'Lead Activity Boundary'
 );
+
+-- A second Lead is used to prove invalid resolution_mode fail-closed without
+-- violating the existing exactly-once contact_identity_resolved invariant.
+SELECT public.create_current_clinic_crm_contact(
+  '71000000-0000-0000-0000-000000000097',
+  'Contato Invalid Resolution Boundary'
+);
+SELECT public.create_current_clinic_crm_lead(
+  '81000000-0000-0000-0000-000000000097',
+  '71000000-0000-0000-0000-000000000097',
+  'Lead Invalid Resolution Boundary'
+);
 RESET ROLE;
 
 INSERT INTO public.crm_lead_activities (
@@ -72,7 +84,7 @@ INSERT INTO public.crm_lead_activities (
   (
     '91000000-0000-0000-0000-000000000003',
     '20000000-0000-0000-0000-000000000001',
-    '81000000-0000-0000-0000-000000000099',
+    '81000000-0000-0000-0000-000000000097',
     'contact_identity_resolved',
     '40000000-0000-0000-0000-000000000001',
     'automation',
@@ -129,7 +141,7 @@ BEGIN
 
   SELECT * INTO v_invalid
   FROM public.list_current_clinic_crm_lead_activities(
-    '81000000-0000-0000-0000-000000000099'
+    '81000000-0000-0000-0000-000000000097'
   )
   WHERE id='91000000-0000-0000-0000-000000000003';
 
