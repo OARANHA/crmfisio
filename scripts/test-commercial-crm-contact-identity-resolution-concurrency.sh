@@ -8,7 +8,7 @@ set -euo pipefail
 export PGHOST PGPORT PGUSER PGDATABASE
 
 case "$PGDATABASE" in
-  commercial_crm_contact_identity_resolution_test|commercial_crm_lead_details_test)
+  commercial_crm_contact_identity_resolution_test|commercial_crm_lead_details_test|commercial_crm_lead_activity_read_boundary_test)
     ;;
   *)
     echo "Refusing to run Contact identity concurrency proof outside an explicit isolated CRM test database" >&2

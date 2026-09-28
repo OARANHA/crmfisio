@@ -1,8 +1,10 @@
 # MED-CRM-009 — Evidence
 
-**Evidence status:** DESIGN / PRE-EXECUTION  
+**Evidence status:** REPOSITORY PROVED / PRE-MERGE / NOT RELEASED  
 **Audited repository:** `OARANHA/crmfisio`  
-**Audited main:** `1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
+**Design audited main:** `1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`  
+**Implementation baseline:** `6bc436f2789341b95c3800d8a82cfe7dbed6c78e`  
+**Repository proof HEAD:** `5e22d610024e0b5ba46acda481e3f11f111eed28`  
 **Date:** 2026-09-28
 
 ## REAL NOW
@@ -161,17 +163,23 @@ confidence = 0.82
 
 Deterministic review then narrowed the proposal to the same existing RPC and same return shape, with full storage unchanged.
 
-## Evidence still required before implementation can be PROVED
+## Repository implementation proof
 
-- fresh `origin/main` after this design PR is integrated;
-- repository-wide consumer search for `list_current_clinic_crm_lead_activities`;
-- exact follow-up migration/verifier design;
-- PostgreSQL 16/17 behavioral proof if current policy still requires it;
-- all reader-role allow cases and deny cases;
-- direct proof that raw metadata/actor UUID do not cross the RPC;
-- current Commercial CRM regression suite;
-- frontend regression/typecheck/lint/build;
-- exact-head GitHub workflows.
+- design PR #558 exact HEAD `182d33fe5d566aaa2cf808b3df33e6992c38fc3e` completed 20/20 workflow runs successfully and was protected-squash-merged as `main@6bc436f2789341b95c3800d8a82cfe7dbed6c78e`;
+- repository consumer audit proved the product path is `src/lib/commercialCrm.ts` → `CommercialCrmBoard`, and that the Board does not require actor UUID or raw metadata;
+- Contact Identity Resolution retry reads canonical `crm_lead_activities` directly; stage-transition and Lead-details writers do not consume the read RPC;
+- implementation PR #559 uses an additive follow-up migration and preserves RPC signature/row type/ACL/tenant guard/storage;
+- the structural verifier proves signature/ACL/STABLE/SECURITY DEFINER/search-path/tenant guard, projection allowlist, no Patient/write authority and raw DML closure;
+- behavioral cases prove bounded projection for owner/admin/recep/professional/financeiro, cross-tenant deny, anonymous deny, inactive/no-profile deny, missing `crm.access` deny, unknown metadata fail-closed and canonical stored metadata intact;
+- the dedicated MED-CRM-009 workflow passed PostgreSQL 16 and PostgreSQL 17;
+- Contact Identity Resolution PG16/17 regression passed, including concurrency proof;
+- Lead Details PG16/17 regression passed;
+- exact implementation HEAD `5e22d610024e0b5ba46acda481e3f11f111eed28` completed **11/11 applicable workflows with success**;
+- `Clinical workflow CI / validate` passed `npm test`, `npm run typecheck`, `npm run lint` and `npm run build`; `dependency-audit` passed.
+
+During proof construction, CI exposed three harness-fixture issues which were corrected without weakening product invariants: the shared concurrency script test-database allowlist omitted the new isolated DB; an initial fixture attempted a second `contact_identity_resolved` event on one Lead and was correctly rejected by the existing exactly-once constraint; inactive/no-profile deny uses canonical `no_data_found` in addition to permission-deny paths. The final exact HEAD is green after those corrections.
+
+**Repository conclusion:** MED-CRM-009 is PROVED at repository level. It is not yet MERGED and not RELEASED.
 
 ## Runtime evidence required for RELEASED
 
