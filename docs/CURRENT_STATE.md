@@ -49,7 +49,7 @@ Fresh discovery from `main@ef4011f138585de71910ecbe6c1fa815208d0dee` confirms th
 
 The selected next design problem is therefore Pipeline/Stage Administration, but code remains blocked until product/integrity semantics are explicit for: Pipeline archive with live Leads, Stage archive with live Leads, default transfer/exactly-one behavior, usable Pipeline creation, Stage kind mutability, concurrency-safe reorder and archive/restore/delete lifecycle.
 
-The production readback target remains hash-pinned; no arbitrary catalog SQL or operator bypass was used during discovery. See `docs/slices/MED-CRM-010/`.
+The production readback target remains hash-pinned; no arbitrary catalog SQL or operator bypass was used during discovery. Discovery/design is tracked in PR #562 on `docs/med-crm-010-pipeline-stage-administration-analysis`; see `docs/slices/MED-CRM-010/`.
 
 ## Commercial CRM — RELEASED MED-CRM-009
 
