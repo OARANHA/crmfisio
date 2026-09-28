@@ -1,5 +1,39 @@
 # MED-CRM-009 — Handoff
 
+## Next-chat generation checkpoint — 2026-09-28
+
+Fresh revalidation immediately before generating the next-chat prompt:
+
+- canonical repository: `OARANHA/crmfisio`;
+- canonical `main`: `1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`;
+- design PR: #558 — OPEN / unmerged / mergeable;
+- branch: `docs/med-crm-009-lead-activity-read-boundary`;
+- exact PR HEAD before this HANDOFF refresh: `2543bda15f693d473ddc743fef3671df1689f839`;
+- compare before refresh: 7 ahead / 0 behind;
+- changed files: 6, all under `docs/`;
+- workflow snapshot on that prior HEAD: 20 total, 13 completed-success, 5 in progress, 2 queued;
+- reviews: 0;
+- review threads: 0;
+- no product/schema/runtime change is present in the design PR.
+
+**Important:** this HANDOFF refresh itself creates a new PR HEAD. Therefore the workflow snapshot above is historical immediately after this commit. The next chat must resolve the new exact HEAD and re-read its checks before any merge decision. Do not inherit success from the previous HEAD.
+
+Next safe continuation:
+
+1. resolve current `origin/main`;
+2. resolve PR #558 current HEAD/base/mergeability/diff;
+3. prove the current HEAD remains docs-only and 0 behind;
+4. wait for/inspect all applicable exact-HEAD workflows and require completed + success;
+5. confirm no blocking review/thread;
+6. only then merge the design PR;
+7. after merge, re-resolve `origin/main`;
+8. re-read MED-CRM-009 README/DECISION/EVIDENCE/HANDOFF from integrated main;
+9. audit every canonical consumer of `list_current_clinic_crm_lead_activities(uuid)`;
+10. if the design contract still holds, create a **fresh implementation branch** from the new main;
+11. do not implement on the design branch.
+
+No MED-CRM-010 or other successor scope is authorized by this handoff.
+
 ## Design PR checkpoint — 2026-09-28
 
 - PR: #558 — `docs(crm): design MED-CRM-009 activity read boundary`;
