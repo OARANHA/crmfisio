@@ -1,5 +1,18 @@
 # MED-CRM-009 — Handoff
 
+## Design PR checkpoint — 2026-09-28
+
+- PR: #558 — `docs(crm): design MED-CRM-009 activity read boundary`;
+- branch: `docs/med-crm-009-lead-activity-read-boundary`;
+- base at PR creation: `main@1ff2825cfe5dd630ea16e4cfeda586ad390c3be7`;
+- head before this HANDOFF refresh: `f88001c53019f70faf1a77f23d2f7b992e25a0b4`;
+- compare before refresh: 6 ahead / 0 behind;
+- changed files: 6;
+- scope: documentation only;
+- product/schema/runtime mutation: none.
+
+This HANDOFF refresh itself moves the PR HEAD. Do **not** inherit checks from `f88001c53019f70faf1a77f23d2f7b992e25a0b4`. Resolve the new exact HEAD and its workflows before any merge decision.
+
 ## Design checkpoint — 2026-09-28
 
 Canonical repository:
