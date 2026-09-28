@@ -355,7 +355,7 @@ BEGIN
     );
     RAISE EXCEPTION 'inactive_profile_activity_reader_unexpectedly_allowed';
   EXCEPTION
-    WHEN insufficient_privilege THEN NULL;
+    WHEN insufficient_privilege OR no_data_found THEN NULL;
   END;
 END $$;
 
@@ -368,7 +368,7 @@ BEGIN
     );
     RAISE EXCEPTION 'missing_profile_activity_reader_unexpectedly_allowed';
   EXCEPTION
-    WHEN insufficient_privilege THEN NULL;
+    WHEN insufficient_privilege OR no_data_found THEN NULL;
   END;
 END $$;
 
