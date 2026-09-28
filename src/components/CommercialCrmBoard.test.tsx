@@ -24,6 +24,7 @@ const testState = vi.hoisted(() => ({
         lostReasonCode: null,
         lostReasonDetail: null,
         closedAt: null,
+        updatedAt: '2026-09-28T03:00:00Z',
         ownerId: null,
         contactId: 'contact-a',
         contactName: 'Maria Silva',
@@ -42,6 +43,7 @@ const testState = vi.hoisted(() => ({
   } as CommercialCrmSnapshot,
   load: vi.fn(),
   execute: vi.fn(),
+  executeDetails: vi.fn(),
   listCandidates: vi.fn(),
   listActivities: vi.fn(),
   executeResolution: vi.fn(),
@@ -62,6 +64,7 @@ vi.mock('../lib/commercialCrm', async (importOriginal) => {
     ...original,
     loadCurrentClinicCommercialCrm: testState.load,
     executeCommercialCrmStageTransition: testState.execute,
+    executeCommercialCrmLeadDetailsUpdate: testState.executeDetails,
     listCurrentClinicCrmContactIdentityCandidates: testState.listCandidates,
     listCurrentClinicCrmLeadActivities: testState.listActivities,
     executeCommercialCrmProspectResolution: testState.executeResolution,
@@ -97,6 +100,7 @@ function baseSnapshot(): CommercialCrmSnapshot {
         lostReasonCode: null,
         lostReasonDetail: null,
         closedAt: null,
+        updatedAt: '2026-09-28T03:00:00Z',
         ownerId: null,
         contactId: 'contact-a',
         contactName: 'Maria Silva',
@@ -187,6 +191,12 @@ describe('CommercialCrmBoard', () => {
       projection: 'fresh',
       projectionWarning: null,
     }));
+    testState.executeDetails.mockReset().mockImplementation(async () => ({
+      command: { leadId: 'lead-a' },
+      snapshot: testState.snapshot,
+      projection: 'fresh',
+      projectionWarning: null,
+    }));
     testState.listCandidates.mockReset().mockResolvedValue([]);
     testState.listActivities.mockReset().mockResolvedValue([]);
     testState.executeResolution.mockReset().mockImplementation(async (input) => ({
@@ -218,12 +228,140 @@ describe('CommercialCrmBoard', () => {
     expect(JSON.stringify(professional.toJSON())).toContain('visualização comercial em modo somente leitura');
     expect(JSON.stringify(professional.toJSON())).not.toContain('avançar para Perdido');
     expect(JSON.stringify(professional.toJSON())).not.toContain('Novo prospect');
+    expect(JSON.stringify(professional.toJSON())).not.toContain('Editar detalhes');
     expect(JSON.stringify(professional.toJSON())).toContain('Ver histórico');
 
     testState.role = 'recep';
     const reception = await renderBoard();
     expect(JSON.stringify(reception.toJSON())).toContain('avançar para Perdido');
     expect(JSON.stringify(reception.toJSON())).toContain('Novo prospect');
+    expect(JSON.stringify(reception.toJSON())).toContain('Editar detalhes');
+  });
+
+  it('edits only Lead commercial details with the exact projection concurrency token', async () => {
+    const renderer = await renderBoard();
+
+    const editButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Editar detalhes',
+    );
+    expect(editButton).toBeTruthy();
+    act(() => editButton?.props.onClick());
+
+    const titleInput = renderer.root.findByProps({ placeholder: 'Interesse / assunto comercial' });
+    const valueInput = renderer.root.findByProps({ placeholder: '0,00' });
+    const sourceInput = renderer.root.findByProps({ placeholder: 'Ex.: indicação, site, evento' });
+
+    act(() => {
+      titleInput.props.onChange({ target: { value: '  Avaliação premium  ' } });
+      valueInput.props.onChange({ target: { value: '1250,50' } });
+      sourceInput.props.onChange({ target: { value: 'indicação' } });
+    });
+
+    const saveButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Salvar detalhes',
+    );
+    expect(saveButton).toBeTruthy();
+
+    await act(async () => {
+      saveButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.executeDetails).toHaveBeenCalledTimes(1);
+    expect(testState.executeDetails).toHaveBeenCalledWith({
+      leadId: 'lead-a',
+      expectedUpdatedAt: '2026-09-28T03:00:00Z',
+      title: 'Avaliação premium',
+      valueCents: 125050,
+      source: 'indicação',
+    });
+    expect(testState.execute).not.toHaveBeenCalled();
+    expect(testState.executeResolution).not.toHaveBeenCalled();
+  });
+
+  it('refetches after a stale Lead details rejection and never retries the mutation silently', async () => {
+    testState.executeDetails.mockRejectedValueOnce({
+      message: 'crm_lead_details_stale',
+      code: '40001',
+    });
+
+    const refreshed = baseSnapshot();
+    refreshed.leads[0] = {
+      ...refreshed.leads[0],
+      title: 'Alterado por outro usuário',
+      updatedAt: '2026-09-28T03:10:00Z',
+    };
+    testState.load
+      .mockResolvedValueOnce(testState.snapshot)
+      .mockResolvedValueOnce(refreshed);
+
+    const renderer = await renderBoard();
+    const editButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Editar detalhes',
+    );
+    act(() => editButton?.props.onClick());
+
+    const titleInput = renderer.root.findByProps({ placeholder: 'Interesse / assunto comercial' });
+    act(() => titleInput.props.onChange({ target: { value: 'Tentativa stale' } }));
+
+    const saveButton = renderer.root.findAllByType('button').find((button) =>
+      button.props.children === 'Salvar detalhes',
+    );
+    await act(async () => {
+      saveButton?.props.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(testState.executeDetails).toHaveBeenCalledTimes(1);
+    expect(testState.load).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(renderer.toJSON())).not.toContain('Editar detalhes comerciais');
+    expect(testState.toast).toHaveBeenCalledWith(
+      'Este Lead mudou no servidor. O quadro foi atualizado; revise os dados antes de editar novamente.',
+      'warn',
+    );
+  });
+
+  it('does not expose Lead details editing for anonymized or archived Leads', async () => {
+    const base = baseSnapshot();
+    testState.snapshot = {
+      ...base,
+      pipelines: [
+        ...base.pipelines,
+        { id: 'pipeline-old', name: 'Antigo', isDefault: false, archivedAt: '2026-09-01T00:00:00Z' },
+      ],
+      stages: [
+        ...base.stages,
+        { id: 'stage-old', pipelineId: 'pipeline-old', name: 'Legado', position: 0, stageKind: 'open', archivedAt: null },
+      ],
+      leads: [
+        {
+          ...base.leads[0],
+          id: 'lead-anon',
+          contactId: 'contact-anon',
+          contactAnonymizedAt: '2026-09-27T10:00:00Z',
+        },
+        {
+          ...base.leads[0],
+          id: 'lead-old',
+          contactId: 'contact-old',
+          contactName: 'Lead Legado',
+          pipelineId: 'pipeline-old',
+          pipelineName: 'Antigo',
+          stageId: 'stage-old',
+          stageName: 'Legado',
+        },
+      ],
+    };
+
+    const renderer = await renderBoard();
+    const rendered = JSON.stringify(renderer.toJSON());
+
+    expect(rendered).toContain('Contato anonimizado');
+    expect(rendered).toContain('Lead Legado');
+    expect(renderer.root.findAllByType('button').filter((button) =>
+      button.props.children === 'Editar detalhes',
+    )).toHaveLength(0);
+    expect(testState.executeDetails).not.toHaveBeenCalled();
   });
 
   it('uses create_if_clear when the canonical preview returns zero candidates', async () => {
@@ -473,6 +611,14 @@ describe('CommercialCrmBoard', () => {
         resolutionMode: 'explicit_reuse',
       },
       {
+        id: 'activity-details',
+        activityType: 'lead_details_updated',
+        createdAt: '2026-09-27T11:30:00Z',
+        fromStageId: null,
+        toStageId: null,
+        resolutionMode: null,
+      },
+      {
         id: 'activity-future',
         activityType: 'future_sensitive_event',
         createdAt: '2026-09-27T12:00:00Z',
@@ -506,11 +652,13 @@ describe('CommercialCrmBoard', () => {
     expect(rendered).toContain('Lead criado no CRM comercial.');
     expect(rendered).toContain('Etapa alterada de \\"Novo\\" para \\"Perdido\\".');
     expect(rendered).toContain('Contact existente reutilizado por decisão explícita.');
+    expect(rendered).toContain('Detalhes comerciais do Lead atualizados.');
     expect(rendered).toContain('Atividade comercial registrada.');
     expect(rendered).not.toContain('future_sensitive_event');
     expect(rendered).not.toContain('contact-secret');
     expect(rendered).not.toContain('51999990000');
     expect(rendered).not.toContain('patient-secret');
+    expect(rendered).not.toContain('Editar detalhes');
     expect(rendered).not.toContain('actor-secret');
   });
 
