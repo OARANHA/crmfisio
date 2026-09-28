@@ -7,6 +7,7 @@
 **Execution:** NOT AUTHORIZED  
 **Canonical baseline used for discovery:** `main@ef4011f138585de71910ecbe6c1fa815208d0dee`  
 **Branch:** `docs/med-crm-010-pipeline-stage-administration-analysis`
+**PR:** #562 — `docs(crm): analyze Pipeline/Stage Administration contract`
 
 This slice exists because the four discovery gates identified a real configuration gap. Its existence does not authorize implementation.
 
@@ -63,6 +64,6 @@ The production readback target is correctly restricted to hash-pinned verifiers.
 
 ## Next safe gate
 
-Revalidate main + this branch/PR first.
+Revalidate `origin/main` + PR #562 state/base/HEAD/ahead-behind/diff/reviews/threads/checks first. Do not inherit any check result after a HANDOFF refresh.
 
 Then perform a **Product Contract Review** limited to the seven blocking semantics above. Convert the result into exact command contracts and tests before any migration/RPC/UI branch is created.
