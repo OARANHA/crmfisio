@@ -224,3 +224,93 @@ Execution remains blocked on exact design of:
 Deterministic result: **Product Contract can be APPROVED; EXECUTION remains BLOCKED pending DESIGN.**
 
 JEV advisory was conservative (`deep_review` in the first pass; later `block` probability with low confidence after the prompt explicitly stated that execution remained forbidden). It is advisory only and did not override deterministic evidence.
+
+
+## IMPLEMENTATION PLAN REVIEW — 2026-09-29
+
+### REAL NOW
+
+PR #563 was revalidated on exact HEAD `ece6118571eb51839d2df783538388172fe17e08` before merge:
+
+- open, non-draft, mergeable;
+- base `main@17298d78e910951e8c719906b3305579d24ce0b0`;
+- 6 ahead / 0 behind;
+- exactly six changed files, all documentation;
+- reviews: 0;
+- review threads: 0;
+- associated workflows: 20 completed / 20 success / 0 failed.
+
+Protected squash merge with expected HEAD succeeded and produced:
+
+`main@7be73d0c51c8633d829776913645681adcf35785`
+
+The integrated main therefore owns the APPROVED Product Contract before this design review.
+
+### Effective code revalidation
+
+The design review re-read the effective definitions rather than relying on earlier migration versions.
+
+- MED-CRM-006 is the effective definition of `create_current_clinic_crm_lead(...)`; it keeps the `lead_retry` advisory lock but currently has no compatible clinic/Pipeline/Stage row locks around default/initial-stage selection.
+- MED-CRM-004 is the effective stage-transition guard; it locks the Lead `FOR UPDATE`, preserves exact same-stage retry before the current-Pipeline guard, locks the current Pipeline `FOR SHARE` for real changes, and currently reads the target Stage without a row lock.
+- MED-CRM-008 Lead Details already uses `Lead FOR UPDATE → Contact FOR SHARE → Pipeline FOR SHARE → Stage FOR SHARE` for real changes.
+- `list_current_clinic_crm_pipelines()` and `list_current_clinic_crm_stages(uuid)` already expose `updated_at`; optimistic configuration preconditions therefore reuse canonical readers.
+- `crm_pipelines_one_active_default_per_clinic`, `crm_stages_active_position_unique` and active won/lost partial unique indexes remain the physical constraints to compose.
+- `crm_leads_clinic_stage_idx` already supports Stage-reference checks. A bounded partial `(clinic_id,pipeline_id) WHERE deleted_at IS NULL` index is justified for Pipeline archive checks and remains an implementation detail to prove.
+
+### Validation-pattern reuse
+
+The released Commercial CRM harness proves the current repository convention:
+
+- isolated PostgreSQL 16 and 17 GitHub jobs;
+- isolated fixture database;
+- migration replay/idempotency;
+- structural verifier;
+- released behavioral regressions;
+- explicit shell concurrency proof;
+- fail-fast database name guards.
+
+The MED-CRM-010 plan reuses that structure rather than creating a second verification framework.
+
+### SECOND ADVERSARIAL REVIEW
+
+The first concrete lock proposal was rejected because simply adding `FOR SHARE` to the target Stage at its existing read position would produce:
+
+`transition: Stage → Pipeline`
+
+against:
+
+`admin: Pipeline → Stage`
+
+which can deadlock.
+
+The final design preserves exact same-stage retry first and, for real transitions, requires:
+
+`Lead FOR UPDATE → Pipeline FOR SHARE → target Stage re-read FOR SHARE`
+
+Admin Stage commands use:
+
+`clinic FOR UPDATE → parent Pipeline FOR SHARE → Stage FOR UPDATE`
+
+Admin Pipeline commands use:
+
+`clinic FOR UPDATE → Pipeline FOR UPDATE`
+
+Lead creation uses:
+
+`lead_retry advisory → clinic FOR SHARE → Pipeline FOR SHARE → Stage FOR SHARE`
+
+Configuration commands never lock Lead rows, preventing a reverse Pipeline/Stage-to-Lead cycle.
+
+Pipeline archive also fails closed on ambiguous terminal state: a nondeleted Lead is considered safely terminal only when its referenced Stage is `won|lost` and `closed_at IS NOT NULL`.
+
+No additional tenant source, role, entitlement, Patient authority, raw browser DML or audit path is introduced.
+
+JEV advisory routed the initial design to `deep_review` (0.91). After the deterministic deeper review and refinements above, JEV completion review returned `complete` with probability 0.85. JEV remains advisory.
+
+### Outcome
+
+The exact authority, RPC signatures, lock order, idempotency/preconditions, audit contract, migration composition and PostgreSQL 16/17 validation matrix are documented in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+Deterministic result:
+
+**MED-CRM-010 can move APPROVED → DESIGNED. EXECUTION remains NOT AUTHORIZED.**

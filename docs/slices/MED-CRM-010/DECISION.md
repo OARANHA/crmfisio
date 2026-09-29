@@ -1,13 +1,14 @@
 # MED-CRM-010 — Decision
 
-**Status:** APPROVED  
+**Status:** DESIGNED  
 **Execution authorized:** NO  
 **Product-contract baseline:** `main@17298d78e910951e8c719906b3305579d24ce0b0`  
+**Design baseline:** `main@7be73d0c51c8633d829776913645681adcf35785`  
 **Date:** 2026-09-28
 
 ## Decision statement
 
-Approve the **Pipeline / Stage Administration Contract V1** at product/architecture level while keeping EXECUTION unauthorized until a separate Implementation Plan Review reaches `DESIGNED`.
+Approve the **Pipeline / Stage Administration Contract V1** and its exact Implementation Plan as `DESIGNED`, while keeping EXECUTION unauthorized until a separate implementation branch is deliberately started from an integrated, revalidated main.
 
 The proven problem is not missing schema or missing reads. It is the absence of a safe, clinic-admin mutation authority for configuration that the current Commercial CRM already consumes.
 
@@ -86,3 +87,25 @@ The seven Product Contract decisions are closed strongly enough to move **ANALYZ
 The slice is **not DESIGNED**. Exact RPC/helper signatures, migration composition, lock proof, retry/precondition matrix, audit event schema and behavioral/verifier test plan remain the next gate.
 
 **Execution authorized: NO.**
+
+
+## Implementation Plan Review decision — 2026-09-29
+
+The design gate is closed by [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+Exact decisions now include:
+
+- internal `crm_lock_current_configurator_clinic() RETURNS uuid`, owner/admin-only, `crm.access`-gated, server-derived clinic, current clinic row `FOR UPDATE`;
+- ten narrow authenticated configuration RPCs for Pipeline/Stage create, rename, default, archive, restore and reorder;
+- no generic writer, no physical delete, no mutable `stage_kind`;
+- existing `create_current_clinic_crm_lead(...)` signature/authority preserved and hardened with clinic/Pipeline/Stage compatible locks;
+- existing `transition_current_clinic_crm_lead_stage(...)` signature/authority preserved and hardened so real changes lock Pipeline before target Stage;
+- Lead Details lock ordering preserved;
+- desired-state retry branches precede stale rejection where specified;
+- configuration evidence uses `audit_log`, not `crm_lead_activities`;
+- isolated PostgreSQL 16/17 verifier/regression/concurrency proof is mandatory before PROVED.
+
+The second adversarial review found and corrected the dangerous inverse `Stage → Pipeline` lock order. No unresolved design blocker remains at this checkpoint.
+
+**Status:** DESIGNED.  
+**Execution authorized:** NO.

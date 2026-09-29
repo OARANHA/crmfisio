@@ -39,21 +39,21 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
-## Commercial CRM — MED-CRM-010 APPROVED
+## Commercial CRM — MED-CRM-010 DESIGNED
 
 ### Pipeline / Stage Administration Contract V1
 
-**Status:** **APPROVED / EXECUTION NOT AUTHORIZED** on 2026-09-28, pending integration of the docs-only Product Contract review.
+**Status:** **DESIGNED / EXECUTION NOT AUTHORIZED** on 2026-09-29, pending integration of the docs-only Implementation Plan review.
 
-PR #562 was protected-squash-merged after its exact HEAD `59130cec82012f12d681de8cfbbfe220666dcf85` completed 20/20 associated workflows successfully, producing `main@17298d78e910951e8c719906b3305579d24ce0b0`.
+PR #563 was protected-squash-merged from exact HEAD `ece6118571eb51839d2df783538388172fe17e08` after 20/20 associated workflows completed successfully, producing `main@7be73d0c51c8633d829776913645681adcf35785`.
 
-The seven Product Contract decisions are now explicit: Pipeline archive blocks nonterminal Leads and last-active/default-invalid states; Stage archive blocks referenced Leads and the last open Stage; active Pipelines maintain exactly one default; Pipeline create is atomic with an initial usable Stage set; `stage_kind` is immutable in V1; reorder is one atomic stale-aware command; authenticated administration uses archive/restore rather than physical delete.
+The Product Contract remains unchanged: owner/admin-only clinic configuration; Pipeline archive blocks active/nonterminal Leads and last-active/default-invalid states; Stage archive blocks referenced Leads and the last active open Stage; active Pipelines keep exactly one default; Pipeline create is atomic with a usable Stage set; `stage_kind` is immutable; reorder is atomic/stale-aware; authenticated administration uses archive/restore rather than physical delete.
 
-A fresh adversarial review found a required compatibility design: safe archive/default/Stage lifecycle needs compatible locks in existing RELEASED Lead-create and stage-transition paths, not only locks inside new admin commands. This hardening must reuse the existing authorities and is part of the next Implementation Plan Review.
+The Implementation Plan Review now defines exact helper/RPC signatures, desired-state retries, optimistic preconditions, audit events, PostgreSQL 16/17 validation and a deterministic lock hierarchy. Existing Lead creation will preserve its authority/signature while adding `clinic → Pipeline → Stage` compatible locks; real stage transitions preserve exact same-stage retry and then use `Pipeline → target Stage`, avoiding the rejected deadlock-prone inverse order.
 
-The future configuration guard remains owner/admin-only, current-clinic/server-derived and `crm.access`-gated. Reception keeps operational Commercial writer authority but does not gain clinic configuration authority. Raw browser DML, audit authority and `Contact != Lead != Patient` remain unchanged.
+Canonical Pipeline/Stage readers already expose `updated_at`; no parallel reader or tenant authority is required. Reception retains operational CRM writer authority but does not gain configuration authority. Raw browser DML, `crm.access`, `audit_log` and `Contact != Lead != Patient` remain unchanged.
 
-MED-CRM-010 is **not DESIGNED** and no migration/RPC/frontend/runtime mutation is authorized yet. Next gate: exact command signatures, locking/idempotency/preconditions, audit events and behavioral/verifier test plan, followed by a new SECOND ADVERSARIAL REVIEW.
+MED-CRM-010 is **DESIGNED, not IMPLEMENTING**. No migration/RPC/frontend/runtime mutation exists from this review. See `docs/slices/MED-CRM-010/IMPLEMENTATION_PLAN.md`.
 
 ## Commercial CRM — RELEASED MED-CRM-009
 
