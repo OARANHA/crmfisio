@@ -39,6 +39,18 @@ Clinic Communication Configuration V1 #512/#513                        PROD / VE
 ```
 
 
+## Commercial CRM — MED-CRM-010 ANALYZED
+
+### Pipeline / Stage Administration Contract V1
+
+**Status:** **ANALYZED / EXECUTION NOT AUTHORIZED** on 2026-09-28.
+
+Fresh discovery from `main@ef4011f138585de71910ecbe6c1fa815208d0dee` confirms that Pipeline/Stage schema, canonical readers and Board consumers exist, while no canonical administrative writer set is present in the current Commercial CRM migrations. The operational CRM mutator guard allows `owner/admin/recep`; this is intentionally **not** reused directly for clinic configuration because existing MedicsPro configuration authority is owner/admin-only.
+
+The selected next design problem is therefore Pipeline/Stage Administration, but code remains blocked until product/integrity semantics are explicit for: Pipeline archive with live Leads, Stage archive with live Leads, default transfer/exactly-one behavior, usable Pipeline creation, Stage kind mutability, concurrency-safe reorder and archive/restore/delete lifecycle.
+
+The production readback target remains hash-pinned; no arbitrary catalog SQL or operator bypass was used during discovery. Discovery/design is tracked in PR #562 on `docs/med-crm-010-pipeline-stage-administration-analysis`; see `docs/slices/MED-CRM-010/`.
+
 ## Commercial CRM — RELEASED MED-CRM-009
 
 ### MED-CRM-009 — Commercial Lead Activity Read Boundary V1
