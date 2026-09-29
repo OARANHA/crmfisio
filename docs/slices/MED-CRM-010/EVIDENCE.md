@@ -141,3 +141,86 @@ Blockers:
 - Stage kind edits can reinterpret Lead state.
 
 JEV advisory: `deep_review` (advisory only).
+
+
+## PRODUCT CONTRACT REVIEW — 2026-09-28
+
+### Fresh REAL NOW
+
+PR #562 was revalidated on exact HEAD `59130cec82012f12d681de8cfbbfe220666dcf85`:
+
+- OPEN before merge, not draft;
+- base `main@ef4011f138585de71910ecbe6c1fa815208d0dee`;
+- 9 ahead / 0 behind;
+- mergeable;
+- exactly six changed files, all under `docs/`;
+- reviews: 0;
+- review threads: 0;
+- 20 associated workflow runs on that exact HEAD;
+- 20 completed / 20 success / 0 failed.
+
+Protected squash merge used the expected HEAD and returned `merged=true`.
+
+Resulting canonical main:
+
+`17298d78e910951e8c719906b3305579d24ce0b0`
+
+MED-CRM-010 remained ANALYZED immediately after that merge; no product code, schema or runtime mutation was included.
+
+### Code/schema revalidation for the seven decisions
+
+Current canonical schema/commands prove:
+
+- `crm_pipelines_one_active_default_per_clinic` enforces at most one active default, not at least one;
+- `crm_stages_active_position_unique` makes multi-row reorder collision-sensitive;
+- Lead FKs to Pipeline/Stage are tenant-safe and restrict Lead-driven physical deletion;
+- `create_current_clinic_crm_lead(...)` requires an active Pipeline and active `open` initial Stage;
+- `stage_kind` drives Lead terminal-field semantics through `guard_crm_lead_semantics()`, but that trigger runs on Lead writes, not on Stage-kind changes;
+- MED-CRM-004 protects real stage transitions against an archived current Pipeline with a Pipeline `FOR SHARE` lock;
+- `update_current_clinic_crm_lead_details(...)` protects real changes with current Contact, Pipeline and Stage `FOR SHARE` locks;
+- current `create_current_clinic_crm_lead(...)` validates Pipeline/Stage activity but does not lock those configuration rows;
+- current stage-transition target lookup validates active same-Pipeline target but does not lock the target Stage;
+- Contact Identity Resolution composes `create_current_clinic_crm_lead(...)`, so hardening the canonical Lead command also protects Prospect Intake.
+
+### Administrative authority evidence
+
+`src/lib/permissions.ts` keeps `config=full` for owner/admin and `config=none` for recep/professional/financeiro.
+
+Message Template Admin proves the closer server pattern:
+
+- current clinic derived server-side;
+- owner/admin only;
+- entitlement check;
+- SECURITY DEFINER + explicit search path;
+- authenticated receives RPC EXECUTE, not raw-table admin DML;
+- mutation writes the existing `audit_log`.
+
+Therefore a narrow CRM configuration helper may reuse those primitives, but direct reuse of `crm_current_mutator_clinic_id()` would over-authorize reception.
+
+### Adversarial concurrency finding
+
+The first Product Contract draft assumed that locking inside new admin commands was sufficient. It is not.
+
+A concurrent Lead create could observe an active Pipeline/open Stage before archive and commit after the admin lifecycle check unless the existing writer takes compatible locks. Likewise, a transition could observe an active target Stage before a concurrent Stage archive unless target selection is a locking read.
+
+The approved contract therefore requires compatibility hardening of existing authorities as a DESIGN prerequisite. This closes the conceptual race without creating a second writer.
+
+### Product Contract outcome
+
+All seven product/integrity choices are now explicit and can advance the slice to APPROVED once this documentation is merged.
+
+Execution remains blocked on exact design of:
+
+- command signatures;
+- lock order;
+- idempotency/preconditions;
+- reorder algorithm;
+- audit metadata;
+- additive migration composition;
+- behavioral/verifier/regression matrix.
+
+### SECOND ADVERSARIAL REVIEW
+
+Deterministic result: **Product Contract can be APPROVED; EXECUTION remains BLOCKED pending DESIGN.**
+
+JEV advisory was conservative (`deep_review` in the first pass; later `block` probability with low confidence after the prompt explicitly stated that execution remained forbidden). It is advisory only and did not override deterministic evidence.
