@@ -3,14 +3,18 @@
 ## Current checkpoint
 
 **Slice:** MED-CRM-010 — Pipeline / Stage Administration Contract V1  
-**Institutional status after this docs PR merges:** DESIGNED  
-**Current canonical main before this docs PR:** `7be73d0c51c8633d829776913645681adcf35785`  
-**Execution:** NOT AUTHORIZED  
-**Branch:** `docs/med-crm-010-implementation-plan-review`
+**Institutional status:** DESIGNED  
+**Canonical main:** `19d1f2dabbab99827f1ed854fff61c5486863247`  
+**Execution:** NOT AUTHORIZED by repository state alone  
+**Handoff branch:** `docs/med-crm-010-post-design-handoff`
 
-PR #563 is merged. Its protected squash result is `main@7be73d0c51c8633d829776913645681adcf35785`.
+PR #563 merged the APPROVED Product Contract. PR #564 merged the DESIGNED Implementation Plan after exact-HEAD revalidation and 20/20 successful workflows.
 
-This branch is documentation only. It records the closed Implementation Plan Review and does not implement any migration, RPC, frontend or runtime mutation.
+Protected squash result of PR #564:
+
+`main@19d1f2dabbab99827f1ed854fff61c5486863247`
+
+No migration, RPC, frontend, schema or runtime mutation has been executed for MED-CRM-010 yet.
 
 ## Gate status
 
@@ -20,21 +24,26 @@ GAPS                             CLOSED
 CAPABILITY AUTHORITY / REUSE     CLOSED
 DECISION                         CLOSED: DESIGN CONTRACT SELECTED
 SECOND ADVERSARIAL REVIEW        CLOSED FOR DESIGN
-EXECUTION                        NOT AUTHORIZED
-VALIDATION                       REPOSITORY/DESIGN EVIDENCE ONLY
-DOCUMENTATION                    THIS DOCS-ONLY BRANCH
+EXECUTION                        AWAITS EXPLICIT HUMAN AUTHORIZATION
+VALIDATION                       NOT STARTED FOR IMPLEMENTATION
+DOCUMENTATION                    DESIGN INTEGRATED; THIS HANDOFF REFRESHES CONTINUITY
 ```
 
-## Canonical design
+## Canonical design authority
 
-Read first:
+Read in this order:
 
 1. [README.md](README.md)
 2. [DECISION.md](DECISION.md)
 3. [EVIDENCE.md](EVIDENCE.md)
 4. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
+5. this HANDOFF
 
-The exact public configuration surface is:
+The exact implementation surface is frozen by `IMPLEMENTATION_PLAN.md`. Do not redesign or widen it during execution unless a fresh gap forces the process back through GAPS → CAPABILITY AUTHORITY / REUSE GATE → DECISION → SECOND ADVERSARIAL REVIEW.
+
+## Exact configuration surface
+
+Public owner/admin commands:
 
 - `create_current_clinic_crm_pipeline(uuid,text,jsonb)`
 - `rename_current_clinic_crm_pipeline(uuid,timestamptz,text)`
@@ -47,18 +56,18 @@ The exact public configuration surface is:
 - `restore_current_clinic_crm_stage(uuid,timestamptz)`
 - `reorder_current_clinic_crm_stages(uuid,uuid[],uuid[])`
 
-Internal authority helper:
+Internal helper:
 
 - `crm_lock_current_configurator_clinic() RETURNS uuid`
+- server-derived current clinic;
 - owner/admin only;
 - `crm.access`;
-- server-derived current clinic;
 - current clinic row `FOR UPDATE`;
 - no authenticated EXECUTE.
 
 Do not reuse `crm_current_mutator_clinic_id()` directly for configuration because it intentionally includes `recep`.
 
-## Lock hierarchy
+## Lock hierarchy that must not regress
 
 Admin:
 
@@ -85,9 +94,9 @@ Lead FOR UPDATE
 → target Stage re-read FOR SHARE
 ```
 
-Keep exact same-stage retry before the real-transition lifecycle locks.
+Preserve exact same-stage retry before those real-transition lifecycle locks.
 
-Lead Details stays:
+Lead Details remains:
 
 ```text
 Lead FOR UPDATE
@@ -96,24 +105,27 @@ Lead FOR UPDATE
 → Stage FOR SHARE
 ```
 
-Never implement the rejected `target Stage lock → Pipeline lock` transition order.
+Never implement the rejected inverse `target Stage → Pipeline` order.
 
-## Product invariants carried into implementation
+## Product/security invariants
 
 - `Contact != Lead != Patient`;
-- no Patient authority or implicit conversion;
-- owner/admin configure; reception remains operational-only;
+- no Patient authority or implicit Lead→Patient conversion;
+- owner/admin configure; `recep` remains operational CRM writer only;
+- server-derived tenant, no browser clinic selector;
+- `crm.access` remains the entitlement;
 - exactly one active default while active Pipelines exist;
-- first Pipeline becomes default;
+- first active Pipeline becomes default;
 - Pipeline archive blocks any nondeleted Lead not provably terminal;
+- terminal means referenced Stage kind `won|lost` **and** `closed_at IS NOT NULL`;
 - Stage archive blocks any nondeleted Lead reference;
 - last active Pipeline and last active open Stage cannot be archived;
 - `stage_kind` immutable after creation;
 - no authenticated physical delete;
-- Pipeline creation is atomic with a usable initial Stage set;
-- reorder is one atomic server operation;
+- reorder is one atomic server command;
 - archived Pipeline freezes Stage configuration;
-- config-only changes write `audit_log`, never `crm_lead_activities`.
+- configuration-only mutations write `audit_log`, never `crm_lead_activities`;
+- raw authenticated DML remains closed.
 
 ## Planned implementation artifacts
 
@@ -124,43 +136,47 @@ Never implement the rejected `target Stage lock → Pipeline lock` transition or
 - `scripts/test-commercial-crm-pipeline-stage-admin-concurrency.sh`
 - `.github/workflows/commercial-crm-pipeline-stage-admin.yml`
 
-The migration may add `crm_leads_clinic_pipeline_active_idx` for the bounded Pipeline archive predicate. Prove necessity/shape in implementation; do not broaden it casually.
+A bounded supporting index `crm_leads_clinic_pipeline_active_idx` may be added only if the implementation proof still justifies the exact partial shape documented in the plan.
 
 ## Required implementation validation
 
 Use the existing isolated Commercial CRM harness pattern on PostgreSQL 16 and 17.
 
-Must include:
+Mandatory:
 
-- migration applied twice;
-- new structural verifier;
-- MED-CRM-002/004/006/008/009 regressions;
+- apply new migration twice;
+- structural verifier;
+- released regressions for MED-CRM-002/004/006/008/009;
 - Contact Identity concurrency regression;
 - owner/admin positive;
 - recep/professional/financeiro negative;
 - disabled `crm.access`;
 - cross-tenant negative;
 - anon/raw-DML closure;
-- exact retry and stale conflict matrix;
+- exact retry/stale conflict matrix;
 - default/archive/restore/last-open invariants;
-- config audit and zero config-only Lead activities;
+- bounded config audit and zero config-only Lead activities;
 - both orderings of Lead-create ↔ default/archive races;
 - both orderings of transition ↔ target-Stage archive;
-- Pipeline archive ↔ transition;
+- Pipeline archive ↔ real transition;
 - reorder/Stage lifecycle ↔ transition no-deadlock proof.
 
-Do not declare PROVED from static review alone.
+Do not declare PROVED from static review or green TypeScript alone.
 
-## Next safe gate
+## Next chat / execution gate
 
-Before implementation:
+The next chat must first reconstruct the current state again from `origin/main`, this handoff PR if still open, code/schema/tests and GitHub checks.
 
-1. revalidate `origin/main`, this branch/PR exact HEAD, checks and merge state;
-2. merge this docs-only design only if it is current, 0 behind, mergeable and all applicable checks pass;
-3. confirm resulting main SHA;
-4. reread the integrated [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md);
-5. only then create a dedicated implementation branch from that exact main;
-6. implement the bounded plan without expanding authority;
-7. validate fully before documentation of PROVED/RELEASED.
+If the user sends an explicit message authorizing EXECUTION, that message is the human authorization to start the bounded implementation. Then:
 
-No migration, RPC, frontend or production mutation is authorized by this handoff.
+1. revalidate this handoff branch/PR and integrate it if current, docs-only, 0 behind, mergeable and all applicable checks are successful;
+2. confirm the resulting `main` SHA;
+3. reread integrated `IMPLEMENTATION_PLAN.md`;
+4. create a dedicated implementation branch from that exact `main`;
+5. implement only the planned migration/verifier/tests/workflow and compatibility hardening;
+6. run the full PostgreSQL 16/17 validation matrix and regressions;
+7. repeat SECOND ADVERSARIAL REVIEW on the implemented diff before claiming PROVED;
+8. update README/DECISION/EVIDENCE/HANDOFF/LEDGER/CURRENT_STATE only from validated facts;
+9. do not deploy to production or claim RELEASED unless runtime rollout is separately authorized and observed.
+
+If any new structural gap appears, stop EXECUTION for that new capability and return to the four pre-execution gates. Do not create parallel authority as a shortcut.
