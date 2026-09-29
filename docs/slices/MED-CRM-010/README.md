@@ -1,18 +1,19 @@
 # MED-CRM-010 — Pipeline / Stage Administration Contract V1
 
-**Status:** APPROVED  
+**Status:** DESIGNED  
 **Execution:** NOT AUTHORIZED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Discovery baseline:** `main@ef4011f138585de71910ecbe6c1fa815208d0dee`  
 **Product-contract baseline:** `main@17298d78e910951e8c719906b3305579d24ce0b0`  
+**Design baseline:** `main@7be73d0c51c8633d829776913645681adcf35785`  
 **Created:** 2026-09-28
 
 ## Objective
 
 Define the smallest safe clinic-admin contract for administering Commercial CRM pipelines and stages without creating a parallel Commercial authority, widening tenant/RBAC access or changing `Contact != Lead != Patient`.
 
-The Product Contract is now **APPROVED**, but the slice is not yet DESIGNED and does not authorize migration, RPC, frontend or production mutation.
+The Product Contract is **APPROVED** and the Implementation Plan Review is now **DESIGNED**. Execution remains NOT AUTHORIZED; no migration, RPC, frontend or production mutation is authorized by this docs-only review.
 
 ## REAL NOW / PROVEN EVIDENCE
 
@@ -277,28 +278,40 @@ Other adversarial checks close at Product Contract level:
 
 JEV was used as advisory input. Its routing remained conservative (`deep_review`/later `block` probability) because execution is intentionally still blocked; deterministic repository evidence controls the status transition.
 
+## IMPLEMENTATION PLAN REVIEW — DESIGNED
+
+The exact implementation contract is recorded in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+It closes:
+
+- exact helper/RPC names and SQL signatures;
+- owner/admin-only current-clinic configuration authority;
+- server-derived tenant and `crm.access`;
+- deterministic clinic → Pipeline → Stage config lock order;
+- compatible hardening of existing Lead-create and real stage-transition paths without signature or authority expansion;
+- desired-state retry and stale-precondition semantics;
+- collision-safe two-phase Stage reorder;
+- bounded `audit_log` events with zero configuration-only `crm_lead_activities`;
+- additive migration/verifier/harness composition;
+- PostgreSQL 16/17 behavioral, RBAC, tenant, entitlement, raw-DML, regression and concurrency matrix.
+
+The adversarial review corrected a potentially deadlock-prone target-Stage-before-Pipeline design. Real stage transitions must preserve the exact same-stage retry branch, then acquire `Pipeline FOR SHARE` before re-reading/locking the active target Stage `FOR SHARE`.
+
+Canonical Pipeline/Stage readers already expose `updated_at`, so no parallel admin reader is required.
+
+JEV advisory initially requested `deep_review`; after the deeper deterministic review, its completion review returned `complete`. Repository evidence remains authoritative.
+
 ## NEXT SAFE GATE
 
-MED-CRM-010 may advance from **ANALYZED → APPROVED** once this Product Contract documentation is integrated. It must **not** jump to DESIGNED.
+MED-CRM-010 is **DESIGNED / EXECUTION NOT AUTHORIZED**.
 
-Before any EXECUTION, perform an **Implementation Plan Review** on the then-current `origin/main` and document:
+Before any implementation:
 
-1. exact function/helper names and SQL signatures;
-2. exact parameters and server-derived tenant behavior;
-3. clinic/Pipeline/Stage lock order and concurrency proof, including Lead-create/default/archive and target-Stage/archive races;
-4. retry/idempotency and optimistic-precondition semantics for every command;
-5. collision-safe reorder algorithm;
-6. exact `audit_log` actions/metadata with no unnecessary Lead/Patient data;
-7. additive migration composition, including compatibility hardening of existing RELEASED commands;
-8. positive behavioral cases;
-9. owner/admin positive and recep/professional/financeiro negative RBAC cases;
-10. disabled-`crm.access` fail-closed cases;
-11. cross-tenant ID negative cases;
-12. raw authenticated DML closure;
-13. existing MED-CRM-002/004/005/006/008 regressions;
-14. archive/restore/default/last-open-stage invariants;
-15. PostgreSQL version/harness/verifier requirements under current repo policy.
+1. integrate this docs-only design PR after exact-HEAD checks pass;
+2. reconstruct the then-current `origin/main`;
+3. re-read this slice and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md);
+4. create a dedicated implementation branch only after the design is institutional on main;
+5. implement exactly the bounded migration/verifier/tests/workflow contract;
+6. validate before documenting PROVED/RELEASED.
 
-Then run a new SECOND ADVERSARIAL REVIEW. Only if that design review closes may the slice move to **DESIGNED** and propose an implementation branch.
-
-No migration, RPC, frontend or production mutation is authorized by this Product Contract review.
+No migration, RPC, frontend or production mutation is authorized by this documentation branch.
