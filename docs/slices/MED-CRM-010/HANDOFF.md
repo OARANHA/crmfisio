@@ -1,96 +1,166 @@
-# MED-CRM-010 — Handoff
+# MED-CRM-010 — HANDOFF
 
 ## Current checkpoint
 
 **Slice:** MED-CRM-010 — Pipeline / Stage Administration Contract V1  
-**Institutional status after this docs PR merges:** APPROVED  
-**Current main before this docs PR:** `17298d78e910951e8c719906b3305579d24ce0b0`  
+**Institutional status after this docs PR merges:** DESIGNED  
+**Current canonical main before this docs PR:** `7be73d0c51c8633d829776913645681adcf35785`  
 **Execution:** NOT AUTHORIZED  
-**Branch:** `docs/med-crm-010-product-contract-review`
+**Branch:** `docs/med-crm-010-implementation-plan-review`
 
-PR #562 is merged. Its protected squash result is `main@17298d78e910951e8c719906b3305579d24ce0b0`.
+PR #563 is merged. Its protected squash result is `main@7be73d0c51c8633d829776913645681adcf35785`.
 
-This handoff records a Product Contract decision, not an implementation authorization.
+This branch is documentation only. It records the closed Implementation Plan Review and does not implement any migration, RPC, frontend or runtime mutation.
 
 ## Gate status
 
 ```text
-REAL NOW / PROVEN EVIDENCE       CLOSED FOR PRODUCT CONTRACT
+REAL NOW / PROVEN EVIDENCE       CLOSED FOR DESIGN
 GAPS                             CLOSED
 CAPABILITY AUTHORITY / REUSE     CLOSED
-DECISION                         CLOSED: PRODUCT CONTRACT APPROVED
-SECOND ADVERSARIAL REVIEW        CLOSED FOR PRODUCT CONTRACT
+DECISION                         CLOSED: DESIGN CONTRACT SELECTED
+SECOND ADVERSARIAL REVIEW        CLOSED FOR DESIGN
 EXECUTION                        NOT AUTHORIZED
-VALIDATION                       DOCS + REPOSITORY EVIDENCE ONLY
+VALIDATION                       REPOSITORY/DESIGN EVIDENCE ONLY
 DOCUMENTATION                    THIS DOCS-ONLY BRANCH
 ```
 
-## Seven approved decisions
+## Canonical design
 
-1. Pipeline archive blocks nonterminal Leads; terminal historical Leads may remain frozen/read-only; no last-active archive; default archive requires atomic explicit replacement.
-2. Stage archive blocks any referenced nondeleted Lead and blocks the last active open Stage.
-3. Exactly one active default while active Pipelines exist; transfer is atomic and stale-aware.
-4. Pipeline creation is atomic active Pipeline + ordered initial Stages with at least one open Stage; no draft-via-archive.
-5. `stage_kind` is immutable after creation in V1.
-6. Reorder is one atomic server command with expected-order precondition and collision-safe two-phase rewrite.
-7. V1 exposes archive/restore, not authenticated physical delete.
+Read first:
 
-## Authority
+1. [README.md](README.md)
+2. [DECISION.md](DECISION.md)
+3. [EVIDENCE.md](EVIDENCE.md)
+4. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
 
-Reuse:
+The exact public configuration surface is:
 
-- current active profile / current clinic;
-- `crm.access`;
-- current Pipeline/Stage schema and read projections;
-- `audit_log`;
-- raw Commercial table closure.
+- `create_current_clinic_crm_pipeline(uuid,text,jsonb)`
+- `rename_current_clinic_crm_pipeline(uuid,timestamptz,text)`
+- `set_current_clinic_crm_default_pipeline(uuid,uuid)`
+- `archive_current_clinic_crm_pipeline(uuid,timestamptz,uuid)`
+- `restore_current_clinic_crm_pipeline(uuid,timestamptz)`
+- `create_current_clinic_crm_stage(uuid,uuid,text,text)`
+- `rename_current_clinic_crm_stage(uuid,timestamptz,text)`
+- `archive_current_clinic_crm_stage(uuid,timestamptz)`
+- `restore_current_clinic_crm_stage(uuid,timestamptz)`
+- `reorder_current_clinic_crm_stages(uuid,uuid[],uuid[])`
 
-Future CRM configuration authority:
+Internal authority helper:
 
+- `crm_lock_current_configurator_clinic() RETURNS uuid`
 - owner/admin only;
-- server-derived clinic;
-- internal helper, not browser tenant selector;
-- no platform_admin shortcut;
-- no Patient authority;
-- no second entitlement or audit path.
+- `crm.access`;
+- server-derived current clinic;
+- current clinic row `FOR UPDATE`;
+- no authenticated EXECUTE.
 
-Do not reuse `crm_current_mutator_clinic_id()` directly for config because it includes `recep`.
+Do not reuse `crm_current_mutator_clinic_id()` directly for configuration because it intentionally includes `recep`.
 
-## New adversarial finding that must be designed before code
+## Lock hierarchy
 
-New admin locks are insufficient unless RELEASED writers serialize with them.
+Admin:
 
-The next design must prove:
+```text
+clinic FOR UPDATE
+→ Pipeline
+→ Stage
+```
 
-- current-clinic config lock order;
-- compatible lock in `create_current_clinic_crm_lead(...)` before selecting/using default Pipeline and initial Stage;
-- compatible target-Stage lock in `transition_current_clinic_crm_lead_stage(...)`;
-- preservation of existing Pipeline/Stage locks in `update_current_clinic_crm_lead_details(...)`;
-- no deadlock and no regression of exact retry behavior.
+Lead create hardening:
 
-Identity Resolution composes Lead creation, so do not duplicate that authority.
+```text
+existing lead_retry advisory
+→ clinic FOR SHARE
+→ selected Pipeline FOR SHARE
+→ selected initial Stage FOR SHARE
+```
 
-## Next safe gate — Implementation Plan Review
+Real stage transition hardening:
 
-Reconstruct current `origin/main`, this branch/PR and checks first.
+```text
+Lead FOR UPDATE
+→ Pipeline FOR SHARE
+→ target Stage re-read FOR SHARE
+```
 
-Before DESIGNED/EXECUTION, document and adversarially review:
+Keep exact same-stage retry before the real-transition lifecycle locks.
 
-1. exact helper/RPC names and signatures;
-2. parameters + server-derived tenant;
-3. deterministic lock order;
-4. retry/idempotency/precondition matrix;
-5. reorder implementation;
-6. audit actions/metadata;
-7. additive migration plan;
-8. positive behavioral tests;
-9. RBAC negative tests;
-10. cross-tenant negative tests;
-11. disabled-`crm.access` tests;
-12. raw-DML closure tests;
-13. regressions for existing CRM commands/intake/details;
-14. PostgreSQL harness/verifier policy.
+Lead Details stays:
 
-Only after that review closes may MED-CRM-010 move APPROVED → DESIGNED.
+```text
+Lead FOR UPDATE
+→ Contact FOR SHARE
+→ Pipeline FOR SHARE
+→ Stage FOR SHARE
+```
+
+Never implement the rejected `target Stage lock → Pipeline lock` transition order.
+
+## Product invariants carried into implementation
+
+- `Contact != Lead != Patient`;
+- no Patient authority or implicit conversion;
+- owner/admin configure; reception remains operational-only;
+- exactly one active default while active Pipelines exist;
+- first Pipeline becomes default;
+- Pipeline archive blocks any nondeleted Lead not provably terminal;
+- Stage archive blocks any nondeleted Lead reference;
+- last active Pipeline and last active open Stage cannot be archived;
+- `stage_kind` immutable after creation;
+- no authenticated physical delete;
+- Pipeline creation is atomic with a usable initial Stage set;
+- reorder is one atomic server operation;
+- archived Pipeline freezes Stage configuration;
+- config-only changes write `audit_log`, never `crm_lead_activities`.
+
+## Planned implementation artifacts
+
+- `supabase-migrations/20260929_commercial_crm_pipeline_stage_admin.sql`
+- `supabase-verifiers/VERIFY_20260929_COMMERCIAL_CRM_PIPELINE_STAGE_ADMIN.sql`
+- `tests/sql/commercial_crm_pipeline_stage_admin_cases.sql`
+- `scripts/test-commercial-crm-pipeline-stage-admin.sh`
+- `scripts/test-commercial-crm-pipeline-stage-admin-concurrency.sh`
+- `.github/workflows/commercial-crm-pipeline-stage-admin.yml`
+
+The migration may add `crm_leads_clinic_pipeline_active_idx` for the bounded Pipeline archive predicate. Prove necessity/shape in implementation; do not broaden it casually.
+
+## Required implementation validation
+
+Use the existing isolated Commercial CRM harness pattern on PostgreSQL 16 and 17.
+
+Must include:
+
+- migration applied twice;
+- new structural verifier;
+- MED-CRM-002/004/006/008/009 regressions;
+- Contact Identity concurrency regression;
+- owner/admin positive;
+- recep/professional/financeiro negative;
+- disabled `crm.access`;
+- cross-tenant negative;
+- anon/raw-DML closure;
+- exact retry and stale conflict matrix;
+- default/archive/restore/last-open invariants;
+- config audit and zero config-only Lead activities;
+- both orderings of Lead-create ↔ default/archive races;
+- both orderings of transition ↔ target-Stage archive;
+- Pipeline archive ↔ transition;
+- reorder/Stage lifecycle ↔ transition no-deadlock proof.
+
+Do not declare PROVED from static review alone.
+
+## Next safe gate
+
+Before implementation:
+
+1. revalidate `origin/main`, this branch/PR exact HEAD, checks and merge state;
+2. merge this docs-only design only if it is current, 0 behind, mergeable and all applicable checks pass;
+3. confirm resulting main SHA;
+4. reread the integrated [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md);
+5. only then create a dedicated implementation branch from that exact main;
+6. implement the bounded plan without expanding authority;
+7. validate fully before documentation of PROVED/RELEASED.
 
 No migration, RPC, frontend or production mutation is authorized by this handoff.
