@@ -1,13 +1,13 @@
 # MED-CRM-010 — Decision
 
-**Status:** ANALYZED  
+**Status:** APPROVED  
 **Execution authorized:** NO  
-**Baseline:** `main@ef4011f138585de71910ecbe6c1fa815208d0dee`  
+**Product-contract baseline:** `main@17298d78e910951e8c719906b3305579d24ce0b0`  
 **Date:** 2026-09-28
 
 ## Decision statement
 
-Create an identifiable next slice for **Pipeline / Stage Administration Contract V1**, but keep it at `ANALYZED`.
+Approve the **Pipeline / Stage Administration Contract V1** at product/architecture level while keeping EXECUTION unauthorized until a separate Implementation Plan Review reaches `DESIGNED`.
 
 The proven problem is not missing schema or missing reads. It is the absence of a safe, clinic-admin mutation authority for configuration that the current Commercial CRM already consumes.
 
@@ -55,6 +55,34 @@ Pipeline/Stage configuration changes should use the existing `audit_log`.
 
 `crm_lead_activities` remains a Lead operational timeline. Do not emit Lead activities for configuration-only changes unless a future explicit operation also mutates Leads.
 
-## Implementation blocker
+## Approved Product Contract
 
-No code until lifecycle/default/live-Lead/reorder semantics are resolved and a fresh adversarial review closes.
+1. **Pipeline archive:** reject while any nondeleted nonterminal Lead remains; terminal historical Leads may remain frozen/read-only; reject last-active-Pipeline archive; default archive requires explicit replacement atomically.
+2. **Stage archive:** reject while any nondeleted Lead references the Stage; reject last active open Stage archive; reassignment is a separate future capability.
+3. **Default:** exactly one active default while active Pipelines exist; transfer is atomic and optimistic-conflict aware; restored Pipelines do not silently reclaim default.
+4. **Create lifecycle:** no draft in V1; active Pipeline + ordered initial Stages are created atomically and must include at least one open Stage.
+5. **Stage kind:** immutable after creation in V1.
+6. **Reorder:** one atomic server command with expected-current-order precondition, deterministic locking and collision-safe two-phase position rewrite.
+7. **Delete:** no authenticated physical delete command in V1; archive/restore only, with restore invariants revalidated.
+
+## Concurrency decision discovered in second review
+
+Lifecycle admin commands alone cannot guarantee these invariants.
+
+The implementation design must also preserve linearizable compatibility with already RELEASED writers:
+
+- serialize CRM configuration with a current-clinic row lock;
+- harden `create_current_clinic_crm_lead(...)` with compatible clinic/Pipeline/initial-Stage locks before real creation;
+- harden the target-Stage read in `transition_current_clinic_crm_lead_stage(...)`;
+- preserve the existing Pipeline/Stage locking behavior of `update_current_clinic_crm_lead_details(...)`;
+- preserve exact retry/idempotency semantics and avoid deadlock through one documented lock order.
+
+Because Contact Identity Resolution composes the canonical Lead-create command, the hardening is reused there automatically rather than duplicated.
+
+## Status decision
+
+The seven Product Contract decisions are closed strongly enough to move **ANALYZED → APPROVED** after this docs-only change is integrated.
+
+The slice is **not DESIGNED**. Exact RPC/helper signatures, migration composition, lock proof, retry/precondition matrix, audit event schema and behavioral/verifier test plan remain the next gate.
+
+**Execution authorized: NO.**
