@@ -3,103 +3,94 @@
 ## Current checkpoint
 
 **Slice:** MED-CRM-010 — Pipeline / Stage Administration Contract V1  
-**Status:** ANALYZED  
+**Institutional status after this docs PR merges:** APPROVED  
+**Current main before this docs PR:** `17298d78e910951e8c719906b3305579d24ce0b0`  
 **Execution:** NOT AUTHORIZED  
-**Canonical baseline used for discovery:** `main@ef4011f138585de71910ecbe6c1fa815208d0dee`  
-**Branch:** `docs/med-crm-010-pipeline-stage-administration-analysis`  
-**PR:** #562 — `docs(crm): analyze Pipeline/Stage Administration contract`
+**Branch:** `docs/med-crm-010-product-contract-review`
 
-This slice exists because the four discovery gates identified a real configuration gap. Its existence does not authorize implementation.
+PR #562 is merged. Its protected squash result is `main@17298d78e910951e8c719906b3305579d24ce0b0`.
+
+This handoff records a Product Contract decision, not an implementation authorization.
 
 ## Gate status
 
 ```text
-REAL NOW / PROVEN EVIDENCE       CLOSED FOR DISCOVERY
-GAPS                             CLOSED FOR DISCOVERY
-CAPABILITY AUTHORITY / REUSE     CLOSED FOR DISCOVERY
-DECISION                         CLOSED: SELECT FOR DESIGN
-SECOND ADVERSARIAL REVIEW        CLOSED: EXECUTION BLOCKED
+REAL NOW / PROVEN EVIDENCE       CLOSED FOR PRODUCT CONTRACT
+GAPS                             CLOSED
+CAPABILITY AUTHORITY / REUSE     CLOSED
+DECISION                         CLOSED: PRODUCT CONTRACT APPROVED
+SECOND ADVERSARIAL REVIEW        CLOSED FOR PRODUCT CONTRACT
 EXECUTION                        NOT AUTHORIZED
-VALIDATION                       DOCS/REPO EVIDENCE ONLY
-DOCUMENTATION                    UPDATED; PR #562 STILL OPEN
+VALIDATION                       DOCS + REPOSITORY EVIDENCE ONLY
+DOCUMENTATION                    THIS DOCS-ONLY BRANCH
 ```
 
-## Proven design direction
+## Seven approved decisions
+
+1. Pipeline archive blocks nonterminal Leads; terminal historical Leads may remain frozen/read-only; no last-active archive; default archive requires atomic explicit replacement.
+2. Stage archive blocks any referenced nondeleted Lead and blocks the last active open Stage.
+3. Exactly one active default while active Pipelines exist; transfer is atomic and stale-aware.
+4. Pipeline creation is atomic active Pipeline + ordered initial Stages with at least one open Stage; no draft-via-archive.
+5. `stage_kind` is immutable after creation in V1.
+6. Reorder is one atomic server command with expected-order precondition and collision-safe two-phase rewrite.
+7. V1 exposes archive/restore, not authenticated physical delete.
+
+## Authority
 
 Reuse:
-- Pipeline/Stage schema;
-- current read projections;
+
+- current active profile / current clinic;
 - `crm.access`;
-- active-profile tenant derivation;
+- current Pipeline/Stage schema and read projections;
 - `audit_log`;
-- raw table closure.
+- raw Commercial table closure.
 
-Do not directly reuse:
-- `crm_current_mutator_clinic_id()` for admin writes, because it includes `recep`.
+Future CRM configuration authority:
 
-Future admin authority, if approved:
 - owner/admin only;
-- current clinic derived server-side;
-- same `crm.access`;
-- SECURITY DEFINER + explicit search_path;
+- server-derived clinic;
+- internal helper, not browser tenant selector;
+- no platform_admin shortcut;
 - no Patient authority;
-- no raw browser DML;
-- audit configuration mutations.
+- no second entitlement or audit path.
 
-## Blocking decisions before implementation
+Do not reuse `crm_current_mutator_clinic_id()` directly for config because it includes `recep`.
 
-1. Pipeline archive with referenced Leads.
-2. Stage archive with referenced Leads.
-3. exactly-one/default transfer semantics.
-4. atomic usable Pipeline creation vs draft lifecycle.
-5. Stage kind mutability.
-6. atomic/concurrency-safe reorder.
-7. archive/restore/delete lifecycle.
+## New adversarial finding that must be designed before code
 
-Do not implement until these are explicitly resolved and the adversarial review is repeated.
+New admin locks are insufficient unless RELEASED writers serialize with them.
 
-## Runtime note
+The next design must prove:
 
-The production readback target is correctly restricted to hash-pinned verifiers. No ad-hoc SQL or operator bypass was used for this discovery.
+- current-clinic config lock order;
+- compatible lock in `create_current_clinic_crm_lead(...)` before selecting/using default Pipeline and initial Stage;
+- compatible target-Stage lock in `transition_current_clinic_crm_lead_stage(...)`;
+- preservation of existing Pipeline/Stage locks in `update_current_clinic_crm_lead_details(...)`;
+- no deadlock and no regression of exact retry behavior.
 
-## Prompt-generation revalidation — 2026-09-28
+Identity Resolution composes Lead creation, so do not duplicate that authority.
 
-The next-chat handoff was revalidated against GitHub rather than inherited from chat memory.
+## Next safe gate — Implementation Plan Review
 
-Before this HANDOFF refresh:
+Reconstruct current `origin/main`, this branch/PR and checks first.
 
-- `origin/main` resolved through the PR compare baseline to `ef4011f138585de71910ecbe6c1fa815208d0dee`;
-- PR #562 was OPEN, not merged and not draft;
-- exact PR HEAD was `2213776d15aefb09189c3838e4b77d4947720f60`;
-- compare against `main`: 8 ahead / 0 behind;
-- changed files were exactly six documentation files:
-  - `docs/CURRENT_STATE.md`;
-  - `docs/SLICE_LEDGER.md`;
-  - `docs/slices/MED-CRM-010/DECISION.md`;
-  - `docs/slices/MED-CRM-010/EVIDENCE.md`;
-  - `docs/slices/MED-CRM-010/HANDOFF.md`;
-  - `docs/slices/MED-CRM-010/README.md`;
-- reviews: 0;
-- review threads: 0;
-- combined commit statuses: none;
-- 20 associated workflow runs existed on that exact HEAD;
-- at the latest pre-refresh readback, 9/20 were completed/success, 2 were in progress and 9 were queued;
-- no completed workflow had a non-success conclusion;
-- GitHub reported `mergeable=false` while checks were still unsettled.
+Before DESIGNED/EXECUTION, document and adversarially review:
 
-Therefore PR #562 was **not GREEN** and was **not merged**. No merge should be forced or inferred from the docs-only diff.
+1. exact helper/RPC names and signatures;
+2. parameters + server-derived tenant;
+3. deterministic lock order;
+4. retry/idempotency/precondition matrix;
+5. reorder implementation;
+6. audit actions/metadata;
+7. additive migration plan;
+8. positive behavioral tests;
+9. RBAC negative tests;
+10. cross-tenant negative tests;
+11. disabled-`crm.access` tests;
+12. raw-DML closure tests;
+13. regressions for existing CRM commands/intake/details;
+14. PostgreSQL harness/verifier policy.
 
-This HANDOFF refresh itself moves the PR HEAD. Consequently every next chat must re-read the exact current PR HEAD and its checks; the workflow counts above are historical evidence for the pre-refresh HEAD only.
+Only after that review closes may MED-CRM-010 move APPROVED → DESIGNED.
 
-## Next safe gate
-
-1. Reconstruct REAL NOW from `origin/main` and the exact current HEAD of PR #562.
-2. Verify state/base/HEAD, ahead-behind, full diff/file set, reviews, review threads and all workflows/checks for that exact HEAD.
-3. If and only if the current HEAD is docs-only, 0 behind, mergeable, all required/associated checks are completed successfully and there is no review/thread blocker, protected-squash-merge PR #562 using `expected_head_sha`.
-4. Confirm `merged=true` and resolve the resulting `main` SHA. Do not label MED-CRM-010 PROVED or RELEASED; it remains ANALYZED.
-5. Re-read the MED-CRM-010 docs from the integrated `main`.
-6. Then perform a **Product Contract Review** limited to the seven blocking semantics above.
-7. Convert approved semantics into exact owner/admin-only command contracts, locking/idempotency behavior and behavioral/verifier tests.
-8. Repeat SECOND ADVERSARIAL REVIEW before any migration/RPC/frontend implementation is authorized.
-
-No code, schema or production mutation is authorized by this handoff.
+No migration, RPC, frontend or production mutation is authorized by this handoff.
