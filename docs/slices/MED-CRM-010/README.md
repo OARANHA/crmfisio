@@ -1,17 +1,18 @@
 # MED-CRM-010 — Pipeline / Stage Administration Contract V1
 
-**Status:** ANALYZED  
+**Status:** APPROVED  
 **Execution:** NOT AUTHORIZED  
 **Owner domain:** Commercial CRM  
 **Canonical repository:** `OARANHA/crmfisio`  
 **Discovery baseline:** `main@ef4011f138585de71910ecbe6c1fa815208d0dee`  
+**Product-contract baseline:** `main@17298d78e910951e8c719906b3305579d24ce0b0`  
 **Created:** 2026-09-28
 
 ## Objective
 
 Define the smallest safe clinic-admin contract for administering Commercial CRM pipelines and stages without creating a parallel Commercial authority, widening tenant/RBAC access or changing `Contact != Lead != Patient`.
 
-This slice is deliberately **analysis/design only** at this checkpoint. It does not authorize migration, RPC, frontend or production mutation.
+The Product Contract is now **APPROVED**, but the slice is not yet DESIGNED and does not authorize migration, RPC, frontend or production mutation.
 
 ## REAL NOW / PROVEN EVIDENCE
 
@@ -102,56 +103,202 @@ It is more reusable and narrower than Follow-up, Inbox/Conversation or Attributi
 
 **Implementation is NOT authorized yet.**
 
-## Product/integrity decisions required before code
+## PRODUCT CONTRACT DECISIONS — APPROVED
 
-1. **Archive Pipeline with Leads**
-   - Current behavior would freeze real changes: Board shows legacy/read-only; Lead details and state-changing stage transition fail on archived current pipeline; no cross-pipeline Lead move exists.
-   - Decide whether archive is rejected while any Lead references the pipeline, allowed only for a terminal/closed set, or accompanied by a separate explicit migration capability.
+### 1. Archive Pipeline with referenced Leads
 
-2. **Archive Stage with Leads**
-   - Current behavior is asymmetric: Board/details treat archived-stage Leads as legacy/read-only, while the server stage-transition command can move from an archived current stage to an active target.
-   - Decide whether Stage archive is blocked with referenced Leads or requires a separate explicit reassignment workflow.
+Pipeline archive is allowed only when **no nondeleted nonterminal Lead** remains in that Pipeline.
 
-3. **Default Pipeline**
-   - The DB prevents two active defaults but does not require one.
-   - Decide whether an active CRM must always have exactly one default and how default transfer is performed atomically when archiving/changing default.
+- terminal historical Leads may remain referenced and become frozen/read-only while the Pipeline is archived;
+- any open/nonterminal Lead blocks archive;
+- V1 does not move Leads across Pipelines;
+- if a clinic later needs to retire a Pipeline that still has active Leads, that requires a separate explicit reassignment/migration capability;
+- the last active Pipeline cannot be archived while `crm.access` is the active Commercial CRM contract;
+- archiving the active default requires an explicit replacement active Pipeline in the same transaction;
+- archive clears `is_default` on the archived Pipeline.
 
-4. **Pipeline creation**
-   - A new active pipeline without an active open stage is unusable for Lead creation.
-   - Decide whether create is atomic with an initial stage set, whether a draft/inactive lifecycle is needed, or another explicit contract.
+### 2. Archive Stage with referenced Leads
 
-5. **Stage kind lifecycle**
-   - Changing `open/won/lost` can reinterpret existing Lead outcome semantics.
-   - Decide whether kind is immutable after creation or what guards apply.
+Stage archive is rejected while **any nondeleted Lead** references that Stage.
 
-6. **Reorder**
-   - Active stage positions are unique.
-   - Reorder needs one atomic, concurrency-safe server operation; frontend sequencing must not become authority.
+- no implicit reassignment;
+- no hidden cross-Stage migration inside archive;
+- archiving the last active `open` Stage is rejected;
+- a future reassignment capability, if justified, must be explicit and atomic;
+- legacy archived-stage references that predate this contract are not silently rewritten.
 
-7. **Delete vs archive**
-   - V1 should not silently equate physical DELETE with administration. Archive/restore/delete semantics need explicit decision.
+This prevents the admin path from creating the current UI/server asymmetry. The existing same-Pipeline transition behavior for a legacy archived current Stage remains a compatibility/recovery fact, not authority for creating new archived-stage references.
+
+### 3. Default Pipeline
+
+While active Pipelines exist, the canonical admin contract maintains **exactly one active default**.
+
+- first active Pipeline becomes default;
+- setting a new default is one atomic server-side operation;
+- target must be active and same-tenant;
+- exact retry is side-effect free;
+- stale expected-default state returns a conflict instead of silently overwriting a newer admin decision;
+- archiving the default requires an explicit replacement in the same transaction;
+- restored Pipelines do not silently reclaim default status.
+
+### 4. Pipeline creation lifecycle
+
+V1 does **not** introduce a draft lifecycle and does not overload `archived_at` as draft.
+
+Pipeline creation is atomic:
+
+`Pipeline + ordered initial Stage set`
+
+The initial set must:
+
+- be non-empty;
+- contain at least one active `open` Stage;
+- respect the existing at-most-one active `won` and `lost` invariants;
+- use caller-supplied stable UUIDs for retry-safe creation;
+- become visible as active only as one committed unit.
+
+### 5. Stage kind lifecycle
+
+`stage_kind` is **immutable after Stage creation in V1**.
+
+Changing `open | won | lost` underneath existing Leads can reinterpret `closed_at`, loss semantics and reporting without touching the Lead row. Renaming, ordering, archive and restore are separate operations; changing kind requires creating a replacement Stage under a future explicit migration decision.
+
+### 6. Reorder
+
+Stage reorder is a single server-side atomic command.
+
+Contract:
+
+- frontend never becomes authority through multiple row updates;
+- scope is one active Pipeline in the current clinic;
+- command receives the expected current active-stage order plus the requested order;
+- after locks are acquired, expected order must still match or the command fails with a stale/conflict result;
+- an exact already-applied target order is idempotent;
+- all active Stage IDs must appear exactly once;
+- archived or cross-Pipeline Stage IDs are rejected;
+- positions are rewritten collision-safely in two phases and normalized by the server.
+
+### 7. Delete vs Archive / Restore
+
+V1 exposes **archive + restore**, not authenticated physical DELETE.
+
+- no browser/application delete command for Pipeline or Stage;
+- physical deletion remains outside this Product Contract and would require a separate data-lifecycle decision;
+- Stage configuration changes require an active parent Pipeline;
+- an archived Pipeline freezes its Stage configuration;
+- restoring a Pipeline requires a usable Stage set with at least one active `open` Stage and restores it as non-default unless a separate atomic default command is requested;
+- restoring a Stage requires an active parent Pipeline and must preserve kind/position uniqueness; restore may append/reposition explicitly rather than blindly reviving an occupied position.
+
+## CONFIGURATION AUTHORITY
+
+Future commands must reuse:
+
+- active current profile / canonical current clinic;
+- `crm.access`;
+- existing Pipeline/Stage tables and read projections;
+- existing `audit_log`;
+- existing raw-table browser DML closure.
+
+The configuration guard must be narrow/internal and allow **owner/admin only**. It must not reuse `crm_current_mutator_clinic_id()` directly because that helper intentionally includes `recep` for operational Commercial writes.
+
+Do not add:
+
+- a second tenant source;
+- a new role;
+- a new CRM entitlement;
+- platform_admin bypass;
+- Patient authority;
+- raw authenticated table DML;
+- a second audit system.
+
+Configuration-only changes emit `audit_log` events. They do not emit `crm_lead_activities` unless a future command actually changes Leads.
+
+## CONCURRENCY / COMPATIBILITY REQUIREMENTS DISCOVERED BY ADVERSARIAL REVIEW
+
+The Product Contract is not safe if only the new admin commands lock rows. Existing RELEASED writers must serialize with lifecycle changes.
+
+Required design input for the next gate:
+
+1. all CRM configuration commands acquire the current clinic row `FOR UPDATE` first, then Pipeline/Stage rows in deterministic order;
+2. `create_current_clinic_crm_lead(...)` must be hardened so real creation acquires compatible locks for the clinic/default decision and selected active Pipeline + initial Stage before INSERT;
+3. because Prospect Intake / identity resolution composes `create_current_clinic_crm_lead(...)`, hardening that canonical command covers that ingress without a parallel authority;
+4. `transition_current_clinic_crm_lead_stage(...)` already protects the current Pipeline for state changes, but target Stage selection must also acquire a compatible row lock so Stage archive cannot race a transition into that Stage;
+5. `update_current_clinic_crm_lead_details(...)` already locks current Pipeline and Stage `FOR SHARE` before real changes and is the compatibility pattern to preserve.
+
+These are changes to existing authorities, not new authorities. Their exact SQL signatures/lock order/migration composition remain a **DESIGN gate**, so EXECUTION is still not authorized.
+
+## MINIMUM COMMAND INVENTORY FOR DESIGN REVIEW
+
+The next gate must turn the approved semantics into exact contracts for:
+
+- internal owner/admin current-clinic CRM configuration guard;
+- create Pipeline with initial Stage set;
+- rename/update Pipeline metadata allowed by V1;
+- set default Pipeline;
+- archive Pipeline;
+- restore Pipeline;
+- create Stage;
+- rename Stage;
+- archive Stage;
+- restore Stage;
+- reorder active Stages;
+- compatibility hardening of existing Lead create and stage transition commands.
+
+No generic CRM writer is permitted.
 
 ## SECOND ADVERSARIAL REVIEW
 
-Deterministic review found these blockers to EXECUTION:
+A fresh deterministic review attacked the approved contract and found one additional structural class of risk: **concurrent RELEASED writers crossing an admin lifecycle mutation**.
 
-- direct reuse of `crm_current_mutator_clinic_id()` would over-authorize `recep`;
-- archiving a live Pipeline can strand Leads permanently under current same-pipeline transition rules;
-- archiving a Stage can create UI/server asymmetry;
-- a naive reorder can race or violate active-position uniqueness;
-- changing/archiving the default can leave Prospect/Lead creation without a usable default;
-- creating an active Pipeline without stages can expose a selectable but unusable pipeline;
-- Stage kind edits can rewrite business semantics for existing Leads;
-- configuration audit belongs in `audit_log`, not automatically in the Lead operational timeline.
+Specifically:
 
-JEV advisory routing returned `deep_review`; deterministic repository evidence above remains authoritative.
+- `create_current_clinic_crm_lead(...)` currently validates active Pipeline/open Stage but does not lock those configuration rows;
+- Prospect Intake composes that same Lead command;
+- `transition_current_clinic_crm_lead_stage(...)` locks the current Pipeline for a real state change, but its target Stage lookup is not currently a locking read;
+- `update_current_clinic_crm_lead_details(...)` already uses `FOR SHARE` on current Pipeline and Stage and therefore demonstrates the intended compatibility pattern.
+
+Without hardening Lead creation and target-Stage transition reads, an archive/default/stage-archive command could pass its own checks while a concurrent writer commits against the pre-archive view.
+
+The contract therefore includes the compatibility requirements above and does **not** authorize implementation until the exact migration/locking plan proves those races closed without deadlock or authority expansion.
+
+Other adversarial checks close at Product Contract level:
+
+- `recep` does not gain configuration authority;
+- open Leads cannot be stranded by Pipeline archive;
+- new archived-Stage-with-Lead states cannot be created by the admin path;
+- default transfer cannot intentionally leave zero active defaults;
+- active Pipeline creation cannot expose an unusable zero-open-stage Pipeline;
+- `stage_kind` cannot reinterpret existing Leads;
+- reorder cannot be a client sequence;
+- restore must revalidate active/default/kind/position invariants;
+- cross-tenant IDs remain filtered by server-derived clinic;
+- browser raw DML remains closed;
+- `Contact != Lead != Patient` remains intact.
+
+JEV was used as advisory input. Its routing remained conservative (`deep_review`/later `block` probability) because execution is intentionally still blocked; deterministic repository evidence controls the status transition.
 
 ## NEXT SAFE GATE
 
-Before implementation:
-1. close the seven product/integrity decisions above;
-2. define the exact owner/admin-only current-clinic configuration authority;
-3. define minimal RPC signatures and concurrency/idempotency contract;
-4. define behavioral/verifier tests first;
-5. repeat SECOND ADVERSARIAL REVIEW;
-6. only then move this slice beyond ANALYZED.
+MED-CRM-010 may advance from **ANALYZED → APPROVED** once this Product Contract documentation is integrated. It must **not** jump to DESIGNED.
+
+Before any EXECUTION, perform an **Implementation Plan Review** on the then-current `origin/main` and document:
+
+1. exact function/helper names and SQL signatures;
+2. exact parameters and server-derived tenant behavior;
+3. clinic/Pipeline/Stage lock order and concurrency proof, including Lead-create/default/archive and target-Stage/archive races;
+4. retry/idempotency and optimistic-precondition semantics for every command;
+5. collision-safe reorder algorithm;
+6. exact `audit_log` actions/metadata with no unnecessary Lead/Patient data;
+7. additive migration composition, including compatibility hardening of existing RELEASED commands;
+8. positive behavioral cases;
+9. owner/admin positive and recep/professional/financeiro negative RBAC cases;
+10. disabled-`crm.access` fail-closed cases;
+11. cross-tenant ID negative cases;
+12. raw authenticated DML closure;
+13. existing MED-CRM-002/004/005/006/008 regressions;
+14. archive/restore/default/last-open-stage invariants;
+15. PostgreSQL version/harness/verifier requirements under current repo policy.
+
+Then run a new SECOND ADVERSARIAL REVIEW. Only if that design review closes may the slice move to **DESIGNED** and propose an implementation branch.
+
+No migration, RPC, frontend or production mutation is authorized by this Product Contract review.
